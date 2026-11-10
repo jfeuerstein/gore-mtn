@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { parseConfig } from './config';
-import { Hud } from './debug/hud';
+import { BenchRun, showBenchResults } from './debug/bench';
+import { deviceLabel, Hud } from './debug/hud';
 import { FrameStats } from './debug/perf';
 import { Input } from './input/input';
 import { FollowCamera } from './player/followCamera';
@@ -128,6 +129,14 @@ async function boot(): Promise<void> {
   resize();
   follow.pitch = cfg.pitch ?? follow.defaultPitch;
 
+  const resolution = (): string =>
+    `${Math.round(canvas.clientWidth * pixelRatio)}x${Math.round(canvas.clientHeight * pixelRatio)} @${pixelRatio}x`;
+  const bench =
+    typeof cfg.bench === 'number'
+      ? new BenchRun(cfg.bench, cfg.benchSeconds, follow.yaw, { backend, trees: trees.count, resolution })
+      : null;
+  if (cfg.bench === 'done') showBenchResults(deviceLabel());
+
   const stats = new FrameStats();
   let last = performance.now();
   let sinceHud = 0;
@@ -151,7 +160,7 @@ async function boot(): Promise<void> {
     z: player.position.z,
     yaw: follow.yaw,
     pitch: follow.pitch,
-    fps: stats.fps,
+    fps: stats.summary().fps,
     drawCalls: renderer.info.render.drawCalls,
     triangles: renderer.info.render.triangles,
     trees: trees.count,
@@ -168,17 +177,17 @@ async function boot(): Promise<void> {
   };
 
   await renderer.setAnimationLoop((now) => {
+    const cpuStart = performance.now();
     const frameMs = now - last;
     last = now;
     const dt = Math.min(0.05, frameMs / 1000);
-    // The first frames include shader compilation and would swamp the readout.
-    if (frames > 10) stats.push(frameMs);
 
     input.update();
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground);
     follow.follow(player.travelHeading, Math.min(1, Math.hypot(input.moveX, input.moveY)), dt);
+    if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground);
     sky.position.copy(camera.position);
     sun.target.position.copy(player.position);
@@ -187,14 +196,17 @@ async function boot(): Promise<void> {
 
     renderer.render(scene, camera);
     frames++;
+    const cpuMs = performance.now() - cpuStart;
+    // The first frames include shader compilation and would swamp the readout.
+    if (frames > 10) stats.push(frameMs, cpuMs);
+    bench?.frame(now, frameMs, cpuMs, renderer.info.render.drawCalls, renderer.info.render.triangles);
 
     sinceHud += frameMs;
-    if (sinceHud >= 250) {
+    // During a benchmark the readout stays still, so that it cannot disturb what is being measured.
+    if (sinceHud >= 250 && (!bench || bench.hudLive)) {
       sinceHud = 0;
       hud.setStats({
-        fps: stats.fps,
-        p95Ms: stats.p95Ms,
-        worstMs: stats.worstMs,
+        frame: stats.summary(),
         drawCalls: renderer.info.render.drawCalls,
         triangles: renderer.info.render.triangles,
         backend,

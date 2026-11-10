@@ -1,10 +1,10 @@
 import { withParams, type Config } from '../config';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
+import { startBench } from './bench';
+import { describeSummary, type FrameSummary } from './perf';
 
 export interface HudStats {
-  fps: number;
-  p95Ms: number;
-  worstMs: number;
+  frame: FrameSummary;
   drawCalls: number;
   triangles: number;
   backend: string;
@@ -100,6 +100,12 @@ const DEFAULT_VALUE: Record<string, string> = {
   view: '700',
 };
 
+/** Browser and whether the game is running from the Home Screen, for reports. */
+export function deviceLabel(): string {
+  const installed = (navigator as { standalone?: boolean }).standalone === true;
+  return `${installed ? 'Home Screen app' : 'browser tab'} | ${navigator.userAgent}`;
+}
+
 /** On-screen readout and settings menu for testing on a phone. */
 export class Hud {
   private readonly statsEl = document.getElementById('stats') as HTMLElement;
@@ -177,7 +183,10 @@ export class Hud {
         () => (copy.textContent = 'Could not copy'),
       );
     });
-    add(this.menuEl, 'p', 'Changing a setting reloads the page.');
+    const bench = add(row, 'button', 'Run benchmark (about 90 seconds)');
+    bench.type = 'button';
+    bench.addEventListener('click', () => startBench(this.cfg.benchSeconds));
+    add(this.menuEl, 'p', 'Changing a setting reloads the page. The benchmark tries nine settings by itself; leave the phone alone until it shows the results.');
   }
 
   /** One line that can be pasted back into a Claude session. */
@@ -185,20 +194,20 @@ export class Hud {
     const s = this.lastStats;
     if (!s) return 'no frames yet';
     return (
-      `${s.backend} ${s.width}x${s.height} @${s.pixelRatio}x | ${s.fps.toFixed(0)} fps, p95 ${s.p95Ms.toFixed(1)} ms, ` +
-      `worst ${s.worstMs.toFixed(1)} ms | ${s.drawCalls} calls, ${(s.triangles / 1000).toFixed(0)}k tris | ` +
+      `${s.backend} ${s.width}x${s.height} @${s.pixelRatio}x | ${describeSummary(s.frame)} | ` +
+      `${s.drawCalls} calls, ${(s.triangles / 1000).toFixed(0)}k tris | ` +
       `trees ${s.trees}, stride ${this.cfg.stride}, view ${this.cfg.viewDist}, shadows ${this.cfg.shadows ? 'on' : 'off'}, ` +
       `zoom ${this.cfg.zoom} | ` +
-      `${this.lastWhere} | ${navigator.userAgent}`
+      `${this.lastWhere} | ${deviceLabel()}`
     );
   }
 
   setStats(s: HudStats): void {
     this.lastStats = s;
     this.statsEl.textContent =
-      `${s.fps.toFixed(0).padStart(3)} fps   ${s.backend}\n` +
-      `p95 ${s.p95Ms.toFixed(1)} ms  worst ${s.worstMs.toFixed(0)} ms\n` +
-      `${s.drawCalls} calls  ${(s.triangles / 1000).toFixed(0)}k tris\n` +
+      `${s.frame.fps.toFixed(0).padStart(3)} fps   ${s.backend}\n` +
+      `p95 ${s.frame.p95Ms.toFixed(0)} ms  worst ${s.frame.worstMs.toFixed(0)} ms\n` +
+      `cpu ${s.frame.cpuAvgMs.toFixed(1)} ms  ${s.drawCalls} calls  ${(s.triangles / 1000).toFixed(0)}k tris\n` +
       `${s.width}x${s.height} @${s.pixelRatio}x  ${(s.trees / 1000).toFixed(1)}k trees`;
   }
 

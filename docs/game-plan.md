@@ -321,7 +321,9 @@ Open the deployed page in Safari, hold the phone upright, and walk around with o
 4. Whether shadows cost much.
 5. How one-thumb play feels: stick size, how quickly the camera swings round behind you, where the player sits on the screen, whether the thumb covers anything, and anything Safari does that gets in the way.
 
-"Copy performance report" in Settings puts the numbers on the clipboard to paste back.
+"Run benchmark" in Settings answers questions 1 to 4 in one go: it steps through nine settings by itself in about 90 seconds and ends with a block of text to copy and paste back. "Copy performance report" does the same for whatever is on screen at the moment.
+
+First result (WebGPU, 10,000 trees, whole-mountain view, in a Safari tab): 57 fps with about one frame in twenty arriving late, on a scene of only 39 draw calls and 108k triangles. The scene is far inside the budget, so the late frames are not caused by its size. The benchmark exists to find out what does cause them.
 
 After the slice, each new region is a repeatable package: terrain chunk, trails and lifts, stamps, a mineral table, one or two characters, one new tool or piece of gear.
 

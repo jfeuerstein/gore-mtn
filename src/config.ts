@@ -20,6 +20,10 @@ export interface Config {
   /** Multiplies the camera distance; above 1 pulls back. */
   zoom: number;
   hud: boolean;
+  /** Benchmark step to run, or `done` to show the results. See src/debug/bench.ts. */
+  bench: number | 'done' | null;
+  /** Seconds measured per benchmark step. */
+  benchSeconds: number;
 }
 
 export const DEFAULTS: Config = {
@@ -35,6 +39,8 @@ export const DEFAULTS: Config = {
   pitch: null,
   zoom: 1,
   hud: true,
+  bench: null,
+  benchSeconds: 5,
 };
 
 function num(v: string | null, fallback: number, min: number, max: number): number {
@@ -47,6 +53,11 @@ function optNum(v: string | null): number | null {
   if (v === null || v.trim() === '') return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+function optIndex(v: string | null): number | null {
+  const n = optNum(v);
+  return n !== null && Number.isInteger(n) && n >= 0 ? n : null;
 }
 
 export function parseConfig(search: string): Config {
@@ -71,6 +82,8 @@ export function parseConfig(search: string): Config {
     pitch: optNum(q.get('pitch')),
     zoom: num(q.get('zoom'), d.zoom, 0.4, 3),
     hud: q.get('hud') !== '0',
+    bench: q.get('bench') === 'done' ? 'done' : optIndex(q.get('bench')),
+    benchSeconds: num(q.get('benchsecs'), d.benchSeconds, 0.1, 60),
   };
 }
 

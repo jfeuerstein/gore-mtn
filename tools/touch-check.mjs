@@ -39,6 +39,8 @@ try {
   const { width, height } = page.viewportSize();
   const box = async (sel) => page.locator(sel).boundingBox();
   const overlap = (a, b) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+  // The readouts are hidden until they have something to show; measure the layout once they do.
+  await page.waitForFunction(() => document.getElementById('stats').textContent && document.getElementById('where').textContent);
   const boxes = {};
   for (const sel of ['#where', '#stats', '#menu-button', '#fast-button']) boxes[sel] = await box(sel);
   const names = Object.keys(boxes);

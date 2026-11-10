@@ -84,6 +84,8 @@ body {
   background: var(--paper);
   border-radius: 8px;
   padding: 5px 8px;
+  /* Its text changes several times a second; keep that from causing layout work elsewhere. */
+  contain: content;
 }
 
 #menu-button,
@@ -171,6 +173,69 @@ body {
   margin: 10px 0 0;
   font-size: 11px;
   opacity: 0.7;
+}
+
+/* The readouts are empty until the first update; do not show empty pills. */
+#stats:empty,
+#where:empty {
+  display: none;
+}
+
+#bench-banner {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: calc(max(8px, env(safe-area-inset-top)) + 120px);
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  pointer-events: none;
+}
+
+#bench-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 80%;
+  overflow-y: auto;
+  touch-action: pan-y;
+  background: var(--paper);
+  border-radius: 18px 18px 0 0;
+  padding: 14px max(14px, env(safe-area-inset-right)) calc(max(14px, env(safe-area-inset-bottom)) + 6px)
+    max(14px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
+}
+#bench-results h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+#bench-results pre {
+  margin: 12px 0 0;
+  font: 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#bench-results .row {
+  display: flex;
+  gap: 8px;
+}
+#bench-results button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 44px;
 }
 
 /* Wide screens (desktop) have room for everything on one row and a side panel. */

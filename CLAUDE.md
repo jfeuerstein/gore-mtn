@@ -20,6 +20,7 @@ npm run build        # type-check and build to dist/
 npm run world        # regenerate public/world/ from USGS and OpenStreetMap (needs Python deps)
 node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game (upright phone size)
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
+node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 ```
 
 Run `npm test`, `npm run build` and `node tools/touch-check.mjs` before pushing. Every push deploys
@@ -32,7 +33,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   phone's numbers count.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
+  `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`.
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
   OpenStreetMap, not memory.
@@ -44,6 +45,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   back to WebGL 2 by itself.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
+
+## Measuring performance
+
+- The owner measures on the phone with Settings > Run benchmark, which steps through fixed settings
+  (`src/debug/bench.ts`) and ends with a block of text to paste back. Change the step list when a
+  new question needs answering; run `node tools/bench-check.mjs` after touching it.
+- Read the results by frame-time bucket, not only by fps. Frames land on the display's refresh
+  grid: 17 ms is on time at 60 fps, 25 ms and 33 ms are late frames.
+- `cpu` is time spent in our own frame callback. Late frames with a small `cpu` mean the delay is
+  in the browser or GPU, not the game's code.
 
 ## Portrait and one thumb
 
