@@ -13,7 +13,9 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
-import { buildLifts, buildPlaces } from './world/scenery';
+import { Buildings } from './world/buildings';
+import { LiftCars } from './world/liftCars';
+import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { SkiTracks } from './world/tracks';
@@ -73,6 +75,9 @@ window.addEventListener('unhandledrejection', (e) => showFatal(String(e.reason?.
  * of the status bar while still showing the whole screen, which leaves an empty bar along the
  * bottom. When that happens, size the game to the screen itself. See the note in style.css.
  */
+/** Set from the `shortpage` option. See Config.shortPage. */
+let pretendShort = 0;
+
 function fillScreen(): void {
   const standalone =
     (navigator as { standalone?: boolean }).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
@@ -82,7 +87,11 @@ function fillScreen(): void {
   // The height the page is actually laid out at. On some launches this is short even though
   // window.innerHeight reports the whole screen, so measure the layout, not the window.
   const page = Math.min(root.clientHeight || window.innerHeight, window.innerHeight);
-  if (standalone && page < full - 1) {
+  if (pretendShort > 0) {
+    // A check is standing in for iOS: treat the screen as taller than the page by that much.
+    root.style.setProperty('--app-height', `${page + pretendShort}px`);
+    root.style.setProperty('--app-extra', `${pretendShort}px`);
+  } else if (standalone && page < full - 1) {
     root.style.setProperty('--app-height', `${full}px`);
     root.style.setProperty('--app-extra', `${full - page}px`);
   } else {
@@ -92,12 +101,13 @@ function fillScreen(): void {
 }
 
 async function boot(): Promise<void> {
+  const cfg = parseConfig(location.search);
+  pretendShort = cfg.shortPage;
   fillScreen();
   for (const event of ['resize', 'orientationchange', 'pageshow']) window.addEventListener(event, fillScreen);
   document.addEventListener('visibilitychange', fillScreen);
   // iOS can settle the page's height a moment after launch without saying so.
   for (const delay of [300, 1500, 4000]) window.setTimeout(fillScreen, delay);
-  const cfg = parseConfig(location.search);
   const shadows = cfg.shadows;
   const canvas = document.getElementById('game') as HTMLCanvasElement;
 
@@ -137,8 +147,13 @@ async function boot(): Promise<void> {
   ]);
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
-  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z));
-  scene.add(terrain.group, trees.group, buildLifts(liftPaths), buildPlaces(world));
+  // Trees keep out of lift corridors and stand back from buildings.
+  const nearBuilding = (x: number, z: number): boolean =>
+    world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30));
+  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z) || nearBuilding(x, z));
+  const buildings = new Buildings(world.places, shadows);
+  const liftCars = new LiftCars(liftPaths, shadows);
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group);
 
   const player = new Player(shadows);
   const tracks = new SkiTracks();
@@ -149,6 +164,7 @@ async function boot(): Promise<void> {
 
   const summit = world.places.find((p) => p.id === 'summit');
   const baseLodge = world.places.find((p) => p.id === 'base-lodge');
+  let liftClock = 0;
   /** The camera pitch to return to after a lift ride, while that is still under way. */
   let pitchAfterRide: number | null = null;
   /** Set when the player has jumped somewhere, so the surroundings are built at once, not gradually. */
@@ -256,6 +272,7 @@ async function boot(): Promise<void> {
     terrain.setTints(palette.snowTint, palette.canopyTint);
     tracks.setColour(palette.track);
     snowfall.setAmount(palette.snowfall);
+    buildings.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -323,7 +340,10 @@ async function boot(): Promise<void> {
     input.update();
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
-    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail, (x, z, r) => trees.trunkAt(x, z, r));
+    // The lifts run on their own clock, which the chairs and any rider share.
+    liftClock += dt;
+    liftCars.update(liftClock);
+    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail, (x, z, r) => trees.trunkAt(x, z, r), liftClock);
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {
       // Below a crawl the direction of travel is not steady enough to draw from; use the skis.
@@ -354,7 +374,7 @@ async function boot(): Promise<void> {
     if (station) {
       hud.setAction(`Ride ${station.lift.name ?? 'the lift'}`, () => {
         pitchAfterRide = follow.pitch;
-        player.board(station);
+        player.board(station, liftClock);
       });
     }
     else hud.setAction(null);

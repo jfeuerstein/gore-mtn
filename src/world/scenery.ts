@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { CABLE_HEIGHT, LINE_OFFSET, pointAlong, towerYaw, type LiftPath } from './lifts';
-import type { World } from './world';
+import { blocks } from './shapes';
 
 /**
  * Placeholder lifts: towers with a crossarm, a cable up one side and down the other, and an
@@ -13,18 +13,38 @@ export function buildLifts(paths: readonly LiftPath[]): THREE.Group {
   const m = new THREE.Matrix4();
 
   let towerCount = 0;
-  for (const path of paths) towerCount += path.points.length / 3;
-  const steel = new THREE.MeshLambertMaterial({ color: 0x4d5666 });
-  const towerGeo = new THREE.BoxGeometry(0.7, CABLE_HEIGHT, 0.7);
-  towerGeo.translate(0, -CABLE_HEIGHT / 2, 0); // hangs down from the cable height
-  const armGeo = new THREE.BoxGeometry(LINE_OFFSET * 2 + 0.8, 0.45, 0.45);
-  const towers = new THREE.InstancedMesh(towerGeo, steel, towerCount);
-  const arms = new THREE.InstancedMesh(armGeo, steel, towerCount);
+  for (const path of paths) if (!path.surface) towerCount += path.points.length / 3;
+  const steel = new THREE.MeshLambertMaterial({ color: 0x4d5666, flatShading: true });
+  // A tapered post hanging down from the cable height, and a crossarm with a wheel assembly at
+  // each end for the cable to run over.
+  const towerGeo = new THREE.CylinderGeometry(0.26, 0.5, CABLE_HEIGHT + 2, 6);
+  towerGeo.translate(0, -(CABLE_HEIGHT + 2) / 2, 0);
+  const armGeo = blocks([
+    { size: [LINE_OFFSET * 2 + 0.6, 0.4, 0.4], at: [0, 0.1, 0], colour: 0xffffff },
+    { size: [0.35, 0.3, 2.4], at: [LINE_OFFSET, 0.12, 0], colour: 0xffffff },
+    { size: [0.35, 0.3, 2.4], at: [-LINE_OFFSET, 0.12, 0], colour: 0xffffff },
+  ]);
+  const towers = new THREE.InstancedMesh(towerGeo, steel, Math.max(1, towerCount));
+  const arms = new THREE.InstancedMesh(armGeo, steel, Math.max(1, towerCount));
+  towers.count = arms.count = towerCount;
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   const one = new THREE.Vector3(1, 1, 1);
   let t = 0;
   for (const path of paths) {
+    // A lift that runs along the snow has no towers or cable: a dark belt on the ground instead.
+    if (path.surface) {
+      for (let i = 0; i + 3 < path.points.length; i += 3) {
+        const a = new THREE.Vector3(path.points[i], path.points[i + 1], path.points[i + 2]);
+        const b = new THREE.Vector3(path.points[i + 3], path.points[i + 4], path.points[i + 5]);
+        const belt = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.12, a.distanceTo(b)), steel);
+        belt.position.copy(a).add(b).multiplyScalar(0.5);
+        belt.position.y += 0.06;
+        belt.lookAt(b.x, b.y + 0.06, b.z);
+        group.add(belt);
+      }
+      continue;
+    }
     // One cable up the right of the towers and one down the left, hung from each crossarm.
     const rightLine: THREE.Vector3[] = [];
     const leftLine: THREE.Vector3[] = [];
@@ -62,38 +82,12 @@ export function buildLifts(paths: readonly LiftPath[]): THREE.Group {
     const right = new THREE.Mesh(post, gateMat);
     right.position.x = 4.2;
     gate.add(left, right, new THREE.Mesh(beam, gateMat));
-    gate.position.set(start.x, start.y - CABLE_HEIGHT, start.z);
+    gate.position.set(start.x, start.y - (path.surface ? 0 : CABLE_HEIGHT), start.z);
     gate.rotation.y = start.yaw;
     gate.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = true;
     });
     group.add(gate);
-  }
-  return group;
-}
-
-/** Placeholder buildings: a warm box with a dark roof at each named place. */
-export function buildPlaces(world: World): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'places';
-  const wall = new THREE.MeshLambertMaterial({ color: 0xb5793f, flatShading: true });
-  const roof = new THREE.MeshLambertMaterial({ color: 0x3d2f2a, flatShading: true });
-  for (const place of world.places) {
-    if (place.id === 'summit') {
-      // Stand-in for the fire tower.
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(2.5, 22, 2.5), roof);
-      tower.position.set(place.x, place.y + 11, place.z);
-      group.add(tower);
-      continue;
-    }
-    const body = new THREE.Mesh(new THREE.BoxGeometry(30, 11, 17), wall);
-    body.position.set(place.x, place.y + 5, place.z);
-    const top = new THREE.Mesh(new THREE.ConeGeometry(21, 7, 4), roof);
-    top.rotation.y = Math.PI / 4;
-    top.scale.z = 0.62;
-    top.position.set(place.x, place.y + 14, place.z);
-    body.castShadow = top.castShadow = true;
-    group.add(body, top);
   }
   return group;
 }

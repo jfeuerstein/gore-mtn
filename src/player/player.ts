@@ -1,7 +1,9 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
 import { deflect, pushOut, type Obstacle } from './collide';
-import { riderAlong, RIDER_DROP, rideSpeed, type LiftPath } from '../world/lifts';
+import { mixPose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
+import { Skier } from './skier';
+import { boardingDistance, riderAlong, type LiftPath } from '../world/lifts';
 import {
   advanceSki,
   descentAlong,
@@ -30,8 +32,9 @@ export type Mode = 'walk' | 'ski' | 'lift';
 const BODY_RADIUS = 0.35;
 
 /**
- * Greybox player. On foot they move at a fixed speed in the direction of the stick. On skis the
- * stick steers, tucks and brakes, and the slope does the rest (see skiPhysics.ts).
+ * The player. On foot they move at a fixed speed in the direction of the stick. On skis the stick
+ * steers, tucks and brakes, and the slope does the rest (see skiPhysics.ts). The figure itself is
+ * a Skier, posed here to suit what the player is doing.
  */
 export class Player {
   readonly object = new THREE.Group();
@@ -45,56 +48,32 @@ export class Player {
   /** Velocity and lean while on skis. */
   private skiState: SkiState = skierAt(0, 0, 0);
   private lean = 0;
-  private crouch = 0;
-  private readonly body = new THREE.Group();
-  private readonly skis = new THREE.Group();
-  private readonly chair = new THREE.Group();
-  /** The lift being ridden, how far along it, and what to go back to at the top. */
-  private ride: { path: LiftPath; distance: number; resume: 'walk' | 'ski' } | null = null;
+  private readonly skier: Skier;
+  /** The pose the figure is in now, and how far through a stride on foot. */
+  private shown: Pose = STANDING;
+  private stride = 0;
+  private walking = 0;
+  /**
+   * The lift being ridden, where on it and when (on the lift clock) the ride began, and what to go
+   * back to at the top.
+   */
+  private ride: { path: LiftPath; from: number; since: number; resume: 'walk' | 'ski' } | null = null;
   private arrived: LiftPath | null = null;
 
   constructor(castShadow: boolean) {
-    const jacket = new THREE.MeshLambertMaterial({ color: 0xe2452f, flatShading: true });
-    const skin = new THREE.MeshLambertMaterial({ color: 0xf0c9a4, flatShading: true });
-    const hat = new THREE.MeshLambertMaterial({ color: 0x2a4d8f, flatShading: true });
-    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, 0.7, 2, 8), jacket);
-    torso.position.y = 0.67;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 6), skin);
-    head.position.y = 1.5;
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.27, 0.3, 8), hat);
-    cap.position.y = 1.78;
-    const pack = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.22), hat);
-    pack.position.set(0, 0.85, 0.34); // on the back; the player faces -z
-    this.body.add(torso, head, cap, pack);
-
-    const skiMat = new THREE.MeshLambertMaterial({ color: 0x23324f, flatShading: true });
-    for (const side of [-1, 1]) {
-      const ski = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.05, 1.9), skiMat);
-      ski.position.set(side * 0.17, 0.03, -0.1);
-      this.skis.add(ski);
-    }
-    this.skis.visible = false;
-
-    // A plain chair for lift rides: a seat, a back, and a hanger up to the cable.
-    const steel = new THREE.MeshLambertMaterial({ color: 0x4d5666, flatShading: true });
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.6), steel);
-    seat.position.set(0, 0.55, 0.15);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.1), steel);
-    back.position.set(0, 0.95, 0.45);
-    const hangerHeight = RIDER_DROP / PLAYER_SCALE - 1.3;
-    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.1, hangerHeight, 0.1), steel);
-    hanger.position.set(0, 1.3 + hangerHeight / 2, 0.45);
-    this.chair.add(seat, back, hanger);
-    this.chair.visible = false;
-
+    this.skier = new Skier(castShadow);
     // Small against the trails, as a person is on a real mountain.
     this.object.scale.setScalar(PLAYER_SCALE);
     // Yaw first, then pitch to the slope, then lean into the turn.
     this.object.rotation.order = 'YXZ';
-    this.object.add(this.body, this.skis, this.chair);
-    this.object.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.castShadow = castShadow;
-    });
+    this.object.add(this.skier.root);
+    this.skier.pose(this.shown, false);
+  }
+
+  /** Ease the figure toward a pose. */
+  private show(target: Pose, dt: number, flatFeet: boolean, rate = 10): void {
+    this.shown = mixPose(this.shown, target, Math.min(1, dt * rate));
+    this.skier.pose(this.shown, flatFeet);
   }
 
   /** The way the skis point, as a yaw. */
@@ -126,16 +105,18 @@ export class Player {
     this.stop();
   }
 
-  /** Get on a lift at its bottom station. */
-  board(path: LiftPath): void {
+  /**
+   * Get on a lift at its bottom station, onto the chair that is leaving it now.
+   * @param clock the lift clock, in seconds: the same one the chairs move on
+   */
+  board(path: LiftPath, clock: number): void {
     if (this.mode === 'lift') return;
-    this.ride = { path, distance: 0, resume: this.mode };
+    this.ride = { path, from: boardingDistance(path, clock), since: clock, resume: this.mode };
     this.mode = 'lift';
     this.stop();
     this.lean = 0;
-    this.crouch = 0;
-    this.body.scale.y = 1;
-    this.chair.visible = true;
+    // Inside a gondola cabin the rider is out of sight.
+    this.skier.root.visible = !path.cabins;
   }
 
   /** The lift being ridden, if any. */
@@ -155,20 +136,17 @@ export class Player {
 
   /** Clip into or out of skis. Either way the player starts from a standstill. On a lift, it takes effect at the top. */
   setMode(mode: 'walk' | 'ski'): void {
+    this.skier.setSkis(mode === 'ski');
     if (this.ride) {
       this.ride.resume = mode;
-      this.skis.visible = mode === 'ski';
       return;
     }
     this.mode = mode;
     this.stop();
     this.travelHeading = this.heading;
-    this.skis.visible = mode === 'ski';
     if (mode === 'walk') {
       this.lean = 0;
-      this.crouch = 0;
       this.object.rotation.set(0, this.heading, 0);
-      this.body.scale.y = 1;
     }
   }
 
@@ -178,6 +156,7 @@ export class Player {
    * @param camYaw camera yaw, so on foot "up" means away from the camera
    * @param groomedAt whether a position is on a groomed trail
    * @param obstacleAt the solid thing, such as a tree trunk, that a circle at a position overlaps
+   * @param clock the lift clock, in seconds
    */
   update(
     dt: number,
@@ -188,25 +167,29 @@ export class Player {
     hf: Heightfield,
     groomedAt: (x: number, z: number) => boolean,
     obstacleAt: (x: number, z: number, radius: number) => Obstacle | null = () => null,
+    clock = 0,
   ): void {
-    if (this.mode === 'lift') this.rideLift(dt);
+    if (this.mode === 'lift') this.rideLift(dt, clock);
     else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt, obstacleAt);
     else this.walk(dt, moveX, moveY, camYaw, fast, hf, obstacleAt);
   }
 
-  private rideLift(dt: number): void {
+  private rideLift(dt: number, clock: number): void {
     const ride = this.ride;
     if (!ride) return;
-    this.speed = rideSpeed(ride.path, ride.distance);
-    ride.distance += this.speed * dt;
-    const at = riderAlong(ride.path, ride.distance);
-    this.position.set(at.x, at.y - RIDER_DROP, at.z);
+    // Worked out from the clock, not added up frame by frame, so the rider stays on their chair.
+    const distance = ride.from + (clock - ride.since) * ride.path.speed;
+    this.speed = ride.path.speed;
+    const at = riderAlong(ride.path, distance);
+    this.position.set(at.x, at.y, at.z);
     this.heading = at.yaw;
     this.travelHeading = at.yaw;
     this.object.rotation.set(0, at.yaw, 0);
-    if (ride.distance >= ride.path.length) {
+    // Sitting on a chair; standing on a lift that runs along the snow.
+    this.show(ride.path.surface ? (ride.resume === 'ski' ? skiPose(0, 0) : STANDING) : SEATED, dt, true);
+    if (distance >= ride.path.length) {
       this.ride = null;
-      this.chair.visible = false;
+      this.skier.root.visible = true;
       this.arrived = ride.path;
       this.setMode(ride.resume);
     }
@@ -224,6 +207,10 @@ export class Player {
     const mag = Math.min(1, Math.hypot(moveX, moveY));
     const top = fast ? FAST_SPEED : WALK_SPEED;
     this.speed = mag * top;
+    // The stride runs on with the ground covered, and fades in and out as the walker starts and stops.
+    this.stride += Math.min(this.speed, WALK_SPEED * 1.6) * dt * 1.9;
+    this.walking += (Math.min(1, this.speed / WALK_SPEED) - this.walking) * Math.min(1, dt * 10);
+    this.show(walkPose(this.stride, this.walking), dt, false, 30);
     if (mag > 0.01) {
       const sin = Math.sin(camYaw);
       const cos = Math.cos(camYaw);
@@ -277,13 +264,14 @@ export class Player {
     const ground = speedOf(this.skiState);
     this.travelHeading = ground > 1.5 ? travelYaw(this.skiState) : ground < 0.1 ? this.heading : this.travelHeading;
 
-    // Pose: nose follows the slope; the body tips into a carve, away from a skid, and sinks in a tuck.
+    // The nose follows the slope, and the body tips into a carve and away from a skid.
     const ease = Math.min(1, dt * 8);
     const sideways = ground > 0.5 ? (this.skiState.vx * Math.cos(this.heading) - this.skiState.vz * Math.sin(this.heading)) / ground : 0;
     const want = -this.skiState.lean * 0.34 * Math.min(1, ground / 6) + sideways * 0.5 * Math.min(1, ground / 5);
     this.lean += (want - this.lean) * ease;
-    this.crouch += (Math.max(input.tuck, input.brake * 0.5) - this.crouch) * ease;
     this.object.rotation.set(-Math.asin(descentAlong(hf, x, z, this.heading)), this.heading, this.lean);
-    this.body.scale.y = 1 - 0.22 * this.crouch;
+    // Standing tall at rest, a skier's stance once moving, folding into a tuck or sitting back to stop.
+    const moving = Math.min(1, ground / 2.5);
+    this.show(mixPose(STANDING, skiPose(input.tuck, ground > 0.5 ? input.brake : 0), Math.max(moving, input.tuck)), dt, true);
   }
 }

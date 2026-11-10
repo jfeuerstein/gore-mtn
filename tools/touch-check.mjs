@@ -14,8 +14,9 @@ import { devices, launchBrowser } from './browser.mjs';
 const shot = process.argv[2];
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
-// A fixed time and sky, so the checks do not depend on when they are run.
-const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&time=midday&weather=clear`;
+// A fixed time and sky, so the checks do not depend on when they are run, and light settings,
+// because software rendering is slow and several checks wait on the game to cover ground.
+const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
@@ -258,13 +259,13 @@ try {
   check('with nothing chosen it runs on the real clock and a real or invented sky', !(await kp.evaluate(() => window.__gore.error)) && ['real', 'invented'].includes(real.weatherSource) && Number.isFinite(real.sunElevationDeg), real.weatherSource);
   await sky.context.close();
 
-  // Lifts. Start at the foot of a short one so the ride finishes quickly in slow motion.
+  // Lifts. Start at the foot of the shortest chairlift so the ride finishes quickly in slow motion.
   const length = (l) => Math.hypot(l.pts.at(-2) - l.pts[0], l.pts.at(-1) - l.pts[1]);
-  const shortLift = world.lifts.filter((l) => length(l) > 60).sort((a, b) => length(a) - length(b))[0];
+  const shortLift = world.lifts.filter((l) => l.kind === 'chair_lift').sort((a, b) => length(a) - length(b))[0];
   const lift = await open('iPhone 15 Pro', `&pos=${shortLift.pts[0]},${shortLift.pts[1]}`);
   const lp = lift.page;
   const liftState = () => lp.evaluate(() => window.__gore.state());
-  const liftSettle = (fn, arg) => lp.waitForFunction(fn, arg, { timeout: 90000 }).then(() => true, () => false);
+  const liftSettle = (fn, arg) => lp.waitForFunction(fn, arg, { timeout: 240000 }).then(() => true, () => false);
   await lp.waitForSelector('#action-button:not([hidden])', { timeout: 20000 }).catch(() => {});
   const offer = await lp.locator('#action-button').textContent();
   check('standing at the foot of a lift offers a ride by name', offer === `Ride ${shortLift.name}`, offer);
@@ -284,16 +285,26 @@ try {
   check('and sets the player down near the top station, higher than they started', topDist < 190 && off.y > foot.y, `${topDist.toFixed(0)} m from the top`);
   await lift.context.close();
 
+  // A lift that runs along the snow carries the rider up on their feet.
+  const carpetLift = world.lifts.filter((l) => l.kind === 'j-bar' || l.kind === 'magic_carpet').sort((a, b) => length(b) - length(a))[0];
+  const carpet = await open('iPhone 15 Pro', `&pos=${carpetLift.pts[0]},${carpetLift.pts[1]}`);
+  const cp = carpet.page;
+  await cp.waitForSelector('#action-button:not([hidden])', { timeout: 20000 }).catch(() => {});
+  const low = await cp.evaluate(() => window.__gore.state());
+  await cp.tap('#action-button');
+  const rides = await cp.waitForFunction(() => window.__gore.state().mode === 'lift', null, { timeout: 20000 }).then(() => true, () => false);
+  const onSnow = await cp.evaluate(() => window.__gore.state().y);
+  check(`${carpetLift.name} carries the rider along the snow, not in the air`, rides && Math.abs(onSnow - low.y) < 3, `${(onSnow - low.y).toFixed(1)} m above the start`);
+  check('and sets them down at the top', await cp.waitForFunction(() => window.__gore.state().mode === 'walk', null, { timeout: 240000 }).then(() => true, () => false));
+  const high = await cp.evaluate(() => window.__gore.state());
+  check('higher than they started', high.y > low.y, `${(high.y - low.y).toFixed(1)} m`);
+  await carpet.context.close();
+
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
-  // reproduced here, but its effect on layout can: tell the page the screen is 62 points taller
-  // than the page, as fillScreen() would, and check where things end up.
-  const short = await open('iPhone 15 Pro');
+  // reproduced here, but its effect on layout can: the `shortpage` option tells the game the
+  // screen is 62 points taller than the page.
+  const short = await open('iPhone 15 Pro', '&shortpage=62');
   const pageHeight = short.page.viewportSize().height;
-  await short.page.evaluate((extra) => {
-    const root = document.documentElement.style;
-    root.setProperty('--app-height', `${window.innerHeight + extra}px`);
-    root.setProperty('--app-extra', `${extra}px`);
-  }, 62);
   await short.page.waitForFunction(() => document.getElementById('stats').textContent);
   const canvasHeight = await short.page.evaluate(() => document.getElementById('game').clientHeight);
   check('picture extends over the whole screen when the page is short', canvasHeight === pageHeight + 62, `${canvasHeight} of ${pageHeight + 62}`);

@@ -40,7 +40,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
+  `hud`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
   and a few actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
   heights and the trail mask (gzipped; `src/world/codec.ts` reads them), `ground.png` (the snow's
@@ -87,6 +87,23 @@ moves between those with the real time of day and the real weather at Gore.
 - After a change that affects light or colour, screenshot several moments, not one:
   `node tools/shot.mjs out.png "time=dusk&weather=snow&at=summit"`.
 
+## Models
+
+Everything in the game is built in code from simple shapes. There are no model or texture files
+beyond the pipeline's ground pictures, and nothing needs Blender yet.
+
+- `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
+  call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),
+  lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
+  this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
+  glow after dark and in falling snow.
+- The skier (`src/player/skier.ts`) is rigid parts jointed at hips, knees, shoulders and elbows.
+  `src/player/pose.ts` (pure, tested) gives the joint angles for walking, a ski stance, a tuck, a
+  hockey stop and sitting on a chair; the player eases between them. Add a new action as a pose
+  there, not as keyframes.
+- Keep colours flat and neutral so the light does the colouring, and keep the skier's jacket the
+  most saturated thing on screen.
+
 ## Skiing
 
 - The simulation is `src/player/skiPhysics.ts`: pure, fixed-step, tested. The skier's velocity and
@@ -114,6 +131,10 @@ moves between those with the real time of day and the real weather at Gore.
 - Riders go up on the right of the towers at 30 m/s, so the longest ride is about a minute, and
   the camera levels out to look up the mountain. The player gets off as they got on: on foot or
   on skis.
+- Chairs and gondola cabins travel every lift on a shared lift clock. A rider boards the chair
+  that is leaving the station and is placed from the same clock, so they stay on it. Inside a
+  gondola cabin the rider is hidden. Magic carpets and the J-bar carry the rider along the snow,
+  standing, with no towers or chairs.
 
 ## Trail map
 

@@ -36,6 +36,8 @@ export interface Palette {
   discShown: number;
   /** How hard it is snowing, 0..1. */
   snowfall: number;
+  /** How lit windows and lamps are, 0..1. */
+  lamps: number;
 }
 
 /** A clear-sky moment, at a height of the sun in degrees. */
@@ -66,6 +68,7 @@ const NIGHT: Palette = {
   discSize: 0.022,
   discShown: 1,
   snowfall: 0,
+  lamps: 1,
 };
 
 /** The sun a few degrees down: no direct light to speak of. The hand-over between sun and moon happens here, unseen. */
@@ -91,6 +94,7 @@ const DARK_TWILIGHT: Palette = {
   discSize: 0.04,
   discShown: 0,
   snowfall: 0,
+  lamps: 1,
 };
 
 /** The sun on the horizon: afterglow or first light. */
@@ -116,6 +120,7 @@ const TWILIGHT: Palette = {
   discSize: 0.05,
   discShown: 1,
   snowfall: 0,
+  lamps: 0.85,
 };
 
 /** The owner's "Golden hour". */
@@ -141,6 +146,7 @@ const GOLDEN: Palette = {
   discSize: 0.045,
   discShown: 1,
   snowfall: 0,
+  lamps: 0.1,
 };
 
 /** A clear day in the same family: soft light, a warm horizon, violet-blue shadows. */
@@ -166,6 +172,7 @@ const DAY: Palette = {
   discSize: 0.03,
   discShown: 1,
   snowfall: 0,
+  lamps: 0,
 };
 
 const CLEAR: readonly Key[] = [
@@ -199,6 +206,7 @@ const SNOW_DAY: Palette = {
   discSize: 0.03,
   discShown: 0,
   snowfall: 1,
+  lamps: 0.55,
 };
 
 /** The same weather after dark: the snow keeps a little of the sky's glow. */
@@ -224,6 +232,7 @@ const SNOW_NIGHT: Palette = {
   discSize: 0.02,
   discShown: 0,
   snowfall: 1,
+  lamps: 1,
 };
 
 const COLOUR_KEYS = [
@@ -242,7 +251,7 @@ const COLOUR_KEYS = [
   'ridgeFar',
   'discColour',
 ] as const;
-const NUMBER_KEYS = ['lightIntensity', 'ambientIntensity', 'fogNear', 'fogFar', 'discSize', 'discShown', 'snowfall'] as const;
+const NUMBER_KEYS = ['lightIntensity', 'ambientIntensity', 'fogNear', 'fogFar', 'discSize', 'discShown', 'snowfall', 'lamps'] as const;
 
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smooth = (t: number): number => t * t * (3 - 2 * t);

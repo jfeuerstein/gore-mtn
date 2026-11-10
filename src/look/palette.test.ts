@@ -84,6 +84,14 @@ describe('paletteFor', () => {
     expect(brightness(paletteFor(-30, SNOW))).toBeGreaterThan(0.8);
   });
 
+  it('lights the windows after dark and in falling snow, and not on a clear day', () => {
+    expect(paletteFor(35, CLEAR).lamps).toBe(0);
+    expect(paletteFor(-20, CLEAR).lamps).toBe(1);
+    expect(paletteFor(-3, CLEAR).lamps).toBeGreaterThan(0.8);
+    expect(paletteFor(35, SNOW).lamps).toBeGreaterThan(0.4);
+    expect(paletteFor(35, SNOW).lamps).toBeLessThan(0.8);
+  });
+
   it('always keeps the snow lighter than a ski track and haze that thickens with distance', () => {
     for (const el of [-40, -8, -2, 3, 10, 35]) {
       for (const w of [CLEAR, CLOUD, SNOW]) {

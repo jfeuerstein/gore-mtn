@@ -29,6 +29,11 @@ export interface Config {
   /** Start on skis. */
   ski: boolean;
   hud: boolean;
+  /**
+   * Pretend the page is laid out this many points shorter than the screen, as iOS does from the
+   * Home Screen. For checking the layout where that cannot be reproduced.
+   */
+  shortPage: number;
   /** Benchmark step to run, or `done` to show the results. See src/debug/bench.ts. */
   bench: number | 'done' | null;
   /** Seconds measured per benchmark step. */
@@ -53,6 +58,7 @@ export const DEFAULTS: Config = {
   zoom: 1,
   ski: false,
   hud: true,
+  shortPage: 0,
   bench: null,
   benchSeconds: 5,
 };
@@ -103,6 +109,7 @@ export function parseConfig(search: string): Config {
     zoom: num(q.get('zoom'), d.zoom, 0.4, 3),
     ski: q.get('ski') === '1',
     hud: q.get('hud') !== '0',
+    shortPage: num(q.get('shortpage'), d.shortPage, 0, 200),
     bench: q.get('bench') === 'done' ? 'done' : optIndex(q.get('bench')),
     benchSeconds: num(q.get('benchsecs'), d.benchSeconds, 0.1, 60),
   };

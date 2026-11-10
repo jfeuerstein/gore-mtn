@@ -8,7 +8,12 @@ import {
   LINE_OFFSET,
   pointAlong,
   riderAlong,
-  rideSpeed,
+  RIDER_DROP,
+  boardingDistance,
+  carCount,
+  carDistance,
+  CAR_SPACING,
+  SURFACE_SPEED,
   STATION_CLEARING,
   stationNear,
   TOWER_SPACING,
@@ -70,7 +75,8 @@ describe('riderAlong', () => {
     const mid = riderAlong(path, path.length / 2);
     expect(mid.x).toBeCloseTo(150);
     expect(mid.z).toBeCloseTo(LINE_OFFSET);
-    expect(mid.y).toBeCloseTo(pointAlong(path, path.length / 2).y);
+    // Their feet hang below the cable.
+    expect(mid.y).toBeCloseTo(pointAlong(path, path.length / 2).y - RIDER_DROP);
   });
 
   it('keeps the rider clear of every tower', () => {
@@ -100,12 +106,51 @@ describe('stationNear', () => {
   });
 });
 
-describe('rideSpeed', () => {
-  it('eases out of the bottom station, runs at full speed, and eases into the top', () => {
-    expect(rideSpeed(path, 0)).toBeLessThan(LIFT_SPEED * 0.5);
-    expect(rideSpeed(path, 0)).toBeGreaterThan(0);
-    expect(rideSpeed(path, path.length / 2)).toBe(LIFT_SPEED);
-    expect(rideSpeed(path, path.length)).toBeLessThan(LIFT_SPEED * 0.5);
+describe('cars on the cable', () => {
+  it('are evenly spaced and cover the whole lift', () => {
+    const n = carCount(path);
+    expect(n).toBe(Math.ceil(path.length / CAR_SPACING));
+    const at = Array.from({ length: n }, (_, i) => carDistance(path, i, 0)).sort((a, b) => a - b);
+    for (let i = 1; i < n; i++) expect((at[i] as number) - (at[i - 1] as number)).toBeCloseTo(CAR_SPACING);
+  });
+
+  it('move up at the lift speed and come round again', () => {
+    expect(carDistance(path, 0, 1)).toBeCloseTo(LIFT_SPEED);
+    const loop = carCount(path) * CAR_SPACING;
+    expect(carDistance(path, 0, loop / LIFT_SPEED)).toBeCloseTo(0);
+    expect(carDistance(path, 2, 1000)).toBeLessThan(loop);
+    expect(carDistance(path, 2, 1000)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('give a boarding rider the chair that is just leaving the station', () => {
+    for (const clock of [0, 0.7, 3.21, 97.4]) {
+      const start = boardingDistance(path, clock);
+      expect(start).toBeGreaterThanOrEqual(0);
+      expect(start).toBeLessThan(CAR_SPACING);
+      // Some car is exactly there now, and still under the rider two seconds later.
+      const slots = Array.from({ length: carCount(path) }, (_, i) => i);
+      const slot = slots.find((i) => Math.abs(carDistance(path, i, clock) - start) < 1e-6);
+      expect(slot, `clock ${clock}`).toBeDefined();
+      expect(carDistance(path, slot as number, clock + 2)).toBeCloseTo(start + 2 * LIFT_SPEED);
+    }
+  });
+});
+
+describe('surface lifts', () => {
+  const carpet = buildLiftPath({ name: 'Carpet', kind: 'magic_carpet', pts: [0, 0, 40, 0] }, hill);
+
+  it('keep the rider on the snow, on the line, at a gentle speed', () => {
+    expect(carpet.surface).toBe(true);
+    expect(carpet.speed).toBe(SURFACE_SPEED);
+    const mid = riderAlong(carpet, carpet.length / 2);
+    expect(mid.y).toBeCloseTo(hill(mid.x));
+    expect(mid.z).toBeCloseTo(0);
+  });
+
+  it('have no chairs, and need no corridor through the trees', () => {
+    expect(carCount(carpet)).toBe(0);
+    expect(boardingDistance(carpet, 12.3)).toBe(0);
+    expect(inLiftClearing([carpet], 20, 0)).toBe(false);
   });
 });
 
@@ -136,7 +181,7 @@ describe('the real lifts', () => {
   it('all climb, and none takes longer than about a minute and a half', () => {
     for (const p of paths) {
       expect(p.points.at(-2) as number, String(p.lift.name)).toBeGreaterThan(p.points[1] as number);
-      expect(p.length / LIFT_SPEED, String(p.lift.name)).toBeLessThan(90);
+      expect(p.length / p.speed, String(p.lift.name)).toBeLessThan(90);
     }
   });
 
@@ -150,8 +195,9 @@ describe('the real lifts', () => {
   it('never drags the rider through the ground', () => {
     for (const p of paths) {
       for (let d = 0; d <= p.length; d += 10) {
-        const at = pointAlong(p, d);
-        expect(at.y - world.source.heightAt(at.x, at.z), `${p.lift.name} at ${d} m`).toBeGreaterThan(-20);
+        const at = riderAlong(p, d);
+        // Between towers the cable is straight while the ground may bulge, so allow some dip.
+        expect(at.y - world.source.heightAt(at.x, at.z), `${p.lift.name} at ${d} m`).toBeGreaterThan(-14);
       }
     }
   });

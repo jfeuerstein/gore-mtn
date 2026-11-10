@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestones 0 and 1 are done. Milestone 2 (the look) is under way: the owner chose the direction, and the mountain now changes with the real time of day and weather. See the roadmap.
+**Status:** milestones 0 and 1 are done. Milestone 2 (the look) is built and waiting on the owner's verdict: the mountain changes with the real time of day and weather, and the placeholder skier, lodges and lifts have been replaced. See the roadmap.
 
 ## 2. What the game is
 
@@ -305,7 +305,7 @@ Each milestone ends with something playable on your phone and a single question 
 |---|---|---|---|
 | 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
 | 1 | Greybox skiing (done) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? Yes. |
-| 2 | The look (in progress) | Done: four looks compared, direction chosen, time of day and weather. To come: a proper skier, lodges, lift chairs and towers, lights after dark | Would you set a screenshot as your wallpaper? |
+| 2 | The look (built, awaiting verdict) | Four looks compared and a direction chosen; time of day and weather; a jointed skier with walking, skiing, tucking, stopping and sitting poses; lodges, huts, the depot and the fire tower with windows that light after dark; lift towers with moving chairs and gondola cabins | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
 | 5 | Slice polish | Audio, onboarding, offline install, icon, credits | Would you show it to a friend? |
@@ -383,7 +383,15 @@ Things to judge on the phone:
 3. Snow: is a view of about a kilometre right, or too closed in for finding your way?
 4. Whether following the real clock and weather is what you want day to day, given that most play may happen in the evening.
 
-Still to come in this milestone: a proper skier, lodges, lift chairs and towers to replace the placeholder shapes, and warm lights after dark.
+The owner is happy with the times of day, night brightness, snow visibility, and following the real clock.
+
+Since then the placeholder shapes have been replaced. The skier is a jointed figure with a beanie, pack, skis and poles, who walks, takes a skier's stance, folds into a tuck, sits back in a hockey stop, and sits on a chairlift. The lodges, warming huts, North Creek's depot and the summit fire tower are proper buildings whose windows glow after dark and in falling snow. Lift towers have crossarms, chairs travel every chairlift, and cabins travel the gondola.
+
+Things to judge next:
+
+5. The skier: proportions, colours, and whether the poses read from the game's camera distance.
+6. The buildings and lifts: do they belong on this mountain? Is the Base Lodge recognisable enough, or should specific buildings be modelled more closely on the real ones?
+7. The milestone's question: would you set a screenshot as your wallpaper? If not, what is in the way?
 
 
 ## 10. Risks and honest perspectives

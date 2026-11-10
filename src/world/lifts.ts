@@ -18,6 +18,12 @@ export const RIDER_DROP = 7;
  * is long enough to rest and look around and short enough for a phone.
  */
 export const LIFT_SPEED = 30;
+/** Speed of a lift that pulls or carries riders along the snow: a magic carpet, a J-bar. */
+export const SURFACE_SPEED = 7;
+/** Distance between one chair or cabin and the next, in metres. */
+export const CAR_SPACING = 48;
+
+const SURFACE_KINDS = new Set(['magic_carpet', 'j-bar', 't-bar', 'platter', 'rope_tow', 'drag_lift']);
 /** A lift can be boarded from within this distance of its bottom station. */
 export const STATION_REACH = 30;
 
@@ -28,6 +34,12 @@ export interface LiftPath {
   /** Distance along the cable to each point. */
   at: number[];
   length: number;
+  /** True for a lift that keeps riders on the snow: no cable overhead, no towers, no chairs. */
+  surface: boolean;
+  /** True for a gondola, whose riders travel inside cabins. */
+  cabins: boolean;
+  /** How fast riders travel, in m/s. */
+  speed: number;
 }
 
 /** Lay a lift's cable over the ground: a tower every TOWER_SPACING metres, the cable straight between them. */
@@ -35,8 +47,9 @@ export function buildLiftPath(lift: Lift, heightAt: (x: number, z: number) => nu
   const points: number[] = [];
   const at: number[] = [];
   let length = 0;
+  const surface = SURFACE_KINDS.has(lift.kind);
   const add = (x: number, z: number): void => {
-    const y = heightAt(x, z) + CABLE_HEIGHT;
+    const y = heightAt(x, z) + (surface ? 0 : CABLE_HEIGHT);
     const n = points.length;
     if (n > 0) length += Math.hypot(x - (points[n - 3] as number), y - (points[n - 2] as number), z - (points[n - 1] as number));
     points.push(x, y, z);
@@ -50,7 +63,7 @@ export function buildLiftPath(lift: Lift, heightAt: (x: number, z: number) => nu
     const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / TOWER_SPACING));
     for (let s = i === 0 ? 0 : 1; s <= steps; s++) add(ax + ((bx - ax) * s) / steps, az + ((bz - az) * s) / steps);
   }
-  return { lift, points, at, length };
+  return { lift, points, at, length, surface, cabins: lift.kind === 'gondola', speed: surface ? SURFACE_SPEED : LIFT_SPEED };
 }
 
 /** Position on the cable a distance from the bottom station, and the yaw of travel there. */
@@ -84,11 +97,40 @@ export function towerYaw(path: LiftPath, tower: number): number {
   return Math.atan2(-((p[b] as number) - (p[a] as number)), -((p[b + 2] as number) - (p[a + 2] as number)));
 }
 
-/** Where a rider going up is, a distance from the bottom station: on the cable to the right of the towers. */
+/**
+ * Where a rider going up is, a distance from the bottom station: their feet, and the way they face.
+ * On a chair or in a cabin that is below the cable, to the right of the towers. On a surface lift
+ * it is on the snow along the line.
+ */
 export function riderAlong(path: LiftPath, distance: number): { x: number; y: number; z: number; yaw: number } {
   const at = pointAlong(path, distance);
+  if (path.surface) return at;
   // The skier's right for a yaw is (cos, -sin) in x and z.
-  return { x: at.x + Math.cos(at.yaw) * LINE_OFFSET, y: at.y, z: at.z - Math.sin(at.yaw) * LINE_OFFSET, yaw: at.yaw };
+  return { x: at.x + Math.cos(at.yaw) * LINE_OFFSET, y: at.y - RIDER_DROP, z: at.z - Math.sin(at.yaw) * LINE_OFFSET, yaw: at.yaw };
+}
+
+/** How many chairs or cabins travel up a lift (as many again come down). None on a surface lift. */
+export function carCount(path: LiftPath): number {
+  return path.surface ? 0 : Math.max(1, Math.ceil(path.length / CAR_SPACING));
+}
+
+/**
+ * How far up the cable a car is at a moment on the lift clock (seconds). Cars are evenly spaced
+ * and move at the lift's speed; one that passes the top station comes round again at the bottom.
+ * A distance beyond the lift's length means the car is between the stations' ends, out of sight.
+ */
+export function carDistance(path: LiftPath, slot: number, clock: number): number {
+  const loop = carCount(path) * CAR_SPACING;
+  return (((slot * CAR_SPACING + clock * path.speed) % loop) + loop) % loop;
+}
+
+/**
+ * Where a rider who boards now starts from: the position of the car just leaving the bottom
+ * station, so that they ride on a chair that is really there.
+ */
+export function boardingDistance(path: LiftPath, clock: number): number {
+  if (path.surface) return 0;
+  return (((clock * path.speed) % CAR_SPACING) + CAR_SPACING) % CAR_SPACING;
 }
 
 /** The lift whose bottom station is nearest the position, if any is within STATION_REACH. */
@@ -105,16 +147,6 @@ export function stationNear(paths: readonly LiftPath[], x: number, z: number, re
   return best;
 }
 
-/**
- * Ride speed at a point along the cable: full speed in the middle, easing away from the bottom
- * station and into the top one.
- */
-export function rideSpeed(path: LiftPath, distance: number): number {
-  const EASE = 25;
-  const fromEnd = Math.min(distance, path.length - distance);
-  return LIFT_SPEED * Math.min(1, 0.2 + Math.max(0, fromEnd) / EASE);
-}
-
 /** Trees are kept this far back from a lift line, and further back from its stations. */
 export const LINE_CLEARING = 10;
 export const STATION_CLEARING = 24;
@@ -125,6 +157,8 @@ export const STATION_CLEARING = 24;
  */
 export function inLiftClearing(paths: readonly LiftPath[], x: number, z: number): boolean {
   for (const path of paths) {
+    // A surface lift runs along the snow and needs no corridor of its own beyond the trail it is on.
+    if (path.surface) continue;
     const p = path.points;
     const last = p.length - 3;
     if (Math.hypot((p[0] as number) - x, (p[2] as number) - z) < STATION_CLEARING) return true;
