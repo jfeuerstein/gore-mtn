@@ -4,8 +4,8 @@
   "description": "A cozy collectathon on Gore Mountain.",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
-  "orientation": "landscape",
+  "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#e6edf7",
   "theme_color": "#e6edf7",
   "icons": [

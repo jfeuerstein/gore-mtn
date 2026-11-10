@@ -39,29 +39,25 @@ body {
     max(12px, env(safe-area-inset-left));
 }
 
-#stats {
-  position: absolute;
-  top: max(8px, env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-  font: 11px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
-  white-space: pre;
-  background: var(--paper);
-  border-radius: 8px;
-  padding: 6px 9px;
-}
-
+/*
+ * Laid out for an upright phone: things to read sit at the top, things to press sit at the
+ * bottom within reach of a thumb, and the middle is left clear for the mountain.
+ */
 #where {
   position: absolute;
   top: max(8px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 15px;
   font-weight: 600;
   background: var(--paper);
   border-radius: 999px;
   padding: 6px 14px;
-  white-space: nowrap;
 }
 
 #where .mark-easy {
@@ -78,10 +74,21 @@ body {
   color: #d9822b;
 }
 
-#menu-button {
+#stats {
   position: absolute;
-  top: max(8px, env(safe-area-inset-top));
-  right: max(12px, env(safe-area-inset-right));
+  top: calc(max(8px, env(safe-area-inset-top)) + 40px);
+  left: max(12px, env(safe-area-inset-left));
+  font: 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+  background: var(--paper);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+
+#menu-button,
+#fast-button {
+  position: absolute;
   pointer-events: auto;
   font: inherit;
   font-size: 14px;
@@ -90,34 +97,48 @@ body {
   background: var(--paper);
   border: 0;
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 10px 16px;
+  min-width: 56px;
+  min-height: 44px;
+}
+#menu-button {
+  top: calc(max(8px, env(safe-area-inset-top)) + 40px);
+  right: max(12px, env(safe-area-inset-right));
+}
+#fast-button {
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
+}
+#fast-button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
 }
 
+/* Settings open as a sheet from the bottom edge, where a thumb can reach every option. */
 #menu {
   position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 42px);
-  right: max(12px, env(safe-area-inset-right));
-  max-height: calc(100% - 64px);
-  width: min(360px, calc(100% - 24px));
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 72%;
   overflow-y: auto;
   pointer-events: auto;
   touch-action: pan-y;
   background: var(--paper);
-  border-radius: 14px;
-  padding: 10px 12px;
+  border-radius: 18px 18px 0 0;
+  padding: 12px max(14px, env(safe-area-inset-right)) calc(max(14px, env(safe-area-inset-bottom)) + 6px)
+    max(14px, env(safe-area-inset-left));
   box-sizing: border-box;
-  font-size: 13px;
+  font-size: 14px;
+  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
 }
 
 #menu h2 {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin: 10px 0 5px;
+  margin: 12px 0 6px;
   opacity: 0.7;
-}
-#menu h2:first-child {
-  margin-top: 0;
 }
 #menu .row {
   display: flex;
@@ -131,10 +152,15 @@ body {
   text-decoration: none;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  min-width: 40px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-width: 44px;
+  min-height: 20px;
   text-align: center;
+}
+#menu .close {
+  float: right;
+  font-weight: 600;
 }
 #menu .on {
   background: var(--ink);
@@ -142,9 +168,25 @@ body {
   border-color: var(--ink);
 }
 #menu p {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: 11px;
   opacity: 0.7;
+}
+
+/* Wide screens (desktop) have room for everything on one row and a side panel. */
+@media (min-aspect-ratio: 1/1) {
+  #stats,
+  #menu-button {
+    top: max(8px, env(safe-area-inset-top));
+  }
+  #menu {
+    left: auto;
+    right: 12px;
+    bottom: 12px;
+    width: 380px;
+    max-height: calc(100% - 80px);
+    border-radius: 18px;
+  }
 }
 
 .stick-base {
@@ -194,7 +236,8 @@ body {
 #rotate {
   display: none;
 }
-@media (orientation: portrait) and (pointer: coarse) {
+/* The game is played upright. A phone held sideways gets a prompt; desktops and tablets do not. */
+@media (orientation: landscape) and (pointer: coarse) and (max-height: 500px) {
   #rotate {
     display: flex;
   }

@@ -9,7 +9,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Question | Decision |
 |---|---|
 | Where it runs | Web app in Safari, installed to the Home Screen as a PWA. Just for you. |
-| View | 3D, third-person follow camera, landscape orientation |
+| View | 3D, third-person follow camera, held upright (portrait), playable with one thumb |
 | World | Real terrain and real trail/lift layout, compressed to game scale |
 | Collecting | Garnets and minerals; a trail passport of stamps, pins, and patches |
 | Seasons | Follows the real calendar and clock, with an in-world way to visit other seasons |
@@ -60,8 +60,10 @@ Town / base lodge
 
 ### Movement
 
-- **Walking/hiking:** left-thumb virtual stick, right-thumb camera drag, one context button (talk, dig, stamp, board lift, clip into skis).
-- **Skiing:** gravity does the work. Steer by dragging left and right; pull back to snowplow and stop; push forward to tuck. Carving leaves tracks in the snow. Trail difficulty (green, blue, black, glades) comes from the real pitch of the terrain.
+The game is played with the phone upright, and one thumb is enough for everything.
+
+- **Walking/hiking:** the thumb is a movement stick anywhere in the lower part of the screen. The camera swings round behind you as you walk, so there is nothing else to hold. To look around, drag the upper part of the screen or use a second finger. One context button sits by the thumb (talk, dig, stamp, board lift, clip into skis).
+- **Skiing:** gravity does the work. Slide the thumb left and right to steer; pull down to snowplow and stop; push up to tuck. The camera sits behind and above, looking down the fall line, which suits a tall screen: the run stretches up the display ahead of you. Carving leaves tracks in the snow. Trail difficulty (green, blue, black, glades) comes from the real pitch of the terrain.
 - **Lifts:** board at the bottom, ride in real time with a free-look camera, unload at the top. Rides are short because the mountain is compressed.
 - **Summer/fall:** same world, skis swapped for boots. Ski trails become meadows, hiking paths open, lifts that run in the real off-season (the gondola) still run.
 
@@ -198,6 +200,13 @@ Adirondack species keep it specific: balsam fir and red spruce as stacked cones,
 
 Small and simple: around 1,500 triangles, dot eyes or no face, chunky mittens and boots. Built as separate rigid parts (head, torso, limbs) rather than a skinned mesh, so animation can be done in code. Hats, jackets, and skis swap by color and mesh.
 
+### Composing for a tall screen
+
+- The player sits a little below the middle of the screen. The top half is the view; the bottom third belongs to the thumb and stays clear of anything that matters.
+- The lens is wider top to bottom than a landscape game's (about 80 degrees), so the view is not a narrow slot. Tall subjects suit it: a run falling away below, a lift line climbing overhead, the summit above the trees.
+- Things to read go at the top. Things to press go at the bottom, at least 44 points tall. Menus are sheets that slide up from the bottom edge.
+- The passport and trail map are drawn tall: summit at the top, town at the bottom, scrolled with the thumb.
+
 ### Interface
 
 Paper and enamel: a folding trail map, rubber-stamp ink, embroidered patches, enamel pins, a wooden mineral case with handwritten labels. Typography borrows from 1930s ski-train posters. Built in HTML and CSS over the 3D canvas so it stays crisp and is cheap to iterate.
@@ -293,7 +302,7 @@ Each milestone ends with something playable on your phone and a single question 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
 | 0 | Foundations (built) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
-| 1 | Greybox skiing | Ski controller, clip in and out, the Adirondack Express as a working lift, tuning panel | Is skiing Sunway fun with grey boxes? |
+| 1 | Greybox skiing | One-thumb ski controller, clip in and out, the Adirondack Express as a working lift, trees that fade when they come between the camera and the player, tuning panel | Is skiing Sunway fun with grey boxes? |
 | 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
@@ -303,13 +312,13 @@ Each milestone ends with something playable on your phone and a single question 
 
 ### Milestone 0: what to test on the phone
 
-Open the deployed page in Safari, turn the phone sideways, and walk around. The readout in the top left shows frame rate, and Settings changes the load. The questions:
+Open the deployed page in Safari, hold the phone upright, and walk around with one thumb. The readout in the top left shows frame rate, and Settings changes the load. The questions:
 
 1. Frame rate at the default settings (10,000 trees, WebGPU).
 2. The same with the renderer set to WebGL 2. Whichever is smoother becomes the default.
 3. How many trees it takes to drop below 60 fps (20k, 40k, 80k), and whether "Whole mountain" view distance is affordable.
 4. Whether shadows cost much.
-5. How the thumbs feel: stick size, camera speed, anything Safari does that gets in the way.
+5. How one-thumb play feels: stick size, how quickly the camera swings round behind you, where the player sits on the screen, whether the thumb covers anything, and anything Safari does that gets in the way.
 
 "Copy performance report" in Settings puts the numbers on the clipboard to paste back.
 
@@ -320,7 +329,7 @@ After the slice, each new region is a repeatable package: terrain chunk, trails 
 - **Ski feel on a touchscreen is the whole game.** If milestone 1 is not fun, nothing after it will fix that. Spend disproportionate time there.
 - **Scope.** The real mountain has more than 100 trails. The region roll-out exists so the game is complete at every step and never waits on the whole map.
 - **Consistency of generated art.** Mixing AI meshes from different models produces a visibly mismatched world. Procedural assets and a locked palette are the defense; treat AI meshes as the exception.
-- **iOS Safari quirks.** Memory limits are lower than on desktop, audio needs a tap to start, storage can be cleared for sites that are not installed, and orientation cannot be reliably locked from a web page, so the game needs a "rotate your phone" prompt. Safe-area insets and the home-indicator swipe need handling. All of this is checked in milestone 0.
+- **iOS Safari quirks.** Memory limits are lower than on desktop, audio needs a tap to start, storage can be cleared for sites that are not installed, and orientation cannot be reliably locked from a web page, so a phone turned sideways gets a "turn your phone upright" prompt. Safe-area insets and the home-indicator swipe need handling. All of this is checked in milestone 0.
 - **Real calendar means waiting.** That is the charm and the cost. The Snow Train and a developer override keep testing and impatience from being a problem.
 - **Real names.** For a personal game, real trail and place names are part of the point. If this is ever shared publicly, revisit the use of private business names and any logos.
 - **Polish takes longer than systems.** Generated code gets a system working quickly. Getting it to feel finished takes many small rounds of your feedback.

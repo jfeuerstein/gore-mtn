@@ -100,12 +100,19 @@ export class Hud {
     private readonly cfg: Config,
     places: Place[],
     onTeleport: (place: Place) => void,
+    onFast: (on: boolean) => void,
   ) {
     const root = document.getElementById('hud') as HTMLElement;
     root.hidden = !cfg.hud;
     const button = document.getElementById('menu-button') as HTMLButtonElement;
     button.addEventListener('click', () => {
       this.menuEl.hidden = !this.menuEl.hidden;
+    });
+    const fast = document.getElementById('fast-button') as HTMLButtonElement;
+    fast.addEventListener('click', () => {
+      const on = fast.getAttribute('aria-pressed') !== 'true';
+      fast.setAttribute('aria-pressed', String(on));
+      onFast(on);
     });
     this.buildMenu(places, onTeleport);
   }
@@ -117,6 +124,11 @@ export class Hud {
       parent.appendChild(el);
       return el;
     };
+
+    const close = add(this.menuEl, 'button', 'Close');
+    close.type = 'button';
+    close.className = 'close';
+    close.addEventListener('click', () => (this.menuEl.hidden = true));
 
     add(this.menuEl, 'h2', 'Go to');
     const go = add(this.menuEl, 'div');
@@ -153,7 +165,7 @@ export class Hud {
         () => (copy.textContent = 'Could not copy'),
       );
     });
-    add(this.menuEl, 'p', 'Changing a setting reloads the page. Two thumbs on the left half of the screen travel fast.');
+    add(this.menuEl, 'p', 'Changing a setting reloads the page.');
   }
 
   /** One line that can be pasted back into a Claude session. */

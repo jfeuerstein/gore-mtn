@@ -89,7 +89,7 @@ async function boot(): Promise<void> {
 
   const player = new Player(cfg.shadows);
   scene.add(player.object);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 6000);
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 6000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera);
   const input = new Input(canvas);
 
@@ -111,9 +111,8 @@ async function boot(): Promise<void> {
   if (start) teleport(start);
   if (cfg.pos) player.place(cfg.pos.x, cfg.pos.z, ground);
   if (cfg.yaw !== null) follow.yaw = cfg.yaw;
-  if (cfg.pitch !== null) follow.pitch = cfg.pitch;
 
-  const hud = new Hud(cfg, world.places, teleport);
+  const hud = new Hud(cfg, world.places, teleport, (on) => (input.fastToggle = on));
 
   let pixelRatio = 1;
   const resize = (): void => {
@@ -123,11 +122,11 @@ async function boot(): Promise<void> {
     pixelRatio = Math.min(window.devicePixelRatio || 1, cfg.dpr);
     renderer.setPixelRatio(pixelRatio);
     renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    follow.setAspect(w / h);
   };
   new ResizeObserver(resize).observe(canvas);
   resize();
+  follow.pitch = cfg.pitch ?? follow.defaultPitch;
 
   const stats = new FrameStats();
   let last = performance.now();
@@ -179,6 +178,7 @@ async function boot(): Promise<void> {
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground);
+    follow.follow(player.travelHeading, Math.min(1, Math.hypot(input.moveX, input.moveY)), dt);
     follow.update(player.position, ground);
     sky.position.copy(camera.position);
     sun.target.position.copy(player.position);

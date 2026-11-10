@@ -1,7 +1,7 @@
 # Gore
 
 A cozy 3D collectathon on the real Gore Mountain and North Creek, NY. Web app for iPhone Safari,
-installed to the Home Screen. The full design is in `docs/game-plan.md`; read it before design work.
+installed to the Home Screen and played upright with one thumb. The full design is in `docs/game-plan.md`; read it before design work.
 
 ## Pillars
 
@@ -18,7 +18,7 @@ npm run dev          # local dev server
 npm test             # unit tests (Vitest)
 npm run build        # type-check and build to dist/
 npm run world        # regenerate public/world/ from USGS and OpenStreetMap (needs Python deps)
-node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game
+node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game (upright phone size)
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 ```
 
@@ -44,6 +44,19 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   back to WebGL 2 by itself.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
+
+## Portrait and one thumb
+
+The game is designed only for an upright phone (402 x 874 points on the owner's iPhone 17 Pro).
+
+- Everything must be playable with one thumb. A second finger may add convenience, never necessity.
+- Things to read go at the top; things to press go in the bottom third, at least 44 points tall;
+  menus are bottom sheets. Respect the safe-area insets.
+- The player sits a little below the middle of the screen, above where the thumb rests. Framing
+  and lens come from `framingFor()` in `src/player/cameraMath.ts`; touch zones from
+  `src/input/zones.ts`.
+- Screenshots default to the upright phone size. Judge composition in that shape, not on a wide
+  desktop window. Wide screens only need to work for development.
 
 ## Conventions
 

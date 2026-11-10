@@ -15,4 +15,4 @@ npm install
 npm run dev
 ```
 
-Touch: left thumb moves, right thumb looks, two thumbs on the left travel fast. Desktop: WASD, Shift, drag.
+Hold the phone upright. One thumb on the lower part of the screen moves; the camera follows. Drag the upper part of the screen, or use a second finger, to look around. Desktop: WASD, Shift to go fast, drag to look.

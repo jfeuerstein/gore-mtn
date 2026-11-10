@@ -10,6 +10,8 @@ export class Player {
   readonly object = new THREE.Group();
   readonly position = this.object.position;
   speed = 0;
+  /** Direction of travel as a yaw, in the same convention as the camera. */
+  travelHeading = 0;
   private heading = 0;
 
   constructor(castShadow: boolean) {
@@ -38,6 +40,7 @@ export class Player {
   /** Turn to face the same way as a camera with this yaw. */
   face(yaw: number): void {
     this.heading = yaw;
+    this.travelHeading = yaw;
     this.object.rotation.y = yaw;
   }
 
@@ -61,6 +64,7 @@ export class Player {
       this.position.set(x, hf.heightAt(x, z), z);
 
       const want = Math.atan2(-dx, -dz);
+      this.travelHeading = want;
       let diff = want - this.heading;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       this.heading += diff * Math.min(1, dt * 12);
