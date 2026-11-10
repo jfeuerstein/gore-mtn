@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Gore" />
+    <meta name="theme-color" content="#e6edf7" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-180.png" />
+    <link rel="icon" type="image/png" href="icon-180.png" />
+    <title>Gore</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="hud" hidden>
+      <div id="stats"></div>
+      <div id="where"></div>
+      <button id="menu-button" type="button" aria-label="Settings">Settings</button>
+      <div id="menu" hidden></div>
+    </div>
+    <div id="loading">Loading the mountain…</div>
+    <div id="rotate">Turn your phone sideways</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -16,6 +16,13 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Player | A small, simple human with swappable gear |
 | Scope | A polished 10-minute vertical slice first, then grow region by region |
 | Dev setup | Mix of cloud Claude Code sessions and a local machine |
+| Device | iPhone 17 Pro on iOS 26.6 (WebGPU available; no upgrade needed) |
+| Hosting | GitHub Pages from the public repo, deployed on every push |
+| Movement | Skiing in winter, hiking the rest of the year. No snowboarding. |
+| Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
+| Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
+
+**Status:** milestone 0 is built and waiting on a phone test. See the roadmap.
 
 ## 2. What the game is
 
@@ -99,7 +106,10 @@ North Creek is the hub: depot, a short stretch of Main Street, the Hudson River,
 
 - Gore Mountain, North Creek, Town of Johnsburg, Warren County, in the Adirondack Park. State-owned, operated by ORDA.
 - Four peaks: Gore (3,600 ft), Bear Mountain, Burnt Ridge, Little Gore. Lowest point is the Ski Bowl base at 998 ft, for roughly 2,500 ft of vertical.
-- 100+ trails and around 14 lifts, including the Northwoods Gondola.
+- The map data holds 112 named downhill trails and 14 lifts, including the Northwoods Gondola and the Adirondack Express.
+- Every trail on the must-have list is in the data: Sunway, Ruby Run, Quicksilver, Otter Slide, The Rumor, Lies. The one remembered as "Foxtrot" is Foxlair.
+- The Saddle Lodge sits at about 2,980 ft on Ruby Run, between Bear Mountain and the upper mountain.
+- On Main Street in North Creek, the cafe is most likely Café Sarah (a bakery cafe) and the sandwich shop Izzy's Market & Deli. Both get a place in town.
 - The North Creek Ski Bowl (in use since 1934) sits at the edge of town and connects to the upper mountain.
 - The Schaefer Trail climbs from the Ski Bowl to the Gore summit, about 9.3 miles round trip. A fire tower stands on the summit.
 - The Hudson River runs through North Creek.
@@ -139,17 +149,22 @@ Trees, rocks, and mineral spawn points are scattered at build time from the mask
 
 The real mountain gives a natural expansion path from town upward.
 
-1. **Slice: the Ski Bowl and a corner of North Creek.** Little Gore, one lift, three runs, the Schaefer trailhead, the depot.
-2. Burnt Ridge
-3. Bear Mountain and the main base area, with the gondola
-4. Gore summit and the upper mountain, with the fire tower
-5. The far side, the old garnet mine, the Hudson riverbank
+The order follows your memories of the mountain rather than the map's edge.
+
+1. **Slice: the Base Lodge to the Saddle Lodge.** The Adirondack Express up, then Sunway, Quicksilver, Otter Slide, Foxlair, and Ruby Run down. The Base Lodge is the hub; the Saddle Lodge is the mid-mountain stop.
+2. **The upper mountain.** The summit and fire tower, the Straight Brook lift, The Rumor, Lies, Chatiemac, Hawkeye, Open Pit.
+3. **North Creek.** The depot and the Snow Train, Main Street with the cafe and the sandwich shop, the Hudson.
+4. The Ski Bowl and Little Gore, which join town to the mountain
+5. Burnt Ridge and the north side
+6. The old garnet mine and the far glades
+
+The whole mountain's terrain already exists in the game as a greybox. A region is "done" when it has art, lifts that run, stamps, and minerals.
 
 Each region ships with its trails, lifts, stamps, and a mineral table. Regions load as chunks so the phone never holds the whole mountain at full detail.
 
 ## 5. Art direction
 
-I could read descriptions of The Vast White but could not view its screenshots. **Drop 5 to 10 reference screenshots into `docs/reference/`** (that game, plus anything else you love) and the style guide below gets refined against them.
+I could read descriptions of The Vast White but could not view its screenshots, and there are no reference images. So the look gets chosen by comparison instead: in milestone 2, Claude builds three or four distinct looks into the game itself (palette, shading, fog, tree shapes) plus a few generated concept images, and you pick and mix on your phone. What follows is the starting point, not a commitment.
 
 ### Target in one line
 
@@ -197,8 +212,8 @@ Paper and enamel: a folding trail map, rubber-stamp ink, embroidered patches, en
 | Layer | Choice | Why |
 |---|---|---|
 | Language and build | TypeScript, Vite | Fast rebuilds, type checks catch mistakes in generated code |
-| Rendering | three.js | Code-first, plain text files, no editor needed, the library Claude writes best |
-| Renderer | `WebGPURenderer` with TSL materials | iOS 26 and later ship WebGPU in Safari, and it falls back to WebGL 2 on older devices. Confirm on your phone in milestone 0; classic `WebGLRenderer` is the fallback plan. |
+| Rendering | three.js (r187) | Code-first, plain text files, no editor needed, the library Claude writes best |
+| Renderer | `WebGPURenderer` | Your iPhone has WebGPU in Safari, and the same renderer falls back to WebGL 2 by itself. The settings menu can force WebGL 2, so milestone 0 compares the two on your phone. |
 | Movement and collision | Custom kinematic controller sampling the heightmap; `three-mesh-bvh` for props and buildings | Skiing on a heightfield is easier to tune by hand than a general physics engine. Add Rapier only if something needs real rigid bodies. |
 | UI | HTML and CSS overlay | Crisp text, easy layout, easy to screenshot |
 | Game data | JSON and typed tables for trails, lifts, minerals, stamps, spawn rules | Adding content becomes a data change, not a code change |
@@ -209,7 +224,7 @@ Paper and enamel: a folding trail map, rubber-stamp ink, embroidered patches, en
 | Hosting | Static deploy on every push | See below |
 | Pipelines | Python for terrain (rasterio, numpy, shapely, pyproj); Blender Python for assets | Both run headless in cloud sessions |
 
-**Hosting:** GitHub Pages is free but, on a free GitHub plan, requires a public repository. If the repo stays private, Cloudflare Pages and Netlify both have free tiers that deploy from private repos.
+**Hosting:** GitHub Pages, free because the repository is public. A GitHub Actions workflow tests, builds, and publishes on every push.
 
 **Considered and set aside:** Godot and Unity web exports are heavy on iOS Safari and depend on binary scene files and an editor, which fits poorly with a code-generated workflow. A native iOS build needs a Mac and a $99 per year Apple Developer account. If the web build ever outgrows Safari, wrapping it with Capacitor is the path to the App Store without a rewrite.
 
@@ -277,14 +292,26 @@ Each milestone ends with something playable on your phone and a single question 
 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
-| 0 | Foundations | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, a stress scene with terrain and 10,000 instanced trees | Does it hold 60 fps on your iPhone? |
-| 1 | Greybox mountain | Real Ski Bowl terrain from the pipeline, walk and ski controllers, follow camera, one working lift, debug panel | Is skiing a run fun with grey boxes? |
+| 0 | Foundations (built) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
+| 1 | Greybox skiing | Ski controller, clip in and out, the Adirondack Express as a working lift, tuning panel | Is skiing Sunway fun with grey boxes? |
 | 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
-| 4 | Town and seasons | Depot, a few buildings, two characters, display case, Snow Train to one other season | Does the second season feel like a different visit? |
+| 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
 | 5 | Slice polish | Audio, onboarding, offline install, icon, credits | Would you show it to a friend? |
 
-**Slice contents:** the Ski Bowl and a corner of North Creek; one lift, three ski runs, one stretch of hiking trail; about 12 minerals and 15 passport entries; winter plus one other season.
+**Slice contents:** the Base Lodge to the Saddle Lodge; the Adirondack Express; Sunway, Quicksilver, Otter Slide, Foxlair, and Ruby Run; about 12 minerals and 15 passport entries; winter plus one other season.
+
+### Milestone 0: what to test on the phone
+
+Open the deployed page in Safari, turn the phone sideways, and walk around. The readout in the top left shows frame rate, and Settings changes the load. The questions:
+
+1. Frame rate at the default settings (10,000 trees, WebGPU).
+2. The same with the renderer set to WebGL 2. Whichever is smoother becomes the default.
+3. How many trees it takes to drop below 60 fps (20k, 40k, 80k), and whether "Whole mountain" view distance is affordable.
+4. Whether shadows cost much.
+5. How the thumbs feel: stick size, camera speed, anything Safari does that gets in the way.
+
+"Copy performance report" in Settings puts the numbers on the clipboard to paste back.
 
 After the slice, each new region is a repeatable package: terrain chunk, trails and lifts, stamps, a mineral table, one or two characters, one new tool or piece of gear.
 
@@ -310,9 +337,6 @@ After the slice, each new region is a repeatable package: terrain chunk, trails 
 
 ## 12. Open questions
 
-1. Which iPhone and iOS version will you play on? This sets the renderer choice and the performance budget.
-2. Should the repository be public (free GitHub Pages) or private (Cloudflare Pages or Netlify)?
-3. Skier, snowboarder, or both?
-4. Which trails, spots, and North Creek places matter most to you? Those become the must-haves and decide what the slice shows.
-5. Do you have a fal account and key yet?
-6. Reference screenshots for `docs/reference/`.
+1. The milestone 0 phone results (see the roadmap).
+2. Are Café Sarah and Izzy's Market & Deli the places you remember?
+3. The fal key is not needed until milestone 2. When it is, it gets entered through a secure form or environment settings, never pasted into chat or committed.
