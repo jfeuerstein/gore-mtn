@@ -32,6 +32,19 @@ describe('parseConfig', () => {
   });
 });
 
+describe('look', () => {
+  it('comes from the address first, then from what was remembered, then the default', () => {
+    expect(parseConfig('?look=golden', { look: 'snowfall' }).look).toBe('golden');
+    expect(parseConfig('', { look: 'snowfall' }).look).toBe('snowfall');
+    expect(parseConfig('').look).toBe(DEFAULTS.look);
+  });
+
+  it('ignores a look that does not exist', () => {
+    expect(parseConfig('?look=neon').look).toBe(DEFAULTS.look);
+    expect(parseConfig('', { look: 'gone' }).look).toBe(DEFAULTS.look);
+  });
+});
+
 describe('withParams', () => {
   it('sets, replaces and removes options', () => {
     expect(withParams('?trees=5000', { trees: '20000' })).toBe('?trees=20000');

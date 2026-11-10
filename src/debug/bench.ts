@@ -29,6 +29,7 @@ export const BENCH_STEPS: readonly BenchStep[] = [
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
+  look: 'bluebird',
   at: 'saddle-lodge',
   renderer: 'webgpu',
   trees: '220000',

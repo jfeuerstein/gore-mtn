@@ -33,7 +33,8 @@ export class SkiTracks {
   private lastX = 0;
   private lastZ = 0;
 
-  constructor() {
+  /** @param colour a touch darker than groomed snow, so tracks read as shallow grooves */
+  constructor(colour = 0xc3cfe3) {
     this.positions = new Float32Array(MAX_STEPS * FLOATS);
     this.attribute = new THREE.BufferAttribute(this.positions, 3);
     this.attribute.setUsage(THREE.DynamicDrawUsage);
@@ -42,9 +43,8 @@ export class SkiTracks {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', this.attribute);
     geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-    // A touch darker and bluer than groomed snow, so tracks read as shallow grooves.
     const material = new THREE.MeshLambertMaterial({
-      color: 0xc3cfe3,
+      color: colour,
       polygonOffset: true,
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -4,

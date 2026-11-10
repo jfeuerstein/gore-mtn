@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { lookById, type TreeStyle } from '../look/looks';
 import { makeRng } from '../rng';
 import type { Heightfield } from './heightfield';
 import type { Obstacle } from '../player/collide';
@@ -46,14 +47,11 @@ export interface TreePatch {
   radius: number;
 }
 
-/** A snow-dusted fir: a square trunk and two stacked six-sided cones. 20 triangles. */
-export function buildTreeGeometry(): THREE.BufferGeometry {
+/** A tree in the look's style: a square trunk and a stack of cones, each shaded from rim to tip. */
+export function buildTreeGeometry(style: TreeStyle): THREE.BufferGeometry {
   const pos: number[] = [];
   const col: number[] = [];
-  const trunk = new THREE.Color(0x4a3b33);
-  const dark = new THREE.Color(0x24463a);
-  const mid = new THREE.Color(0x2f5a48);
-  const snow = new THREE.Color(0xb9d0c8);
+  const trunk = new THREE.Color(style.trunk);
 
   const tri = (a: number[], b: number[], c: number[], ca: THREE.Color, cb: THREE.Color, cc: THREE.Color) => {
     pos.push(...a, ...b, ...c);
@@ -64,10 +62,6 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
       const a = twist + (i / n) * Math.PI * 2;
       return [Math.cos(a) * radius, y, Math.sin(a) * radius];
     });
-  const cone = (radius: number, y0: number, y1: number, twist: number, base: THREE.Color, tip: THREE.Color) => {
-    const r = ring(6, radius, y0, twist);
-    for (let i = 0; i < 6; i++) tri(r[i] as number[], [0, y1, 0], r[(i + 1) % 6] as number[], base, tip, base);
-  };
 
   const lo = ring(4, 0.13, 0, 0);
   const hi = ring(4, 0.11, 0.9, 0);
@@ -76,8 +70,13 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
     tri(lo[i] as number[], hi[i] as number[], lo[j] as number[], trunk, trunk, trunk);
     tri(lo[j] as number[], hi[i] as number[], hi[j] as number[], trunk, trunk, trunk);
   }
-  cone(TREE_RADIUS, 0.7, 2.6, 0, dark, mid);
-  cone(0.75, 1.9, TREE_HEIGHT, Math.PI / 6, mid, snow);
+  style.tiers.forEach((tier, t) => {
+    const base = new THREE.Color(tier.base);
+    const tip = new THREE.Color(tier.tip);
+    // Each tier is turned a little from the one below, so their corners do not line up.
+    const r = ring(tier.sides, tier.radius, tier.y0, (t * Math.PI) / tier.sides);
+    for (let i = 0; i < tier.sides; i++) tri(r[i] as number[], [0, tier.y1, 0], r[(i + 1) % tier.sides] as number[], base, tip, base);
+  });
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -86,10 +85,10 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
-/** A distant fir: one five-sided cone. 5 triangles. */
-export function buildFarTreeGeometry(): THREE.BufferGeometry {
-  const base = new THREE.Color(0x24463a);
-  const tip = new THREE.Color(0x86a79c);
+/** A distant tree: one five-sided cone. 5 triangles. */
+export function buildFarTreeGeometry(style: TreeStyle): THREE.BufferGeometry {
+  const base = new THREE.Color(style.farBase);
+  const tip = new THREE.Color(style.farTip);
   const pos: number[] = [];
   const col: number[] = [];
   for (let i = 0; i < 5; i++) {
@@ -135,8 +134,8 @@ export class Forest {
   private readonly cols: number;
   private readonly rows: number;
   private readonly spacing: number;
-  private readonly geometry = buildTreeGeometry();
-  private readonly farGeometry = buildFarTreeGeometry();
+  private readonly geometry: THREE.BufferGeometry;
+  private readonly farGeometry: THREE.BufferGeometry;
   private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   /** Ducked trees: patch key * 65536 + slot, to present scale. */
   private readonly ducked = new Map<number, number>();
@@ -152,8 +151,11 @@ export class Forest {
     private readonly castShadow: boolean,
     /** Places kept clear of trees besides the trails, such as lift lines. */
     private readonly keepClear: (x: number, z: number) => boolean = () => false,
+    style: TreeStyle = lookById(null).trees,
   ) {
     this.group.name = 'trees';
+    this.geometry = buildTreeGeometry(style);
+    this.farGeometry = buildFarTreeGeometry(style);
     this.cols = Math.ceil(hf.width / PATCH_SIZE);
     this.rows = Math.ceil(hf.depth / PATCH_SIZE);
     if (target <= 0) {

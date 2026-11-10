@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestone 0 is done. Milestone 1 (skiing as grey boxes) is feature-complete and waiting on one question from the owner: is skiing a run and riding back up fun on its own? See the roadmap.
+**Status:** milestones 0 and 1 are done: the owner finds skiing a run and riding back up fun as grey boxes. Milestone 2 (the look) has started: four looks are in the game to compare. See the roadmap.
 
 ## 2. What the game is
 
@@ -304,8 +304,8 @@ Each milestone ends with something playable on your phone and a single question 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
 | 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
-| 1 | Greybox skiing (built, awaiting verdict) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? |
-| 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
+| 1 | Greybox skiing (done) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? Yes. |
+| 2 | The look (in progress) | Four looks to compare on the phone, then the chosen one carried through: a proper skier, lodges, lift chairs and towers, time of day | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
 | 5 | Slice polish | Audio, onboarding, offline install, icon, credits | Would you show it to a friend? |
@@ -364,6 +364,26 @@ Trees stand thickest along the trail edges, and the snow on a trail is brighter 
 Settled by the owner so far: the bottom third of the screen for the stick; lift rides of about a minute; lifts easy enough to find; no stutter at speed; the game fills the screen from the Home Screen.
 
 Not built yet: getting air off rolls, and a panel for tuning the skiing on the phone (so far tuning has gone through feedback instead).
+
+### Milestone 2: choosing the look
+
+Settings now starts with **Look**. Each choice reloads the game in that look at the same spot, so the same view can be compared four ways. The choice is remembered.
+
+| Look | What it is |
+|---|---|
+| Bluebird | Clear midday. Crisp faceted snow, cool blue shadows. The look the game has had so far. |
+| Golden hour | Early sun on the mountain's east face. Peach light, long violet shadows, smooth snow. |
+| Quiet snowfall | Overcast and still. Soft white, short sight lines, falling snow, tiered snowy firs. Closest in mood to The Vast White. |
+| Storybook | Bright and toy-like. Deep blue sky, teal shadows, chunky trees with white caps. |
+
+Things to judge, at the summit, on a wide trail, in the trees and on a lift:
+
+1. Which look, or which parts of which: the sky of one, the trees of another, faceted or smooth snow.
+2. Whether one look should be the game, or whether these become times of day and weather that change with the real clock.
+3. What is missing from all of them.
+
+A look is only data (`src/look/looks.ts`), so mixing and adjusting is quick. Once one is chosen, the placeholder skier, lodges, towers and chairs get replaced to match it.
+
 
 ## 10. Risks and honest perspectives
 

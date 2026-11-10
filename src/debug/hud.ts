@@ -1,4 +1,5 @@
 import { DEFAULTS, withParams, type Config } from '../config';
+import { lookById, LOOKS } from '../look/looks';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
 import { startBench } from './bench';
 import { describeSummary, type FrameSummary } from './perf';
@@ -23,6 +24,12 @@ interface OptionGroup {
 }
 
 const OPTIONS: OptionGroup[] = [
+  {
+    title: 'Look',
+    param: 'look',
+    current: (c) => c.look,
+    options: LOOKS.map((l) => ({ label: l.name, value: l.id })),
+  },
   {
     title: 'Camera distance',
     param: 'zoom',
@@ -90,6 +97,18 @@ const OPTIONS: OptionGroup[] = [
   },
 ];
 
+/** Where the chosen look is kept between visits. */
+export const LOOK_KEY = 'gore-look';
+
+/** The look chosen on an earlier visit, if any. */
+export function rememberedLook(): string | null {
+  try {
+    return localStorage.getItem(LOOK_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /** Browser and whether the game is running from the Home Screen, for reports. */
 export function deviceLabel(): string {
   const installed = (navigator as { standalone?: boolean }).standalone === true;
@@ -124,6 +143,8 @@ export class Hud {
     onTeleport: (place: Place) => void,
     onFast: (on: boolean) => void,
     onSkis: (on: boolean) => void,
+    /** Where the player is, as address options, so a change of setting brings them back to the same spot. */
+    private readonly place: () => Record<string, string | null> = () => ({}),
   ) {
     const root = document.getElementById('hud') as HTMLElement;
     root.hidden = !cfg.hud;
@@ -183,7 +204,20 @@ export class Hud {
         const value = opt.value === fallback ? null : opt.value;
         a.href = withParams(location.search, { [group.param]: value }) || location.pathname;
         if (opt.value === current) a.className = 'on';
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          // The look is remembered between visits; the Home Screen app always starts from a bare address.
+          if (group.param === 'look') {
+            try {
+              localStorage.setItem(LOOK_KEY, opt.value);
+            } catch {
+              // Private browsing can refuse storage; the look then lasts for this visit only.
+            }
+          }
+          location.assign(withParams(location.search, { ...this.place(), [group.param]: value }) || location.pathname);
+        });
       }
+      if (group.param === 'look') add(this.menuEl, 'p', lookById(current).blurb);
     }
 
     add(this.menuEl, 'h2', 'Report');
@@ -211,7 +245,7 @@ export class Hud {
       `${s.backend} ${s.width}x${s.height} @${s.pixelRatio}x | ${describeSummary(s.frame)} | ` +
       `${s.drawCalls} calls, ${(s.triangles / 1000).toFixed(0)}k tris | ` +
       `trees ${s.trees}, stride ${this.cfg.stride}, view ${this.cfg.viewDist}, shadows ${this.cfg.shadows ? 'on' : 'off'}, ` +
-      `zoom ${this.cfg.zoom} | ` +
+      `zoom ${this.cfg.zoom}, look ${this.cfg.look} | ` +
       `${this.lastWhere} | ${deviceLabel()}`
     );
   }

@@ -39,7 +39,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
-  string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
+  string (`look`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
   and a few actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
@@ -61,6 +61,19 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   mountain (rocks, minerals, signs) must follow the same pattern rather than exist everywhere.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
+
+## Looks
+
+- A look is a complete visual treatment: sky, sun, ambient light, haze, snow and forest tints,
+  faceted or smooth ground, tree shapes and colours, far hills, falling snow. Looks are data in
+  `src/look/looks.ts`; everything that draws reads from the chosen one. Add or change a look there,
+  not in the drawing code.
+- The owner picks a look in Settings. The choice goes in the address (`look=`) and is remembered
+  between visits, because the Home Screen app always starts from a bare address. Changing any
+  setting brings the player back to the same spot and view.
+- Art direction is the owner's call. Offer options to compare on the phone; do not settle it alone.
+- Screenshot every look after a change that affects lighting or colour:
+  `node tools/shot.mjs out.png "look=golden&at=summit"`.
 
 ## Skiing
 

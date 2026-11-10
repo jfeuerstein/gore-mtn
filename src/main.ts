@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
 import { parseConfig } from './config';
 import { BenchRun, showBenchResults } from './debug/bench';
-import { deviceLabel, Hud } from './debug/hud';
+import { deviceLabel, Hud, rememberedLook } from './debug/hud';
+import { lookById } from './look/looks';
 import { FrameStats } from './debug/perf';
 import { Input } from './input/input';
 import { TrailMap } from './ui/trailMap';
@@ -9,7 +10,8 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
-import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
+import { buildBackdrop, buildLifts, buildPlaces, buildSky } from './world/scenery';
+import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
@@ -92,32 +94,38 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', fillScreen);
   // iOS can settle the page's height a moment after launch without saying so.
   for (const delay of [300, 1500, 4000]) window.setTimeout(fillScreen, delay);
-  const cfg = parseConfig(location.search);
+  const cfg = parseConfig(location.search, { look: rememberedLook() });
+  const look = lookById(cfg.look);
+  // Haze sets how far there is anything to see, so nothing beyond it need be drawn.
+  const viewDist = Math.min(cfg.viewDist, look.fog.far);
+  const shadows = cfg.shadows && look.shadows;
   const canvas = document.getElementById('game') as HTMLCanvasElement;
 
   const renderer = new THREE.WebGPURenderer({ canvas, antialias: true, forceWebGL: cfg.renderer === 'webgl' });
   await renderer.init();
   const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'WebGPU' : 'WebGL 2';
-  renderer.shadowMap.enabled = cfg.shadows;
+  renderer.shadowMap.enabled = shadows;
 
   const world = await loadWorld(import.meta.env.BASE_URL);
   // The drawn ground and the ground the player stands on are the same decimated grid.
   const ground = world.source.decimate(cfg.stride);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(SKY_HORIZON, cfg.viewDist * 0.3, cfg.viewDist);
-  const sky = buildSky();
-  scene.add(sky);
+  scene.fog = new THREE.Fog(look.fog.colour, Math.min(look.fog.near, viewDist * 0.5), viewDist);
+  const sky = buildSky(look);
+  scene.add(sky, buildBackdrop(look));
+  const snowfall = look.snowfall ? new Snowfall() : null;
+  if (snowfall) scene.add(snowfall.mesh);
 
-  scene.add(new THREE.HemisphereLight(0xdfeaff, 0x8d97ad, 1.5));
-  const sun = new THREE.DirectionalLight(0xfff1dc, 2.4);
-  const sunDir = new THREE.Vector3(-0.55, 0.62, 0.56).normalize();
-  if (cfg.shadows) {
+  scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
+  const sun = new THREE.DirectionalLight(look.sun.colour, look.sun.intensity);
+  const sunDir = new THREE.Vector3(...look.sun.direction).normalize();
+  if (shadows) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     const sc = sun.shadow.camera;
-    sc.left = sc.bottom = -55;
-    sc.right = sc.top = 55;
+    sc.left = sc.bottom = -70;
+    sc.right = sc.top = 70;
     sc.near = 1;
     sc.far = 400;
     sun.shadow.bias = -0.0008;
@@ -130,13 +138,13 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/ground.png`),
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy.png`),
   ]);
-  const terrain = new Terrain(ground, snowTexture, canopyTexture);
+  const terrain = new Terrain(ground, snowTexture, canopyTexture, look);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
-  const trees = new Forest(ground, world, cfg.trees, cfg.shadows, (x, z) => inLiftClearing(liftPaths, x, z));
+  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z), look.trees);
   scene.add(terrain.group, trees.group, buildLifts(liftPaths), buildPlaces(world));
 
-  const player = new Player(cfg.shadows);
-  const tracks = new SkiTracks();
+  const player = new Player(shadows);
+  const tracks = new SkiTracks(look.track);
   scene.add(player.object, tracks.mesh);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera, cfg.zoom);
@@ -186,6 +194,13 @@ async function boot(): Promise<void> {
     teleport,
     (on) => (input.fastToggle = on),
     (on) => player.setMode(on ? 'ski' : 'walk'),
+    () => ({
+      pos: `${player.position.x.toFixed(1)},${player.position.z.toFixed(1)}`,
+      yaw: follow.yaw.toFixed(3),
+      pitch: follow.pitch.toFixed(3),
+      ski: player.mode === 'ski' ? '1' : null,
+      at: null,
+    }),
   );
 
   let pixelRatio = 1;
@@ -217,11 +232,11 @@ async function boot(): Promise<void> {
 
   // Trees are drawn out to the smaller of the view distance and the forest's own range; past
   // that, terrain wears the canopy texture. With trees switched off it wears snow throughout.
-  const treeRange = cfg.trees > 0 ? Math.min(cfg.viewDist, TREE_RANGE) : Infinity;
+  const treeRange = cfg.trees > 0 ? Math.min(viewDist, TREE_RANGE) : Infinity;
   /** @param unlimited build everything in range at once: before the first frame and after a teleport */
   const cull = (unlimited = false): void => {
-    terrain.cull(camera.position.x, camera.position.z, cfg.viewDist, treeRange, unlimited);
-    trees.cull(camera.position.x, camera.position.z, cfg.viewDist, unlimited);
+    terrain.cull(camera.position.x, camera.position.z, viewDist, treeRange, unlimited);
+    trees.cull(camera.position.x, camera.position.z, viewDist, unlimited);
   };
 
   window.__gore.state = () => ({
@@ -325,6 +340,7 @@ async function boot(): Promise<void> {
     follow.update(player.position, ground, player.speed, dt);
     trees.update(player.position, camera.position, dt);
     sky.position.copy(camera.position);
+    snowfall?.update(camera.position, dt);
     sun.target.position.copy(player.position);
     sun.position.copy(player.position).addScaledVector(sunDir, 150);
     cull(fillScene);

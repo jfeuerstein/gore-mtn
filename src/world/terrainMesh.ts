@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import type { Look } from '../look/looks';
 import type { Heightfield } from './heightfield';
 
 /** Terrain is drawn as square tiles this many cells across. */
@@ -51,6 +52,7 @@ function buildTileGeometry(hf: Heightfield, c0: number, c1: number, r0: number, 
   const h = rs.length;
   const rim = 2 * (w + h) - 4;
   const positions = new Float32Array((w * h + rim) * 3);
+  const normals = new Float32Array((w * h + rim) * 3);
   const uvs = new Float32Array((w * h + rim) * 2);
   let v = 0;
 
@@ -58,6 +60,15 @@ function buildTileGeometry(hf: Heightfield, c0: number, c1: number, r0: number, 
     positions[v * 3] = hf.originX + c * hf.cell;
     positions[v * 3 + 1] = hf.at(c, r) - drop;
     positions[v * 3 + 2] = hf.originZ + r * hf.cell;
+    // The normal comes from the heights either side, at this level's spacing, so shading is
+    // continuous across tile edges and matches between neighbouring detail levels.
+    const run = 2 * step * hf.cell;
+    const dx = (hf.at(c + step, r) - hf.at(c - step, r)) / run;
+    const dz = (hf.at(c, r + step) - hf.at(c, r - step)) / run;
+    const len = Math.hypot(dx, 1, dz);
+    normals[v * 3] = -dx / len;
+    normals[v * 3 + 1] = 1 / len;
+    normals[v * 3 + 2] = -dz / len;
     // The ground textures have one block of texels per height sample, centred on the sample.
     uvs[v * 2] = (c + 0.5) / hf.cols;
     uvs[v * 2 + 1] = 1 - (r + 0.5) / hf.rows;
@@ -94,8 +105,8 @@ function buildTileGeometry(hf: Heightfield, c0: number, c1: number, r0: number, 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
   geo.setIndex(index);
-  geo.computeVertexNormals();
   geo.computeBoundingSphere();
   return geo;
 }
@@ -116,6 +127,7 @@ export class Terrain {
     private readonly hf: Heightfield,
     snowTexture: THREE.Texture,
     canopyTexture: THREE.Texture,
+    look: Look,
   ) {
     this.group.name = 'terrain';
     for (const t of [snowTexture, canopyTexture]) {
@@ -123,8 +135,18 @@ export class Terrain {
       t.anisotropy = 4;
     }
     // Double-sided so the skirts show whichever way they face.
-    this.snowMaterial = new THREE.MeshLambertMaterial({ map: snowTexture, flatShading: true, side: THREE.DoubleSide });
-    this.canopyMaterial = new THREE.MeshLambertMaterial({ map: canopyTexture, flatShading: true, side: THREE.DoubleSide });
+    this.snowMaterial = new THREE.MeshLambertMaterial({
+      map: snowTexture,
+      color: look.snowTint,
+      flatShading: look.facetedGround,
+      side: THREE.DoubleSide,
+    });
+    this.canopyMaterial = new THREE.MeshLambertMaterial({
+      map: canopyTexture,
+      color: look.canopyTint,
+      flatShading: look.facetedGround,
+      side: THREE.DoubleSide,
+    });
 
     for (let r0 = 0; r0 < hf.rows - 1; r0 += TILE_CELLS) {
       for (let c0 = 0; c0 < hf.cols - 1; c0 += TILE_CELLS) {

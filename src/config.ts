@@ -1,5 +1,9 @@
+import { DEFAULT_LOOK, lookById } from './look/looks';
+
 /** Debug and quality options, read from the URL so any state can be linked to and screenshotted. */
 export interface Config {
+  /** Which visual treatment to draw the mountain in. See src/look/looks.ts. */
+  look: string;
   /** Rendering backend. `webgl` forces the WebGL 2 fallback of the same renderer. */
   renderer: 'webgpu' | 'webgl';
   /** How many trees the whole mountain would hold if all of it were planted. Sets forest density. */
@@ -29,6 +33,7 @@ export interface Config {
 }
 
 export const DEFAULTS: Config = {
+  look: DEFAULT_LOOK,
   renderer: 'webgpu',
   // `trees` is how many the whole mountain would hold; only those within range of the camera are
   // ever planted. Distant trees and terrain are drawn in simpler forms.
@@ -65,7 +70,10 @@ function optIndex(v: string | null): number | null {
   return n !== null && Number.isInteger(n) && n >= 0 ? n : null;
 }
 
-export function parseConfig(search: string): Config {
+/**
+ * @param remembered choices kept from an earlier visit, used when the address does not say
+ */
+export function parseConfig(search: string, remembered: { look?: string | null } = {}): Config {
   const q = new URLSearchParams(search);
   const d = DEFAULTS;
   const posParts = (q.get('pos') ?? '').split(',').map(Number);
@@ -75,6 +83,7 @@ export function parseConfig(search: string): Config {
       ? { x: px, z: pz }
       : null;
   return {
+    look: lookById(q.get('look') ?? remembered.look).id,
     renderer: q.get('renderer') === 'webgl' ? 'webgl' : d.renderer,
     trees: Math.round(num(q.get('trees'), d.trees, 0, 1000000)),
     dpr: num(q.get('dpr'), d.dpr, 0.5, 3),
