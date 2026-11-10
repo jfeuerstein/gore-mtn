@@ -1,7 +1,11 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
 
-export const WALK_SPEED = 5;
+/**
+ * Brisk for a figure this size, on purpose: the mountain is big, the camera sits well back, and a
+ * realistic walking pace would crawl across the screen.
+ */
+export const WALK_SPEED = 7.5;
 /** Debug travel speed, for crossing the mountain quickly while there are no skis yet. */
 export const FAST_SPEED = 40;
 

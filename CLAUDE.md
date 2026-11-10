@@ -31,7 +31,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   read it. Headless Chromium uses software WebGL, so its frame rates are meaningless; only the
   phone's numbers count.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
-  string (`at`, `pos`, `yaw`, `pitch`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
+  string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`.
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
@@ -52,7 +52,8 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 - Everything must be playable with one thumb. A second finger may add convenience, never necessity.
 - Things to read go at the top; things to press go in the bottom third, at least 44 points tall;
   menus are bottom sheets. Respect the safe-area insets.
-- The player sits a little below the middle of the screen, above where the thumb rests. Framing
+- The camera sits well back and high, so the player is small (about 7% of the screen height) and
+  sits just below the middle, above where the thumb rests. Framing
   and lens come from `framingFor()` in `src/player/cameraMath.ts`; touch zones from
   `src/input/zones.ts`.
 - Screenshots default to the upright phone size. Judge composition in that shape, not on a wide

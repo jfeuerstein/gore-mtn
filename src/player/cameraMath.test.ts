@@ -30,13 +30,39 @@ describe('framingFor', () => {
     expect(tall.pitch).toBeGreaterThan(wide.pitch);
   });
 
-  it('places the player below the middle of an upright screen but above the thumb', () => {
+  it('places the player just below the middle of an upright screen, above the thumb', () => {
     const f = framingFor(402 / 874);
     // How far below centre the player sits, as a fraction of half the screen height.
     const below = f.aimLift / Math.tan((f.fovDeg * Math.PI) / 360);
-    // Between 55% and 65% of the way down the screen; the thumb rests below about 70%.
-    expect(below).toBeGreaterThan(0.1);
-    expect(below).toBeLessThan(0.3);
+    // Roughly 52% to 60% of the way down the screen; the thumb rests below about 70%.
+    expect(below).toBeGreaterThan(0.05);
+    expect(below).toBeLessThan(0.2);
+  });
+
+  it('keeps the player small on an upright phone so a thumb hides little', () => {
+    const f = framingFor(402 / 874);
+    // Share of the screen height taken by a 1.9 m figure at the camera distance.
+    const share = 1.9 / (2 * f.distance * Math.tan((f.fovDeg * Math.PI) / 360));
+    expect(share).toBeLessThan(0.08);
+    expect(share).toBeGreaterThan(0.04);
+  });
+
+  it('looks down steeply enough to keep the horizon on screen but near the top', () => {
+    const f = framingFor(402 / 874);
+    const half = (f.fovDeg * Math.PI) / 360;
+    // Angle of the view axis below level, allowing for the aim point above the player.
+    const axisDown = f.pitch - Math.atan(f.aimLift * Math.cos(f.pitch));
+    const horizonAboveCentre = Math.tan(axisDown) / Math.tan(half);
+    expect(horizonAboveCentre).toBeGreaterThan(0.5);
+    expect(horizonAboveCentre).toBeLessThan(0.95);
+  });
+
+  it('scales distance with zoom and nothing else', () => {
+    const base = framingFor(402 / 874);
+    const far = framingFor(402 / 874, 1.3);
+    expect(far.distance).toBeCloseTo(base.distance * 1.3);
+    expect(far.pitch).toBe(base.pitch);
+    expect(far.fovDeg).toBe(base.fovDeg);
   });
 });
 

@@ -22,20 +22,32 @@ export interface Framing {
   distance: number;
   /**
    * How far above the player the camera aims, as a fraction of `distance`. Aiming high pushes the
-   * player down the screen. On an upright phone they sit a little below the middle: low enough to
+   * player down the screen. On an upright phone they sit just below the middle: low enough to
    * leave the top half for the mountain, high enough to stay clear of the thumb, which rests in
    * the bottom third.
    */
   aimLift: number;
-  /** Starting camera pitch, in radians. Steeper when upright, so the tall view fills with slope, not sky. */
+  /** Starting camera pitch, in radians. */
   pitch: number;
 }
 
-export function framingFor(aspect: number): Framing {
+/**
+ * @param zoom multiplies the camera distance; above 1 pulls back.
+ *
+ * On an upright phone the camera sits well back and high, looking down at about 35 degrees. The
+ * player is small (roughly 7% of the screen height), so a thumb on the stick hides little of what
+ * matters, and the ground around them is laid out like a map with the horizon near the top.
+ */
+export function framingFor(aspect: number, zoom = 1): Framing {
   const fovDeg = verticalFovDeg(aspect);
   // 0 on a wide screen, 1 on an upright phone.
   const upright = (fovDeg - MIN_VERTICAL_FOV) / (MAX_VERTICAL_FOV - MIN_VERTICAL_FOV);
-  return { fovDeg, distance: 9 + 2.5 * upright, aimLift: 0.08 + 0.06 * upright, pitch: 0.32 + 0.12 * upright };
+  return {
+    fovDeg,
+    distance: (9 + 8.5 * upright) * zoom,
+    aimLift: 0.08 + 0.02 * upright,
+    pitch: 0.32 + 0.28 * upright,
+  };
 }
 
 /** Smallest signed difference between two angles, in -PI..PI. */

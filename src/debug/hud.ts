@@ -21,6 +21,17 @@ interface Option {
 
 const OPTIONS: { title: string; param: string; current: (c: Config) => string; options: Option[] }[] = [
   {
+    title: 'Camera distance',
+    param: 'zoom',
+    current: (c) => String(c.zoom),
+    options: [
+      { label: 'Closer', value: '0.75' },
+      { label: 'Default', value: null },
+      { label: 'Further', value: '1.3' },
+      { label: 'Furthest', value: '1.6' },
+    ],
+  },
+  {
     title: 'Renderer',
     param: 'renderer',
     current: (c) => c.renderer,
@@ -80,6 +91,7 @@ const OPTIONS: { title: string; param: string; current: (c: Config) => string; o
 ];
 
 const DEFAULT_VALUE: Record<string, string> = {
+  zoom: '1',
   renderer: 'webgpu',
   trees: '10000',
   dpr: '2',
@@ -175,7 +187,8 @@ export class Hud {
     return (
       `${s.backend} ${s.width}x${s.height} @${s.pixelRatio}x | ${s.fps.toFixed(0)} fps, p95 ${s.p95Ms.toFixed(1)} ms, ` +
       `worst ${s.worstMs.toFixed(1)} ms | ${s.drawCalls} calls, ${(s.triangles / 1000).toFixed(0)}k tris | ` +
-      `trees ${s.trees}, stride ${this.cfg.stride}, view ${this.cfg.viewDist}, shadows ${this.cfg.shadows ? 'on' : 'off'} | ` +
+      `trees ${s.trees}, stride ${this.cfg.stride}, view ${this.cfg.viewDist}, shadows ${this.cfg.shadows ? 'on' : 'off'}, ` +
+      `zoom ${this.cfg.zoom} | ` +
       `${this.lastWhere} | ${navigator.userAgent}`
     );
   }

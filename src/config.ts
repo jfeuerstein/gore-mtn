@@ -17,6 +17,8 @@ export interface Config {
   pos: { x: number; z: number } | null;
   yaw: number | null;
   pitch: number | null;
+  /** Multiplies the camera distance; above 1 pulls back. */
+  zoom: number;
   hud: boolean;
 }
 
@@ -31,6 +33,7 @@ export const DEFAULTS: Config = {
   pos: null,
   yaw: null,
   pitch: null,
+  zoom: 1,
   hud: true,
 };
 
@@ -66,6 +69,7 @@ export function parseConfig(search: string): Config {
     pos,
     yaw: optNum(q.get('yaw')),
     pitch: optNum(q.get('pitch')),
+    zoom: num(q.get('zoom'), d.zoom, 0.4, 3),
     hud: q.get('hud') !== '0',
   };
 }

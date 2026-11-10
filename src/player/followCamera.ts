@@ -19,11 +19,17 @@ export class FollowCamera {
   private readonly target = new THREE.Vector3();
   private readonly aim = new THREE.Vector3();
 
-  constructor(readonly camera: THREE.PerspectiveCamera) {}
+  /**
+   * @param zoom multiplies the camera distance; above 1 pulls back.
+   */
+  constructor(
+    readonly camera: THREE.PerspectiveCamera,
+    private readonly zoom = 1,
+  ) {}
 
   /** Fit the lens and framing to the screen shape. Call whenever the canvas is resized. */
   setAspect(aspect: number): void {
-    const framing = framingFor(aspect);
+    const framing = framingFor(aspect, this.zoom);
     this.camera.aspect = aspect;
     this.camera.fov = framing.fovDeg;
     this.camera.updateProjectionMatrix();

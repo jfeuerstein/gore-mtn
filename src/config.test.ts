@@ -18,6 +18,9 @@ describe('parseConfig', () => {
     expect(c.pos).toEqual({ x: 12.5, z: -3 });
     expect(c.yaw).toBe(1.5);
     expect(c.pitch).toBeNull();
+    expect(c.zoom).toBe(1);
+    expect(parseConfig('?zoom=1.3').zoom).toBe(1.3);
+    expect(parseConfig('?zoom=99').zoom).toBe(3);
   });
 
   it('ignores junk values', () => {

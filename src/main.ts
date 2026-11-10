@@ -90,7 +90,7 @@ async function boot(): Promise<void> {
   const player = new Player(cfg.shadows);
   scene.add(player.object);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 6000); // lens is set by follow.setAspect()
-  const follow = new FollowCamera(camera);
+  const follow = new FollowCamera(camera, cfg.zoom);
   const input = new Input(canvas);
 
   const summit = world.places.find((p) => p.id === 'summit');

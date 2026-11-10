@@ -202,7 +202,8 @@ Small and simple: around 1,500 triangles, dot eyes or no face, chunky mittens an
 
 ### Composing for a tall screen
 
-- The player sits a little below the middle of the screen. The top half is the view; the bottom third belongs to the thumb and stays clear of anything that matters.
+- The camera sits well back and high, looking down at about 35 degrees. The player is small, around 7% of the screen height, and sits just below the middle. The top half is the view; the bottom third belongs to the thumb and stays clear of anything that matters.
+- Because the camera is far back, movement is brisk (7.5 m/s on foot) so the player still crosses the screen at a satisfying pace.
 - The lens is wider top to bottom than a landscape game's (about 80 degrees), so the view is not a narrow slot. Tall subjects suit it: a run falling away below, a lift line climbing overhead, the summit above the trees.
 - Things to read go at the top. Things to press go at the bottom, at least 44 points tall. Menus are sheets that slide up from the bottom edge.
 - The passport and trail map are drawn tall: summit at the top, town at the bottom, scrolled with the thumb.
