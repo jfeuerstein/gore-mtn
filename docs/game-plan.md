@@ -63,7 +63,7 @@ Town / base lodge
 The game is played with the phone upright, and one thumb is enough for everything.
 
 - **Walking/hiking:** the thumb is a movement stick anywhere in the lower part of the screen. The camera swings round behind you as you walk, so there is nothing else to hold. To look around, drag the upper part of the screen or use a second finger. One context button sits by the thumb (talk, dig, stamp, board lift, clip into skis).
-- **Skiing:** gravity does the work. Slide the thumb left and right to steer; pull down to snowplow and stop; push up to tuck. The camera sits behind and above, looking down the fall line, which suits a tall screen: the run stretches up the display ahead of you. Carving leaves tracks in the snow. Trail difficulty (green, blue, black, glades) comes from the real pitch of the terrain.
+- **Skiing:** gravity does the work, and momentum carries you. Slide the thumb left and right to tip into a turn: gentle turns carve cleanly, hard turns at speed drift wide and scrub speed. Pull down for a hockey stop, where the skis swing sideways and you finish parked across the hill. Push up to tuck, or to pole from a standstill. The camera sits behind and above, following where you are going, which suits a tall screen: the run stretches up the display ahead of you. Trail difficulty (green, blue, black, glades) comes from the real pitch of the terrain.
 - **Lifts:** board at the bottom, ride in real time with a free-look camera, unload at the top. Rides are short because the mountain is compressed.
 - **Summer/fall:** same world, skis swapped for boots. Ski trails become meadows, hiking paths open, lifts that run in the real off-season (the gondola) still run.
 
@@ -131,9 +131,9 @@ Trail and lift names in the game come from the data import, not from memory, and
 
 Starting numbers, to be tuned by feel:
 
-- **Horizontal 1:5.** The real distance from town to summit is roughly 6 km, so the full game world is around 1.2 to 1.5 km across.
-- **Vertical 1:3.** About 260 m of game relief, which makes slopes read roughly 1.7 times steeper and more dramatic than reality.
-- **Target feel:** a top-to-bottom run in one region takes 45 to 90 seconds; a lift ride takes 30 to 45 seconds.
+- **Horizontal 1:3.** The real distance from town to summit is roughly 6 km, so the game world is about 2.2 by 1.7 km. (It began at 1:5; on the phone that felt small.)
+- **Vertical 1:2.** About 400 m of game relief, which makes slopes read one and a half times steeper than reality.
+- **Target feel:** a single run takes 40 to 60 seconds at 35 to 45 mph; top to bottom of the mountain is a few minutes; a lift ride takes 30 to 45 seconds.
 
 ### How terrain gets built
 
@@ -206,6 +206,7 @@ Small and simple: around 1,500 triangles, dot eyes or no face, chunky mittens an
 - Because the camera is far back, movement is brisk (7.5 m/s on foot) so the player still crosses the screen at a satisfying pace.
 - The lens is wider top to bottom than a landscape game's (about 80 degrees), so the view is not a narrow slot. Tall subjects suit it: a run falling away below, a lift line climbing overhead, the summit above the trees.
 - Things to read go at the top. Things to press go at the bottom, at least 44 points tall. Menus are sheets that slide up from the bottom edge.
+- The bottom third of the screen is the movement stick; everything above it turns the camera.
 - The passport and trail map are drawn tall: summit at the top, town at the bottom, scrolled with the thumb.
 
 ### Interface
@@ -338,7 +339,8 @@ Measured on the iPhone 17 Pro, running from the Home Screen:
 Decisions taken from this:
 
 - Stay on WebGPU, with WebGL 2 as the automatic fallback.
-- New defaults: 40,000 trees, the whole mountain in view, shadows on. Pixel ratio stays at 2 to save heat and battery; 3 is available in Settings.
+- Defaults at the time: 40,000 trees, the whole mountain in view, shadows on. Pixel ratio stays at 2 to save heat and battery; 3 is available in Settings.
+- Since then the mountain has been enlarged and the forest thickened to 100,000 trees, with distant trees and terrain drawn in simpler forms. That has not been measured on the phone yet; the benchmark's steps were rewritten to measure it.
 - The budget stays where it was, as a cautious target. The measurement was five seconds per step on a cool phone and says nothing about a long session.
 
 An earlier single reading in a Safari tab showed about one frame in twenty arriving late. The benchmark did not reproduce that from the Home Screen. Whether it was the browser tab or touch input is not known yet; the copied performance report now carries enough detail to tell if it comes back.
@@ -347,13 +349,15 @@ An earlier single reading in a Safari tab showed about one frame in twenty arriv
 
 Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
 
-1. Does the speed feel right on a green (Sunway), a blue (Quicksilver, Twister) and a black (The Rumor, Lies)? A robot skier takes about 42 seconds down Sunway and 11 down The Rumor.
-2. Steering: too twitchy, too sluggish, turns too wide for the trail?
-3. Braking (thumb down) and tucking (thumb up): strong enough, easy to find?
-4. The camera: does it stay where you want it through turns?
-5. Anything that feels unfair, such as getting stuck or sliding where you did not mean to.
+1. Speed and momentum: a robot skier now reaches 36 mph on Sunway (43 seconds), 39 on Showcase and 43 on The Rumor (12 seconds). Fast enough? Does it build and carry the way skiing should?
+2. Turning: do gentle turns carve and hard ones drift in a way that feels like skiing? Too much drift, or too little?
+3. The hockey stop (thumb down): does it look and feel right, and stop soon enough? Lean the thumb left or right while braking to choose which way the skis swing.
+4. The camera: does it stay where you want it through turns and stops? Is the bottom third the right amount of screen for the stick?
+5. The mountain: is it big enough now, and can you see where each trail runs?
+6. Is the bar along the bottom of the screen gone when launched from the Home Screen? That fix could not be tested off the phone.
+7. Run the benchmark again (Settings), since the world is bigger and the forest thicker than when it was last measured.
 
-Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
+Trees stand thickest along the trail edges, and the snow on a trail is brighter than under the trees, so each run reads as a corridor. Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
 
 Not built yet: lifts, colliding with trees, snow tracks, getting air off rolls.
 

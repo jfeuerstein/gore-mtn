@@ -12,29 +12,30 @@ export interface BenchStep {
   label: string;
   /** URL options that differ from the baseline. */
   params: Record<string, string>;
-  /** Keep the on-screen readout updating, to measure what the readout itself costs. */
+  /** Keep the on-screen readout updating during the step. */
   hudLive?: boolean;
 }
 
 export const BENCH_STEPS: readonly BenchStep[] = [
-  { label: 'WebGPU, 10k trees', params: {} },
-  { label: 'WebGPU, 10k trees, readout updating', params: {}, hudLive: true },
-  { label: 'WebGL 2, 10k trees', params: { renderer: 'webgl' } },
-  { label: 'WebGPU, 40k trees', params: { trees: '40000' } },
-  { label: 'WebGL 2, 40k trees', params: { renderer: 'webgl', trees: '40000' } },
-  { label: 'WebGPU, 80k trees', params: { trees: '80000' } },
-  { label: 'WebGPU, 10k trees, shadows', params: { shadows: '1' } },
-  { label: 'WebGPU, 10k trees, pixel ratio 3', params: { dpr: '3' } },
-  { label: 'WebGPU, 40k trees, 700 m view', params: { trees: '40000', view: '700' } },
+  { label: 'WebGPU, 100k trees', params: {} },
+  { label: 'WebGL 2, 100k trees', params: { renderer: 'webgl' } },
+  { label: 'WebGPU, 50k trees', params: { trees: '50000' } },
+  { label: 'WebGPU, 150k trees', params: { trees: '150000' } },
+  { label: 'WebGPU, 100k trees, half terrain detail', params: { stride: '2' } },
+  { label: 'WebGPU, 100k trees, no shadows', params: { shadows: '0' } },
+  { label: 'WebGPU, 100k trees, pixel ratio 3', params: { dpr: '3' } },
+  { label: 'WebGPU, 100k trees, 1,300 m view', params: { view: '1300' } },
+  { label: 'WebGPU, 100k trees, from the summit', params: { at: 'summit' } },
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
   at: 'saddle-lodge',
   renderer: 'webgpu',
-  trees: '10000',
-  shadows: '0',
+  trees: '100000',
+  shadows: '1',
+  stride: '1',
   dpr: '2',
-  view: '1500',
+  view: '2600',
 };
 
 export const DEFAULT_BENCH_SECONDS = 5;

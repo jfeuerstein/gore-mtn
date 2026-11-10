@@ -16,6 +16,9 @@ export class FollowCamera {
   private distance = 9;
   private aimLift = 0.08;
   private manualHold = 0;
+  /** 0 at rest, 1 at full speed; eased. Pulls the camera back and widens the lens a touch. */
+  private rush = 0;
+  private baseFov = 55;
   private readonly target = new THREE.Vector3();
   private readonly aim = new THREE.Vector3();
 
@@ -31,6 +34,7 @@ export class FollowCamera {
   setAspect(aspect: number): void {
     const framing = framingFor(aspect, this.zoom);
     this.camera.aspect = aspect;
+    this.baseFov = framing.fovDeg;
     this.camera.fov = framing.fovDeg;
     this.camera.updateProjectionMatrix();
     this.distance = framing.distance;
@@ -60,13 +64,24 @@ export class FollowCamera {
     this.yaw = Math.atan2(-(toX - fromX), -(toZ - fromZ));
   }
 
-  update(follow: THREE.Vector3, hf: Heightfield): void {
+  /**
+   * @param speed the player's speed in m/s, for the sense of rush at pace
+   */
+  update(follow: THREE.Vector3, hf: Heightfield, speed = 0, dt = 0): void {
+    const rushTarget = Math.min(1, Math.max(0, (speed - 8) / 20));
+    this.rush += (rushTarget - this.rush) * Math.min(1, dt * 1.5);
+    const distance = this.distance * (1 + 0.22 * this.rush);
+    const fov = this.baseFov + 5 * this.rush;
+    if (Math.abs(fov - this.camera.fov) > 0.01) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
     this.target.set(follow.x, follow.y + 1.5, follow.z);
-    const flat = Math.cos(this.pitch) * this.distance;
+    const flat = Math.cos(this.pitch) * distance;
     const cam = this.camera.position;
     cam.set(
       this.target.x + Math.sin(this.yaw) * flat,
-      this.target.y + Math.sin(this.pitch) * this.distance,
+      this.target.y + Math.sin(this.pitch) * distance,
       this.target.z + Math.cos(this.yaw) * flat,
     );
     // Never let the ground come between the camera and the player: lift the camera until the
@@ -82,7 +97,7 @@ export class FollowCamera {
     }
     if (cam.y < minY) cam.y = minY;
     this.aim.copy(this.target);
-    this.aim.y += this.distance * this.aimLift;
+    this.aim.y += distance * this.aimLift;
     this.camera.lookAt(this.aim);
   }
 }

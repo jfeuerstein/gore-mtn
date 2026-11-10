@@ -7,7 +7,9 @@ Inputs (downloaded once into tools/terrain/cache/, which is gitignored):
 
 Outputs (committed, in public/world/):
   - height.bin     uint16 little-endian, rows north to south, columns west to east
-  - trailmask.bin  uint8, 255 on a ski trail, 0 elsewhere, same grid
+  - trailmask.bin  uint8, 255 on a ski trail, 0 elsewhere, same grid (what the game logic reads)
+  - ground.png     colour of the snow, three texels per grid cell: bright groomed trails, cooler
+                   snow under the trees, and a shaded band along each trail edge (what is drawn)
   - world.json     grid metadata, trails, lifts, paths, places
 
 Run:  python3 tools/terrain/build_world.py
@@ -24,7 +26,7 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from pyproj import Transformer
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,10 +37,16 @@ OUT = ROOT / "public" / "world"
 WEST, SOUTH, EAST, NORTH = -74.062, 43.660, -73.980, 43.706
 
 REAL_CELL_M = 10.0  # elevation sample spacing in real metres
-H_SCALE = 1 / 5  # real horizontal metres -> game metres
-V_SCALE = 1 / 3  # real vertical metres -> game metres
+H_SCALE = 1 / 3  # real horizontal metres -> game metres
+V_SCALE = 1 / 2  # real vertical metres -> game metres (slopes read 1.5x steeper than life)
 TRAIL_WIDTH_REAL_M = {"easy": 55, "intermediate": 45, "advanced": 35, "expert": 30, "freeride": 40}
 GLADE_WIDTH_REAL_M = 0  # glades keep their trees
+
+GROUND_TEXELS_PER_CELL = 3
+TRAIL_RGB = (252, 253, 255)
+FOREST_RGB = (176, 189, 212)
+EDGE_SHADE_RGB = (139, 155, 186)
+EDGE_SHADE_REACH_M = 5.0  # game metres of shade outside a trail edge
 
 DEM_URL = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage"
 OSM_URL = "https://api.openstreetmap.org/api/0.6/map"
@@ -128,8 +136,8 @@ def main() -> None:
     nodes = {n.get("id"): (float(n.get("lon")), float(n.get("lat"))) for n in root.iter("node")}
 
     trails, lifts, paths, places, water = [], [], [], [], []
-    mask_img = Image.new("L", (cols, rows), 0)
-    draw = ImageDraw.Draw(mask_img)
+    # Groomed trails as shapes in grid units, drawn later at whatever resolution is needed.
+    strokes: list[tuple[str, list[tuple[float, float]], float]] = []
 
     def inside(p: tuple[float, float]) -> bool:
         return abs(p[0]) <= width / 2 and abs(p[1]) <= depth / 2
@@ -152,13 +160,9 @@ def main() -> None:
             real_w = GLADE_WIDTH_REAL_M if glade else TRAIL_WIDTH_REAL_M.get(difficulty, 40)
             px = [to_px(*p) for p in pts]
             if closed and tags.get("area") == "yes":
-                draw.polygon(px, fill=255)
+                strokes.append(("area", px, 0.0))
             elif real_w > 0:
-                w = max(1, round(real_w / REAL_CELL_M))
-                draw.line(px, fill=255, width=w, joint="curve")
-                r = w / 2
-                for cx, cy in px:
-                    draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=255)
+                strokes.append(("line", px, real_w / REAL_CELL_M))
             trails.append(
                 {
                     "name": name,
@@ -205,10 +209,43 @@ def main() -> None:
             pairs = [p[i : i + 2] for i in range(0, len(p), 2)][::-1]
             trail["pts"] = [v for pair in pairs for v in pair]
 
+    def draw_trails(scale: int) -> Image.Image:
+        """Rasterise the groomed trails with `scale` pixels per grid cell."""
+        img = Image.new("L", (cols * scale, rows * scale), 0)
+        draw = ImageDraw.Draw(img)
+        for kind, px, w in strokes:
+            # Samples sit at pixel centres, so a grid coordinate g lands at (g + 0.5) * scale.
+            pts = [((x + 0.5) * scale, (y + 0.5) * scale) for x, y in px]
+            if kind == "area":
+                draw.polygon(pts, fill=255)
+                continue
+            width = max(1, round(w * scale))
+            draw.line(pts, fill=255, width=width, joint="curve")
+            r = width / 2
+            for cx, cy in pts:
+                draw.ellipse((cx - r, cy - r, cx + r, cy + r), fill=255)
+        return img
+
+    mask_img = draw_trails(1)
+
+    # Ground colour: drawn at twice the final size and shrunk, for smooth trail edges.
+    k = GROUND_TEXELS_PER_CELL
+    fine = draw_trails(k * 2).resize((cols * k, rows * k), Image.LANCZOS)
+    trail = np.asarray(fine, dtype=np.float32) / 255.0
+    reach_px = EDGE_SHADE_REACH_M / (cell / k)
+    spread = np.asarray(fine.filter(ImageFilter.GaussianBlur(reach_px)), dtype=np.float32) / 255.0
+    # Shade is strongest just outside an edge and fades away from it; none on the trail itself.
+    shade = np.clip(spread * 2.2, 0, 1) * (1 - trail)
+    forest = np.array(FOREST_RGB, dtype=np.float32)
+    off_trail = forest + (np.array(EDGE_SHADE_RGB, dtype=np.float32) - forest) * shade[..., None]
+    rgb = off_trail + (np.array(TRAIL_RGB, dtype=np.float32) - off_trail) * trail[..., None]
+    ground_img = Image.fromarray(np.clip(np.round(rgb), 0, 255).astype(np.uint8), "RGB")
+
     # --- write -------------------------------------------------------------
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "height.bin").write_bytes(quant.astype("<u2").tobytes())
     (OUT / "trailmask.bin").write_bytes(np.asarray(mask_img, dtype=np.uint8).tobytes())
+    ground_img.save(OUT / "ground.png", optimize=True)
     world = {
         "grid": {
             "cols": cols,

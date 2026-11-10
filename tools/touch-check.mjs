@@ -8,17 +8,14 @@
 // the overlay fits the narrow screen, the settings sheet opens and teleports, and on skis the
 // thumb steers, tucks and brakes while the slope does the rest.
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { preview } from 'vite';
+import { devices, launchBrowser } from './browser.mjs';
 
-const { chromium, devices } = createRequire(import.meta.url)('playwright');
 const shot = process.argv[2];
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000`;
-const browser = await chromium.launch({
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
+const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
@@ -64,11 +61,14 @@ try {
   await touch('touchStart', [thumb]);
   const pushed = { ...thumb, x: thumb.x + 60, y: thumb.y - 40 };
   await touch('touchMove', [pushed]);
-  await page.waitForTimeout(2500);
+  // Software rendering runs in slow motion, so wait on distance covered, not on the clock.
+  const walked = await page
+    .waitForFunction((from) => Math.hypot(window.__gore.state().x - from.x, window.__gore.state().z - from.z) > 3, before, { timeout: 60000 })
+    .then(() => true, () => false);
   check('stick appears under the thumb', await page.locator('.stick-base').isVisible());
   let after = await state();
   const moved = Math.hypot(after.x - before.x, after.z - before.z);
-  check('one thumb walks the player', moved > 1, `${moved.toFixed(1)} m`);
+  check('one thumb walks the player', walked, `${moved.toFixed(1)} m`);
   check('camera swings round behind the player by itself', Math.abs(after.yaw - before.yaw) > 0.15, `yaw ${(after.yaw - before.yaw).toFixed(2)}`);
 
   // A second finger turns the camera while the thumb keeps walking.
@@ -159,9 +159,14 @@ try {
   await skiTouch('touchMove', [{ ...thumb, x: thumb.x + 70 }]);
   check('thumb right turns the skis right', await settle((h) => window.__gore.state().heading < h - 0.5, beforeTurn.heading));
   check('camera follows the skis round', await settle((y) => window.__gore.state().yaw < y - 0.3, beforeTurn.yaw));
-  // Thumb down: snowplough to a stop.
+  // Let go and build some speed again, then thumb down: a hockey stop.
+  await skiTouch('touchEnd', []);
+  await sp.evaluate(() => window.__gore.face(window.__gore.state().fallLineYaw));
+  await settle(() => window.__gore.state().speed > 6);
+  await skiTouch('touchStart', [thumb]);
   await skiTouch('touchMove', [{ ...thumb, y: thumb.y + 70 }]);
-  check('thumb down brakes to a stop', await settle(() => window.__gore.state().speed === 0));
+  check('thumb down swings the skis sideways', await settle(() => Math.abs(window.__gore.state().slip) > 1));
+  check('and brings the skier to a stop', await settle(() => window.__gore.state().speed === 0));
   // Still holding the thumb to one side at a standstill: turn on the spot, and the camera follows.
   const stopped = await skiState();
   await skiTouch('touchMove', [{ ...thumb, x: thumb.x - 70, y: thumb.y + 70 }]);

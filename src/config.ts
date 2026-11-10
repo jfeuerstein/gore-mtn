@@ -30,13 +30,13 @@ export interface Config {
 
 export const DEFAULTS: Config = {
   renderer: 'webgpu',
-  // Measured on the owner's iPhone 17 Pro (see docs/game-plan.md): these hold a steady 60 fps
-  // with room to spare, as do 80,000 trees and a pixel ratio of 3.
-  trees: 40000,
+  // Sized for the owner's iPhone 17 Pro, which held 60 fps with wide margins when measured (see
+  // docs/game-plan.md). Distant trees and terrain are drawn in simpler forms.
+  trees: 100000,
   dpr: 2,
   shadows: true,
-  stride: 2,
-  viewDist: 1500,
+  stride: 1,
+  viewDist: 2600,
   at: 'base-lodge',
   pos: null,
   yaw: null,
@@ -76,7 +76,7 @@ export function parseConfig(search: string): Config {
       : null;
   return {
     renderer: q.get('renderer') === 'webgl' ? 'webgl' : d.renderer,
-    trees: Math.round(num(q.get('trees'), d.trees, 0, 200000)),
+    trees: Math.round(num(q.get('trees'), d.trees, 0, 300000)),
     dpr: num(q.get('dpr'), d.dpr, 0.5, 3),
     shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),

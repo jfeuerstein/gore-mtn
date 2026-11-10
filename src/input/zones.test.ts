@@ -5,15 +5,16 @@ describe('touchRole', () => {
   const W = 402;
   const H = 874;
 
-  it('uses the lower half of an upright phone for the stick, anywhere across its width', () => {
+  it('uses the bottom third of an upright phone for the stick, anywhere across its width', () => {
     expect(touchRole(40, 700, W, H, false)).toBe('stick');
     expect(touchRole(360, 700, W, H, false)).toBe('stick');
-    expect(touchRole(200, 450, W, H, false)).toBe('stick');
+    expect(touchRole(200, 590, W, H, false)).toBe('stick');
   });
 
-  it('uses the upper half of an upright phone for the camera', () => {
+  it('uses the rest of an upright phone for the camera', () => {
     expect(touchRole(200, 150, W, H, false)).toBe('look');
     expect(touchRole(200, 420, W, H, false)).toBe('look');
+    expect(touchRole(200, 560, W, H, false)).toBe('look');
   });
 
   it('gives a second finger the camera while the stick is held', () => {

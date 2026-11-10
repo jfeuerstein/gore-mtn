@@ -7,11 +7,19 @@
   color: var(--ink);
 }
 
+/* --app-height is set by fillScreen() in main.ts when iOS lays the page out short of the screen. */
+html {
+  min-height: var(--app-height, 100%);
+}
+
 html,
 body {
   margin: 0;
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--app-height, 100%);
   overflow: hidden;
   background: #e6edf7;
   overscroll-behavior: none;

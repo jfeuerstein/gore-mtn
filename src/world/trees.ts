@@ -5,7 +5,12 @@ import { blocksSightLine, type Point3 } from './occlusion';
 import type { World } from './world';
 
 /** Trees are grouped into square patches this many metres across so far patches can be skipped. */
-const PATCH_SIZE = 128;
+const PATCH_SIZE = 160;
+/** Patches further than this from the camera are drawn with a five-triangle tree. */
+const LOD_DISTANCE = 380;
+/** Beyond these distances a patch draws only a share of its trees; they overlap too much to tell. */
+const THIN_HALF = 900;
+const THIN_THIRD = 1500;
 const MAX_TREE_SLOPE_DEG = 50;
 /** Unscaled size of the tree model. */
 const TREE_HEIGHT = 3.6;
@@ -17,7 +22,10 @@ const DUCKED = 0.16;
 const DUCK_RATE = 9;
 
 export interface TreePatch {
+  /** Full tree, for patches near the camera. Its instance matrices are shared with `far`. */
   mesh: THREE.InstancedMesh;
+  /** Simple tree, for distant patches. */
+  far: THREE.InstancedMesh;
   centerX: number;
   centerZ: number;
   radius: number;
@@ -63,6 +71,42 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
+/** A distant fir: one five-sided cone. 5 triangles. */
+export function buildFarTreeGeometry(): THREE.BufferGeometry {
+  const base = new THREE.Color(0x24463a);
+  const tip = new THREE.Color(0x86a79c);
+  const pos: number[] = [];
+  const col: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    const a0 = (i / 5) * Math.PI * 2;
+    const a1 = ((i + 1) / 5) * Math.PI * 2;
+    pos.push(Math.cos(a0) * TREE_RADIUS, 0.4, Math.sin(a0) * TREE_RADIUS, 0, TREE_HEIGHT, 0, Math.cos(a1) * TREE_RADIUS, 0.4, Math.sin(a1) * TREE_RADIUS);
+    col.push(base.r, base.g, base.b, tip.r, tip.g, tip.b, base.r, base.g, base.b);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * How readily trees grow at a distance from the nearest groomed trail, 0..1.
+ * Nothing grows on a trail or within a couple of metres of its edge. Just beyond that the forest
+ * is at its thickest, so each trail reads as a corridor cut through the trees. Deeper in, it thins
+ * to an open wood.
+ */
+export function treeDensity(distanceToTrail: number): number {
+  const CLEAR = 2.5;
+  const WALL_END = 16;
+  const DEEP = 34;
+  const DEEP_DENSITY = 0.42;
+  if (distanceToTrail < CLEAR) return 0;
+  if (distanceToTrail <= WALL_END) return 1;
+  if (distanceToTrail >= DEEP) return DEEP_DENSITY;
+  return 1 - ((distanceToTrail - WALL_END) / (DEEP - WALL_END)) * (1 - DEEP_DENSITY);
+}
+
 interface Tree extends Point3 {
   patch: number;
   /** Index of this tree within its patch's instanced mesh. */
@@ -105,8 +149,21 @@ export class Forest {
   finishPatch(patch: TreePatch): void {
     this.patches.push(patch);
     this.base.push(Float32Array.from(patch.mesh.instanceMatrix.array));
-    this.group.add(patch.mesh);
+    this.group.add(patch.mesh, patch.far);
     this.count += patch.mesh.count;
+  }
+
+  /** Show each patch at the right detail for its distance, or not at all beyond `viewDist`. */
+  cull(camX: number, camZ: number, viewDist: number): void {
+    for (const p of this.patches) {
+      const dist = Math.hypot(p.centerX - camX, p.centerZ - camZ) - p.radius;
+      const shown = dist < viewDist;
+      p.mesh.visible = shown && dist < LOD_DISTANCE;
+      p.far.visible = shown && !p.mesh.visible;
+      // Trees within a patch are in shuffled order, so the first n are an even sample of it.
+      const share = dist < THIN_HALF ? 1 : dist < THIN_THIRD ? 0.5 : 1 / 3;
+      p.far.count = Math.max(1, Math.round(p.mesh.count * share));
+    }
   }
 
   /** Shrink trees that hide the player from the camera, and regrow the ones that no longer do. */
@@ -155,27 +212,30 @@ export class Forest {
 }
 
 /**
- * Scatter about `target` trees over every part of the mountain that is not a groomed trail and
- * not too steep. Placement is seeded, so the forest is identical on every load.
+ * Scatter about `target` trees over the mountain, thickest along the trail edges and absent from
+ * the trails and from slopes too steep to hold them. Placement is seeded, so the forest is
+ * identical on every load.
  */
 export function buildTrees(hf: Heightfield, world: World, target: number, castShadow: boolean): Forest {
   const forest = new Forest();
   forest.group.name = 'trees';
   if (target <= 0) return forest;
 
-  const growsAt = (x: number, z: number) => !world.onTrail(x, z) && hf.slopeDegAt(x, z) < MAX_TREE_SLOPE_DEG;
+  const densityAt = (x: number, z: number): number =>
+    hf.slopeDegAt(x, z) < MAX_TREE_SLOPE_DEG ? treeDensity(world.trailDistance(x, z)) : 0;
 
-  // Estimate how much of the map can hold trees, then pick the spacing that lands near the target.
+  // Candidate spots are laid on a jittered grid and each is kept with a chance equal to the local
+  // density. Estimate the average density first, then pick the grid spacing that lands near the
+  // target count.
   const probe = makeRng(7);
-  let ok = 0;
-  const PROBES = 4000;
-  for (let i = 0; i < PROBES; i++) {
-    if (growsAt(hf.minX + probe() * hf.width, hf.minZ + probe() * hf.depth)) ok++;
-  }
-  const growable = Math.max(0.05, ok / PROBES);
-  const spacing = Math.sqrt((hf.width * hf.depth * growable) / target);
+  let sum = 0;
+  const PROBES = 6000;
+  for (let i = 0; i < PROBES; i++) sum += densityAt(hf.minX + probe() * hf.width, hf.minZ + probe() * hf.depth);
+  const average = Math.max(0.02, sum / PROBES);
+  const spacing = Math.sqrt((hf.width * hf.depth * average) / target);
 
   const geometry = buildTreeGeometry();
+  const farGeometry = buildFarTreeGeometry();
   const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   const rng = makeRng(1934);
   const m = new THREE.Matrix4();
@@ -195,7 +255,8 @@ export function buildTrees(hf: Heightfield, world: World, target: number, castSh
           const tz = z + rng() * spacing;
           const scale = 1.1 + rng() * 0.9;
           const turn = rng() * Math.PI * 2;
-          if (tx >= x1 || tz >= z1 || !growsAt(tx, tz)) continue;
+          const chance = rng();
+          if (tx >= x1 || tz >= z1 || chance >= densityAt(tx, tz)) continue;
           const scaleY = scale * (0.9 + rng() * 0.3);
           p.set(tx, hf.heightAt(tx, tz) - 0.1, tz);
           q.setFromAxisAngle(up, turn);
@@ -204,6 +265,13 @@ export function buildTrees(hf: Heightfield, world: World, target: number, castSh
         }
       }
       if (placed.length === 0) continue;
+      // Shuffle (seeded), so that drawing only the first part of a patch thins it evenly.
+      for (let i = placed.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const t = placed[i] as (typeof placed)[number];
+        placed[i] = placed[j] as (typeof placed)[number];
+        placed[j] = t;
+      }
       const mesh = new THREE.InstancedMesh(geometry, material, placed.length);
       const patchIndex = forest.patches.length;
       placed.forEach((t, i) => {
@@ -214,8 +282,13 @@ export function buildTrees(hf: Heightfield, world: World, target: number, castSh
       mesh.computeBoundingSphere();
       mesh.castShadow = castShadow;
       mesh.matrixAutoUpdate = false;
+      // The distant version draws the same trees from the same matrices, and casts no shadow.
+      const far = new THREE.InstancedMesh(farGeometry, material, placed.length);
+      far.instanceMatrix = mesh.instanceMatrix;
+      far.boundingSphere = mesh.boundingSphere;
+      far.matrixAutoUpdate = false;
       const sphere = mesh.boundingSphere as THREE.Sphere;
-      forest.finishPatch({ mesh, centerX: sphere.center.x, centerZ: sphere.center.z, radius: sphere.radius });
+      forest.finishPatch({ mesh, far, centerX: sphere.center.x, centerZ: sphere.center.z, radius: sphere.radius });
     }
   }
   return forest;

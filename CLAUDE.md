@@ -21,9 +21,11 @@ npm run world        # regenerate public/world/ from USGS and OpenStreetMap (nee
 node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game (upright phone size)
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
+node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
 ```
 
-Run `npm test`, `npm run build` and `node tools/touch-check.mjs` before pushing. Every push deploys
+Run `npm test`, `npm run build`, `node tools/touch-check.mjs` and `node tools/webgpu-smoke.mjs`
+before pushing. Every push deploys
 to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 
 ## How to work here
@@ -31,10 +33,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - **Look at what you build.** Take a screenshot with `tools/shot.mjs` after any visual change and
   read it. Headless Chromium uses software WebGL, so its frame rates are meaningless; only the
   phone's numbers count.
+- **The phone renders with WebGPU; the tools cannot show it.** Headless Chromium here starts
+  WebGPU but cannot present it, so screenshots and checks run the WebGL 2 path, and
+  `tools/webgpu-smoke.mjs` only confirms the first WebGPU frames raise no errors. Prefer plain
+  three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
+  the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
-- **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`.
+- **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`,
+  including `ground.png`, the snow's colour (bright trails, shaded edges).
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
   OpenStreetMap, not memory.
 - **Content is data.** Trails, lifts, places, and later minerals and stamps live in data files with
@@ -48,12 +56,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 
 ## Skiing
 
-- The simulation is `src/player/skiPhysics.ts`: pure, fixed-step, tested. All tuning numbers are in
-  `SKI` there. Change feel by changing those, then check the tests still describe what you want.
+- The simulation is `src/player/skiPhysics.ts`: pure, fixed-step, tested. The skier's velocity and
+  the way the skis point are separate: edges pull the path into line with the skis up to a limit
+  (carving), beyond which the skis drift (momentum), and braking swings the skis broadside (hockey
+  stop). All tuning numbers are in `SKI` there. Change feel by changing those, then check the
+  tests still describe what you want.
 - `SKI_REPORT=1 npx vitest run src/player/skiPhysics.test.ts --reporter=verbose` skis a robot down
   real trails and prints length, time and speed for each. Use it to judge a tuning change before
   the owner tries it.
-- One thumb: left and right steer, up tucks (and poles from a standstill), down brakes.
+- One thumb: left and right steer, up tucks (and poles from a standstill), down is a hockey stop.
+- The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
   backwards.
 
@@ -74,6 +86,7 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 - Everything must be playable with one thumb. A second finger may add convenience, never necessity.
 - Things to read go at the top; things to press go in the bottom third, at least 44 points tall;
   menus are bottom sheets. Respect the safe-area insets.
+- The bottom third of the screen is the movement stick; everything above turns the camera.
 - The camera sits well back and high, so the player is small (about 7% of the screen height) and
   sits just below the middle, above where the thumb rests. Framing
   and lens come from `framingFor()` in `src/player/cameraMath.ts`; touch zones from
@@ -84,7 +97,8 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 ## Conventions
 
 - Coordinates: +x east, +z south, +y up, in game metres. The world is centred on the origin.
-- Scale: 1:5 horizontal, 1:3 vertical against the real mountain (set in the terrain script).
+- Scale: 1:3 horizontal, 1:2 vertical against the real mountain (set in the terrain script). The
+  world is about 2.2 by 1.7 km with 400 m of relief.
 - Camera yaw 0 looks north (-z); positive yaw turns left.
 - Placement is seeded (`src/rng.ts`) so the world is identical on every load.
 - No secrets in the repo. The fal key lives in environment secrets or a gitignored `.env`.
@@ -94,7 +108,8 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
 
-Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app): a steady 60 fps at every
+The world has since grown (100,000 trees, full-detail terrain near the camera) and has not been
+re-measured. Measured before that on the owner's iPhone 17 Pro (2026-11-10, Home Screen app): a steady 60 fps at every
 benchmark step, up to 80,000 trees (427k triangles), with shadows, and at pixel ratio 3, using
 about 2 ms of CPU per frame. WebGPU and WebGL 2 performed the same. The budget above is kept as a
 deliberately cautious target so there is room for effects, and for heat and battery over a long

@@ -8,7 +8,7 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
 import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
-import { buildTerrain } from './world/terrainMesh';
+import { Terrain } from './world/terrainMesh';
 import { trailAt, type Place } from './world/trails';
 import { buildTrees } from './world/trees';
 import { loadWorld } from './world/world';
@@ -55,7 +55,25 @@ function showFatal(message: string): void {
 window.addEventListener('error', (e) => showFatal(String(e.error?.stack ?? e.message)));
 window.addEventListener('unhandledrejection', (e) => showFatal(String(e.reason?.stack ?? e.reason)));
 
+/**
+ * Launched from the Home Screen, iOS can lay the page out shorter than the screen by the height
+ * of the status bar while still drawing it from the very top, which leaves an empty bar along the
+ * bottom. When that happens, size the game to the screen itself.
+ */
+function fillScreen(): void {
+  const standalone =
+    (navigator as { standalone?: boolean }).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+  const upright = window.innerHeight >= window.innerWidth;
+  const full = upright ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
+  const root = document.documentElement;
+  if (standalone && window.innerHeight < full - 1) root.style.setProperty('--app-height', `${full}px`);
+  else root.style.removeProperty('--app-height');
+}
+
 async function boot(): Promise<void> {
+  fillScreen();
+  window.addEventListener('resize', fillScreen);
+  window.addEventListener('orientationchange', fillScreen);
   const cfg = parseConfig(location.search);
   const canvas = document.getElementById('game') as HTMLCanvasElement;
 
@@ -89,7 +107,8 @@ async function boot(): Promise<void> {
   }
   scene.add(sun, sun.target);
 
-  const terrain = buildTerrain(ground, world);
+  const groundTexture = await new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}world/ground.png`);
+  const terrain = new Terrain(ground, world, groundTexture);
   const trees = buildTrees(ground, world, cfg.trees, cfg.shadows);
   scene.add(terrain.group, trees.group, buildLifts(ground, world), buildPlaces(world));
 
@@ -108,7 +127,11 @@ async function boot(): Promise<void> {
     const dx = lookAt.x - place.x;
     const dz = lookAt.z - place.z;
     const len = Math.hypot(dx, dz) || 1;
-    player.place(place.x + (dx / len) * 20, place.z + (dz / len) * 20, ground);
+    const px = place.x + (dx / len) * 20;
+    const pz = place.z + (dz / len) * 20;
+    // Start on groomed snow where there is some nearby, not in the trees.
+    const spot = world.nearestTrailSpot(px, pz, 90) ?? { x: px, z: pz };
+    player.place(spot.x, spot.z, ground);
     follow.faceToward(player.position.x, player.position.z, lookAt.x, lookAt.z);
     player.face(follow.yaw);
   };
@@ -158,14 +181,8 @@ async function boot(): Promise<void> {
   let frames = 0;
 
   const cull = (): void => {
-    const cx = camera.position.x;
-    const cz = camera.position.z;
-    for (const t of terrain.tiles) {
-      t.mesh.visible = Math.hypot(t.centerX - cx, t.centerZ - cz) - t.radius < cfg.viewDist;
-    }
-    for (const p of trees.patches) {
-      p.mesh.visible = Math.hypot(p.centerX - cx, p.centerZ - cz) - p.radius < cfg.viewDist;
-    }
+    terrain.cull(camera.position.x, camera.position.z, cfg.viewDist);
+    trees.cull(camera.position.x, camera.position.z, cfg.viewDist);
   };
 
   window.__gore.state = () => ({
@@ -178,6 +195,7 @@ async function boot(): Promise<void> {
     mode: player.mode,
     speed: player.speed,
     heading: player.travelHeading,
+    slip: player.slip,
     fallLineYaw: fallLineYaw(ground, player.position.x, player.position.z),
     fps: stats.summary().fps,
     drawCalls: renderer.info.render.drawCalls,
@@ -218,7 +236,7 @@ async function boot(): Promise<void> {
         : Math.min(1, Math.hypot(input.moveX, input.moveY));
     follow.follow(player.travelHeading, followAmount, dt, player.mode === 'ski');
     if (bench) follow.yaw = bench.yawAt(now);
-    follow.update(player.position, ground);
+    follow.update(player.position, ground, player.speed, dt);
     trees.update(player.position, camera.position, dt);
     sky.position.copy(camera.position);
     sun.target.position.copy(player.position);

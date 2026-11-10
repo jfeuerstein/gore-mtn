@@ -1,6 +1,16 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
-import { advanceSki, descentAlong, stickToSki, type SkiInput, type SkiState } from './skiPhysics';
+import {
+  advanceSki,
+  descentAlong,
+  skierAt,
+  slipAngle,
+  speedOf,
+  stickToSki,
+  travelYaw,
+  type SkiInput,
+  type SkiState,
+} from './skiPhysics';
 
 /**
  * Brisk for a figure this size, on purpose: the mountain is big, the camera sits well back, and a
@@ -25,6 +35,8 @@ export class Player {
   /** Direction of travel as a yaw, in the same convention as the camera. */
   travelHeading = 0;
   private heading = 0;
+  /** Velocity and lean while on skis. */
+  private skiState: SkiState = skierAt(0, 0, 0);
   private lean = 0;
   private crouch = 0;
   private readonly body = new THREE.Group();
@@ -60,10 +72,20 @@ export class Player {
     });
   }
 
+  /** Angle between the skis and the direction of travel: near 0 carving, near ±PI/2 in a hockey stop. */
+  get slip(): number {
+    return this.mode === 'ski' ? slipAngle(this.skiState) : 0;
+  }
+
   /** Put the player on the ground at a position, standing still. */
   place(x: number, z: number, hf: Heightfield): void {
     this.position.set(x, hf.heightAt(x, z), z);
+    this.stop();
+  }
+
+  private stop(): void {
     this.speed = 0;
+    this.skiState = skierAt(this.position.x, this.position.z, this.heading);
   }
 
   /** Turn to face the same way as a camera with this yaw. */
@@ -71,12 +93,14 @@ export class Player {
     this.heading = yaw;
     this.travelHeading = yaw;
     this.object.rotation.y = yaw;
+    this.stop();
   }
 
   /** Clip into or out of skis. Either way the player starts from a standstill. */
   setMode(mode: Mode): void {
     this.mode = mode;
-    this.speed = 0;
+    this.stop();
+    this.travelHeading = this.heading;
     this.skis.visible = mode === 'ski';
     if (mode === 'walk') {
       this.lean = 0;
@@ -129,21 +153,28 @@ export class Player {
   }
 
   private ski(dt: number, input: SkiInput, hf: Heightfield, groomedAt: (x: number, z: number) => boolean): void {
-    const before: SkiState = { x: this.position.x, z: this.position.z, heading: this.heading, speed: this.speed };
-    const after = advanceSki(before, input, hf, groomedAt, dt);
+    const before = this.position.clone();
+    const after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt);
     const x = Math.min(Math.max(after.x, hf.minX + 1), hf.maxX - 1);
     const z = Math.min(Math.max(after.z, hf.minZ + 1), hf.maxZ - 1);
     // Running into the edge of the map is a stop, not a slide along it.
-    this.speed = x === after.x && z === after.z ? after.speed : 0;
+    this.skiState = x === after.x && z === after.z ? after : skierAt(x, z, after.heading);
     this.heading = after.heading;
-    this.travelHeading = after.heading;
     this.position.set(x, hf.heightAt(x, z), z);
+    // Speed down the slope, not just across the map.
+    this.speed = dt > 0 ? this.position.distanceTo(before) / dt : 0;
 
-    // Pose: nose follows the slope, body leans into the turn and sinks into a tuck.
+    // The camera follows where the skier is going, which in a hockey stop is not where the skis
+    // point. At a standstill it follows the skis, so stepping round shows the new view.
+    const ground = speedOf(this.skiState);
+    this.travelHeading = ground > 1.5 ? travelYaw(this.skiState) : ground < 0.1 ? this.heading : this.travelHeading;
+
+    // Pose: nose follows the slope; the body tips into a carve, away from a skid, and sinks in a tuck.
     const ease = Math.min(1, dt * 8);
-    const carving = Math.min(1, this.speed / 6);
-    this.lean += (-input.steer * 0.38 * carving - this.lean) * ease;
-    this.crouch += (Math.max(input.tuck, input.brake * 0.4) - this.crouch) * ease;
+    const sideways = ground > 0.5 ? (this.skiState.vx * Math.cos(this.heading) - this.skiState.vz * Math.sin(this.heading)) / ground : 0;
+    const want = -this.skiState.lean * 0.34 * Math.min(1, ground / 6) + sideways * 0.5 * Math.min(1, ground / 5);
+    this.lean += (want - this.lean) * ease;
+    this.crouch += (Math.max(input.tuck, input.brake * 0.5) - this.crouch) * ease;
     this.object.rotation.set(-Math.asin(descentAlong(hf, x, z, this.heading)), this.heading, this.lean);
     this.body.scale.y = 1 - 0.22 * this.crouch;
   }

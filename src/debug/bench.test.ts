@@ -4,13 +4,16 @@ import { BENCH_STEPS, benchSearch, DEFAULT_BENCH_SECONDS, formatBench, type Benc
 import { summarize } from './perf';
 
 describe('benchmark steps', () => {
-  it('compares the two renderers at the same loads', () => {
-    const key = (renderer: string | undefined, trees: string | undefined) =>
-      BENCH_STEPS.some((s) => !s.hudLive && s.params.renderer === renderer && s.params.trees === trees && Object.keys(s.params).length === (renderer ? 1 : 0) + (trees ? 1 : 0));
-    expect(key(undefined, undefined)).toBe(true);
-    expect(key('webgl', undefined)).toBe(true);
-    expect(key(undefined, '40000')).toBe(true);
-    expect(key('webgl', '40000')).toBe(true);
+  it('compares the two renderers at the default load', () => {
+    const only = (params: Record<string, string>) => BENCH_STEPS.some((s) => JSON.stringify(s.params) === JSON.stringify(params));
+    expect(only({})).toBe(true);
+    expect(only({ renderer: 'webgl' })).toBe(true);
+  });
+
+  it('brackets the default tree count from both sides', () => {
+    const counts = BENCH_STEPS.map((s) => Number(s.params.trees ?? 100000));
+    expect(Math.min(...counts)).toBeLessThan(100000);
+    expect(Math.max(...counts)).toBeGreaterThan(100000);
   });
 
   it('gives every step a distinct label', () => {
@@ -22,11 +25,12 @@ describe('benchmark steps', () => {
       const cfg = parseConfig(benchSearch(i, DEFAULT_BENCH_SECONDS));
       expect(cfg.bench).toBe(i);
       expect(cfg.benchSeconds).toBe(DEFAULT_BENCH_SECONDS);
-      expect(cfg.at).toBe('saddle-lodge');
+      expect(cfg.at).toBe(step.params.at ?? 'saddle-lodge');
       expect(cfg.renderer).toBe(step.params.renderer === 'webgl' ? 'webgl' : 'webgpu');
-      expect(cfg.trees).toBe(Number(step.params.trees ?? 10000));
-      expect(cfg.shadows).toBe(step.params.shadows === '1');
-      expect(cfg.viewDist).toBe(Number(step.params.view ?? 1500));
+      expect(cfg.trees).toBe(Number(step.params.trees ?? 100000));
+      expect(cfg.shadows).toBe(step.params.shadows !== '0');
+      expect(cfg.stride).toBe(Number(step.params.stride ?? 1));
+      expect(cfg.viewDist).toBe(Number(step.params.view ?? 2600));
     });
     expect(parseConfig(benchSearch(0, 0.5)).benchSeconds).toBe(0.5);
     expect(() => benchSearch(BENCH_STEPS.length, 5)).toThrow();

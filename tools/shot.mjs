@@ -8,11 +8,9 @@
 //
 // Serves dist/ with Vite's preview server, opens it in headless Chromium (software WebGL, so
 // frame rates mean nothing here), waits until the game reports ready, and prints its state.
-import { createRequire } from 'node:module';
 import { preview } from 'vite';
+import { launchBrowser } from './browser.mjs';
 
-// Resolved with require() so a globally installed Playwright (as in cloud sessions) is found too.
-const { chromium } = createRequire(import.meta.url)('playwright');
 
 const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1'] = process.argv.slice(2);
 
@@ -20,9 +18,7 @@ const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel
 const address = server.httpServer.address();
 const url = `http://127.0.0.1:${address.port}/?${query}`;
 
-const browser = await chromium.launch({
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
-});
+const browser = await launchBrowser();
 let failed = false;
 try {
   const page = await browser.newPage({

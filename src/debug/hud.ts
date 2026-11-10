@@ -47,7 +47,7 @@ const OPTIONS: OptionGroup[] = [
     title: 'Trees',
     param: 'trees',
     current: (c) => String(c.trees),
-    options: ['0', '10000', '20000', '40000', '80000'].map((v) => ({
+    options: ['0', '25000', '50000', '100000', '150000'].map((v) => ({
       label: v === '0' ? 'None' : `${Number(v) / 1000}k`,
       value: v,
     })),
@@ -72,9 +72,8 @@ const OPTIONS: OptionGroup[] = [
     param: 'stride',
     current: (c) => String(c.stride),
     options: [
-      { label: 'High', value: '1' },
-      { label: 'Medium', value: '2' },
-      { label: 'Low', value: '4' },
+      { label: 'Full', value: '1' },
+      { label: 'Half', value: '2' },
     ],
   },
   {
@@ -82,9 +81,9 @@ const OPTIONS: OptionGroup[] = [
     param: 'view',
     current: (c) => String(c.viewDist),
     options: [
-      { label: '400 m', value: '400' },
       { label: '700 m', value: '700' },
-      { label: 'Whole mountain', value: '1500' },
+      { label: '1,300 m', value: '1300' },
+      { label: 'Whole mountain', value: '2600' },
     ],
   },
 ];

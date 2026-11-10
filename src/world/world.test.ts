@@ -51,6 +51,24 @@ describe('generated world', () => {
     for (const l of world.lifts) expect(h(l.pts, 0), String(l.name)).toBeLessThanOrEqual(h(l.pts, -2));
   });
 
+  it('finds groomed snow near each lodge on the mountain, and none in town', () => {
+    for (const id of ['base-lodge', 'saddle-lodge', 'summit', 'ski-bowl-lodge']) {
+      const p = place(id);
+      const spot = world.nearestTrailSpot(p.x, p.z, 90);
+      expect(spot, id).not.toBeNull();
+      if (spot) {
+        expect(world.onTrail(spot.x, spot.z)).toBe(true);
+        expect(world.trailDistance(spot.x, spot.z)).toBe(0);
+        expect(Math.hypot(spot.x - p.x, spot.z - p.z)).toBeLessThanOrEqual(90);
+      }
+    }
+    expect(world.nearestTrailSpot(place('depot').x, place('depot').z, 90)).toBeNull();
+  });
+
+  it('measures distance to the nearest trail', () => {
+    expect(world.trailDistance(world.source.minX + 5, world.source.minZ + 5)).toBeGreaterThan(100);
+  });
+
   it('marks groomed trails in the mask and leaves forest unmarked', () => {
     const sunway = world.trails.find((t) => t.name === 'Sunway' && !t.area);
     if (!sunway) throw new Error('no Sunway centre line');

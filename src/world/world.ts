@@ -1,3 +1,4 @@
+import { distanceToMask } from './distance';
 import { Heightfield } from './heightfield';
 import type { Lift, Place, Trail } from './trails';
 
@@ -25,6 +26,13 @@ export interface World {
   realElevationM(y: number): number;
   /** True when the position is on a groomed trail. */
   onTrail(x: number, z: number): boolean;
+  /** Metres to the nearest groomed trail; zero on one. */
+  trailDistance(x: number, z: number): number;
+  /**
+   * The closest spot to a position that is well inside a groomed trail, or null if there is none
+   * within `reach` metres.
+   */
+  nearestTrailSpot(x: number, z: number, reach: number): { x: number; z: number } | null;
 }
 
 async function fetchBuffer(url: string): Promise<ArrayBuffer> {
@@ -55,6 +63,7 @@ export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: Arr
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = (raw[i] as number) * heightStep;
   const source = new Heightfield(cols, rows, cell, -width / 2, -depth / 2, heights);
+  const trailDist = distanceToMask(trailMask, cols, rows, cell);
 
   return {
     source,
@@ -69,6 +78,34 @@ export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: Arr
       const r = Math.round((z - source.originZ) / cell);
       if (c < 0 || r < 0 || c >= cols || r >= rows) return false;
       return (trailMask[r * cols + c] as number) > 0;
+    },
+    nearestTrailSpot(x, z, reach) {
+      const c0 = Math.round((x - source.originX) / cell);
+      const r0 = Math.round((z - source.originZ) / cell);
+      const span = Math.ceil(reach / cell);
+      const groomed = (c: number, r: number): boolean =>
+        c >= 0 && r >= 0 && c < cols && r < rows && (trailMask[r * cols + c] as number) > 0;
+      let best: { x: number; z: number } | null = null;
+      let bestDist = reach;
+      for (let r = r0 - span; r <= r0 + span; r++) {
+        for (let c = c0 - span; c <= c0 + span; c++) {
+          // Well inside: groomed here and one sample away in every direction.
+          if (!groomed(c, r) || !groomed(c - 1, r) || !groomed(c + 1, r) || !groomed(c, r - 1) || !groomed(c, r + 1)) continue;
+          const px = source.originX + c * cell;
+          const pz = source.originZ + r * cell;
+          const d = Math.hypot(px - x, pz - z);
+          if (d < bestDist) {
+            bestDist = d;
+            best = { x: px, z: pz };
+          }
+        }
+      }
+      return best;
+    },
+    trailDistance(x, z) {
+      const c = Math.min(cols - 1, Math.max(0, Math.round((x - source.originX) / cell)));
+      const r = Math.min(rows - 1, Math.max(0, Math.round((z - source.originZ) / cell)));
+      return trailDist[r * cols + c] as number;
     },
   };
 }
