@@ -76,7 +76,7 @@ export class FollowCamera {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
     }
-    this.target.set(follow.x, follow.y + 1.5, follow.z);
+    this.target.set(follow.x, follow.y + 1.1, follow.z);
     const flat = Math.cos(this.pitch) * distance;
     const cam = this.camera.position;
     cam.set(

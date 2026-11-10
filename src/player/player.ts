@@ -20,6 +20,9 @@ export const WALK_SPEED = 7.5;
 /** Debug travel speed, for crossing the mountain quickly. */
 export const FAST_SPEED = 40;
 
+/** The figure is modelled 1.9 m tall and drawn at this scale: about 1.4 m in the game's world. */
+export const PLAYER_SCALE = 0.75;
+
 export type Mode = 'walk' | 'ski';
 
 /**
@@ -64,6 +67,8 @@ export class Player {
     }
     this.skis.visible = false;
 
+    // Small against the trails, as a person is on a real mountain.
+    this.object.scale.setScalar(PLAYER_SCALE);
     // Yaw first, then pitch to the slope, then lean into the turn.
     this.object.rotation.order = 'YXZ';
     this.object.add(this.body, this.skis);

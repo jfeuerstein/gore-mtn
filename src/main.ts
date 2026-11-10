@@ -48,7 +48,7 @@ function showFatal(message: string): void {
   if (!el) {
     el = document.createElement('div');
     el.id = 'fatal';
-    document.body.appendChild(el);
+    (document.getElementById('app') ?? document.body).appendChild(el);
   }
   el.textContent = `Something went wrong.\n\n${message}`;
 }
@@ -57,8 +57,8 @@ window.addEventListener('unhandledrejection', (e) => showFatal(String(e.reason?.
 
 /**
  * Launched from the Home Screen, iOS can lay the page out shorter than the screen by the height
- * of the status bar while still drawing it from the very top, which leaves an empty bar along the
- * bottom. When that happens, size the game to the screen itself.
+ * of the status bar while still showing the whole screen, which leaves an empty bar along the
+ * bottom. When that happens, size the game to the screen itself. See the note in style.css.
  */
 function fillScreen(): void {
   const standalone =
@@ -66,8 +66,13 @@ function fillScreen(): void {
   const upright = window.innerHeight >= window.innerWidth;
   const full = upright ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
   const root = document.documentElement;
-  if (standalone && window.innerHeight < full - 1) root.style.setProperty('--app-height', `${full}px`);
-  else root.style.removeProperty('--app-height');
+  if (standalone && window.innerHeight < full - 1) {
+    root.style.setProperty('--app-height', `${full}px`);
+    root.style.setProperty('--app-extra', `${full - window.innerHeight}px`);
+  } else {
+    root.style.removeProperty('--app-height');
+    root.style.removeProperty('--app-extra');
+  }
 }
 
 async function boot(): Promise<void> {

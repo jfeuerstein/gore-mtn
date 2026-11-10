@@ -39,7 +39,8 @@ try {
     await page.waitForTimeout(600);
     console.log(JSON.stringify(await page.evaluate(() => window.__gore.state())));
   }
-  await page.screenshot({ path: out });
+  // Software rendering can take seconds per frame at full size, so allow well over the default.
+  await page.screenshot({ path: out, timeout: 180000 });
   console.error(`saved ${out}`);
 } finally {
   await browser.close();

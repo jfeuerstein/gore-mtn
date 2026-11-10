@@ -101,7 +101,8 @@ export function deviceLabel(): string {
   probe.remove();
   return (
     `${installed ? 'Home Screen app' : 'browser tab'}, screen ${screen.width}x${screen.height}, ` +
-    `page ${window.innerWidth}x${window.innerHeight}, insets top/bottom ${insets} | ${navigator.userAgent}`
+    `page ${window.innerWidth}x${window.innerHeight}, game ${document.getElementById('app')?.clientHeight ?? 0} tall, ` +
+    `insets top/bottom ${insets} | ${navigator.userAgent}`
   );
 }
 

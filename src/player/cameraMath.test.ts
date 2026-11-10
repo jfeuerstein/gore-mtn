@@ -41,8 +41,8 @@ describe('framingFor', () => {
 
   it('keeps the player small on an upright phone so a thumb hides little', () => {
     const f = framingFor(402 / 874);
-    // Share of the screen height taken by a 1.9 m figure at the camera distance.
-    const share = 1.9 / (2 * f.distance * Math.tan((f.fovDeg * Math.PI) / 360));
+    // Share of the screen height taken by the figure (about 1.4 m) at the camera distance.
+    const share = 1.425 / (2 * f.distance * Math.tan((f.fovDeg * Math.PI) / 360));
     expect(share).toBeLessThan(0.08);
     expect(share).toBeGreaterThan(0.04);
   });

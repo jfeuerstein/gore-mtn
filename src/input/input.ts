@@ -34,7 +34,7 @@ export class Input {
     this.knob.className = 'stick-knob';
     this.base.appendChild(this.knob);
     this.base.hidden = true;
-    document.body.appendChild(this.base);
+    (surface.parentElement ?? document.body).appendChild(this.base);
 
     surface.addEventListener('pointerdown', this.onDown);
     surface.addEventListener('pointermove', this.onMove);
@@ -85,7 +85,7 @@ export class Input {
     const role =
       e.pointerType === 'mouse'
         ? 'look'
-        : touchRole(e.clientX, e.clientY, window.innerWidth, window.innerHeight, this.stickId !== null);
+        : touchRole(e.clientX, e.clientY, this.surface.clientWidth, this.surface.clientHeight, this.stickId !== null);
     if (role === 'stick') {
       this.stickId = e.pointerId;
       this.stickOrigin = { x: e.clientX, y: e.clientY };

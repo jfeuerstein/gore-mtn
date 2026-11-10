@@ -7,27 +7,46 @@
   color: var(--ink);
 }
 
-/* --app-height is set by fillScreen() in main.ts when iOS lays the page out short of the screen. */
-html {
-  min-height: var(--app-height, 100%);
-}
-
+/*
+ * Launched from the Home Screen, iOS lays the page out shorter than the screen by the height of
+ * the status bar, yet shows the whole screen. Anything pinned to the page's own edges (position:
+ * fixed, height: 100%) then stops short and leaves a bar along the bottom.
+ *
+ * So nothing here is pinned to the page. Everything lives in #app, an ordinary box whose height
+ * fillScreen() in main.ts sets to the screen's (--app-height) when the page is short, along with
+ * how much taller that is than the page (--app-extra). The picture fills #app. Controls keep
+ * clear of the extra strip, so they stay on the part of the screen the page is sure to cover.
+ * The dark page colour is deliberate: if a bar still shows at the bottom, its colour says whether
+ * the page can draw there (dark) or iOS is covering it (pale).
+ */
 html,
 body {
   margin: 0;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--app-height, 100%);
-  overflow: hidden;
-  background: #e6edf7;
+  height: 100%;
+  background: #2b3a55;
   overscroll-behavior: none;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--app-height, 100%);
+  overflow: hidden;
+  background: #e6edf7;
+  /* Room to leave below controls: the home indicator, or the strip the page may not reach. */
+  --bottom-clear: max(14px, env(safe-area-inset-bottom), var(--app-extra, 0px));
+  /*
+   * Sheets reach the bottom edge. Their scrolling part stops short of the extra strip (a border
+   * of the same colour fills it), so no line of a sheet can end up where the page may not reach.
+   */
+  --sheet-pad: max(14px, calc(env(safe-area-inset-bottom) - var(--app-extra, 0px)));
 }
 
 #game {
@@ -118,11 +137,11 @@ body {
 }
 #fast-button {
   right: max(14px, env(safe-area-inset-right));
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
+  bottom: calc(var(--bottom-clear) + 8px);
 }
 #ski-button {
   left: max(14px, env(safe-area-inset-left));
-  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
+  bottom: calc(var(--bottom-clear) + 8px);
 }
 #ski-button[aria-pressed='true'],
 #fast-button[aria-pressed='true'] {
@@ -142,8 +161,8 @@ body {
   touch-action: pan-y;
   background: var(--paper);
   border-radius: 18px 18px 0 0;
-  padding: 12px max(14px, env(safe-area-inset-right)) calc(max(14px, env(safe-area-inset-bottom)) + 6px)
-    max(14px, env(safe-area-inset-left));
+  padding: 12px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
+  border-bottom: var(--app-extra, 0px) solid var(--paper);
   box-sizing: border-box;
   font-size: 14px;
   box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
@@ -220,8 +239,8 @@ body {
   touch-action: pan-y;
   background: var(--paper);
   border-radius: 18px 18px 0 0;
-  padding: 14px max(14px, env(safe-area-inset-right)) calc(max(14px, env(safe-area-inset-bottom)) + 6px)
-    max(14px, env(safe-area-inset-left));
+  padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
+  border-bottom: var(--app-extra, 0px) solid var(--paper);
   box-sizing: border-box;
   box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
 }
@@ -269,7 +288,7 @@ body {
 }
 
 .stick-base {
-  position: fixed;
+  position: absolute;
   left: 0;
   top: 0;
   width: 112px;

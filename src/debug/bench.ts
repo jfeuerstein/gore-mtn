@@ -133,7 +133,7 @@ export class BenchRun {
     const banner = document.createElement('div');
     banner.id = 'bench-banner';
     banner.textContent = `Benchmark ${index + 1} of ${BENCH_STEPS.length}: ${step.label}. Hands off the screen.`;
-    document.body.appendChild(banner);
+    (document.getElementById('app') ?? document.body).appendChild(banner);
   }
 
   get hudLive(): boolean {
@@ -222,5 +222,5 @@ export function showBenchResults(device: string): void {
   row.append(copy, close);
   // Buttons come before the text so they are on screen without scrolling.
   sheet.append(title, row, body);
-  document.body.appendChild(sheet);
+  (document.getElementById('app') ?? document.body).appendChild(sheet);
 }

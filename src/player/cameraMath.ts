@@ -35,7 +35,7 @@ export interface Framing {
  * @param zoom multiplies the camera distance; above 1 pulls back.
  *
  * On an upright phone the camera sits well back and high, looking down at about 35 degrees. The
- * player is small (roughly 7% of the screen height), so a thumb on the stick hides little of what
+ * player is small (roughly 6% of the screen height), so a thumb on the stick hides little of what
  * matters, and the ground around them is laid out like a map with the horizon near the top.
  */
 export function framingFor(aspect: number, zoom = 1): Framing {
@@ -44,7 +44,7 @@ export function framingFor(aspect: number, zoom = 1): Framing {
   const upright = (fovDeg - MIN_VERTICAL_FOV) / (MAX_VERTICAL_FOV - MIN_VERTICAL_FOV);
   return {
     fovDeg,
-    distance: (9 + 8.5 * upright) * zoom,
+    distance: (9 + 6.5 * upright) * zoom,
     aimLift: 0.08 + 0.02 * upright,
     pitch: 0.32 + 0.28 * upright,
   };

@@ -179,6 +179,31 @@ try {
   check('taking skis off stops and goes back to walking', offSkis.mode === 'walk' && offSkis.speed === 0);
   await ski.context.close();
 
+  // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
+  // reproduced here, but its effect on layout can: tell the page the screen is 62 points taller
+  // than the page, as fillScreen() would, and check where things end up.
+  const short = await open('iPhone 15 Pro');
+  const pageHeight = short.page.viewportSize().height;
+  await short.page.evaluate((extra) => {
+    const root = document.documentElement.style;
+    root.setProperty('--app-height', `${window.innerHeight + extra}px`);
+    root.setProperty('--app-extra', `${extra}px`);
+  }, 62);
+  await short.page.waitForFunction(() => document.getElementById('stats').textContent);
+  const canvasHeight = await short.page.evaluate(() => document.getElementById('game').clientHeight);
+  check('picture extends over the whole screen when the page is short', canvasHeight === pageHeight + 62, `${canvasHeight} of ${pageHeight + 62}`);
+  const bottomOf = (sel) => short.page.evaluate((q) => document.querySelector(q).getBoundingClientRect().bottom, sel);
+  check('buttons stay on the part the page covers', (await bottomOf('#ski-button')) <= pageHeight && (await bottomOf('#fast-button')) <= pageHeight);
+  check('buttons stay near the bottom', (await bottomOf('#ski-button')) > pageHeight - 40);
+  await short.page.evaluate(() => document.getElementById('menu-button').click());
+  check('settings sheet reaches the bottom of the screen', Math.abs((await bottomOf('#menu')) - (pageHeight + 62)) < 2);
+  const scrollBottom = await short.page.evaluate(() => {
+    const menu = document.getElementById('menu');
+    return menu.getBoundingClientRect().bottom - parseFloat(getComputedStyle(menu).borderBottomWidth);
+  });
+  check('but the part of it that holds the options stays on the part the page covers', scrollBottom <= pageHeight, `${scrollBottom} of ${pageHeight}`);
+  await short.context.close();
+
   const sideways = await open('iPhone 15 Pro landscape');
   check('phone held sideways is asked to turn upright', await sideways.page.locator('#rotate').isVisible());
   await sideways.context.close();

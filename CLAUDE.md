@@ -87,7 +87,12 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 - Things to read go at the top; things to press go in the bottom third, at least 44 points tall;
   menus are bottom sheets. Respect the safe-area insets.
 - The bottom third of the screen is the movement stick; everything above turns the camera.
-- The camera sits well back and high, so the player is small (about 7% of the screen height) and
+- Everything on screen lives in `#app`, which is sized by hand; nothing is pinned to the page
+  (`position: fixed`, `height: 100%` on the body). From the Home Screen, iOS lays the page out
+  shorter than the screen it shows. The note at the top of `src/style.css` explains the scheme:
+  the picture fills the screen, and controls keep within the part the page is sure to cover.
+  Attach new overlays to `#app`, and use `--bottom-clear` for anything placed near the bottom.
+- The camera sits well back and high, so the player is small (about 6% of the screen height) and
   sits just below the middle, above where the thumb rests. Framing
   and lens come from `framingFor()` in `src/player/cameraMath.ts`; touch zones from
   `src/input/zones.ts`.

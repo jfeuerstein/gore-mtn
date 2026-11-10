@@ -39,7 +39,8 @@ WEST, SOUTH, EAST, NORTH = -74.062, 43.660, -73.980, 43.706
 REAL_CELL_M = 10.0  # elevation sample spacing in real metres
 H_SCALE = 1 / 3  # real horizontal metres -> game metres
 V_SCALE = 1 / 2  # real vertical metres -> game metres (slopes read 1.5x steeper than life)
-TRAIL_WIDTH_REAL_M = {"easy": 55, "intermediate": 45, "advanced": 35, "expert": 30, "freeride": 40}
+# A little wider than life, so a trail has room for turns at game speeds.
+TRAIL_WIDTH_REAL_M = {"easy": 70, "intermediate": 56, "advanced": 44, "expert": 38, "freeride": 50}
 GLADE_WIDTH_REAL_M = 0  # glades keep their trees
 
 GROUND_TEXELS_PER_CELL = 3

@@ -350,11 +350,11 @@ An earlier single reading in a Safari tab showed about one frame in twenty arriv
 Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
 
 1. Speed and momentum: a robot skier now reaches 36 mph on Sunway (43 seconds), 39 on Showcase and 43 on The Rumor (12 seconds). Fast enough? Does it build and carry the way skiing should?
-2. Turning: do gentle turns carve and hard ones drift in a way that feels like skiing? Too much drift, or too little?
+2. Turning: hard turns now bend the path about a third more tightly. Sharp enough? Do gentle turns still carve and hard ones still drift in a way that feels like skiing?
 3. The hockey stop (thumb down): does it look and feel right, and stop soon enough? Lean the thumb left or right while braking to choose which way the skis swing.
 4. The camera: does it stay where you want it through turns and stops? Is the bottom third the right amount of screen for the stick?
-5. The mountain: is it big enough now, and can you see where each trail runs?
-6. Is the bar along the bottom of the screen gone when launched from the Home Screen? That fix could not be tested off the phone.
+5. Scale: the skier is now three-quarters of the size and trails are a quarter wider. Does the skier look right against the trail?
+6. The bottom of the screen from the Home Screen: does the mountain now reach the bottom edge, with the buttons visible? If a bar is still there, is it dark blue or pale blue? Dark means the page can draw there and the layout is still wrong; pale means iOS itself is covering it, and the fix is a different status bar setting.
 7. Run the benchmark again (Settings), since the world is bigger and the forest thicker than when it was last measured.
 
 Trees stand thickest along the trail edges, and the snow on a trail is brighter than under the trees, so each run reads as a corridor. Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
