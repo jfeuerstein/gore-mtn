@@ -89,6 +89,7 @@ body {
 }
 
 #menu-button,
+#ski-button,
 #fast-button {
   position: absolute;
   pointer-events: auto;
@@ -111,6 +112,11 @@ body {
   right: max(14px, env(safe-area-inset-right));
   bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
 }
+#ski-button {
+  left: max(14px, env(safe-area-inset-left));
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 8px);
+}
+#ski-button[aria-pressed='true'],
 #fast-button[aria-pressed='true'] {
   background: var(--ink);
   color: #fff;

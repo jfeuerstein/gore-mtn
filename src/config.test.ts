@@ -8,11 +8,12 @@ describe('parseConfig', () => {
   });
 
   it('reads options and clamps them to sane ranges', () => {
-    const c = parseConfig('?renderer=webgl&trees=40000&dpr=9&shadows=1&stride=0&at=summit&pos=12.5,-3&yaw=1.5');
+    const c = parseConfig('?renderer=webgl&trees=20000&dpr=9&shadows=0&stride=0&at=summit&pos=12.5,-3&yaw=1.5');
     expect(c.renderer).toBe('webgl');
-    expect(c.trees).toBe(40000);
+    expect(c.trees).toBe(20000);
     expect(c.dpr).toBe(3);
-    expect(c.shadows).toBe(true);
+    expect(c.shadows).toBe(false);
+    expect(parseConfig('?shadows=1').shadows).toBe(true);
     expect(c.stride).toBe(1);
     expect(c.at).toBe('summit');
     expect(c.pos).toEqual({ x: 12.5, z: -3 });

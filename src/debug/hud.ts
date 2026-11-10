@@ -1,4 +1,4 @@
-import { withParams, type Config } from '../config';
+import { DEFAULTS, withParams, type Config } from '../config';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
 import { startBench } from './bench';
 import { describeSummary, type FrameSummary } from './perf';
@@ -14,19 +14,22 @@ export interface HudStats {
   trees: number;
 }
 
-interface Option {
-  label: string;
-  value: string | null;
+interface OptionGroup {
+  title: string;
+  param: string;
+  /** The value in force, in the same form the URL uses. */
+  current: (c: Config) => string;
+  options: { label: string; value: string }[];
 }
 
-const OPTIONS: { title: string; param: string; current: (c: Config) => string; options: Option[] }[] = [
+const OPTIONS: OptionGroup[] = [
   {
     title: 'Camera distance',
     param: 'zoom',
     current: (c) => String(c.zoom),
     options: [
       { label: 'Closer', value: '0.75' },
-      { label: 'Default', value: null },
+      { label: 'Normal', value: '1' },
       { label: 'Further', value: '1.3' },
       { label: 'Furthest', value: '1.6' },
     ],
@@ -36,7 +39,7 @@ const OPTIONS: { title: string; param: string; current: (c: Config) => string; o
     param: 'renderer',
     current: (c) => c.renderer,
     options: [
-      { label: 'WebGPU', value: null },
+      { label: 'WebGPU', value: 'webgpu' },
       { label: 'WebGL 2', value: 'webgl' },
     ],
   },
@@ -44,27 +47,23 @@ const OPTIONS: { title: string; param: string; current: (c: Config) => string; o
     title: 'Trees',
     param: 'trees',
     current: (c) => String(c.trees),
-    options: ['0', '5000', '10000', '20000', '40000', '80000'].map((v) => ({
+    options: ['0', '10000', '20000', '40000', '80000'].map((v) => ({
       label: v === '0' ? 'None' : `${Number(v) / 1000}k`,
-      value: v === '10000' ? null : v,
+      value: v,
     })),
   },
   {
     title: 'Sharpness (pixel ratio limit)',
     param: 'dpr',
     current: (c) => String(c.dpr),
-    options: [
-      { label: '1', value: '1' },
-      { label: '2', value: null },
-      { label: '3', value: '3' },
-    ],
+    options: ['1', '2', '3'].map((v) => ({ label: v, value: v })),
   },
   {
     title: 'Shadows',
     param: 'shadows',
     current: (c) => (c.shadows ? '1' : '0'),
     options: [
-      { label: 'Off', value: null },
+      { label: 'Off', value: '0' },
       { label: 'On', value: '1' },
     ],
   },
@@ -74,7 +73,7 @@ const OPTIONS: { title: string; param: string; current: (c: Config) => string; o
     current: (c) => String(c.stride),
     options: [
       { label: 'High', value: '1' },
-      { label: 'Medium', value: null },
+      { label: 'Medium', value: '2' },
       { label: 'Low', value: '4' },
     ],
   },
@@ -84,26 +83,27 @@ const OPTIONS: { title: string; param: string; current: (c: Config) => string; o
     current: (c) => String(c.viewDist),
     options: [
       { label: '400 m', value: '400' },
-      { label: '700 m', value: null },
+      { label: '700 m', value: '700' },
       { label: 'Whole mountain', value: '1500' },
     ],
   },
 ];
 
-const DEFAULT_VALUE: Record<string, string> = {
-  zoom: '1',
-  renderer: 'webgpu',
-  trees: '10000',
-  dpr: '2',
-  shadows: '0',
-  stride: '2',
-  view: '700',
-};
-
 /** Browser and whether the game is running from the Home Screen, for reports. */
 export function deviceLabel(): string {
   const installed = (navigator as { standalone?: boolean }).standalone === true;
-  return `${installed ? 'Home Screen app' : 'browser tab'} | ${navigator.userAgent}`;
+  // Safe-area insets, read from CSS, show whether the page reaches under the status bar.
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position:fixed;visibility:hidden;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0';
+  document.body.appendChild(probe);
+  const style = getComputedStyle(probe);
+  const insets = `${parseFloat(style.paddingTop) || 0}/${parseFloat(style.paddingBottom) || 0}`;
+  probe.remove();
+  return (
+    `${installed ? 'Home Screen app' : 'browser tab'}, screen ${screen.width}x${screen.height}, ` +
+    `page ${window.innerWidth}x${window.innerHeight}, insets top/bottom ${insets} | ${navigator.userAgent}`
+  );
 }
 
 /** On-screen readout and settings menu for testing on a phone. */
@@ -119,6 +119,7 @@ export class Hud {
     places: Place[],
     onTeleport: (place: Place) => void,
     onFast: (on: boolean) => void,
+    onSkis: (on: boolean) => void,
   ) {
     const root = document.getElementById('hud') as HTMLElement;
     root.hidden = !cfg.hud;
@@ -126,12 +127,17 @@ export class Hud {
     button.addEventListener('click', () => {
       this.menuEl.hidden = !this.menuEl.hidden;
     });
-    const fast = document.getElementById('fast-button') as HTMLButtonElement;
-    fast.addEventListener('click', () => {
-      const on = fast.getAttribute('aria-pressed') !== 'true';
-      fast.setAttribute('aria-pressed', String(on));
-      onFast(on);
-    });
+    const toggle = (id: string, initial: boolean, onChange: (on: boolean) => void): void => {
+      const el = document.getElementById(id) as HTMLButtonElement;
+      el.setAttribute('aria-pressed', String(initial));
+      el.addEventListener('click', () => {
+        const on = el.getAttribute('aria-pressed') !== 'true';
+        el.setAttribute('aria-pressed', String(on));
+        onChange(on);
+      });
+    };
+    toggle('fast-button', false, onFast);
+    toggle('ski-button', cfg.ski, onSkis);
     this.buildMenu(places, onTeleport);
   }
 
@@ -165,10 +171,13 @@ export class Hud {
       const row = add(this.menuEl, 'div');
       row.className = 'row';
       const current = group.current(this.cfg);
+      const fallback = group.current(DEFAULTS);
       for (const opt of group.options) {
         const a = add(row, 'a', opt.label);
-        a.href = withParams(location.search, { [group.param]: opt.value }) || location.pathname;
-        if ((opt.value ?? DEFAULT_VALUE[group.param]) === current) a.className = 'on';
+        // Choosing the default removes the option from the URL, so the address stays short.
+        const value = opt.value === fallback ? null : opt.value;
+        a.href = withParams(location.search, { [group.param]: value }) || location.pathname;
+        if (opt.value === current) a.className = 'on';
       }
     }
 
@@ -211,9 +220,11 @@ export class Hud {
       `${s.width}x${s.height} @${s.pixelRatio}x  ${(s.trees / 1000).toFixed(1)}k trees`;
   }
 
-  setWhere(trail: Trail | null, elevationFt: number): void {
+  /** @param mph speed to show, or null to leave it out (on foot). */
+  setWhere(trail: Trail | null, elevationFt: number, mph: number | null): void {
     const ft = `${Math.round(elevationFt).toLocaleString('en-US')} ft`;
-    const text = trail ? `${trail.name} · ${ft}` : ft;
+    const pace = mph === null ? '' : ` · ${Math.round(mph)} mph`;
+    const text = (trail ? `${trail.name} · ${ft}` : ft) + pace;
     if (text === this.lastWhere) return;
     this.lastWhere = text;
     this.whereEl.replaceChildren();

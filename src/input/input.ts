@@ -20,6 +20,8 @@ export class Input {
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private touchMove = { x: 0, y: 0 };
+  /** Knob offset waiting to be drawn, or null when it is up to date. */
+  private knobPending: { x: number; y: number } | null = null;
   private readonly looks = new Map<number, { x: number; y: number }>();
   private readonly keys = new Set<string>();
   private readonly base: HTMLElement;
@@ -70,6 +72,11 @@ export class Input {
       this.moveY = this.touchMove.y;
     }
     this.fast = k.has('ShiftLeft') || k.has('ShiftRight') || this.fastToggle;
+    if (this.knobPending) {
+      const { x, y } = this.knobPending;
+      this.knob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      this.knobPending = null;
+    }
   }
 
   private readonly onDown = (e: PointerEvent): void => {
@@ -85,6 +92,7 @@ export class Input {
       this.base.hidden = false;
       this.base.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
       this.knob.style.transform = 'translate(-50%, -50%)';
+      this.knobPending = null;
     } else {
       this.looks.set(e.pointerId, { x: e.clientX, y: e.clientY });
     }
@@ -97,7 +105,9 @@ export class Input {
       this.touchMove = stickVector(dx, dy, STICK_RADIUS);
       const len = Math.hypot(dx, dy);
       const clamp = len > STICK_RADIUS ? STICK_RADIUS / len : 1;
-      this.knob.style.transform = `translate(calc(-50% + ${dx * clamp}px), calc(-50% + ${dy * clamp}px))`;
+      // Touch events can arrive faster than frames are drawn. Remember the latest position and
+      // let update() write it, so the page is restyled at most once per frame.
+      this.knobPending = { x: dx * clamp, y: dy * clamp };
       return;
     }
     const last = this.looks.get(e.pointerId);

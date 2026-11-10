@@ -47,12 +47,12 @@ export class FollowCamera {
   }
 
   /** Ease round behind the player as they travel, unless the camera was just turned by hand. */
-  follow(heading: number, amount: number, dt: number): void {
+  follow(heading: number, amount: number, dt: number, always = false): void {
     if (this.manualHold > 0) {
       this.manualHold -= dt;
       return;
     }
-    this.yaw = followYaw(this.yaw, heading, amount, dt);
+    this.yaw = followYaw(this.yaw, heading, amount, dt, always);
   }
 
   /** Point the camera from the player toward a world position. */

@@ -5,7 +5,9 @@
 //
 // Covers what unit tests cannot, on an upright phone: one thumb walks the player and the camera
 // swings round behind them, a touch at the top of the screen or a second finger turns the camera,
-// the overlay fits the narrow screen, and the settings sheet opens and teleports.
+// the overlay fits the narrow screen, the settings sheet opens and teleports, and on skis the
+// thumb steers, tucks and brakes while the slope does the rest.
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { preview } from 'vite';
 
@@ -22,11 +24,11 @@ const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
   if (!ok) failures.push(label);
 };
-const open = async (device) => {
+const open = async (device, extra = '') => {
   const context = await browser.newContext({ ...devices[device] });
   const page = await context.newPage();
   page.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
-  await page.goto(url);
+  await page.goto(url + extra);
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   return { context, page };
 };
@@ -42,14 +44,14 @@ try {
   // The readouts are hidden until they have something to show; measure the layout once they do.
   await page.waitForFunction(() => document.getElementById('stats').textContent && document.getElementById('where').textContent);
   const boxes = {};
-  for (const sel of ['#where', '#stats', '#menu-button', '#fast-button']) boxes[sel] = await box(sel);
+  for (const sel of ['#where', '#stats', '#menu-button', '#fast-button', '#ski-button']) boxes[sel] = await box(sel);
   const names = Object.keys(boxes);
   const inside = names.every((n) => boxes[n].x >= 0 && boxes[n].y >= 0 && boxes[n].x + boxes[n].width <= width && boxes[n].y + boxes[n].height <= height);
   check('overlay fits inside the upright screen', inside);
   const clashes = names.flatMap((a, i) => names.slice(i + 1).filter((b) => overlap(boxes[a], boxes[b])).map((b) => `${a}/${b}`));
   check('overlay elements do not overlap', clashes.length === 0, clashes.join(', '));
-  check('buttons are at least 44 points tall', boxes['#menu-button'].height >= 44 && boxes['#fast-button'].height >= 44);
-  check('fast button sits in the lower, thumb-reach part of the screen', boxes['#fast-button'].y > height * 0.6);
+  check('buttons are at least 44 points tall', ['#menu-button', '#fast-button', '#ski-button'].every((b) => boxes[b].height >= 44));
+  check('skis and fast buttons sit in the lower, thumb-reach part of the screen', boxes['#fast-button'].y > height * 0.6 && boxes['#ski-button'].y > height * 0.6);
 
   const cdp = await context.newCDPSession(page);
   const touch = (type, touchPoints) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
@@ -120,6 +122,57 @@ try {
   check('settings sheet closes after teleport', !(await page.locator('#menu').isVisible()));
   console.log(`     label at Saddle Lodge: ${await page.locator('#where').textContent()}`);
   await context.close();
+
+  // Skiing, starting on skis halfway down Sunway (the start position and mode come from the URL).
+  // Software rendering runs the game in slow motion, so these wait on what happens, not the clock.
+  const world = JSON.parse(readFileSync(new URL('../public/world/world.json', import.meta.url), 'utf8'));
+  const sunway = world.trails.filter((t) => t.name === 'Sunway' && !t.area).sort((a, b) => b.pts.length - a.pts.length)[0];
+  const mid = Math.floor(sunway.pts.length / 4) * 2;
+  const ski = await open('iPhone 15 Pro', `&ski=1&pos=${sunway.pts[mid]},${sunway.pts[mid + 1]}`);
+  const sp = ski.page;
+  const skiCdp = await ski.context.newCDPSession(sp);
+  const skiTouch = (type, touchPoints) => skiCdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+  const skiState = () => sp.evaluate(() => window.__gore.state());
+  const settle = (fn, arg) => sp.waitForFunction(fn, arg, { timeout: 60000 }).then(() => true, () => false);
+
+  check('starts on skis from the URL, with the button lit', (await skiState()).mode === 'ski' && (await sp.getAttribute('#ski-button', 'aria-pressed')) === 'true');
+  // Facing straight across the slope, the edges hold.
+  await sp.evaluate(() => window.__gore.face(window.__gore.state().fallLineYaw + Math.PI / 2));
+  await sp.waitForTimeout(800);
+  check('stands still across the slope', (await skiState()).speed === 0);
+  // Thumb up from a standstill: pole push.
+  await skiTouch('touchStart', [thumb]);
+  await skiTouch('touchMove', [{ ...thumb, y: thumb.y - 70 }]);
+  check('thumb up poles away from a standstill', await settle(() => window.__gore.state().speed > 1));
+  await skiTouch('touchEnd', []);
+
+  await sp.evaluate(() => window.__gore.face(window.__gore.state().fallLineYaw));
+  const atTop = await skiState();
+  check('gravity carries the skier down the fall line', await settle(() => window.__gore.state().speed > 4));
+  check('skiing loses height', await settle((y) => window.__gore.state().y < y - 2, atTop.y));
+  // Whichever trail is underfoot by now (Wild Air runs alongside Sunway here).
+  check('label names a trail and shows speed', /\S .* · [\d,]+ ft · \d+ mph/.test(await sp.locator('#where').textContent()), await sp.locator('#where').textContent());
+
+  // Thumb to the right: the skis turn right (yaw falls) and the camera comes round with them.
+  const beforeTurn = await skiState();
+  await skiTouch('touchStart', [thumb]);
+  await skiTouch('touchMove', [{ ...thumb, x: thumb.x + 70 }]);
+  check('thumb right turns the skis right', await settle((h) => window.__gore.state().heading < h - 0.5, beforeTurn.heading));
+  check('camera follows the skis round', await settle((y) => window.__gore.state().yaw < y - 0.3, beforeTurn.yaw));
+  // Thumb down: snowplough to a stop.
+  await skiTouch('touchMove', [{ ...thumb, y: thumb.y + 70 }]);
+  check('thumb down brakes to a stop', await settle(() => window.__gore.state().speed === 0));
+  // Still holding the thumb to one side at a standstill: turn on the spot, and the camera follows.
+  const stopped = await skiState();
+  await skiTouch('touchMove', [{ ...thumb, x: thumb.x - 70, y: thumb.y + 70 }]);
+  check('camera follows a turn made at a standstill', await settle((y) => window.__gore.state().yaw > y + 0.3, stopped.yaw));
+  await skiTouch('touchEnd', []);
+  if (shot) await sp.screenshot({ path: shot.replace(/\.png$/, '-ski.png') });
+
+  await sp.tap('#ski-button');
+  const offSkis = await skiState();
+  check('taking skis off stops and goes back to walking', offSkis.mode === 'walk' && offSkis.speed === 0);
+  await ski.context.close();
 
   const sideways = await open('iPhone 15 Pro landscape');
   check('phone held sideways is asked to turn upright', await sideways.page.locator('#rotate').isVisible());

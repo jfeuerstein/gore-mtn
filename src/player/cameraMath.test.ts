@@ -93,6 +93,11 @@ describe('followYaw', () => {
     expect(followYaw(0, -2.8, 1, 0.1)).toBe(0);
   });
 
+  it('comes round even from head-on when told to always follow', () => {
+    expect(followYaw(0, 3, 1, 0.1)).toBe(0);
+    expect(followYaw(0, 3, 1, 0.1, true)).toBeGreaterThan(0);
+  });
+
   it('turns more gently for a gentle push', () => {
     expect(followYaw(0, 1, 0.3, 0.1)).toBeLessThan(followYaw(0, 1, 1, 0.1));
   });

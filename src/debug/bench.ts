@@ -28,6 +28,15 @@ export const BENCH_STEPS: readonly BenchStep[] = [
   { label: 'WebGPU, 40k trees, 700 m view', params: { trees: '40000', view: '700' } },
 ];
 
+const BENCH_BASELINE: Record<string, string> = {
+  at: 'saddle-lodge',
+  renderer: 'webgpu',
+  trees: '10000',
+  shadows: '0',
+  dpr: '2',
+  view: '1500',
+};
+
 export const DEFAULT_BENCH_SECONDS = 5;
 const WARMUP_MS = 1500;
 const WARMUP_FRAMES = 10;
@@ -53,7 +62,9 @@ interface Stored {
 export function benchSearch(index: number, seconds: number): string {
   const step = BENCH_STEPS[index];
   if (!step) throw new Error(`no benchmark step ${index}`);
-  const q = new URLSearchParams({ at: 'saddle-lodge', view: '1500', ...step.params, bench: String(index) });
+  // Every option a step can change is spelled out, so results stay comparable when the game's
+  // defaults move.
+  const q = new URLSearchParams({ ...BENCH_BASELINE, ...step.params, bench: String(index) });
   if (seconds !== DEFAULT_BENCH_SECONDS) q.set('benchsecs', String(seconds));
   return `?${q.toString()}`;
 }

@@ -64,11 +64,13 @@ const FOLLOW_RATE = 1.5;
  * @param yaw current camera yaw
  * @param heading direction the player is travelling, as a yaw
  * @param amount how hard the stick is pushed, 0..1
+ * @param always follow even when the player is coming toward the camera
  * @returns the new camera yaw
- * Walking toward the camera leaves it where it is, so the player can come back the way they went.
+ * On foot, walking toward the camera leaves it where it is, so the player can come back the way
+ * they went. On skis the camera always comes round, because the skier cannot back up.
  */
-export function followYaw(yaw: number, heading: number, amount: number, dt: number): number {
+export function followYaw(yaw: number, heading: number, amount: number, dt: number, always = false): number {
   const diff = angleDiff(heading, yaw);
-  if (Math.abs(diff) > TOWARD_CAMERA) return yaw;
+  if (!always && Math.abs(diff) > TOWARD_CAMERA) return yaw;
   return yaw + diff * Math.min(1, FOLLOW_RATE * amount * dt);
 }

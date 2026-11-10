@@ -1,11 +1,20 @@
 import * as THREE from 'three/webgpu';
 import { makeRng } from '../rng';
 import type { Heightfield } from './heightfield';
+import { blocksSightLine, type Point3 } from './occlusion';
 import type { World } from './world';
 
 /** Trees are grouped into square patches this many metres across so far patches can be skipped. */
 const PATCH_SIZE = 128;
 const MAX_TREE_SLOPE_DEG = 50;
+/** Unscaled size of the tree model. */
+const TREE_HEIGHT = 3.6;
+const TREE_RADIUS = 1.05;
+/** Trees are indexed on a grid this many metres across for sight-line lookups. */
+const CELL = 8;
+/** A tree in the way of the camera shrinks to this share of its size, like a sapling. */
+const DUCKED = 0.16;
+const DUCK_RATE = 9;
 
 export interface TreePatch {
   mesh: THREE.InstancedMesh;
@@ -44,8 +53,8 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
     tri(lo[i] as number[], hi[i] as number[], lo[j] as number[], trunk, trunk, trunk);
     tri(lo[j] as number[], hi[i] as number[], hi[j] as number[], trunk, trunk, trunk);
   }
-  cone(1.05, 0.7, 2.6, 0, dark, mid);
-  cone(0.75, 1.9, 3.6, Math.PI / 6, mid, snow);
+  cone(TREE_RADIUS, 0.7, 2.6, 0, dark, mid);
+  cone(0.75, 1.9, TREE_HEIGHT, Math.PI / 6, mid, snow);
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -54,19 +63,105 @@ export function buildTreeGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
+interface Tree extends Point3 {
+  patch: number;
+  /** Index of this tree within its patch's instanced mesh. */
+  slot: number;
+  radius: number;
+  height: number;
+}
+
+/**
+ * The forest. Besides drawing the trees, it keeps the player in view: any tree standing between
+ * the camera and the player shrinks to a sapling and grows back once it is out of the way.
+ */
+export class Forest {
+  readonly group = new THREE.Group();
+  readonly patches: TreePatch[] = [];
+  count = 0;
+  private readonly trees: Tree[] = [];
+  /** Tree indices by grid cell. */
+  private readonly cells = new Map<number, number[]>();
+  /** Full-size instance matrices for each patch, to scale from. */
+  private readonly base: Float32Array[] = [];
+  /** Trees currently smaller than full size: tree index to its present scale. */
+  private readonly ducked = new Map<number, number>();
+  private readonly blocking = new Set<number>();
+
+  private cellKey(x: number, z: number): number {
+    return Math.floor(x / CELL) * 100003 + Math.floor(z / CELL);
+  }
+
+  /** Record a tree. Call finishPatch() once all the trees of a patch are added. */
+  add(patch: number, slot: number, x: number, y: number, z: number, scale: number, scaleY: number): void {
+    const index = this.trees.length;
+    this.trees.push({ patch, slot, x, y, z, radius: TREE_RADIUS * scale, height: TREE_HEIGHT * scaleY });
+    const key = this.cellKey(x, z);
+    const cell = this.cells.get(key);
+    if (cell) cell.push(index);
+    else this.cells.set(key, [index]);
+  }
+
+  finishPatch(patch: TreePatch): void {
+    this.patches.push(patch);
+    this.base.push(Float32Array.from(patch.mesh.instanceMatrix.array));
+    this.group.add(patch.mesh);
+    this.count += patch.mesh.count;
+  }
+
+  /** Shrink trees that hide the player from the camera, and regrow the ones that no longer do. */
+  update(player: Point3, camera: Point3, dt: number): void {
+    const blocking = this.blocking;
+    blocking.clear();
+    // Look at the player's chest, and a little wider than the tree so there is clear air around them.
+    const chest = { x: player.x, y: player.y + 1, z: player.z };
+    const pad = 4;
+    const x0 = Math.floor((Math.min(player.x, camera.x) - pad) / CELL);
+    const x1 = Math.floor((Math.max(player.x, camera.x) + pad) / CELL);
+    const z0 = Math.floor((Math.min(player.z, camera.z) - pad) / CELL);
+    const z1 = Math.floor((Math.max(player.z, camera.z) + pad) / CELL);
+    for (let cx = x0; cx <= x1; cx++) {
+      for (let cz = z0; cz <= z1; cz++) {
+        const cell = this.cells.get(cx * 100003 + cz);
+        if (!cell) continue;
+        for (const i of cell) {
+          const t = this.trees[i] as Tree;
+          if (blocksSightLine(chest, camera, t, t.radius + 0.9, t.height)) blocking.add(i);
+        }
+      }
+    }
+    for (const i of blocking) if (!this.ducked.has(i)) this.ducked.set(i, 1);
+
+    const ease = Math.min(1, DUCK_RATE * dt);
+    for (const [i, scale] of this.ducked) {
+      const target = blocking.has(i) ? DUCKED : 1;
+      let next = scale + (target - scale) * ease;
+      if (target === 1 && next > 0.995) next = 1;
+      this.setScale(this.trees[i] as Tree, next);
+      if (next === 1) this.ducked.delete(i);
+      else this.ducked.set(i, next);
+    }
+  }
+
+  private setScale(tree: Tree, scale: number): void {
+    const mesh = (this.patches[tree.patch] as TreePatch).mesh;
+    const base = this.base[tree.patch] as Float32Array;
+    const out = mesh.instanceMatrix.array;
+    const o = tree.slot * 16;
+    // The first three columns hold rotation and scale; the fourth, the position, stays put.
+    for (let k = 0; k < 12; k++) out[o + k] = (base[o + k] as number) * scale;
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
 /**
  * Scatter about `target` trees over every part of the mountain that is not a groomed trail and
  * not too steep. Placement is seeded, so the forest is identical on every load.
  */
-export function buildTrees(
-  hf: Heightfield,
-  world: World,
-  target: number,
-  castShadow: boolean,
-): { group: THREE.Group; patches: TreePatch[]; count: number } {
-  const group = new THREE.Group();
-  group.name = 'trees';
-  if (target <= 0) return { group, patches: [], count: 0 };
+export function buildTrees(hf: Heightfield, world: World, target: number, castShadow: boolean): Forest {
+  const forest = new Forest();
+  forest.group.name = 'trees';
+  if (target <= 0) return forest;
 
   const growsAt = (x: number, z: number) => !world.onTrail(x, z) && hf.slopeDegAt(x, z) < MAX_TREE_SLOPE_DEG;
 
@@ -82,20 +177,18 @@ export function buildTrees(
 
   const geometry = buildTreeGeometry();
   const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-  const patches: TreePatch[] = [];
   const rng = makeRng(1934);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
   const up = new THREE.Vector3(0, 1, 0);
   const p = new THREE.Vector3();
   const s = new THREE.Vector3();
-  let count = 0;
 
   for (let z0 = hf.minZ; z0 < hf.maxZ; z0 += PATCH_SIZE) {
     for (let x0 = hf.minX; x0 < hf.maxX; x0 += PATCH_SIZE) {
       const x1 = Math.min(x0 + PATCH_SIZE, hf.maxX);
       const z1 = Math.min(z0 + PATCH_SIZE, hf.maxZ);
-      const matrices: THREE.Matrix4[] = [];
+      const placed: { matrix: THREE.Matrix4; x: number; y: number; z: number; scale: number; scaleY: number }[] = [];
       for (let z = z0; z < z1; z += spacing) {
         for (let x = x0; x < x1; x += spacing) {
           const tx = x + rng() * spacing;
@@ -103,24 +196,27 @@ export function buildTrees(
           const scale = 1.1 + rng() * 0.9;
           const turn = rng() * Math.PI * 2;
           if (tx >= x1 || tz >= z1 || !growsAt(tx, tz)) continue;
+          const scaleY = scale * (0.9 + rng() * 0.3);
           p.set(tx, hf.heightAt(tx, tz) - 0.1, tz);
           q.setFromAxisAngle(up, turn);
-          s.set(scale, scale * (0.9 + rng() * 0.3), scale);
-          matrices.push(m.compose(p, q, s).clone());
+          s.set(scale, scaleY, scale);
+          placed.push({ matrix: m.compose(p, q, s).clone(), x: tx, y: p.y, z: tz, scale, scaleY });
         }
       }
-      if (matrices.length === 0) continue;
-      const mesh = new THREE.InstancedMesh(geometry, material, matrices.length);
-      matrices.forEach((mat, i) => mesh.setMatrixAt(i, mat));
+      if (placed.length === 0) continue;
+      const mesh = new THREE.InstancedMesh(geometry, material, placed.length);
+      const patchIndex = forest.patches.length;
+      placed.forEach((t, i) => {
+        mesh.setMatrixAt(i, t.matrix);
+        forest.add(patchIndex, i, t.x, t.y, t.z, t.scale, t.scaleY);
+      });
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
       mesh.castShadow = castShadow;
       mesh.matrixAutoUpdate = false;
-      group.add(mesh);
       const sphere = mesh.boundingSphere as THREE.Sphere;
-      patches.push({ mesh, centerX: sphere.center.x, centerZ: sphere.center.z, radius: sphere.radius });
-      count += matrices.length;
+      forest.finishPatch({ mesh, centerX: sphere.center.x, centerZ: sphere.center.z, radius: sphere.radius });
     }
   }
-  return { group, patches, count };
+  return forest;
 }

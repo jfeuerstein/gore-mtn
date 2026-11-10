@@ -6,6 +6,7 @@ import { FrameStats } from './debug/perf';
 import { Input } from './input/input';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
+import { fallLineYaw } from './player/skiPhysics';
 import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
 import { buildTerrain } from './world/terrainMesh';
 import { trailAt, type Place } from './world/trails';
@@ -13,6 +14,7 @@ import { buildTrees } from './world/trees';
 import { loadWorld } from './world/world';
 
 const M_TO_FT = 3.28084;
+const MS_TO_MPH = 2.23694;
 
 /** Handle for screenshots and automated checks. See tools/shot.mjs. */
 interface DebugHandle {
@@ -21,6 +23,8 @@ interface DebugHandle {
   state(): Record<string, unknown>;
   teleport(placeId: string): boolean;
   setView(yaw: number, pitch: number): void;
+  /** Turn the player and the camera to a yaw. */
+  face(yaw: number): void;
 }
 
 declare global {
@@ -35,6 +39,7 @@ window.__gore = {
   state: () => ({}),
   teleport: () => false,
   setView: () => {},
+  face: () => {},
 };
 
 function showFatal(message: string): void {
@@ -111,9 +116,19 @@ async function boot(): Promise<void> {
   const start = world.places.find((p) => p.id === cfg.at) ?? baseLodge ?? world.places[0];
   if (start) teleport(start);
   if (cfg.pos) player.place(cfg.pos.x, cfg.pos.z, ground);
-  if (cfg.yaw !== null) follow.yaw = cfg.yaw;
+  if (cfg.yaw !== null) {
+    follow.yaw = cfg.yaw;
+    player.face(cfg.yaw);
+  }
 
-  const hud = new Hud(cfg, world.places, teleport, (on) => (input.fastToggle = on));
+  if (cfg.ski) player.setMode('ski');
+  const hud = new Hud(
+    cfg,
+    world.places,
+    teleport,
+    (on) => (input.fastToggle = on),
+    (on) => player.setMode(on ? 'ski' : 'walk'),
+  );
 
   let pixelRatio = 1;
   const resize = (): void => {
@@ -160,6 +175,10 @@ async function boot(): Promise<void> {
     z: player.position.z,
     yaw: follow.yaw,
     pitch: follow.pitch,
+    mode: player.mode,
+    speed: player.speed,
+    heading: player.travelHeading,
+    fallLineYaw: fallLineYaw(ground, player.position.x, player.position.z),
     fps: stats.summary().fps,
     drawCalls: renderer.info.render.drawCalls,
     triangles: renderer.info.render.triangles,
@@ -170,6 +189,10 @@ async function boot(): Promise<void> {
     const place = world.places.find((p) => p.id === id);
     if (place) teleport(place);
     return Boolean(place);
+  };
+  window.__gore.face = (yaw) => {
+    player.face(yaw);
+    follow.yaw = yaw;
   };
   window.__gore.setView = (yaw, pitch) => {
     follow.yaw = yaw;
@@ -185,10 +208,18 @@ async function boot(): Promise<void> {
     input.update();
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
-    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground);
-    follow.follow(player.travelHeading, Math.min(1, Math.hypot(input.moveX, input.moveY)), dt);
+    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail);
+    // On foot the camera follows as hard as the stick is pushed. On skis it follows with speed,
+    // and more firmly, because the skier's heading is the only thing steering the view. It also
+    // follows a turn made at a standstill, so the player can see where the skis now point.
+    const followAmount =
+      player.mode === 'ski'
+        ? Math.max(Math.min(1, player.speed / 3), Math.abs(input.moveX)) * 2.5
+        : Math.min(1, Math.hypot(input.moveX, input.moveY));
+    follow.follow(player.travelHeading, followAmount, dt, player.mode === 'ski');
     if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground);
+    trees.update(player.position, camera.position, dt);
     sky.position.copy(camera.position);
     sun.target.position.copy(player.position);
     sun.position.copy(player.position).addScaledVector(sunDir, 150);
@@ -218,6 +249,7 @@ async function boot(): Promise<void> {
       hud.setWhere(
         trailAt(world.trails, player.position.x, player.position.z),
         world.realElevationM(player.position.y) * M_TO_FT,
+        player.mode === 'ski' ? player.speed * MS_TO_MPH : null,
       );
     }
     if (frames === 3) {

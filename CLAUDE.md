@@ -32,7 +32,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   read it. Headless Chromium uses software WebGL, so its frame rates are meaningless; only the
   phone's numbers count.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
-  string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
+  string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`.
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
@@ -45,6 +45,17 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   back to WebGL 2 by itself.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
+
+## Skiing
+
+- The simulation is `src/player/skiPhysics.ts`: pure, fixed-step, tested. All tuning numbers are in
+  `SKI` there. Change feel by changing those, then check the tests still describe what you want.
+- `SKI_REPORT=1 npx vitest run src/player/skiPhysics.test.ts --reporter=verbose` skis a robot down
+  real trails and prints length, time and speed for each. Use it to judge a tuning change before
+  the owner tries it.
+- One thumb: left and right steer, up tucks (and poles from a standstill), down brakes.
+- No fail states: the skier can always stop, always get going again on the flat, and never slides
+  backwards.
 
 ## Measuring performance
 
@@ -78,7 +89,13 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 - Placement is seeded (`src/rng.ts`) so the world is identical on every load.
 - No secrets in the repo. The fal key lives in environment secrets or a gitignored `.env`.
 
-## Performance budget (iPhone, to be confirmed by measurement)
+## Performance budget
 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
+
+Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app): a steady 60 fps at every
+benchmark step, up to 80,000 trees (427k triangles), with shadows, and at pixel ratio 3, using
+about 2 ms of CPU per frame. WebGPU and WebGL 2 performed the same. The budget above is kept as a
+deliberately cautious target so there is room for effects, and for heat and battery over a long
+session, which a five-second measurement does not show.

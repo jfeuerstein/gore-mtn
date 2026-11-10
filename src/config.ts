@@ -19,6 +19,8 @@ export interface Config {
   pitch: number | null;
   /** Multiplies the camera distance; above 1 pulls back. */
   zoom: number;
+  /** Start on skis. */
+  ski: boolean;
   hud: boolean;
   /** Benchmark step to run, or `done` to show the results. See src/debug/bench.ts. */
   bench: number | 'done' | null;
@@ -28,16 +30,19 @@ export interface Config {
 
 export const DEFAULTS: Config = {
   renderer: 'webgpu',
-  trees: 10000,
+  // Measured on the owner's iPhone 17 Pro (see docs/game-plan.md): these hold a steady 60 fps
+  // with room to spare, as do 80,000 trees and a pixel ratio of 3.
+  trees: 40000,
   dpr: 2,
-  shadows: false,
+  shadows: true,
   stride: 2,
-  viewDist: 700,
+  viewDist: 1500,
   at: 'base-lodge',
   pos: null,
   yaw: null,
   pitch: null,
   zoom: 1,
+  ski: false,
   hud: true,
   bench: null,
   benchSeconds: 5,
@@ -73,7 +78,7 @@ export function parseConfig(search: string): Config {
     renderer: q.get('renderer') === 'webgl' ? 'webgl' : d.renderer,
     trees: Math.round(num(q.get('trees'), d.trees, 0, 200000)),
     dpr: num(q.get('dpr'), d.dpr, 0.5, 3),
-    shadows: q.get('shadows') === '1',
+    shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 5000),
     at: q.get('at') ?? d.at,
@@ -81,6 +86,7 @@ export function parseConfig(search: string): Config {
     yaw: optNum(q.get('yaw')),
     pitch: optNum(q.get('pitch')),
     zoom: num(q.get('zoom'), d.zoom, 0.4, 3),
+    ski: q.get('ski') === '1',
     hud: q.get('hud') !== '0',
     bench: q.get('bench') === 'done' ? 'done' : optIndex(q.get('bench')),
     benchSeconds: num(q.get('benchsecs'), d.benchSeconds, 0.1, 60),

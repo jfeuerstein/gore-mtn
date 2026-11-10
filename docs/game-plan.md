@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestone 0 is built and waiting on a phone test. See the roadmap.
+**Status:** milestone 0 is done: the phone holds 60 fps with a wide margin. Milestone 1 has started: skiing works as a first cut and needs your thumbs. See the roadmap.
 
 ## 2. What the game is
 
@@ -302,8 +302,8 @@ Each milestone ends with something playable on your phone and a single question 
 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
-| 0 | Foundations (built) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
-| 1 | Greybox skiing | One-thumb ski controller, clip in and out, the Adirondack Express as a working lift, trees that fade when they come between the camera and the player, tuning panel | Is skiing Sunway fun with grey boxes? |
+| 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
+| 1 | Greybox skiing (in progress) | One-thumb ski controller, clip in and out, the Adirondack Express as a working lift, trees that fade when they come between the camera and the player, tuning panel | Is skiing Sunway fun with grey boxes? |
 | 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
@@ -323,9 +323,39 @@ Open the deployed page in Safari, hold the phone upright, and walk around with o
 
 "Run benchmark" in Settings answers questions 1 to 4 in one go: it steps through nine settings by itself in about 90 seconds and ends with a block of text to copy and paste back. "Copy performance report" does the same for whatever is on screen at the moment.
 
-First result (WebGPU, 10,000 trees, whole-mountain view, in a Safari tab): 57 fps with about one frame in twenty arriving late, on a scene of only 39 draw calls and 108k triangles. The scene is far inside the budget, so the late frames are not caused by its size. The benchmark exists to find out what does cause them.
+### Milestone 0 result
 
-After the slice, each new region is a repeatable package: terrain chunk, trails and lifts, stamps, a mineral table, one or two characters, one new tool or piece of gear.
+Measured on the iPhone 17 Pro, running from the Home Screen:
+
+| Setting | Result |
+|---|---|
+| WebGPU, 10k / 40k / 80k trees | 60 fps at each (80k trees is 427k triangles) |
+| WebGL 2, 10k / 40k trees | 60 fps, indistinguishable from WebGPU |
+| Shadows on | 60 fps |
+| Pixel ratio 3 (full sharpness) | 60 fps |
+| CPU time per frame | about 2 ms of the 16.7 ms available |
+
+Decisions taken from this:
+
+- Stay on WebGPU, with WebGL 2 as the automatic fallback.
+- New defaults: 40,000 trees, the whole mountain in view, shadows on. Pixel ratio stays at 2 to save heat and battery; 3 is available in Settings.
+- The budget stays where it was, as a cautious target. The measurement was five seconds per step on a cool phone and says nothing about a long session.
+
+An earlier single reading in a Safari tab showed about one frame in twenty arriving late. The benchmark did not reproduce that from the Home Screen. Whether it was the browser tab or touch input is not known yet; the copied performance report now carries enough detail to tell if it comes back.
+
+### Milestone 1: what to test on the phone
+
+Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
+
+1. Does the speed feel right on a green (Sunway), a blue (Quicksilver, Twister) and a black (The Rumor, Lies)? A robot skier takes about 42 seconds down Sunway and 11 down The Rumor.
+2. Steering: too twitchy, too sluggish, turns too wide for the trail?
+3. Braking (thumb down) and tucking (thumb up): strong enough, easy to find?
+4. The camera: does it stay where you want it through turns?
+5. Anything that feels unfair, such as getting stuck or sliding where you did not mean to.
+
+Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
+
+Not built yet: lifts, colliding with trees, snow tracks, getting air off rolls.
 
 ## 10. Risks and honest perspectives
 
