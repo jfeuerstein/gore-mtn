@@ -115,6 +115,8 @@ export class Hud {
   private readonly menuEl = document.getElementById('menu') as HTMLElement;
   private lastStats: HudStats | null = null;
   private lastWhere = '';
+  private readonly actionEl = document.getElementById('action-button') as HTMLButtonElement;
+  private onAction: (() => void) | null = null;
 
   constructor(
     private readonly cfg: Config,
@@ -138,6 +140,7 @@ export class Hud {
         onChange(on);
       });
     };
+    this.actionEl.addEventListener('click', () => this.onAction?.());
     toggle('fast-button', false, onFast);
     toggle('ski-button', cfg.ski, onSkis);
     this.buildMenu(places, onTeleport);
@@ -222,11 +225,29 @@ export class Hud {
       `${s.width}x${s.height} @${s.pixelRatio}x  ${(s.trees / 1000).toFixed(1)}k trees`;
   }
 
-  /** @param mph speed to show, or null to leave it out (on foot). */
-  setWhere(trail: Trail | null, elevationFt: number, mph: number | null): void {
+  /**
+   * Offer something to do here, as a button by the thumb, or take the offer away with null.
+   * Safe to call every frame.
+   */
+  setAction(label: string | null, onTap: (() => void) | null = null): void {
+    this.onAction = onTap;
+    if (label === null) {
+      if (!this.actionEl.hidden) this.actionEl.hidden = true;
+      return;
+    }
+    if (this.actionEl.textContent !== label) this.actionEl.textContent = label;
+    if (this.actionEl.hidden) this.actionEl.hidden = false;
+  }
+
+  /**
+   * @param mph speed to show, or null to leave it out (on foot)
+   * @param liftName the lift being ridden, shown in place of a trail
+   */
+  setWhere(trail: Trail | null, elevationFt: number, mph: number | null, liftName: string | null = null): void {
     const ft = `${Math.round(elevationFt).toLocaleString('en-US')} ft`;
     const pace = mph === null ? '' : ` · ${Math.round(mph)} mph`;
-    const text = (trail ? `${trail.name} · ${ft}` : ft) + pace;
+    if (liftName !== null) trail = null;
+    const text = (liftName !== null ? `${liftName} · ${ft}` : trail ? `${trail.name} · ${ft}` : ft) + pace;
     if (text === this.lastWhere) return;
     this.lastWhere = text;
     this.whereEl.replaceChildren();

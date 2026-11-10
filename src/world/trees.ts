@@ -149,6 +149,8 @@ export class Forest {
     private readonly world: World,
     target: number,
     private readonly castShadow: boolean,
+    /** Places kept clear of trees besides the trails, such as lift lines. */
+    private readonly keepClear: (x: number, z: number) => boolean = () => false,
   ) {
     this.group.name = 'trees';
     this.cols = Math.ceil(hf.width / PATCH_SIZE);
@@ -187,7 +189,7 @@ export class Forest {
         const scaleY = scale * (0.9 + rng() * 0.3);
         const turn = rng() * Math.PI * 2;
         const chance = rng();
-        if (tx >= x1 || tz >= z1 || chance >= this.densityAt(tx, tz)) continue;
+        if (tx >= x1 || tz >= z1 || chance >= this.densityAt(tx, tz) || this.keepClear(tx, tz)) continue;
         spots.push({ x: tx, y: hf.heightAt(tx, tz) - 0.2, z: tz, scale, scaleY, turn });
       }
     }

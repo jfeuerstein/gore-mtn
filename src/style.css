@@ -117,6 +117,7 @@ body {
 
 #menu-button,
 #ski-button,
+#action-button,
 #fast-button {
   position: absolute;
   pointer-events: auto;
@@ -139,6 +140,22 @@ body {
   right: max(14px, env(safe-area-inset-right));
   bottom: calc(var(--bottom-clear) + 8px);
 }
+/* What the player can do right here, such as board a lift. Sits above the other buttons, in the middle. */
+#action-button {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottom-clear) + 68px);
+  max-width: calc(100% - 28px);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 22px;
+  font-size: 15px;
+}
+
 #ski-button {
   left: max(14px, env(safe-area-inset-left));
   bottom: calc(var(--bottom-clear) + 8px);

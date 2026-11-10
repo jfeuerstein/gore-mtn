@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import type { Heightfield } from './heightfield';
+import { CABLE_HEIGHT, LINE_OFFSET, pointAlong, towerYaw, type LiftPath } from './lifts';
 import type { World } from './world';
 
 export const SKY_TOP = 0x8fb4e6;
@@ -27,41 +27,73 @@ export function buildSky(): THREE.Mesh {
   return mesh;
 }
 
-/** Placeholder lift lines: a cable that follows the ground, with a tower every 60 metres. */
-export function buildLifts(hf: Heightfield, world: World): THREE.Group {
+/**
+ * Placeholder lifts: towers with a crossarm, a cable up one side and down the other, and an
+ * orange gate at each bottom station to show where to board.
+ */
+export function buildLifts(paths: readonly LiftPath[]): THREE.Group {
   const group = new THREE.Group();
   group.name = 'lifts';
   const cableMat = new THREE.LineBasicMaterial({ color: 0x2c3340 });
-  const towers: THREE.Vector3[] = [];
-  const CABLE_HEIGHT = 12;
-
-  for (const lift of world.lifts) {
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i + 3 < lift.pts.length; i += 2) {
-      const ax = lift.pts[i] as number;
-      const az = lift.pts[i + 1] as number;
-      const bx = lift.pts[i + 2] as number;
-      const bz = lift.pts[i + 3] as number;
-      const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 60));
-      for (let s = i === 0 ? 0 : 1; s <= steps; s++) {
-        const x = ax + ((bx - ax) * s) / steps;
-        const z = az + ((bz - az) * s) / steps;
-        const y = hf.heightAt(x, z);
-        pts.push(new THREE.Vector3(x, y + CABLE_HEIGHT, z));
-        towers.push(new THREE.Vector3(x, y, z));
-      }
-    }
-    if (pts.length > 1) group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cableMat));
-  }
-
-  const towerGeo = new THREE.BoxGeometry(0.7, CABLE_HEIGHT, 0.7);
-  towerGeo.translate(0, CABLE_HEIGHT / 2, 0);
-  const towerMesh = new THREE.InstancedMesh(towerGeo, new THREE.MeshLambertMaterial({ color: 0x4d5666 }), towers.length);
   const m = new THREE.Matrix4();
-  towers.forEach((t, i) => towerMesh.setMatrixAt(i, m.makeTranslation(t.x, t.y, t.z)));
-  towerMesh.instanceMatrix.needsUpdate = true;
-  towerMesh.computeBoundingSphere();
-  group.add(towerMesh);
+
+  let towerCount = 0;
+  for (const path of paths) towerCount += path.points.length / 3;
+  const steel = new THREE.MeshLambertMaterial({ color: 0x4d5666 });
+  const towerGeo = new THREE.BoxGeometry(0.7, CABLE_HEIGHT, 0.7);
+  towerGeo.translate(0, -CABLE_HEIGHT / 2, 0); // hangs down from the cable height
+  const armGeo = new THREE.BoxGeometry(LINE_OFFSET * 2 + 0.8, 0.45, 0.45);
+  const towers = new THREE.InstancedMesh(towerGeo, steel, towerCount);
+  const arms = new THREE.InstancedMesh(armGeo, steel, towerCount);
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  const one = new THREE.Vector3(1, 1, 1);
+  let t = 0;
+  for (const path of paths) {
+    // One cable up the right of the towers and one down the left, hung from each crossarm.
+    const rightLine: THREE.Vector3[] = [];
+    const leftLine: THREE.Vector3[] = [];
+    for (let i = 0; i < path.points.length; i += 3) {
+      const p = new THREE.Vector3(path.points[i], path.points[i + 1], path.points[i + 2]);
+      const yaw = towerYaw(path, i / 3);
+      const side = new THREE.Vector3(Math.cos(yaw) * LINE_OFFSET, 0, -Math.sin(yaw) * LINE_OFFSET);
+      rightLine.push(p.clone().add(side));
+      leftLine.push(p.clone().sub(side));
+      towers.setMatrixAt(t, m.makeTranslation(p.x, p.y, p.z));
+      arms.setMatrixAt(t, m.compose(p, q.setFromAxisAngle(up, yaw), one));
+      t++;
+    }
+    for (const line of [rightLine, leftLine]) {
+      if (line.length > 1) group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(line), cableMat));
+    }
+  }
+  towers.instanceMatrix.needsUpdate = true;
+  towers.computeBoundingSphere();
+  arms.instanceMatrix.needsUpdate = true;
+  arms.computeBoundingSphere();
+  group.add(towers, arms);
+
+  // Gate: two posts and a beam, square to the lift line.
+  const gateMat = new THREE.MeshLambertMaterial({ color: 0xe8792b, flatShading: true });
+  const post = new THREE.BoxGeometry(0.6, 7, 0.6);
+  post.translate(0, 3.5, 0);
+  const beam = new THREE.BoxGeometry(9, 0.7, 0.7);
+  beam.translate(0, 7, 0);
+  for (const path of paths) {
+    const start = pointAlong(path, 0);
+    const gate = new THREE.Group();
+    const left = new THREE.Mesh(post, gateMat);
+    left.position.x = -4.2;
+    const right = new THREE.Mesh(post, gateMat);
+    right.position.x = 4.2;
+    gate.add(left, right, new THREE.Mesh(beam, gateMat));
+    gate.position.set(start.x, start.y - CABLE_HEIGHT, start.z);
+    gate.rotation.y = start.yaw;
+    gate.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.castShadow = true;
+    });
+    group.add(gate);
+  }
   return group;
 }
 

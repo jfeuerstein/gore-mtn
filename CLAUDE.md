@@ -76,6 +76,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
   backwards.
 
+## Lifts
+
+- `src/world/lifts.ts` holds the maths (pure, tested): where each cable runs, where a rider is
+  along it, which station the player is standing at, and the corridor kept clear of trees.
+- A ride is offered by the action button (`Hud.setAction`) at a lift's bottom station. Use the same
+  button for anything else the player can do where they stand.
+- Riders go up on the right of the towers at 30 m/s, so the longest ride is about a minute, and
+  the camera levels out to look up the mountain. The player gets off as they got on: on foot or
+  on skis.
+
 ## Measuring performance
 
 - The owner measures on the phone with Settings > Run benchmark, which steps through fixed settings
@@ -122,11 +132,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
 
-The world has since grown to near life size and is drawn quite differently (terrain and forest
-built around the camera, roughly 400k to 500k triangles and 90 to 180 draw calls in software
-tests). That has not been measured on the phone. Measured before that on the owner's iPhone 17 Pro
-(2026-11-10, Home Screen app): a steady 60 fps at every
-benchmark step, up to 80,000 trees (427k triangles), with shadows, and at pixel ratio 3, using
-about 2 ms of CPU per frame. WebGPU and WebGL 2 performed the same. The budget above is kept as a
+Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
+life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,
+104 draw calls), shadows, and pixel ratio 3, using about 4.4 ms of CPU per frame. WebGPU and
+WebGL 2 performed the same. The benchmark turns the camera on the spot, so it does not measure
+the cost of building terrain and forest while travelling. The budget above is kept as a
 deliberately cautious target so there is room for effects, and for heat and battery over a long
 session, which a five-second measurement does not show.

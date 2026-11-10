@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
+import { riderAlong, RIDER_DROP, rideSpeed, type LiftPath } from '../world/lifts';
 import {
   advanceSki,
   descentAlong,
@@ -23,7 +24,7 @@ export const FAST_SPEED = 110;
 /** The figure is modelled 1.9 m tall and drawn at this scale: about 1.4 m in the game's world. */
 export const PLAYER_SCALE = 0.75;
 
-export type Mode = 'walk' | 'ski';
+export type Mode = 'walk' | 'ski' | 'lift';
 
 /**
  * Greybox player. On foot they move at a fixed speed in the direction of the stick. On skis the
@@ -44,6 +45,10 @@ export class Player {
   private crouch = 0;
   private readonly body = new THREE.Group();
   private readonly skis = new THREE.Group();
+  private readonly chair = new THREE.Group();
+  /** The lift being ridden, how far along it, and what to go back to at the top. */
+  private ride: { path: LiftPath; distance: number; resume: 'walk' | 'ski' } | null = null;
+  private arrived: LiftPath | null = null;
 
   constructor(castShadow: boolean) {
     const jacket = new THREE.MeshLambertMaterial({ color: 0xe2452f, flatShading: true });
@@ -67,11 +72,23 @@ export class Player {
     }
     this.skis.visible = false;
 
+    // A plain chair for lift rides: a seat, a back, and a hanger up to the cable.
+    const steel = new THREE.MeshLambertMaterial({ color: 0x4d5666, flatShading: true });
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.6), steel);
+    seat.position.set(0, 0.55, 0.15);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.1), steel);
+    back.position.set(0, 0.95, 0.45);
+    const hangerHeight = RIDER_DROP / PLAYER_SCALE - 1.3;
+    const hanger = new THREE.Mesh(new THREE.BoxGeometry(0.1, hangerHeight, 0.1), steel);
+    hanger.position.set(0, 1.3 + hangerHeight / 2, 0.45);
+    this.chair.add(seat, back, hanger);
+    this.chair.visible = false;
+
     // Small against the trails, as a person is on a real mountain.
     this.object.scale.setScalar(PLAYER_SCALE);
     // Yaw first, then pitch to the slope, then lean into the turn.
     this.object.rotation.order = 'YXZ';
-    this.object.add(this.body, this.skis);
+    this.object.add(this.body, this.skis, this.chair);
     this.object.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = castShadow;
     });
@@ -101,8 +118,40 @@ export class Player {
     this.stop();
   }
 
-  /** Clip into or out of skis. Either way the player starts from a standstill. */
-  setMode(mode: Mode): void {
+  /** Get on a lift at its bottom station. */
+  board(path: LiftPath): void {
+    if (this.mode === 'lift') return;
+    this.ride = { path, distance: 0, resume: this.mode };
+    this.mode = 'lift';
+    this.stop();
+    this.lean = 0;
+    this.crouch = 0;
+    this.body.scale.y = 1;
+    this.chair.visible = true;
+  }
+
+  /** The lift being ridden, if any. */
+  get riding(): LiftPath | null {
+    return this.ride?.path ?? null;
+  }
+
+  /**
+   * The lift the player has just reached the top of, once. The caller sets them down on the snow;
+   * the player is back on foot or on skis, as they boarded.
+   */
+  takeArrival(): LiftPath | null {
+    const path = this.arrived;
+    this.arrived = null;
+    return path;
+  }
+
+  /** Clip into or out of skis. Either way the player starts from a standstill. On a lift, it takes effect at the top. */
+  setMode(mode: 'walk' | 'ski'): void {
+    if (this.ride) {
+      this.ride.resume = mode;
+      this.skis.visible = mode === 'ski';
+      return;
+    }
     this.mode = mode;
     this.stop();
     this.travelHeading = this.heading;
@@ -130,8 +179,27 @@ export class Player {
     hf: Heightfield,
     groomedAt: (x: number, z: number) => boolean,
   ): void {
-    if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt);
+    if (this.mode === 'lift') this.rideLift(dt);
+    else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt);
     else this.walk(dt, moveX, moveY, camYaw, fast, hf);
+  }
+
+  private rideLift(dt: number): void {
+    const ride = this.ride;
+    if (!ride) return;
+    this.speed = rideSpeed(ride.path, ride.distance);
+    ride.distance += this.speed * dt;
+    const at = riderAlong(ride.path, ride.distance);
+    this.position.set(at.x, at.y - RIDER_DROP, at.z);
+    this.heading = at.yaw;
+    this.travelHeading = at.yaw;
+    this.object.rotation.set(0, at.yaw, 0);
+    if (ride.distance >= ride.path.length) {
+      this.ride = null;
+      this.chair.visible = false;
+      this.arrived = ride.path;
+      this.setMode(ride.resume);
+    }
   }
 
   private walk(dt: number, moveX: number, moveY: number, camYaw: number, fast: boolean, hf: Heightfield): void {

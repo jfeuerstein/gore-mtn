@@ -304,7 +304,7 @@ Each milestone ends with something playable on your phone and a single question 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
 | 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
-| 1 | Greybox skiing (in progress) | One-thumb ski controller, clip in and out, the Adirondack Express as a working lift, trees that fade when they come between the camera and the player, tuning panel | Is skiing Sunway fun with grey boxes? |
+| 1 | Greybox skiing (in progress) | One-thumb ski controller with momentum and a hockey stop, clip in and out, every lift rideable, trees that duck out of the camera's way; still to come: a tuning panel | Is skiing Sunway fun with grey boxes? |
 | 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
@@ -340,7 +340,7 @@ Decisions taken from this:
 
 - Stay on WebGPU, with WebGL 2 as the automatic fallback.
 - Defaults at the time: 40,000 trees, the whole mountain in view, shadows on. Pixel ratio stays at 2 to save heat and battery; 3 is available in Settings.
-- Since then the mountain has been enlarged twice, to near life size. Only the terrain and trees near the camera are built in detail; the rest is drawn simply. That has not been measured on the phone yet; the benchmark's steps were rewritten to measure it.
+- Since then the mountain has been enlarged twice, to near life size, with only the terrain and trees near the camera built in detail. Measured again on the phone at that size: 60 fps at every step, including the thick forest at 623k triangles, with about 4.4 ms of CPU per frame. The benchmark turns on the spot, so stutter while travelling fast is judged by eye.
 - The budget stays where it was, as a cautious target. The measurement was five seconds per step on a cool phone and says nothing about a long session.
 
 An earlier single reading in a Safari tab showed about one frame in twenty arriving late. The benchmark did not reproduce that from the Home Screen. Whether it was the browser tab or touch input is not known yet; the copied performance report now carries enough detail to tell if it comes back.
@@ -355,12 +355,12 @@ Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
 4. The camera: does it stay where you want it through turns and stops? Is the bottom third the right amount of screen for the stick?
 5. Scale: the mountain is now two and a half times bigger again, close to life size, with trees 8 to 15 m tall. Big enough? Do the skier, trails and trees look right against each other?
 6. The bottom of the screen from the Home Screen: does the mountain now reach the bottom edge, with the buttons visible? If a bar is still there, is it dark blue or pale blue? Dark means the page can draw there and the layout is still wrong; pale means iOS itself is covering it, and the fix is a different status bar setting.
-7. Run the benchmark again (Settings). The mountain is drawn very differently now: terrain and forest are built around you as you move, and the far slopes are painted as forest. None of that has been measured on the phone.
+7. Lifts: walk or ski to an orange gate at the foot of a lift and tap Ride. Is about a minute up the Adirondack Express the right length? Is the view up the mountain what you want to look at?
 8. While skiing fast, watch for stutters, or for trees or ground detail appearing late ahead of you.
 
 Trees stand thickest along the trail edges, and the snow on a trail is brighter than under the trees, so each run reads as a corridor. Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
 
-Not built yet: lifts, colliding with trees, snow tracks, getting air off rolls.
+Not built yet: colliding with trees, snow tracks, getting air off rolls, a trail map for finding lifts.
 
 ## 10. Risks and honest perspectives
 

@@ -7,6 +7,7 @@ import { Input } from './input/input';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
+import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
 import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
 import { Terrain } from './world/terrainMesh';
 import { trailAt, type Place } from './world/trails';
@@ -15,6 +16,8 @@ import { loadWorld } from './world/world';
 
 const M_TO_FT = 3.28084;
 const MS_TO_MPH = 2.23694;
+/** Camera pitch while riding a lift: nearly level, to look up the mountain. */
+const LIFT_PITCH = 0.2;
 
 /** Handle for screenshots and automated checks. See tools/shot.mjs. */
 interface DebugHandle {
@@ -66,9 +69,12 @@ function fillScreen(): void {
   const upright = window.innerHeight >= window.innerWidth;
   const full = upright ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
   const root = document.documentElement;
-  if (standalone && window.innerHeight < full - 1) {
+  // The height the page is actually laid out at. On some launches this is short even though
+  // window.innerHeight reports the whole screen, so measure the layout, not the window.
+  const page = Math.min(root.clientHeight || window.innerHeight, window.innerHeight);
+  if (standalone && page < full - 1) {
     root.style.setProperty('--app-height', `${full}px`);
-    root.style.setProperty('--app-extra', `${full - window.innerHeight}px`);
+    root.style.setProperty('--app-extra', `${full - page}px`);
   } else {
     root.style.removeProperty('--app-height');
     root.style.removeProperty('--app-extra');
@@ -77,8 +83,10 @@ function fillScreen(): void {
 
 async function boot(): Promise<void> {
   fillScreen();
-  window.addEventListener('resize', fillScreen);
-  window.addEventListener('orientationchange', fillScreen);
+  for (const event of ['resize', 'orientationchange', 'pageshow']) window.addEventListener(event, fillScreen);
+  document.addEventListener('visibilitychange', fillScreen);
+  // iOS can settle the page's height a moment after launch without saying so.
+  for (const delay of [300, 1500, 4000]) window.setTimeout(fillScreen, delay);
   const cfg = parseConfig(location.search);
   const canvas = document.getElementById('game') as HTMLCanvasElement;
 
@@ -118,8 +126,9 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy.png`),
   ]);
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
-  const trees = new Forest(ground, world, cfg.trees, cfg.shadows);
-  scene.add(terrain.group, trees.group, buildLifts(ground, world), buildPlaces(world));
+  const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
+  const trees = new Forest(ground, world, cfg.trees, cfg.shadows, (x, z) => inLiftClearing(liftPaths, x, z));
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths), buildPlaces(world));
 
   const player = new Player(cfg.shadows);
   scene.add(player.object);
@@ -129,6 +138,8 @@ async function boot(): Promise<void> {
 
   const summit = world.places.find((p) => p.id === 'summit');
   const baseLodge = world.places.find((p) => p.id === 'base-lodge');
+  /** The camera pitch to return to after a lift ride, while that is still under way. */
+  let pitchAfterRide: number | null = null;
   /** Set when the player has jumped somewhere, so the surroundings are built at once, not gradually. */
   let fillScene = true;
   const teleport = (place: Place): void => {
@@ -209,6 +220,7 @@ async function boot(): Promise<void> {
     yaw: follow.yaw,
     pitch: follow.pitch,
     mode: player.mode,
+    lift: player.riding?.lift.name ?? null,
     speed: player.speed,
     heading: player.travelHeading,
     slip: player.slip,
@@ -243,14 +255,39 @@ async function boot(): Promise<void> {
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail);
+    // At the top of a lift, set the player down on the snow a little way ahead of the last tower.
+    const arrived = player.takeArrival();
+    if (arrived) {
+      const top = pointAlong(arrived, arrived.length);
+      const ax = top.x - Math.sin(top.yaw) * 30;
+      const az = top.z - Math.cos(top.yaw) * 30;
+      const spot = world.nearestTrailSpot(ax, az, 150) ?? { x: ax, z: az };
+      player.place(spot.x, spot.z, ground);
+      player.face(top.yaw);
+    }
+    // Offer a ride when standing at the foot of a lift.
+    const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
+    if (station) {
+      hud.setAction(`Ride ${station.lift.name ?? 'the lift'}`, () => {
+        pitchAfterRide = follow.pitch;
+        player.board(station);
+      });
+    }
+    else hud.setAction(null);
+    // On a lift the camera levels out to take in the mountain ahead, then goes back to how the
+    // player had it.
+    if (player.mode === 'lift') follow.settlePitch(LIFT_PITCH, dt);
+    else if (pitchAfterRide !== null && follow.settlePitch(pitchAfterRide, dt)) pitchAfterRide = null;
     // On foot the camera follows as hard as the stick is pushed. On skis it follows with speed,
     // and more firmly, because the skier's heading is the only thing steering the view. It also
     // follows a turn made at a standstill, so the player can see where the skis now point.
     const followAmount =
-      player.mode === 'ski'
-        ? Math.max(Math.min(1, player.speed / 3), Math.abs(input.moveX)) * 2.5
-        : Math.min(1, Math.hypot(input.moveX, input.moveY));
-    follow.follow(player.travelHeading, followAmount, dt, player.mode === 'ski');
+      player.mode === 'lift'
+        ? 1.5
+        : player.mode === 'ski'
+          ? Math.max(Math.min(1, player.speed / 3), Math.abs(input.moveX)) * 2.5
+          : Math.min(1, Math.hypot(input.moveX, input.moveY));
+    follow.follow(player.travelHeading, followAmount, dt, player.mode !== 'walk');
     if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground, player.speed, dt);
     trees.update(player.position, camera.position, dt);
@@ -285,6 +322,7 @@ async function boot(): Promise<void> {
         trailAt(world.trails, player.position.x, player.position.z),
         world.realElevationM(player.position.y) * M_TO_FT,
         player.mode === 'ski' ? player.speed * MS_TO_MPH : null,
+        player.riding ? (player.riding.lift.name ?? 'Lift') : null,
       );
     }
     if (frames === 3) {

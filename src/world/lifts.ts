@@ -1,0 +1,147 @@
+import type { Lift } from './trails';
+
+/** Lift maths with no three.js in it, so it runs under Vitest. */
+
+/** Height of the cable above the ground at each tower, in metres. */
+export const CABLE_HEIGHT = 12;
+/** Distance between towers, in metres. */
+export const TOWER_SPACING = 60;
+/**
+ * Chairs go up on the right of the towers and come down on the left, this far from the centre
+ * line, so riders (and the camera behind them) pass beside each tower, not through it.
+ */
+export const LINE_OFFSET = 3.2;
+/** How far below the cable a rider's feet hang. */
+export const RIDER_DROP = 7;
+/**
+ * Ride speed in m/s. Far quicker than a real chairlift: the longest ride is about a minute, which
+ * is long enough to rest and look around and short enough for a phone.
+ */
+export const LIFT_SPEED = 30;
+/** A lift can be boarded from within this distance of its bottom station. */
+export const STATION_REACH = 30;
+
+export interface LiftPath {
+  lift: Lift;
+  /** Points along the cable, one per tower, from the bottom station to the top: x, y, z triples. */
+  points: number[];
+  /** Distance along the cable to each point. */
+  at: number[];
+  length: number;
+}
+
+/** Lay a lift's cable over the ground: a tower every TOWER_SPACING metres, the cable straight between them. */
+export function buildLiftPath(lift: Lift, heightAt: (x: number, z: number) => number): LiftPath {
+  const points: number[] = [];
+  const at: number[] = [];
+  let length = 0;
+  const add = (x: number, z: number): void => {
+    const y = heightAt(x, z) + CABLE_HEIGHT;
+    const n = points.length;
+    if (n > 0) length += Math.hypot(x - (points[n - 3] as number), y - (points[n - 2] as number), z - (points[n - 1] as number));
+    points.push(x, y, z);
+    at.push(length);
+  };
+  for (let i = 0; i + 3 < lift.pts.length; i += 2) {
+    const ax = lift.pts[i] as number;
+    const az = lift.pts[i + 1] as number;
+    const bx = lift.pts[i + 2] as number;
+    const bz = lift.pts[i + 3] as number;
+    const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / TOWER_SPACING));
+    for (let s = i === 0 ? 0 : 1; s <= steps; s++) add(ax + ((bx - ax) * s) / steps, az + ((bz - az) * s) / steps);
+  }
+  return { lift, points, at, length };
+}
+
+/** Position on the cable a distance from the bottom station, and the yaw of travel there. */
+export function pointAlong(path: LiftPath, distance: number): { x: number; y: number; z: number; yaw: number } {
+  const d = Math.min(Math.max(distance, 0), path.length);
+  let i = 0;
+  while (i < path.at.length - 2 && (path.at[i + 1] as number) < d) i++;
+  const a = i * 3;
+  const b = a + 3;
+  const span = (path.at[i + 1] as number) - (path.at[i] as number) || 1;
+  const t = (d - (path.at[i] as number)) / span;
+  const p = path.points;
+  const ax = p[a] as number;
+  const az = p[a + 2] as number;
+  const bx = p[b] as number;
+  const bz = p[b + 2] as number;
+  return {
+    x: ax + (bx - ax) * t,
+    y: (p[a + 1] as number) + ((p[b + 1] as number) - (p[a + 1] as number)) * t,
+    z: az + (bz - az) * t,
+    yaw: Math.atan2(-(bx - ax), -(bz - az)),
+  };
+}
+
+/** The yaw of the lift line at one of its towers, taken from the towers either side. */
+export function towerYaw(path: LiftPath, tower: number): number {
+  const n = path.points.length / 3;
+  const a = Math.max(0, tower - 1) * 3;
+  const b = Math.min(n - 1, tower + 1) * 3;
+  const p = path.points;
+  return Math.atan2(-((p[b] as number) - (p[a] as number)), -((p[b + 2] as number) - (p[a + 2] as number)));
+}
+
+/** Where a rider going up is, a distance from the bottom station: on the cable to the right of the towers. */
+export function riderAlong(path: LiftPath, distance: number): { x: number; y: number; z: number; yaw: number } {
+  const at = pointAlong(path, distance);
+  // The skier's right for a yaw is (cos, -sin) in x and z.
+  return { x: at.x + Math.cos(at.yaw) * LINE_OFFSET, y: at.y, z: at.z - Math.sin(at.yaw) * LINE_OFFSET, yaw: at.yaw };
+}
+
+/** The lift whose bottom station is nearest the position, if any is within STATION_REACH. */
+export function stationNear(paths: readonly LiftPath[], x: number, z: number, reach = STATION_REACH): LiftPath | null {
+  let best: LiftPath | null = null;
+  let bestDist = reach;
+  for (const path of paths) {
+    const d = Math.hypot((path.points[0] as number) - x, (path.points[2] as number) - z);
+    if (d <= bestDist) {
+      bestDist = d;
+      best = path;
+    }
+  }
+  return best;
+}
+
+/**
+ * Ride speed at a point along the cable: full speed in the middle, easing away from the bottom
+ * station and into the top one.
+ */
+export function rideSpeed(path: LiftPath, distance: number): number {
+  const EASE = 25;
+  const fromEnd = Math.min(distance, path.length - distance);
+  return LIFT_SPEED * Math.min(1, 0.2 + Math.max(0, fromEnd) / EASE);
+}
+
+/** Trees are kept this far back from a lift line, and further back from its stations. */
+export const LINE_CLEARING = 10;
+export const STATION_CLEARING = 24;
+
+/**
+ * Whether a position lies in the corridor cut through the forest for a lift: near its line, or
+ * nearer still to one of its stations.
+ */
+export function inLiftClearing(paths: readonly LiftPath[], x: number, z: number): boolean {
+  for (const path of paths) {
+    const p = path.points;
+    const last = p.length - 3;
+    if (Math.hypot((p[0] as number) - x, (p[2] as number) - z) < STATION_CLEARING) return true;
+    if (Math.hypot((p[last] as number) - x, (p[last + 2] as number) - z) < STATION_CLEARING) return true;
+    for (let i = 0; i < last; i += 3) {
+      const ax = p[i] as number;
+      const az = p[i + 2] as number;
+      const bx = p[i + 3] as number;
+      const bz = p[i + 5] as number;
+      // Cheap rejection first: most trees are nowhere near this span.
+      if (x < Math.min(ax, bx) - LINE_CLEARING || x > Math.max(ax, bx) + LINE_CLEARING) continue;
+      if (z < Math.min(az, bz) - LINE_CLEARING || z > Math.max(az, bz) + LINE_CLEARING) continue;
+      const abx = bx - ax;
+      const abz = bz - az;
+      const t = Math.min(1, Math.max(0, ((x - ax) * abx + (z - az) * abz) / (abx * abx + abz * abz || 1)));
+      if (Math.hypot(x - (ax + abx * t), z - (az + abz * t)) < LINE_CLEARING) return true;
+    }
+  }
+  return false;
+}

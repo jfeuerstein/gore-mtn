@@ -120,6 +120,7 @@ try {
   const there = await state();
   check('teleport moves the player up the mountain', there.y > fastEnd.y + 50, `y ${there.y.toFixed(0)}`);
   check('settings sheet closes after teleport', !(await page.locator('#menu').isVisible()));
+  check('no ride is offered away from a lift station', !(await page.locator('#action-button').isVisible()));
   console.log(`     label at Saddle Lodge: ${await page.locator('#where').textContent()}`);
   await context.close();
 
@@ -178,6 +179,32 @@ try {
   const offSkis = await skiState();
   check('taking skis off stops and goes back to walking', offSkis.mode === 'walk' && offSkis.speed === 0);
   await ski.context.close();
+
+  // Lifts. Start at the foot of a short one so the ride finishes quickly in slow motion.
+  const length = (l) => Math.hypot(l.pts.at(-2) - l.pts[0], l.pts.at(-1) - l.pts[1]);
+  const shortLift = world.lifts.filter((l) => length(l) > 60).sort((a, b) => length(a) - length(b))[0];
+  const lift = await open('iPhone 15 Pro', `&pos=${shortLift.pts[0]},${shortLift.pts[1]}`);
+  const lp = lift.page;
+  const liftState = () => lp.evaluate(() => window.__gore.state());
+  const liftSettle = (fn, arg) => lp.waitForFunction(fn, arg, { timeout: 90000 }).then(() => true, () => false);
+  await lp.waitForSelector('#action-button:not([hidden])', { timeout: 20000 }).catch(() => {});
+  const offer = await lp.locator('#action-button').textContent();
+  check('standing at the foot of a lift offers a ride by name', offer === `Ride ${shortLift.name}`, offer);
+  const actionBox = await lp.locator('#action-button').boundingBox();
+  const skiBox = await lp.locator('#ski-button').boundingBox();
+  check('the ride button is by the thumb and clear of the other buttons', actionBox.y > lp.viewportSize().height * 0.6 && actionBox.y + actionBox.height <= skiBox.y && actionBox.height >= 44);
+  const foot = await liftState();
+  await lp.tap('#action-button');
+  check('tapping it boards the lift', (await liftState()).mode === 'lift' && (await liftState()).lift === shortLift.name);
+  check('the offer goes away while riding', !(await lp.locator('#action-button').isVisible()));
+  // Boarding lifts the rider to chair height at once, so look for a climb well beyond that.
+  check('the ride climbs', await liftSettle((y) => window.__gore.state().y > y + 9, foot.y));
+  check('label names the lift while riding', await liftSettle((name) => document.getElementById('where').textContent.startsWith(name), shortLift.name), await lp.locator('#where').textContent());
+  check('the ride ends back on foot', await liftSettle(() => window.__gore.state().mode === 'walk'));
+  const off = await liftState();
+  const topDist = Math.hypot(off.x - shortLift.pts.at(-2), off.z - shortLift.pts.at(-1));
+  check('and sets the player down near the top station, higher than they started', topDist < 190 && off.y > foot.y, `${topDist.toFixed(0)} m from the top`);
+  await lift.context.close();
 
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: tell the page the screen is 62 points taller

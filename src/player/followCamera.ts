@@ -59,6 +59,16 @@ export class FollowCamera {
     this.yaw = followYaw(this.yaw, heading, amount, dt, always);
   }
 
+  /**
+   * Ease the pitch toward a value, unless the camera was just tilted by hand.
+   * @returns true once it has arrived
+   */
+  settlePitch(target: number, dt: number): boolean {
+    if (this.manualHold > 0) return false;
+    this.pitch += (target - this.pitch) * Math.min(1, dt * 1.6);
+    return Math.abs(target - this.pitch) < 0.01;
+  }
+
   /** Point the camera from the player toward a world position. */
   faceToward(fromX: number, fromZ: number, toX: number, toZ: number): void {
     this.yaw = Math.atan2(-(toX - fromX), -(toZ - fromZ));

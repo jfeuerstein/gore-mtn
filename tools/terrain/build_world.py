@@ -62,6 +62,9 @@ DEM_URL = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/
 OSM_URL = "https://api.openstreetmap.org/api/0.6/map"
 UTM = "EPSG:26918"  # NAD83 / UTM zone 18N
 
+# Plain misspellings in the map data, corrected here until they are fixed at the source.
+NAME_FIXES = {"Straigh Brook Quad": "Straight Brook Quad"}
+
 PLACE_NAMES = {
     "Base Lodge": "base-lodge",
     "Saddle Lodge": "saddle-lodge",
@@ -175,6 +178,7 @@ def main() -> None:
             continue
         flat = [round(v, 1) for p in pts for v in p]
         name = tags.get("name") or tags.get("piste:name")
+        name = NAME_FIXES.get(name, name)
         closed = way.findall("nd")[0].get("ref") == way.findall("nd")[-1].get("ref")
 
         if tags.get("piste:type") == "downhill":
