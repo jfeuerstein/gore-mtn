@@ -14,7 +14,8 @@ import { devices, launchBrowser } from './browser.mjs';
 const shot = process.argv[2];
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
-const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000`;
+// A fixed time and sky, so the checks do not depend on when they are run.
+const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
@@ -232,24 +233,30 @@ try {
   check('taking skis off stops and goes back to walking', offSkis.mode === 'walk' && offSkis.speed === 0);
   await ski.context.close();
 
-  // Looks: pick one in Settings; the game comes back in that look, at the same spot, and
-  // remembers the choice the next time it is opened from a bare address.
-  const looks = await open('iPhone 15 Pro', '&at=saddle-lodge');
-  const kp = looks.page;
-  const spot = await kp.evaluate(() => window.__gore.state());
+  // Time of day and weather: choosing one in Settings repaints the mountain, at the same spot.
+  const sky = await open('iPhone 15 Pro', '&at=saddle-lodge');
+  const kp = sky.page;
+  const noon = await kp.evaluate(() => window.__gore.state());
+  check('midday has the sun well up and a long view', noon.sunElevationDeg > 20 && noon.viewDist > 5000, `sun ${noon.sunElevationDeg.toFixed(0)} degrees`);
   await kp.tap('#menu-button');
-  const offered = await kp.locator('#menu a', { hasText: /Bluebird|Golden hour|Quiet snowfall|Storybook/ }).count();
-  check('settings offer four looks', offered === 4, `${offered}`);
-  await Promise.all([kp.waitForNavigation(), kp.locator('#menu a', { hasText: 'Golden hour' }).tap()]);
+  const offered = await kp.locator('#menu a', { hasText: /^(Dawn|Midday|Evening|Dusk|Night|Clear|Cloudy|Snow)$/ }).count();
+  check('settings offer times of day and kinds of weather', offered === 8, `${offered}`);
+  await Promise.all([kp.waitForNavigation(), kp.locator('#menu a', { hasText: /^Night$/ }).tap()]);
   await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
-  check('choosing a look reloads into it', kp.url().includes('look=golden') && !(await kp.evaluate(() => window.__gore.error)));
-  const back = await kp.evaluate(() => window.__gore.state());
-  check('at the same spot, facing the same way', Math.hypot(back.x - spot.x, back.z - spot.z) < 1 && Math.abs(back.yaw - spot.yaw) < 0.01, `${Math.hypot(back.x - spot.x, back.z - spot.z).toFixed(2)} m away`);
-  await kp.goto(url);
-  await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  const night = await kp.evaluate(() => window.__gore.state());
+  check('choosing night puts the sun below the horizon', kp.url().includes('time=night') && night.sunElevationDeg < -20 && !(await kp.evaluate(() => window.__gore.error)));
+  check('at the same spot, facing the same way', Math.hypot(night.x - noon.x, night.z - noon.z) < 1 && Math.abs(night.yaw - noon.yaw) < 0.01);
   await kp.tap('#menu-button');
-  check('the look is remembered on the next visit', (await kp.locator('#menu a.on', { hasText: 'Golden hour' }).count()) === 1);
-  await looks.context.close();
+  await Promise.all([kp.waitForNavigation(), kp.locator('#menu a', { hasText: /^Snow$/ }).tap()]);
+  await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  const snowy = await kp.evaluate(() => window.__gore.state());
+  check('choosing snow closes the view in and keeps the chosen time', snowy.weather.snowing === 1 && snowy.viewDist < 1300 && kp.url().includes('time=night'), `view ${Math.round(snowy.viewDist)} m`);
+  // Left to itself the game follows the clock, and makes up weather if it cannot fetch the real thing.
+  await kp.goto(url.replace('&time=midday&weather=clear', ''));
+  await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  const real = await kp.evaluate(() => window.__gore.state());
+  check('with nothing chosen it runs on the real clock and a real or invented sky', !(await kp.evaluate(() => window.__gore.error)) && ['real', 'invented'].includes(real.weatherSource) && Number.isFinite(real.sunElevationDeg), real.weatherSource);
+  await sky.context.close();
 
   // Lifts. Start at the foot of a short one so the ride finishes quickly in slow motion.
   const length = (l) => Math.hypot(l.pts.at(-2) - l.pts[0], l.pts.at(-1) - l.pts[1]);

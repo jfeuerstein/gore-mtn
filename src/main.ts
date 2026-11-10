@@ -1,8 +1,11 @@
 import * as THREE from 'three/webgpu';
 import { parseConfig } from './config';
 import { BenchRun, showBenchResults } from './debug/bench';
-import { deviceLabel, Hud, rememberedLook } from './debug/hud';
-import { lookById } from './look/looks';
+import { deviceLabel, Hud } from './debug/hud';
+import { Atmosphere } from './look/atmosphere';
+import { paletteFor, type Weather } from './look/palette';
+import { namedTime, sunPosition } from './look/sun';
+import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
 import { FrameStats } from './debug/perf';
 import { Input } from './input/input';
 import { TrailMap } from './ui/trailMap';
@@ -10,7 +13,7 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
-import { buildBackdrop, buildLifts, buildPlaces, buildSky } from './world/scenery';
+import { buildLifts, buildPlaces } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { SkiTracks } from './world/tracks';
@@ -94,11 +97,8 @@ async function boot(): Promise<void> {
   document.addEventListener('visibilitychange', fillScreen);
   // iOS can settle the page's height a moment after launch without saying so.
   for (const delay of [300, 1500, 4000]) window.setTimeout(fillScreen, delay);
-  const cfg = parseConfig(location.search, { look: rememberedLook() });
-  const look = lookById(cfg.look);
-  // Haze sets how far there is anything to see, so nothing beyond it need be drawn.
-  const viewDist = Math.min(cfg.viewDist, look.fog.far);
-  const shadows = cfg.shadows && look.shadows;
+  const cfg = parseConfig(location.search);
+  const shadows = cfg.shadows;
   const canvas = document.getElementById('game') as HTMLCanvasElement;
 
   const renderer = new THREE.WebGPURenderer({ canvas, antialias: true, forceWebGL: cfg.renderer === 'webgl' });
@@ -111,15 +111,12 @@ async function boot(): Promise<void> {
   const ground = world.source.decimate(cfg.stride);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(look.fog.colour, Math.min(look.fog.near, viewDist * 0.5), viewDist);
-  const sky = buildSky(look);
-  scene.add(sky, buildBackdrop(look));
-  const snowfall = look.snowfall ? new Snowfall() : null;
-  if (snowfall) scene.add(snowfall.mesh);
-
-  scene.add(new THREE.HemisphereLight(look.ambient.sky, look.ambient.ground, look.ambient.intensity));
-  const sun = new THREE.DirectionalLight(look.sun.colour, look.sun.intensity);
-  const sunDir = new THREE.Vector3(...look.sun.direction).normalize();
+  // Sky, light and haze all come from the atmosphere, which follows the clock and the weather.
+  const atmosphere = new Atmosphere();
+  scene.fog = atmosphere.fog;
+  const snowfall = new Snowfall();
+  scene.add(atmosphere.group, atmosphere.ambient, snowfall.mesh);
+  const sun = atmosphere.light;
   if (shadows) {
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
@@ -138,13 +135,13 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/ground.png`),
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy.png`),
   ]);
-  const terrain = new Terrain(ground, snowTexture, canopyTexture, look);
+  const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
-  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z), look.trees);
+  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z));
   scene.add(terrain.group, trees.group, buildLifts(liftPaths), buildPlaces(world));
 
   const player = new Player(shadows);
-  const tracks = new SkiTracks(look.track);
+  const tracks = new SkiTracks();
   scene.add(player.object, tracks.mesh);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera, cfg.zoom);
@@ -230,11 +227,46 @@ async function boot(): Promise<void> {
   let sinceHud = 0;
   let frames = 0;
 
-  // Trees are drawn out to the smaller of the view distance and the forest's own range; past
-  // that, terrain wears the canopy texture. With trees switched off it wears snow throughout.
-  const treeRange = cfg.trees > 0 ? Math.min(viewDist, TREE_RANGE) : Infinity;
+  // --- Time of day and weather -------------------------------------------------------------
+  // A named time is a fixed moment of today; otherwise the clock runs. Likewise the weather is
+  // either a settled kind, or the real sky over Gore, with an invented one until that arrives
+  // and whenever it cannot be had.
+  const fixedTime = cfg.time === 'real' ? null : namedTime(cfg.time, new Date());
+  const skyTime = (): Date => fixedTime ?? new Date();
+  let realWeather: Weather | null = null;
+  const refreshWeather = (): void => {
+    void fetchWeather().then((w) => {
+      if (w) realWeather = w;
+    });
+  };
+  if (cfg.weather === 'real') {
+    refreshWeather();
+    window.setInterval(refreshWeather, 20 * 60000);
+  }
+  const weatherWanted = (): Weather => (cfg.weather === 'real' ? (realWeather ?? inventedWeather(skyTime())) : NAMED_WEATHER[cfg.weather]);
+  let weather = weatherWanted();
+  let sunNow = sunPosition(skyTime());
+  let viewDist = cfg.viewDist;
+  /** Repaint the scene for the time and weather. Cheap enough to do several times a second. */
+  const paintSky = (seconds: number): void => {
+    weather = easeWeather(weather, weatherWanted(), seconds);
+    sunNow = sunPosition(skyTime());
+    const palette = paletteFor((sunNow.elevation * 180) / Math.PI, weather);
+    atmosphere.apply(palette, sunNow);
+    terrain.setTints(palette.snowTint, palette.canopyTint);
+    tracks.setColour(palette.track);
+    snowfall.setAmount(palette.snowfall);
+    viewDist = Math.min(cfg.viewDist, palette.fogFar);
+  };
+  paintSky(0);
+  let sinceSky = 0;
+
   /** @param unlimited build everything in range at once: before the first frame and after a teleport */
   const cull = (unlimited = false): void => {
+    // Haze sets how far there is anything to see, so nothing beyond it need be drawn. Trees are
+    // drawn out to the smaller of that and the forest's own range; past it, terrain wears the
+    // canopy texture. With trees switched off it wears snow throughout.
+    const treeRange = cfg.trees > 0 ? Math.min(viewDist, TREE_RANGE) : Infinity;
     terrain.cull(camera.position.x, camera.position.z, viewDist, treeRange, unlimited);
     trees.cull(camera.position.x, camera.position.z, viewDist, unlimited);
   };
@@ -249,6 +281,10 @@ async function boot(): Promise<void> {
     mode: player.mode,
     lift: player.riding?.lift.name ?? null,
     tracks: tracks.count,
+    sunElevationDeg: (sunNow.elevation * 180) / Math.PI,
+    weather,
+    weatherSource: cfg.weather !== 'real' ? 'chosen' : realWeather ? 'real' : 'invented',
+    viewDist,
     nearestTree: trees.trunkAt(player.position.x, player.position.z, 300),
     speed: player.speed,
     heading: player.travelHeading,
@@ -339,10 +375,15 @@ async function boot(): Promise<void> {
     if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground, player.speed, dt);
     trees.update(player.position, camera.position, dt);
-    sky.position.copy(camera.position);
-    snowfall?.update(camera.position, dt);
+    sinceSky += frameMs;
+    if (sinceSky >= 100) {
+      paintSky(sinceSky / 1000);
+      sinceSky = 0;
+    }
+    atmosphere.follow(camera.position);
+    snowfall.update(camera.position, dt);
     sun.target.position.copy(player.position);
-    sun.position.copy(player.position).addScaledVector(sunDir, 150);
+    sun.position.copy(player.position).addScaledVector(atmosphere.lightDirection, 150);
     cull(fillScene);
     fillScene = false;
 

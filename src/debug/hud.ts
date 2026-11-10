@@ -1,5 +1,4 @@
 import { DEFAULTS, withParams, type Config } from '../config';
-import { lookById, LOOKS } from '../look/looks';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
 import { startBench } from './bench';
 import { describeSummary, type FrameSummary } from './perf';
@@ -25,10 +24,28 @@ interface OptionGroup {
 
 const OPTIONS: OptionGroup[] = [
   {
-    title: 'Look',
-    param: 'look',
-    current: (c) => c.look,
-    options: LOOKS.map((l) => ({ label: l.name, value: l.id })),
+    title: 'Time of day',
+    param: 'time',
+    current: (c) => c.time,
+    options: [
+      { label: 'Real', value: 'real' },
+      { label: 'Dawn', value: 'dawn' },
+      { label: 'Midday', value: 'midday' },
+      { label: 'Evening', value: 'evening' },
+      { label: 'Dusk', value: 'dusk' },
+      { label: 'Night', value: 'night' },
+    ],
+  },
+  {
+    title: 'Weather',
+    param: 'weather',
+    current: (c) => c.weather,
+    options: [
+      { label: 'Real', value: 'real' },
+      { label: 'Clear', value: 'clear' },
+      { label: 'Cloudy', value: 'cloudy' },
+      { label: 'Snow', value: 'snow' },
+    ],
   },
   {
     title: 'Camera distance',
@@ -96,18 +113,6 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
 ];
-
-/** Where the chosen look is kept between visits. */
-export const LOOK_KEY = 'gore-look';
-
-/** The look chosen on an earlier visit, if any. */
-export function rememberedLook(): string | null {
-  try {
-    return localStorage.getItem(LOOK_KEY);
-  } catch {
-    return null;
-  }
-}
 
 /** Browser and whether the game is running from the Home Screen, for reports. */
 export function deviceLabel(): string {
@@ -206,18 +211,12 @@ export class Hud {
         if (opt.value === current) a.className = 'on';
         a.addEventListener('click', (e) => {
           e.preventDefault();
-          // The look is remembered between visits; the Home Screen app always starts from a bare address.
-          if (group.param === 'look') {
-            try {
-              localStorage.setItem(LOOK_KEY, opt.value);
-            } catch {
-              // Private browsing can refuse storage; the look then lasts for this visit only.
-            }
-          }
           location.assign(withParams(location.search, { ...this.place(), [group.param]: value }) || location.pathname);
         });
       }
-      if (group.param === 'look') add(this.menuEl, 'p', lookById(current).blurb);
+      if (group.param === 'weather') {
+        add(this.menuEl, 'p', 'Real follows the clock and the sky over Gore. The others are for trying a moment out; the game goes back to Real the next time it is opened.');
+      }
     }
 
     add(this.menuEl, 'h2', 'Report');
@@ -245,7 +244,7 @@ export class Hud {
       `${s.backend} ${s.width}x${s.height} @${s.pixelRatio}x | ${describeSummary(s.frame)} | ` +
       `${s.drawCalls} calls, ${(s.triangles / 1000).toFixed(0)}k tris | ` +
       `trees ${s.trees}, stride ${this.cfg.stride}, view ${this.cfg.viewDist}, shadows ${this.cfg.shadows ? 'on' : 'off'}, ` +
-      `zoom ${this.cfg.zoom}, look ${this.cfg.look} | ` +
+      `zoom ${this.cfg.zoom}, time ${this.cfg.time}, weather ${this.cfg.weather} | ` +
       `${this.lastWhere} | ${deviceLabel()}`
     );
   }

@@ -39,7 +39,15 @@ export class Snowfall {
     }
   }
 
+  /** How hard it is snowing, 0..1: the share of the flakes that are drawn. */
+  setAmount(amount: number): void {
+    const count = Math.round(Math.min(1, Math.max(0, amount)) * FLAKES);
+    this.mesh.count = count;
+    this.mesh.visible = count > 0;
+  }
+
   update(camera: THREE.Vector3, dt: number): void {
+    if (!this.mesh.visible) return;
     this.time += dt;
     const m = this.mesh.instanceMatrix.array;
     const s = this.seeds;

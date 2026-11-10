@@ -39,7 +39,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
-  string (`look`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
+  string (`time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
   and a few actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
@@ -62,18 +62,30 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
 
-## Looks
+## Time of day and weather
 
-- A look is a complete visual treatment: sky, sun, ambient light, haze, snow and forest tints,
-  faceted or smooth ground, tree shapes and colours, far hills, falling snow. Looks are data in
-  `src/look/looks.ts`; everything that draws reads from the chosen one. Add or change a look there,
-  not in the drawing code.
-- The owner picks a look in Settings. The choice goes in the address (`look=`) and is remembered
-  between visits, because the Home Screen app always starts from a bare address. Changing any
-  setting brings the player back to the same spot and view.
+The owner chose the game's look from four tried on the phone: warm low-sun light with violet
+shadows, and a quiet white when it is overcast or snowing. The game is one family of looks that
+moves between those with the real time of day and the real weather at Gore.
+
+- `src/look/sun.ts` works out where the sun is over Gore at any moment. `src/look/weather.ts`
+  fetches the real sky from Open-Meteo (the request names only the mountain) and invents weather
+  when that fails. `src/look/palette.ts` turns the sun's height and the weather into a palette by
+  blending hand-tuned moments: night, twilight, golden hour, day, and snow by day and by night.
+  All three are pure and tested. Change the look by editing the palettes there.
+- `src/look/atmosphere.ts` paints a palette onto the scene (sky, sun or moon, light, haze, far
+  hills) ten times a second. Haze also sets how far anything is drawn.
+- Trees and snow are neutral in colour so they take on the colour of the light. Keep new models
+  the same: no baked-in sunlight or shadow.
+- Gore faces east, so dawn lights the trails and evening puts them in shade under a warm sky.
+  That is true to the mountain; do not "fix" it.
+- `time=dawn|midday|evening|dusk|night` and `weather=clear|cloudy|snow` pin a moment for trying
+  things out, from the address or from Settings. They are not remembered: the game goes back to
+  the real clock and sky when it is next opened. The tools pin midday and a clear sky unless told
+  otherwise, so screenshots and checks do not depend on when they run.
 - Art direction is the owner's call. Offer options to compare on the phone; do not settle it alone.
-- Screenshot every look after a change that affects lighting or colour:
-  `node tools/shot.mjs out.png "look=golden&at=summit"`.
+- After a change that affects light or colour, screenshot several moments, not one:
+  `node tools/shot.mjs out.png "time=dusk&weather=snow&at=summit"`.
 
 ## Skiing
 

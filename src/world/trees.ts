@@ -1,5 +1,4 @@
 import * as THREE from 'three/webgpu';
-import { lookById, type TreeStyle } from '../look/looks';
 import { makeRng } from '../rng';
 import type { Heightfield } from './heightfield';
 import type { Obstacle } from '../player/collide';
@@ -47,7 +46,42 @@ export interface TreePatch {
   radius: number;
 }
 
-/** A tree in the look's style: a square trunk and a stack of cones, each shaded from rim to tip. */
+/** One cone of a tree: a ring of `sides` points at height y0 and radius `radius`, rising to a point at y1. */
+export interface TreeTier {
+  radius: number;
+  y0: number;
+  y1: number;
+  sides: number;
+  /** Colour at the rim and at the tip. */
+  base: number;
+  tip: number;
+}
+
+export interface TreeStyle {
+  trunk: number;
+  /** Bottom tier first. The model is about 3.6 units tall and 1.05 wide; the game scales it up. */
+  tiers: TreeTier[];
+  /** The single cone used for distant trees. */
+  farBase: number;
+  farTip: number;
+}
+
+/**
+ * The game's fir: three tiers, dark below and snow-laden above. Its colours are neutral so that it
+ * takes on the colour of the light: warm at sunrise, blue at dusk, grey in falling snow.
+ */
+export const FIR: TreeStyle = {
+  trunk: 0x3a3436,
+  tiers: [
+    { radius: 1.0, y0: 0.6, y1: 2.5, sides: 6, base: 0x22383a, tip: 0x5d7a78 },
+    { radius: 0.74, y0: 1.7, y1: 3.1, sides: 6, base: 0x2b4646, tip: 0xdfe8ea },
+    { radius: 0.46, y0: 2.6, y1: 3.6, sides: 5, base: 0x8fa6a6, tip: 0xf4f7fa },
+  ],
+  farBase: 0x30494a,
+  farTip: 0xcfdadc,
+};
+
+/** A tree: a square trunk and a stack of cones, each shaded from rim to tip. */
 export function buildTreeGeometry(style: TreeStyle): THREE.BufferGeometry {
   const pos: number[] = [];
   const col: number[] = [];
@@ -151,7 +185,7 @@ export class Forest {
     private readonly castShadow: boolean,
     /** Places kept clear of trees besides the trails, such as lift lines. */
     private readonly keepClear: (x: number, z: number) => boolean = () => false,
-    style: TreeStyle = lookById(null).trees,
+    style: TreeStyle = FIR,
   ) {
     this.group.name = 'trees';
     this.geometry = buildTreeGeometry(style);

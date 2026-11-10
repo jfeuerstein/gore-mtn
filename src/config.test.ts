@@ -32,16 +32,14 @@ describe('parseConfig', () => {
   });
 });
 
-describe('look', () => {
-  it('comes from the address first, then from what was remembered, then the default', () => {
-    expect(parseConfig('?look=golden', { look: 'snowfall' }).look).toBe('golden');
-    expect(parseConfig('', { look: 'snowfall' }).look).toBe('snowfall');
-    expect(parseConfig('').look).toBe(DEFAULTS.look);
+describe('time and weather', () => {
+  it('follow the real clock and sky unless the address says otherwise', () => {
+    expect(parseConfig('')).toMatchObject({ time: 'real', weather: 'real' });
+    expect(parseConfig('?time=dusk&weather=snow')).toMatchObject({ time: 'dusk', weather: 'snow' });
   });
 
-  it('ignores a look that does not exist', () => {
-    expect(parseConfig('?look=neon').look).toBe(DEFAULTS.look);
-    expect(parseConfig('', { look: 'gone' }).look).toBe(DEFAULTS.look);
+  it('ignore values that are not on the list', () => {
+    expect(parseConfig('?time=teatime&weather=frogs')).toMatchObject({ time: 'real', weather: 'real' });
   });
 });
 

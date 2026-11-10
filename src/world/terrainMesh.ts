@@ -1,5 +1,4 @@
 import * as THREE from 'three/webgpu';
-import type { Look } from '../look/looks';
 import type { Heightfield } from './heightfield';
 
 /** Terrain is drawn as square tiles this many cells across. */
@@ -120,14 +119,13 @@ function buildTileGeometry(hf: Heightfield, c0: number, c1: number, r0: number, 
 export class Terrain {
   readonly group = new THREE.Group();
   private readonly tiles: Tile[] = [];
-  private readonly snowMaterial: THREE.Material;
-  private readonly canopyMaterial: THREE.Material;
+  private readonly snowMaterial: THREE.MeshLambertMaterial;
+  private readonly canopyMaterial: THREE.MeshLambertMaterial;
 
   constructor(
     private readonly hf: Heightfield,
     snowTexture: THREE.Texture,
     canopyTexture: THREE.Texture,
-    look: Look,
   ) {
     this.group.name = 'terrain';
     for (const t of [snowTexture, canopyTexture]) {
@@ -135,18 +133,8 @@ export class Terrain {
       t.anisotropy = 4;
     }
     // Double-sided so the skirts show whichever way they face.
-    this.snowMaterial = new THREE.MeshLambertMaterial({
-      map: snowTexture,
-      color: look.snowTint,
-      flatShading: look.facetedGround,
-      side: THREE.DoubleSide,
-    });
-    this.canopyMaterial = new THREE.MeshLambertMaterial({
-      map: canopyTexture,
-      color: look.canopyTint,
-      flatShading: look.facetedGround,
-      side: THREE.DoubleSide,
-    });
+    this.snowMaterial = new THREE.MeshLambertMaterial({ map: snowTexture, side: THREE.DoubleSide });
+    this.canopyMaterial = new THREE.MeshLambertMaterial({ map: canopyTexture, side: THREE.DoubleSide });
 
     for (let r0 = 0; r0 < hf.rows - 1; r0 += TILE_CELLS) {
       for (let c0 = 0; c0 < hf.cols - 1; c0 += TILE_CELLS) {
@@ -162,6 +150,12 @@ export class Terrain {
         this.tiles.push(tile);
       }
     }
+  }
+
+  /** Tint the snow and the distant forest, for the time of day and the weather. */
+  setTints(snow: number, canopy: number): void {
+    this.snowMaterial.color.setHex(snow);
+    this.canopyMaterial.color.setHex(canopy);
   }
 
   /** The mesh for a tile at a level, building it if need be. */

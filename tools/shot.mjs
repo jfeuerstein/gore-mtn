@@ -16,7 +16,12 @@ const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1']
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const address = server.httpServer.address();
-const url = `http://127.0.0.1:${address.port}/?${query}`;
+// The game follows the real clock and weather, which would make screenshots differ from one run
+// to the next. Unless the query says otherwise, take them at midday under a clear sky.
+const params = new URLSearchParams(query);
+if (!params.has('time')) params.set('time', 'midday');
+if (!params.has('weather')) params.set('weather', 'clear');
+const url = `http://127.0.0.1:${address.port}/?${params}`;
 
 const browser = await launchBrowser();
 let failed = false;

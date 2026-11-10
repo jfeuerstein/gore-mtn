@@ -55,6 +55,10 @@ export class SkiTracks {
     this.mesh.receiveShadow = true;
   }
 
+  setColour(colour: number): void {
+    (this.mesh.material as THREE.MeshLambertMaterial).color.setHex(colour);
+  }
+
   /** Stop the current line, so the next mark does not join up with it: skis off, a lift ride, a teleport. */
   lift(): void {
     this.last = null;

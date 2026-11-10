@@ -24,12 +24,13 @@ export const BENCH_STEPS: readonly BenchStep[] = [
   { label: 'WebGPU, half terrain detail', params: { stride: '2' } },
   { label: 'WebGPU, no shadows', params: { shadows: '0' } },
   { label: 'WebGPU, pixel ratio 3', params: { dpr: '3' } },
-  { label: 'WebGPU, 3,500 m view', params: { view: '3500' } },
+  { label: 'WebGPU, snowing', params: { weather: 'snow' } },
   { label: 'WebGPU, from the summit', params: { at: 'summit' } },
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
-  look: 'bluebird',
+  time: 'midday',
+  weather: 'clear',
   at: 'saddle-lodge',
   renderer: 'webgpu',
   trees: '220000',
