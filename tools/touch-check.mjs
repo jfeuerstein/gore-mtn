@@ -238,7 +238,8 @@ try {
   const sky = await open('iPhone 15 Pro', '&at=saddle-lodge');
   const kp = sky.page;
   const noon = await kp.evaluate(() => window.__gore.state());
-  check('midday has the sun well up and a long view', noon.sunElevationDeg > 20 && noon.viewDist > 5000, `sun ${noon.sunElevationDeg.toFixed(0)} degrees`);
+  // These checks run with the view distance set to 1,500 m; clear air leaves all of it.
+  check('midday has the sun well up and the full view', noon.sunElevationDeg > 20 && noon.viewDist >= 1500, `sun ${noon.sunElevationDeg.toFixed(0)} degrees, view ${Math.round(noon.viewDist)} m`);
   await kp.tap('#menu-button');
   const offered = await kp.locator('#menu a', { hasText: /^(Dawn|Midday|Evening|Dusk|Night|Clear|Cloudy|Snow)$/ }).count();
   check('settings offer times of day and kinds of weather', offered === 8, `${offered}`);
