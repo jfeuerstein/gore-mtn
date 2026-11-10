@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { makeRng } from '../rng';
 import type { Heightfield } from './heightfield';
+import type { Obstacle } from '../player/collide';
 import { blocksSightLine, type Point3 } from './occlusion';
 import type { World } from './world';
 
@@ -296,6 +297,35 @@ export class Forest {
     }
   }
 
+  /**
+   * The tree whose trunk a circle at (x, z) overlaps most deeply, if any. Only the trunk and the
+   * thick of the lower branches count: the skier can brush under the outer boughs.
+   */
+  trunkAt(x: number, z: number, radius: number): Obstacle | null {
+    let best: Obstacle | null = null;
+    let bestGap = 0;
+    const reach = radius + MAX_TRUNK;
+    for (const p of this.patches.values()) {
+      if (p === EMPTY) continue;
+      if (Math.hypot(p.centerX - x, p.centerZ - z) > p.radius + reach) continue;
+      const t = p.trees;
+      for (let i = 0; i < p.mesh.count; i++) {
+        const o = i * 5;
+        const dx = (t[o] as number) - x;
+        if (dx > reach || dx < -reach) continue;
+        const dz = (t[o + 2] as number) - z;
+        if (dz > reach || dz < -reach) continue;
+        const trunk = trunkRadius(t[o + 3] as number);
+        const gap = Math.hypot(dx, dz) - trunk - radius;
+        if (gap < bestGap) {
+          bestGap = gap;
+          best = { x: t[o] as number, z: t[o + 2] as number, radius: trunk };
+        }
+      }
+    }
+    return best;
+  }
+
   /** Shrink trees that hide the player from the camera, and regrow the ones that no longer do. */
   update(player: Point3, camera: Point3, dt: number): void {
     const blocking = this.blocking;
@@ -343,6 +373,12 @@ export class Forest {
       else this.ducked.set(id, next);
     }
   }
+}
+
+const MAX_TRUNK = 1.2;
+/** The part of a tree that stops a skier, from the radius of its lowest boughs. */
+export function trunkRadius(treeRadius: number): number {
+  return Math.min(MAX_TRUNK, Math.max(0.5, treeRadius * 0.28));
 }
 
 /** Stands for a patch that was planted and found to hold no trees. */

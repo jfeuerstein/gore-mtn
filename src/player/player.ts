@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
+import { deflect, pushOut, type Obstacle } from './collide';
 import { riderAlong, RIDER_DROP, rideSpeed, type LiftPath } from '../world/lifts';
 import {
   advanceSki,
@@ -25,6 +26,8 @@ export const FAST_SPEED = 110;
 export const PLAYER_SCALE = 0.75;
 
 export type Mode = 'walk' | 'ski' | 'lift';
+/** How wide the player is for bumping into things, in metres. */
+const BODY_RADIUS = 0.35;
 
 /**
  * Greybox player. On foot they move at a fixed speed in the direction of the stick. On skis the
@@ -92,6 +95,11 @@ export class Player {
     this.object.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = castShadow;
     });
+  }
+
+  /** The way the skis point, as a yaw. */
+  get skiHeading(): number {
+    return this.heading;
   }
 
   /** Angle between the skis and the direction of travel: near 0 carving, near ±PI/2 in a hockey stop. */
@@ -169,6 +177,7 @@ export class Player {
    * @param moveY stick up (+) and down (-), 0..1
    * @param camYaw camera yaw, so on foot "up" means away from the camera
    * @param groomedAt whether a position is on a groomed trail
+   * @param obstacleAt the solid thing, such as a tree trunk, that a circle at a position overlaps
    */
   update(
     dt: number,
@@ -178,10 +187,11 @@ export class Player {
     fast: boolean,
     hf: Heightfield,
     groomedAt: (x: number, z: number) => boolean,
+    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null = () => null,
   ): void {
     if (this.mode === 'lift') this.rideLift(dt);
-    else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt);
-    else this.walk(dt, moveX, moveY, camYaw, fast, hf);
+    else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt, obstacleAt);
+    else this.walk(dt, moveX, moveY, camYaw, fast, hf, obstacleAt);
   }
 
   private rideLift(dt: number): void {
@@ -202,7 +212,15 @@ export class Player {
     }
   }
 
-  private walk(dt: number, moveX: number, moveY: number, camYaw: number, fast: boolean, hf: Heightfield): void {
+  private walk(
+    dt: number,
+    moveX: number,
+    moveY: number,
+    camYaw: number,
+    fast: boolean,
+    hf: Heightfield,
+    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null,
+  ): void {
     const mag = Math.min(1, Math.hypot(moveX, moveY));
     const top = fast ? FAST_SPEED : WALK_SPEED;
     this.speed = mag * top;
@@ -212,8 +230,15 @@ export class Player {
       // Camera forward is (-sin, -cos) and camera right is (cos, -sin) in the x-z plane.
       const dx = (cos * moveX - sin * moveY) / mag;
       const dz = (-sin * moveX - cos * moveY) / mag;
-      const x = Math.min(Math.max(this.position.x + dx * this.speed * dt, hf.minX + 1), hf.maxX - 1);
-      const z = Math.min(Math.max(this.position.z + dz * this.speed * dt, hf.minZ + 1), hf.maxZ - 1);
+      let x = Math.min(Math.max(this.position.x + dx * this.speed * dt, hf.minX + 1), hf.maxX - 1);
+      let z = Math.min(Math.max(this.position.z + dz * this.speed * dt, hf.minZ + 1), hf.maxZ - 1);
+      // Walk round trees, not through them. (Fast travel is a debug aid and goes through.)
+      const tree = fast ? null : obstacleAt(x, z, BODY_RADIUS);
+      const bump = tree && pushOut(x, z, BODY_RADIUS, tree);
+      if (bump) {
+        x = bump.x;
+        z = bump.z;
+      }
       this.position.set(x, hf.heightAt(x, z), z);
 
       const want = Math.atan2(-dx, -dz);
@@ -225,9 +250,19 @@ export class Player {
     }
   }
 
-  private ski(dt: number, input: SkiInput, hf: Heightfield, groomedAt: (x: number, z: number) => boolean): void {
+  private ski(
+    dt: number,
+    input: SkiInput,
+    hf: Heightfield,
+    groomedAt: (x: number, z: number) => boolean,
+    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null,
+  ): void {
     const before = this.position.clone();
-    const after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt);
+    let after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt);
+    // A tree is a bump, not a crash: the skier is nudged clear and loses speed, more the squarer the hit.
+    const tree = obstacleAt(after.x, after.z, BODY_RADIUS);
+    const bump = tree && pushOut(after.x, after.z, BODY_RADIUS, tree);
+    if (bump) after = { ...after, x: bump.x, z: bump.z, ...deflect(after.vx, after.vz, bump) };
     const x = Math.min(Math.max(after.x, hf.minX + 1), hf.maxX - 1);
     const z = Math.min(Math.max(after.z, hf.minZ + 1), hf.maxZ - 1);
     // Running into the edge of the map is a stop, not a slide along it.

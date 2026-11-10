@@ -40,7 +40,8 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
+  `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
+  and a few actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
   heights and the trail mask (gzipped; `src/world/codec.ts` reads them), `ground.png` (the snow's
   colour up close: bright trails, shaded edges, bare rock) and `canopy.png` (the forest as seen
@@ -74,7 +75,10 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - One thumb: left and right steer, up tucks (and poles from a standstill), down is a hockey stop.
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
-  backwards.
+  backwards. A tree is a bump, not a crash (`src/player/collide.ts`): the skier is nudged clear and
+  loses speed, more the squarer the hit.
+- Skis leave tracks (`src/world/tracks.ts`): thin lines when carving, wide scrapes when skidding.
+  The last 900 m or so stay on the snow.
 
 ## Lifts
 
@@ -85,6 +89,14 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - Riders go up on the right of the towers at 30 m/s, so the longest ride is about a minute, and
   the camera levels out to look up the mountain. The player gets off as they got on: on foot or
   on skis.
+
+## Trail map
+
+- The Map button opens `src/ui/trailMap.ts`, a bottom sheet drawn on a 2D canvas over the
+  pipeline's canopy picture. West is up, so the summit is at the top as on a ski map; the
+  projection is `src/ui/mapView.ts` (pure, tested).
+- It shows every trail by difficulty, every lift with a ring where you board, the main places, and
+  an arrow for the player. Tapping a trail or lift names it.
 
 ## Measuring performance
 

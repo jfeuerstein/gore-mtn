@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestone 0 is done: the phone holds 60 fps with a wide margin. Milestone 1 has started: skiing works as a first cut and needs your thumbs. See the roadmap.
+**Status:** milestone 0 is done. Milestone 1 (skiing as grey boxes) is feature-complete and waiting on one question from the owner: is skiing a run and riding back up fun on its own? See the roadmap.
 
 ## 2. What the game is
 
@@ -304,7 +304,7 @@ Each milestone ends with something playable on your phone and a single question 
 | # | Milestone | Contents | Gate |
 |---|---|---|---|
 | 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
-| 1 | Greybox skiing (in progress) | One-thumb ski controller with momentum and a hockey stop, clip in and out, every lift rideable, trees that duck out of the camera's way; still to come: a tuning panel | Is skiing Sunway fun with grey boxes? |
+| 1 | Greybox skiing (built, awaiting verdict) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? |
 | 2 | The look | Snow and toon shading, fog, sky and time of day, trees, ski tracks, character | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
@@ -355,12 +355,15 @@ Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
 4. The camera: does it stay where you want it through turns and stops? Is the bottom third the right amount of screen for the stick?
 5. Scale: the mountain is now two and a half times bigger again, close to life size, with trees 8 to 15 m tall. Big enough? Do the skier, trails and trees look right against each other?
 6. The bottom of the screen from the Home Screen: does the mountain now reach the bottom edge, with the buttons visible? If a bar is still there, is it dark blue or pale blue? Dark means the page can draw there and the layout is still wrong; pale means iOS itself is covering it, and the fix is a different status bar setting.
-7. Lifts: walk or ski to an orange gate at the foot of a lift and tap Ride. Is about a minute up the Adirondack Express the right length? Is the view up the mountain what you want to look at?
-8. While skiing fast, watch for stutters, or for trees or ground detail appearing late ahead of you.
+7. Trees stop you now. Is a bump the right consequence, or too soft or too sticky?
+8. Ski tracks: thin lines in a carve, wide scrapes in a skid or stop. Do they read well?
+9. The trail map (Map button): is it clear enough to plan a run and find a lift? Tap a trail or lift for its name.
 
 Trees stand thickest along the trail edges, and the snow on a trail is brighter than under the trees, so each run reads as a corridor. Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
 
-Not built yet: colliding with trees, snow tracks, getting air off rolls, a trail map for finding lifts.
+Settled by the owner so far: the bottom third of the screen for the stick; lift rides of about a minute; lifts easy enough to find; no stutter at speed; the game fills the screen from the Home Screen.
+
+Not built yet: getting air off rolls, and a panel for tuning the skiing on the phone (so far tuning has gone through feedback instead).
 
 ## 10. Risks and honest perspectives
 

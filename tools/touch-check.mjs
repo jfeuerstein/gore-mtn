@@ -41,14 +41,65 @@ try {
   // The readouts are hidden until they have something to show; measure the layout once they do.
   await page.waitForFunction(() => document.getElementById('stats').textContent && document.getElementById('where').textContent);
   const boxes = {};
-  for (const sel of ['#where', '#stats', '#menu-button', '#fast-button', '#ski-button']) boxes[sel] = await box(sel);
+  for (const sel of ['#where', '#stats', '#menu-button', '#fast-button', '#ski-button', '#map-button']) boxes[sel] = await box(sel);
   const names = Object.keys(boxes);
   const inside = names.every((n) => boxes[n].x >= 0 && boxes[n].y >= 0 && boxes[n].x + boxes[n].width <= width && boxes[n].y + boxes[n].height <= height);
   check('overlay fits inside the upright screen', inside);
   const clashes = names.flatMap((a, i) => names.slice(i + 1).filter((b) => overlap(boxes[a], boxes[b])).map((b) => `${a}/${b}`));
   check('overlay elements do not overlap', clashes.length === 0, clashes.join(', '));
-  check('buttons are at least 44 points tall', ['#menu-button', '#fast-button', '#ski-button'].every((b) => boxes[b].height >= 44));
+  check('buttons are at least 44 points tall', ['#menu-button', '#fast-button', '#ski-button', '#map-button'].every((b) => boxes[b].height >= 44));
   check('skis and fast buttons sit in the lower, thumb-reach part of the screen', boxes['#fast-button'].y > height * 0.6 && boxes['#ski-button'].y > height * 0.6);
+
+  // Trail map.
+  await page.tap('#map-button');
+  check('map button opens the trail map', await page.locator('#map-sheet').isVisible());
+  const mapBox = await page.locator('#map-sheet canvas').boundingBox();
+  check('the map fits the screen and is taller than wide', mapBox.width > 200 && mapBox.width <= width && mapBox.height > mapBox.width && mapBox.y + mapBox.height <= height);
+  const inks = await page.evaluate(() => {
+    const c = document.querySelector('#map-sheet canvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const seen = new Set();
+    for (let i = 0; i < d.length; i += 4 * 97) seen.add(`${d[i] >> 4},${d[i + 1] >> 4},${d[i + 2] >> 4}`);
+    return seen.size;
+  });
+  check('the map is drawn: backdrop, trails, lifts and marks', inks > 12, `${inks} colours`);
+  // Tap down the middle of the map until something is named.
+  let named = '';
+  for (let f = 0.15; f < 0.9 && !named; f += 0.05) {
+    await page.touchscreen.tap(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * f);
+    const text = await page.locator('#map-sheet .caption').textContent();
+    if (!text.startsWith('Tap a trail')) named = text;
+  }
+  check('tapping the map names a trail or lift', named !== '', named);
+  await page.locator('#map-sheet button', { hasText: 'Close' }).tap();
+  check('the map closes', !(await page.locator('#map-sheet').isVisible()));
+
+  // Trees are solid: walk straight at the nearest one and never end up inside its trunk.
+  const tree = (await page.evaluate(() => window.__gore.state())).nearestTree;
+  check('there is a tree nearby to walk into', tree !== null);
+  if (tree) {
+    // Stand a few metres south of it and face it (north is yaw 0).
+    await page.evaluate((t) => {
+      window.__gore.place(t.x, t.z + t.radius + 5);
+      window.__gore.face(0);
+    }, tree);
+    await page.keyboard.down('KeyW');
+    let closest = Infinity;
+    let reached = false;
+    for (let i = 0; i < 120 && !reached; i++) {
+      await page.waitForTimeout(250);
+      const s = await page.evaluate(() => window.__gore.state());
+      const d = Math.hypot(s.x - tree.x, s.z - tree.z);
+      closest = Math.min(closest, d);
+      reached = d < tree.radius + 0.6;
+    }
+    await page.waitForTimeout(1500);
+    const s = await page.evaluate(() => window.__gore.state());
+    closest = Math.min(closest, Math.hypot(s.x - tree.x, s.z - tree.z));
+    await page.keyboard.up('KeyW');
+    check('walking reaches the tree', reached, `closest ${closest.toFixed(2)} m`);
+    check('and is stopped at its trunk', closest >= tree.radius + 0.3, `closest ${closest.toFixed(2)} m, trunk ${tree.radius.toFixed(2)} m`);
+  }
 
   const cdp = await context.newCDPSession(page);
   const touch = (type, touchPoints) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
@@ -151,6 +202,7 @@ try {
   const atTop = await skiState();
   check('gravity carries the skier down the fall line', await settle(() => window.__gore.state().speed > 4));
   check('skiing loses height', await settle((y) => window.__gore.state().y < y - 2, atTop.y));
+  check('skis leave tracks in the snow', (await skiState()).tracks > 5, `${(await skiState()).tracks} stretches`);
   // Whichever trail is underfoot by now (Wild Air runs alongside Sunway here).
   check('label names a trail and shows speed', /\S .* · [\d,]+ ft · \d+ mph/.test(await sp.locator('#where').textContent()), await sp.locator('#where').textContent());
 
@@ -196,7 +248,7 @@ try {
   const foot = await liftState();
   await lp.tap('#action-button');
   check('tapping it boards the lift', (await liftState()).mode === 'lift' && (await liftState()).lift === shortLift.name);
-  check('the offer goes away while riding', !(await lp.locator('#action-button').isVisible()));
+  check('the offer goes away while riding', await liftSettle(() => document.getElementById('action-button').hidden));
   // Boarding lifts the rider to chair height at once, so look for a climb well beyond that.
   check('the ride climbs', await liftSettle((y) => window.__gore.state().y > y + 9, foot.y));
   check('label names the lift while riding', await liftSettle((name) => document.getElementById('where').textContent.startsWith(name), shortLift.name), await lp.locator('#where').textContent());

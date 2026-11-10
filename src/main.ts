@@ -4,12 +4,14 @@ import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { FrameStats } from './debug/perf';
 import { Input } from './input/input';
+import { TrailMap } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { fallLineYaw } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
 import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
 import { Terrain } from './world/terrainMesh';
+import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
 import { loadWorld } from './world/world';
@@ -28,6 +30,8 @@ interface DebugHandle {
   setView(yaw: number, pitch: number): void;
   /** Turn the player and the camera to a yaw. */
   face(yaw: number): void;
+  /** Stand the player at a position. */
+  place(x: number, z: number): void;
 }
 
 declare global {
@@ -43,6 +47,7 @@ window.__gore = {
   teleport: () => false,
   setView: () => {},
   face: () => {},
+  place: () => {},
 };
 
 function showFatal(message: string): void {
@@ -131,7 +136,8 @@ async function boot(): Promise<void> {
   scene.add(terrain.group, trees.group, buildLifts(liftPaths), buildPlaces(world));
 
   const player = new Player(cfg.shadows);
-  scene.add(player.object);
+  const tracks = new SkiTracks();
+  scene.add(player.object, tracks.mesh);
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera, cfg.zoom);
   const input = new Input(canvas);
@@ -166,6 +172,12 @@ async function boot(): Promise<void> {
     follow.yaw = cfg.yaw;
     player.face(cfg.yaw);
   }
+
+  new TrailMap(world, liftPaths, canopyTexture.image as CanvasImageSource, () => ({
+    x: player.position.x,
+    z: player.position.z,
+    yaw: player.travelHeading,
+  }));
 
   if (cfg.ski) player.setMode('ski');
   const hud = new Hud(
@@ -221,6 +233,8 @@ async function boot(): Promise<void> {
     pitch: follow.pitch,
     mode: player.mode,
     lift: player.riding?.lift.name ?? null,
+    tracks: tracks.count,
+    nearestTree: trees.trunkAt(player.position.x, player.position.z, 300),
     speed: player.speed,
     heading: player.travelHeading,
     slip: player.slip,
@@ -235,6 +249,10 @@ async function boot(): Promise<void> {
     const place = world.places.find((p) => p.id === id);
     if (place) teleport(place);
     return Boolean(place);
+  };
+  window.__gore.place = (x, z) => {
+    player.place(x, z, ground);
+    fillScene = true;
   };
   window.__gore.face = (yaw) => {
     player.face(yaw);
@@ -254,7 +272,22 @@ async function boot(): Promise<void> {
     input.update();
     const look = input.consumeLook();
     follow.look(look.dx, look.dy);
-    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail);
+    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail, (x, z, r) => trees.trunkAt(x, z, r));
+    // Skis leave their marks; anything else lifts them off the snow.
+    if (player.mode === 'ski' && player.speed > 1.2) {
+      // Below a crawl the direction of travel is not steady enough to draw from; use the skis.
+      const steady = player.speed > 2.5;
+      tracks.add(
+        player.position.x,
+        player.position.z,
+        player.skiHeading,
+        steady ? player.travelHeading : player.skiHeading,
+        steady ? player.slip : 0,
+        ground,
+      );
+    } else if (player.mode !== 'ski') {
+      tracks.lift();
+    }
     // At the top of a lift, set the player down on the snow a little way ahead of the last tower.
     const arrived = player.takeArrival();
     if (arrived) {
