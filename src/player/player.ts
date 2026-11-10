@@ -18,7 +18,7 @@ import {
  */
 export const WALK_SPEED = 7.5;
 /** Debug travel speed, for crossing the mountain quickly. */
-export const FAST_SPEED = 40;
+export const FAST_SPEED = 110;
 
 /** The figure is modelled 1.9 m tall and drawn at this scale: about 1.4 m in the game's world. */
 export const PLAYER_SCALE = 0.75;

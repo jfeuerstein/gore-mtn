@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { angleDiff } from './cameraMath';
 import {
@@ -15,7 +14,7 @@ import {
   type SkiInput,
   type SkiState,
 } from './skiPhysics';
-import { buildWorld } from '../world/world';
+import { loadTestWorld } from '../world/testWorld';
 
 const DEG = Math.PI / 180;
 const NONE: SkiInput = { steer: 0, tuck: 0, brake: 0 };
@@ -72,12 +71,12 @@ describe('gravity and speed', () => {
     const green = topSpeed(12);
     const blue = topSpeed(20);
     const black = topSpeed(32);
-    expect(green).toBeGreaterThan(11);
-    expect(green).toBeLessThan(15);
-    expect(blue).toBeGreaterThan(15);
-    expect(blue).toBeLessThan(19.5);
-    expect(black).toBeGreaterThan(blue + 2);
-    expect(black).toBeLessThan(25);
+    expect(green).toBeGreaterThan(15);
+    expect(green).toBeLessThan(20);
+    expect(blue).toBeGreaterThan(20);
+    expect(blue).toBeLessThan(26);
+    expect(black).toBeGreaterThan(blue + 3);
+    expect(black).toBeLessThan(33);
   });
 
   it('goes faster in a tuck', () => {
@@ -91,7 +90,7 @@ describe('gravity and speed', () => {
   it('builds speed over seconds, not instantly', () => {
     const top = topSpeed(20);
     expect(speedOf(run(ramp(20), skierAt(0, 0, DOWNHILL), NONE, 2))).toBeLessThan(top * 0.5);
-    expect(speedOf(run(ramp(20), skierAt(0, 0, DOWNHILL), NONE, 8))).toBeGreaterThan(top * 0.8);
+    expect(speedOf(run(ramp(20), skierAt(0, 0, DOWNHILL), NONE, 12))).toBeGreaterThan(top * 0.8);
   });
 });
 
@@ -173,7 +172,7 @@ describe('hockey stop', () => {
 
   it('stops within a few seconds, even from speed on a black', () => {
     expect(speedOf(run(ramp(20), moving(DOWNHILL, 18), BRAKE, 4))).toBe(0);
-    expect(speedOf(run(ramp(34), moving(DOWNHILL, 24), BRAKE, 7))).toBe(0);
+    expect(speedOf(run(ramp(34), moving(DOWNHILL, 30), BRAKE, 8))).toBe(0);
   });
 
   it('leaves the skier parked across the hill, where they stay when the thumb lifts', () => {
@@ -227,9 +226,7 @@ describe('stickToSki', () => {
 });
 
 describe('skiing the real mountain', () => {
-  const read = (name: string) => readFileSync(new URL(`../../public/world/${name}`, import.meta.url));
-  const buf = (b: Buffer): ArrayBuffer => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
-  const world = buildWorld(JSON.parse(read('world.json').toString()), buf(read('height.bin')), buf(read('trailmask.bin')));
+  const world = loadTestWorld();
   const ground = world.source;
 
   /** Ski a trail from top to bottom by steering at its centre line. Returns the time and speeds. */
@@ -270,7 +267,7 @@ describe('skiing the real mountain', () => {
     (name) => {
       const r = descend(name);
       expect(r.finished, `${name} stalled after ${r.seconds.toFixed(0)} s`).toBe(true);
-      expect(r.max).toBeLessThan(30);
+      expect(r.max).toBeLessThan(36);
       expect(r.average).toBeGreaterThan(5);
       expect(r.offTrail, `${name}: share of time off the groomed trail`).toBeLessThan(0.25);
     },

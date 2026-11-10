@@ -1,16 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { trailAt } from './trails';
-import { buildWorld } from './world';
+import { loadTestWorld } from './testWorld';
 
 // These run against the real generated files in public/world, so a bad pipeline run fails here.
-const read = (name: string) => readFileSync(new URL(`../../public/world/${name}`, import.meta.url));
-const toArrayBuffer = (b: Buffer): ArrayBuffer => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
-const world = buildWorld(
-  JSON.parse(read('world.json').toString()),
-  toArrayBuffer(read('height.bin')),
-  toArrayBuffer(read('trailmask.bin')),
-);
+const world = loadTestWorld();
 const place = (id: string) => {
   const p = world.places.find((q) => q.id === id);
   if (!p) throw new Error(`missing place ${id}`);
@@ -54,15 +47,15 @@ describe('generated world', () => {
   it('finds groomed snow near each lodge on the mountain, and none in town', () => {
     for (const id of ['base-lodge', 'saddle-lodge', 'summit', 'ski-bowl-lodge']) {
       const p = place(id);
-      const spot = world.nearestTrailSpot(p.x, p.z, 90);
+      const spot = world.nearestTrailSpot(p.x, p.z, 225);
       expect(spot, id).not.toBeNull();
       if (spot) {
         expect(world.onTrail(spot.x, spot.z)).toBe(true);
         expect(world.trailDistance(spot.x, spot.z)).toBe(0);
-        expect(Math.hypot(spot.x - p.x, spot.z - p.z)).toBeLessThanOrEqual(90);
+        expect(Math.hypot(spot.x - p.x, spot.z - p.z)).toBeLessThanOrEqual(225);
       }
     }
-    expect(world.nearestTrailSpot(place('depot').x, place('depot').z, 90)).toBeNull();
+    expect(world.nearestTrailSpot(place('depot').x, place('depot').z, 225)).toBeNull();
   });
 
   it('measures distance to the nearest trail', () => {

@@ -68,7 +68,7 @@ export class FollowCamera {
    * @param speed the player's speed in m/s, for the sense of rush at pace
    */
   update(follow: THREE.Vector3, hf: Heightfield, speed = 0, dt = 0): void {
-    const rushTarget = Math.min(1, Math.max(0, (speed - 8) / 20));
+    const rushTarget = Math.min(1, Math.max(0, (speed - 10) / 24));
     this.rush += (rushTarget - this.rush) * Math.min(1, dt * 1.5);
     const distance = this.distance * (1 + 0.22 * this.rush);
     const fov = this.baseFov + 5 * this.rush;

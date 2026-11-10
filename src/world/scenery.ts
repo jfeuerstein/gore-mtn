@@ -21,19 +21,19 @@ export function buildSky(): THREE.Mesh {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.scale.setScalar(4000);
+  mesh.scale.setScalar(12000);
   mesh.renderOrder = -1;
   mesh.frustumCulled = false;
   return mesh;
 }
 
-/** Placeholder lift lines: a cable that follows the ground, with a tower every 35 metres. */
+/** Placeholder lift lines: a cable that follows the ground, with a tower every 60 metres. */
 export function buildLifts(hf: Heightfield, world: World): THREE.Group {
   const group = new THREE.Group();
   group.name = 'lifts';
   const cableMat = new THREE.LineBasicMaterial({ color: 0x2c3340 });
   const towers: THREE.Vector3[] = [];
-  const CABLE_HEIGHT = 7;
+  const CABLE_HEIGHT = 12;
 
   for (const lift of world.lifts) {
     const pts: THREE.Vector3[] = [];
@@ -42,7 +42,7 @@ export function buildLifts(hf: Heightfield, world: World): THREE.Group {
       const az = lift.pts[i + 1] as number;
       const bx = lift.pts[i + 2] as number;
       const bz = lift.pts[i + 3] as number;
-      const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 35));
+      const steps = Math.max(1, Math.round(Math.hypot(bx - ax, bz - az) / 60));
       for (let s = i === 0 ? 0 : 1; s <= steps; s++) {
         const x = ax + ((bx - ax) * s) / steps;
         const z = az + ((bz - az) * s) / steps;
@@ -54,7 +54,7 @@ export function buildLifts(hf: Heightfield, world: World): THREE.Group {
     if (pts.length > 1) group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cableMat));
   }
 
-  const towerGeo = new THREE.BoxGeometry(0.35, CABLE_HEIGHT, 0.35);
+  const towerGeo = new THREE.BoxGeometry(0.7, CABLE_HEIGHT, 0.7);
   towerGeo.translate(0, CABLE_HEIGHT / 2, 0);
   const towerMesh = new THREE.InstancedMesh(towerGeo, new THREE.MeshLambertMaterial({ color: 0x4d5666 }), towers.length);
   const m = new THREE.Matrix4();
@@ -74,17 +74,17 @@ export function buildPlaces(world: World): THREE.Group {
   for (const place of world.places) {
     if (place.id === 'summit') {
       // Stand-in for the fire tower.
-      const tower = new THREE.Mesh(new THREE.BoxGeometry(1.2, 12, 1.2), roof);
-      tower.position.set(place.x, place.y + 6, place.z);
+      const tower = new THREE.Mesh(new THREE.BoxGeometry(2.5, 22, 2.5), roof);
+      tower.position.set(place.x, place.y + 11, place.z);
       group.add(tower);
       continue;
     }
-    const body = new THREE.Mesh(new THREE.BoxGeometry(12, 5, 7), wall);
-    body.position.set(place.x, place.y + 2.2, place.z);
-    const top = new THREE.Mesh(new THREE.ConeGeometry(8.5, 3, 4), roof);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(30, 11, 17), wall);
+    body.position.set(place.x, place.y + 5, place.z);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(21, 7, 4), roof);
     top.rotation.y = Math.PI / 4;
     top.scale.z = 0.62;
-    top.position.set(place.x, place.y + 6.2, place.z);
+    top.position.set(place.x, place.y + 14, place.z);
     body.castShadow = top.castShadow = true;
     group.add(body, top);
   }

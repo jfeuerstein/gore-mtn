@@ -2,7 +2,7 @@
 export interface Config {
   /** Rendering backend. `webgl` forces the WebGL 2 fallback of the same renderer. */
   renderer: 'webgpu' | 'webgl';
-  /** Target number of trees across the whole mountain. */
+  /** How many trees the whole mountain would hold if all of it were planted. Sets forest density. */
   trees: number;
   /** Upper limit on device pixel ratio. */
   dpr: number;
@@ -30,13 +30,13 @@ export interface Config {
 
 export const DEFAULTS: Config = {
   renderer: 'webgpu',
-  // Sized for the owner's iPhone 17 Pro, which held 60 fps with wide margins when measured (see
-  // docs/game-plan.md). Distant trees and terrain are drawn in simpler forms.
-  trees: 100000,
+  // `trees` is how many the whole mountain would hold; only those within range of the camera are
+  // ever planted. Distant trees and terrain are drawn in simpler forms.
+  trees: 220000,
   dpr: 2,
   shadows: true,
   stride: 1,
-  viewDist: 2600,
+  viewDist: 6500,
   at: 'base-lodge',
   pos: null,
   yaw: null,
@@ -76,11 +76,11 @@ export function parseConfig(search: string): Config {
       : null;
   return {
     renderer: q.get('renderer') === 'webgl' ? 'webgl' : d.renderer,
-    trees: Math.round(num(q.get('trees'), d.trees, 0, 300000)),
+    trees: Math.round(num(q.get('trees'), d.trees, 0, 1000000)),
     dpr: num(q.get('dpr'), d.dpr, 0.5, 3),
     shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
-    viewDist: num(q.get('view'), d.viewDist, 100, 5000),
+    viewDist: num(q.get('view'), d.viewDist, 100, 12000),
     at: q.get('at') ?? d.at,
     pos,
     yaw: optNum(q.get('yaw')),

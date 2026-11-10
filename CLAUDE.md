@@ -41,8 +41,10 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state for scripts.
-- **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`,
-  including `ground.png`, the snow's colour (bright trails, shaded edges).
+- **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
+  heights and the trail mask (gzipped; `src/world/codec.ts` reads them), `ground.png` (the snow's
+  colour up close: bright trails, shaded edges, bare rock) and `canopy.png` (the forest as seen
+  from afar).
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
   OpenStreetMap, not memory.
 - **Content is data.** Trails, lifts, places, and later minerals and stamps live in data files with
@@ -51,6 +53,11 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   input maths, save data) free of three.js so it runs under Vitest in Node.
 - **One import source for three.js:** `three/webgpu`. The renderer is `WebGPURenderer`, which falls
   back to WebGL 2 by itself.
+- **The mountain is too big to build all at once.** Terrain tiles (`src/world/terrainMesh.ts`) and
+  forest patches (`src/world/trees.ts`) are built as the camera comes near, a couple per frame,
+  and dropped when it leaves; a teleport builds its surroundings in one go. Beyond the range where
+  trees are drawn, terrain wears the canopy texture instead. Anything new that covers the whole
+  mountain (rocks, minerals, signs) must follow the same pattern rather than exist everywhere.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
 
@@ -102,8 +109,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 ## Conventions
 
 - Coordinates: +x east, +z south, +y up, in game metres. The world is centred on the origin.
-- Scale: 1:3 horizontal, 1:2 vertical against the real mountain (set in the terrain script). The
-  world is about 2.2 by 1.7 km with 400 m of relief.
+- Scale: close to life size. 1:1.2 horizontal and 1.25:1 vertical against the real mountain (set
+  in the terrain script), so slopes read 1.5 times steeper than life. The world is about 5.6 by
+  4.3 km with 990 m of relief; heights are sampled every 3.3 m. The skier is about 1.4 m tall and
+  trees 8 to 15 m.
 - Camera yaw 0 looks north (-z); positive yaw turns left.
 - Placement is seeded (`src/rng.ts`) so the world is identical on every load.
 - No secrets in the repo. The fal key lives in environment secrets or a gitignored `.env`.
@@ -113,8 +122,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
 
-The world has since grown (100,000 trees, full-detail terrain near the camera) and has not been
-re-measured. Measured before that on the owner's iPhone 17 Pro (2026-11-10, Home Screen app): a steady 60 fps at every
+The world has since grown to near life size and is drawn quite differently (terrain and forest
+built around the camera, roughly 400k to 500k triangles and 90 to 180 draw calls in software
+tests). That has not been measured on the phone. Measured before that on the owner's iPhone 17 Pro
+(2026-11-10, Home Screen app): a steady 60 fps at every
 benchmark step, up to 80,000 trees (427k triangles), with shadows, and at pixel ratio 3, using
 about 2 ms of CPU per frame. WebGPU and WebGL 2 performed the same. The budget above is kept as a
 deliberately cautious target so there is room for effects, and for heat and battery over a long

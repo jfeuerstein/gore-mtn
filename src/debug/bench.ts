@@ -17,25 +17,25 @@ export interface BenchStep {
 }
 
 export const BENCH_STEPS: readonly BenchStep[] = [
-  { label: 'WebGPU, 100k trees', params: {} },
-  { label: 'WebGL 2, 100k trees', params: { renderer: 'webgl' } },
-  { label: 'WebGPU, 50k trees', params: { trees: '50000' } },
-  { label: 'WebGPU, 150k trees', params: { trees: '150000' } },
-  { label: 'WebGPU, 100k trees, half terrain detail', params: { stride: '2' } },
-  { label: 'WebGPU, 100k trees, no shadows', params: { shadows: '0' } },
-  { label: 'WebGPU, 100k trees, pixel ratio 3', params: { dpr: '3' } },
-  { label: 'WebGPU, 100k trees, 1,300 m view', params: { view: '1300' } },
-  { label: 'WebGPU, 100k trees, from the summit', params: { at: 'summit' } },
+  { label: 'WebGPU, normal forest', params: {} },
+  { label: 'WebGL 2, normal forest', params: { renderer: 'webgl' } },
+  { label: 'WebGPU, thin forest', params: { trees: '110000' } },
+  { label: 'WebGPU, thick forest', params: { trees: '330000' } },
+  { label: 'WebGPU, half terrain detail', params: { stride: '2' } },
+  { label: 'WebGPU, no shadows', params: { shadows: '0' } },
+  { label: 'WebGPU, pixel ratio 3', params: { dpr: '3' } },
+  { label: 'WebGPU, 3,500 m view', params: { view: '3500' } },
+  { label: 'WebGPU, from the summit', params: { at: 'summit' } },
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
   at: 'saddle-lodge',
   renderer: 'webgpu',
-  trees: '100000',
+  trees: '220000',
   shadows: '1',
   stride: '1',
   dpr: '2',
-  view: '2600',
+  view: '6500',
 };
 
 export const DEFAULT_BENCH_SECONDS = 5;
@@ -125,7 +125,7 @@ export class BenchRun {
     private readonly index: number,
     private readonly seconds: number,
     private readonly baseYaw: number,
-    private readonly env: { backend: string; trees: number; resolution: () => string },
+    private readonly env: { backend: string; trees: () => number; resolution: () => string },
   ) {
     const step = BENCH_STEPS[index];
     if (!step) throw new Error(`no benchmark step ${index}`);
@@ -173,7 +173,7 @@ export class BenchRun {
       frame: summarize(this.frameMs, this.cpuMs),
       drawCalls: this.drawCalls / n,
       triangles: this.triangles / n,
-      trees: this.env.trees,
+      trees: this.env.trees(),
       resolution: this.env.resolution(),
     };
     save(stored);

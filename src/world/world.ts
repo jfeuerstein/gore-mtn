@@ -1,3 +1,4 @@
+import { isGzip, unpackHeights } from './codec';
 import { distanceToMask } from './distance';
 import { Heightfield } from './heightfield';
 import type { Lift, Place, Trail } from './trails';
@@ -35,10 +36,14 @@ export interface World {
   nearestTrailSpot(x: number, z: number, reach: number): { x: number; z: number } | null;
 }
 
-async function fetchBuffer(url: string): Promise<ArrayBuffer> {
+/** Fetch a gzipped data file and return its contents. Copes with a server that has already unzipped it. */
+async function fetchUnzipped(url: string): Promise<ArrayBuffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`could not load ${url}: ${res.status}`);
-  return res.arrayBuffer();
+  const raw = await res.arrayBuffer();
+  if (!isGzip(new Uint8Array(raw))) return raw;
+  const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return new Response(stream).arrayBuffer();
 }
 
 export async function loadWorld(baseUrl: string): Promise<World> {
@@ -47,19 +52,23 @@ export async function loadWorld(baseUrl: string): Promise<World> {
       if (!r.ok) throw new Error(`could not load world.json: ${r.status}`);
       return r.json() as Promise<WorldFile>;
     }),
-    fetchBuffer(`${baseUrl}world/height.bin`),
-    fetchBuffer(`${baseUrl}world/trailmask.bin`),
+    fetchUnzipped(`${baseUrl}world/height.bin.gz`),
+    fetchUnzipped(`${baseUrl}world/trailmask.bin.gz`),
   ]);
   return buildWorld(meta, heightBuf, maskBuf);
 }
 
+/**
+ * @param heightBuf the unzipped contents of height.bin.gz (still packed as differences)
+ * @param maskBuf the unzipped contents of trailmask.bin.gz
+ */
 export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: ArrayBuffer): World {
   const { cols, rows, cell, heightStep, width, depth } = meta.grid;
-  const raw = new Uint16Array(heightBuf);
   const trailMask = new Uint8Array(maskBuf);
-  if (raw.length !== cols * rows || trailMask.length !== cols * rows) {
+  if (heightBuf.byteLength !== cols * rows * 2 || trailMask.length !== cols * rows) {
     throw new Error('world files do not match the grid size in world.json');
   }
+  const raw = unpackHeights(new Uint16Array(heightBuf), cols, rows);
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = (raw[i] as number) * heightStep;
   const source = new Heightfield(cols, rows, cell, -width / 2, -depth / 2, heights);

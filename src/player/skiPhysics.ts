@@ -11,8 +11,9 @@
  * - Braking is a hockey stop: the skis swing sideways to the direction of travel and scrape the
  *   speed off.
  *
- * Speeds are tuned for the game's mountain, not for realism: roughly 13 m/s (29 mph) on a green,
- * 17 (38) on a blue and 21 (47) on a black, and a third more in a tuck.
+ * Speeds are tuned for the game's mountain, which is close to life size: roughly 17 m/s (39 mph)
+ * on a green, 23 (52) on a blue and 29 (64) on a black at full flow, and a third more in a tuck.
+ * Real trails rarely let a skier reach those for long.
  */
 
 export interface SkiGround {
@@ -87,7 +88,7 @@ export const SKI: SkiParams = {
   friction: 0.04,
   powderFriction: 0.11,
   staticFriction: 0.07,
-  drag: 0.009,
+  drag: 0.005,
   powderDrag: 1.6,
   tuckDrag: 0.55,
 
@@ -106,7 +107,7 @@ export const SKI: SkiParams = {
   brakeTurnRate: 7,
 
   poleAccel: 3.5,
-  poleMaxSpeed: 5,
+  poleMaxSpeed: 6,
 };
 
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);

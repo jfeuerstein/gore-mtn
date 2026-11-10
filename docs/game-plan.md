@@ -131,9 +131,9 @@ Trail and lift names in the game come from the data import, not from memory, and
 
 Starting numbers, to be tuned by feel:
 
-- **Horizontal 1:3.** The real distance from town to summit is roughly 6 km, so the game world is about 2.2 by 1.7 km. (It began at 1:5; on the phone that felt small.)
-- **Vertical 1:2.** About 400 m of game relief, which makes slopes read one and a half times steeper than reality.
-- **Target feel:** a single run takes 40 to 60 seconds at 35 to 45 mph; top to bottom of the mountain is a few minutes; a lift ride takes 30 to 45 seconds.
+- **Horizontal 1:1.2.** The game world is about 5.6 by 4.3 km, close to life size. (It began at 1:5, then 1:3; each felt small on the phone.)
+- **Vertical 1.25:1.** About 990 m of game relief, which keeps slopes reading one and a half times steeper than reality.
+- **Target feel:** a long run takes 80 to 100 seconds at around 50 mph, a short steep one about 20 seconds; top to bottom of the mountain is several minutes. On foot the mountain is a long walk, which is what the lifts are for.
 
 ### How terrain gets built
 
@@ -340,7 +340,7 @@ Decisions taken from this:
 
 - Stay on WebGPU, with WebGL 2 as the automatic fallback.
 - Defaults at the time: 40,000 trees, the whole mountain in view, shadows on. Pixel ratio stays at 2 to save heat and battery; 3 is available in Settings.
-- Since then the mountain has been enlarged and the forest thickened to 100,000 trees, with distant trees and terrain drawn in simpler forms. That has not been measured on the phone yet; the benchmark's steps were rewritten to measure it.
+- Since then the mountain has been enlarged twice, to near life size. Only the terrain and trees near the camera are built in detail; the rest is drawn simply. That has not been measured on the phone yet; the benchmark's steps were rewritten to measure it.
 - The budget stays where it was, as a cautious target. The measurement was five seconds per step on a cool phone and says nothing about a long session.
 
 An earlier single reading in a Safari tab showed about one frame in twenty arriving late. The benchmark did not reproduce that from the Home Screen. Whether it was the browser tab or touch input is not known yet; the copied performance report now carries enough detail to tell if it comes back.
@@ -349,13 +349,14 @@ An earlier single reading in a Safari tab showed about one frame in twenty arriv
 
 Tap **Skis** (bottom left) at the top of a run, point downhill, and let go.
 
-1. Speed and momentum: a robot skier now reaches 36 mph on Sunway (43 seconds), 39 on Showcase and 43 on The Rumor (12 seconds). Fast enough? Does it build and carry the way skiing should?
+1. Speed and momentum: a robot skier now reaches 50 mph on Sunway (80 seconds), 53 on Showcase and 59 on The Rumor (22 seconds). Does it build and carry the way skiing should?
 2. Turning: hard turns now bend the path about a third more tightly. Sharp enough? Do gentle turns still carve and hard ones still drift in a way that feels like skiing?
 3. The hockey stop (thumb down): does it look and feel right, and stop soon enough? Lean the thumb left or right while braking to choose which way the skis swing.
 4. The camera: does it stay where you want it through turns and stops? Is the bottom third the right amount of screen for the stick?
-5. Scale: the skier is now three-quarters of the size and trails are a quarter wider. Does the skier look right against the trail?
+5. Scale: the mountain is now two and a half times bigger again, close to life size, with trees 8 to 15 m tall. Big enough? Do the skier, trails and trees look right against each other?
 6. The bottom of the screen from the Home Screen: does the mountain now reach the bottom edge, with the buttons visible? If a bar is still there, is it dark blue or pale blue? Dark means the page can draw there and the layout is still wrong; pale means iOS itself is covering it, and the fix is a different status bar setting.
-7. Run the benchmark again (Settings), since the world is bigger and the forest thicker than when it was last measured.
+7. Run the benchmark again (Settings). The mountain is drawn very differently now: terrain and forest are built around you as you move, and the far slopes are painted as forest. None of that has been measured on the phone.
+8. While skiing fast, watch for stutters, or for trees or ground detail appearing late ahead of you.
 
 Trees stand thickest along the trail edges, and the snow on a trail is brighter than under the trees, so each run reads as a corridor. Trees that come between the camera and you shrink to saplings and grow back, so you stay in view in the forest.
 

@@ -6,10 +6,13 @@ Inputs (downloaded once into tools/terrain/cache/, which is gitignored):
   - OpenStreetMap ways for ski trails, lifts, paths, buildings and water
 
 Outputs (committed, in public/world/):
-  - height.bin     uint16 little-endian, rows north to south, columns west to east
-  - trailmask.bin  uint8, 255 on a ski trail, 0 elsewhere, same grid (what the game logic reads)
-  - ground.png     colour of the snow, three texels per grid cell: bright groomed trails, cooler
-                   snow under the trees, and a shaded band along each trail edge (what is drawn)
+  - height.bin.gz    uint16 little-endian heights, rows north to south, columns west to east,
+                     stored as differences from the sample to the west (see pack_heights) and gzipped
+  - trailmask.bin.gz uint8, 255 on a ski trail, 0 elsewhere, same grid, gzipped (what game logic reads)
+  - ground.png       colour of the snow up close, two texels per grid cell: bright groomed trails,
+                     cooler snow under the trees, a shaded band along each trail edge, bare rock
+  - canopy.png       colour of the mountain from afar, where trees are not drawn one by one: the
+                     forest as a dark mass with the trails cut through it
   - world.json     grid metadata, trails, lifts, paths, places
 
 Run:  python3 tools/terrain/build_world.py
@@ -17,6 +20,7 @@ Deps: numpy pyproj tifffile imagecodecs pillow
 """
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 import urllib.parse
@@ -36,18 +40,23 @@ OUT = ROOT / "public" / "world"
 # Bounding box (lon/lat) covering the ski area, the summit, the Ski Bowl and North Creek.
 WEST, SOUTH, EAST, NORTH = -74.062, 43.660, -73.980, 43.706
 
-REAL_CELL_M = 10.0  # elevation sample spacing in real metres
-H_SCALE = 1 / 3  # real horizontal metres -> game metres
-V_SCALE = 1 / 2  # real vertical metres -> game metres (slopes read 1.5x steeper than life)
+REAL_CELL_M = 4.0  # elevation sample spacing in real metres
+H_SCALE = 1 / 1.2  # real horizontal metres -> game metres: the mountain is close to life size
+V_SCALE = 1.25  # real vertical metres -> game metres (slopes read 1.5x steeper than life)
 # A little wider than life, so a trail has room for turns at game speeds.
-TRAIL_WIDTH_REAL_M = {"easy": 70, "intermediate": 56, "advanced": 44, "expert": 38, "freeride": 50}
+TRAIL_WIDTH_REAL_M = {"easy": 62, "intermediate": 50, "advanced": 40, "expert": 34, "freeride": 45}
 GLADE_WIDTH_REAL_M = 0  # glades keep their trees
 
-GROUND_TEXELS_PER_CELL = 3
+GROUND_TEXELS_PER_CELL = 2
 TRAIL_RGB = (252, 253, 255)
 FOREST_RGB = (176, 189, 212)
 EDGE_SHADE_RGB = (139, 155, 186)
-EDGE_SHADE_REACH_M = 5.0  # game metres of shade outside a trail edge
+EDGE_SHADE_REACH_M = 9.0  # game metres of shade outside a trail edge
+ROCK_RGB = (104, 110, 128)
+ROCK_SLOPE_DEG = (48, 60)  # snow gives way to bare rock between these slopes, off the trails
+CANOPY_CELLS_PER_TEXEL = 2
+CANOPY_RGB = (86, 108, 112)  # snowy firs seen from far away
+CANOPY_TRAIL_RGB = (240, 244, 251)
 
 DEM_URL = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage"
 OSM_URL = "https://api.openstreetmap.org/api/0.6/map"
@@ -72,6 +81,19 @@ def fetch(url: str, dest: Path) -> Path:
     with urllib.request.urlopen(req, timeout=180) as r:
         dest.write_bytes(r.read())
     return dest
+
+
+def pack_heights(q: np.ndarray) -> bytes:
+    """Store each height as its difference from the sample to its west; the first sample of a row
+    as its difference from the first sample of the row above. Neighbouring heights are close, so
+    the differences are small numbers that compress several times better than the heights do.
+    Differences wrap around at 65536; src/world/codec.ts undoes this."""
+    d = q.astype(np.int64)
+    out = np.empty_like(d)
+    out[:, 1:] = d[:, 1:] - d[:, :-1]
+    out[1:, 0] = d[1:, 0] - d[:-1, 0]
+    out[0, 0] = d[0, 0]
+    return (out % 65536).astype("<u2").tobytes()
 
 
 def main() -> None:
@@ -108,7 +130,7 @@ def main() -> None:
 
     elev_min = float(np.floor(elev.min()))
     game_h = (elev - elev_min) * V_SCALE
-    height_step = 0.01  # one uint16 step = 1 cm of game height
+    height_step = 0.02  # one uint16 step = 2 cm of game height
     quant = np.round(game_h / height_step)
     if quant.max() > 65535:
         raise SystemExit("height range overflows uint16")
@@ -229,24 +251,40 @@ def main() -> None:
 
     mask_img = draw_trails(1)
 
-    # Ground colour: drawn at twice the final size and shrunk, for smooth trail edges.
+    # How much bare rock shows at each sample, 0..1, from the steepness of the game terrain.
+    gz_, gx_ = np.gradient(game_h, cell)
+    slope_deg = np.degrees(np.arctan(np.hypot(gx_, gz_)))
+    rock = np.clip((slope_deg - ROCK_SLOPE_DEG[0]) / (ROCK_SLOPE_DEG[1] - ROCK_SLOPE_DEG[0]), 0, 1)
+    rock_img = Image.fromarray((rock * 255).astype(np.uint8), "L")
+
+    def colour(size: tuple[int, int], trail_rgb, forest_rgb, shade_reach_px: float) -> Image.Image:
+        """Paint the mountain at `size`: trails, forest (optionally shaded along trail edges), rock."""
+        # Trails are drawn at four times the grid and shrunk, for smooth edges.
+        fine = draw_trails(4).resize(size, Image.LANCZOS)
+        trail = np.asarray(fine, dtype=np.float32)[..., None] / 255.0
+        off_trail = np.broadcast_to(np.array(forest_rgb, dtype=np.float32), (size[1], size[0], 3)).copy()
+        if shade_reach_px > 0:
+            spread = np.asarray(fine.filter(ImageFilter.GaussianBlur(shade_reach_px)), dtype=np.float32)[..., None] / 255.0
+            # Shade is strongest just outside an edge and fades away from it.
+            off_trail += (np.array(EDGE_SHADE_RGB, dtype=np.float32) - off_trail) * np.clip(spread * 2.2, 0, 1)
+        bare = np.asarray(rock_img.resize(size, Image.BILINEAR), dtype=np.float32)[..., None] / 255.0
+        off_trail += (np.array(ROCK_RGB, dtype=np.float32) - off_trail) * bare
+        rgb = off_trail + (np.array(trail_rgb, dtype=np.float32) - off_trail) * trail
+        return Image.fromarray(np.clip(np.round(rgb), 0, 255).astype(np.uint8), "RGB")
+
     k = GROUND_TEXELS_PER_CELL
-    fine = draw_trails(k * 2).resize((cols * k, rows * k), Image.LANCZOS)
-    trail = np.asarray(fine, dtype=np.float32) / 255.0
-    reach_px = EDGE_SHADE_REACH_M / (cell / k)
-    spread = np.asarray(fine.filter(ImageFilter.GaussianBlur(reach_px)), dtype=np.float32) / 255.0
-    # Shade is strongest just outside an edge and fades away from it; none on the trail itself.
-    shade = np.clip(spread * 2.2, 0, 1) * (1 - trail)
-    forest = np.array(FOREST_RGB, dtype=np.float32)
-    off_trail = forest + (np.array(EDGE_SHADE_RGB, dtype=np.float32) - forest) * shade[..., None]
-    rgb = off_trail + (np.array(TRAIL_RGB, dtype=np.float32) - off_trail) * trail[..., None]
-    ground_img = Image.fromarray(np.clip(np.round(rgb), 0, 255).astype(np.uint8), "RGB")
+    ground_img = colour((cols * k, rows * k), TRAIL_RGB, FOREST_RGB, EDGE_SHADE_REACH_M / (cell / k))
+    canopy_size = (-(-cols // CANOPY_CELLS_PER_TEXEL), -(-rows // CANOPY_CELLS_PER_TEXEL))
+    canopy_img = colour(canopy_size, CANOPY_TRAIL_RGB, CANOPY_RGB, 0)
 
     # --- write -------------------------------------------------------------
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "height.bin").write_bytes(quant.astype("<u2").tobytes())
-    (OUT / "trailmask.bin").write_bytes(np.asarray(mask_img, dtype=np.uint8).tobytes())
+    for stale in ("height.bin", "trailmask.bin"):
+        (OUT / stale).unlink(missing_ok=True)
+    (OUT / "height.bin.gz").write_bytes(gzip.compress(pack_heights(quant.astype(np.uint16)), 9, mtime=0))
+    (OUT / "trailmask.bin.gz").write_bytes(gzip.compress(np.asarray(mask_img, dtype=np.uint8).tobytes(), 9, mtime=0))
     ground_img.save(OUT / "ground.png", optimize=True)
+    canopy_img.save(OUT / "canopy.png", optimize=True)
     world = {
         "grid": {
             "cols": cols,

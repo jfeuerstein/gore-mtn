@@ -10,7 +10,7 @@ import { fallLineYaw } from './player/skiPhysics';
 import { buildLifts, buildPlaces, buildSky, SKY_HORIZON } from './world/scenery';
 import { Terrain } from './world/terrainMesh';
 import { trailAt, type Place } from './world/trails';
-import { buildTrees } from './world/trees';
+import { Forest, TREE_RANGE } from './world/trees';
 import { loadWorld } from './world/world';
 
 const M_TO_FT = 3.28084;
@@ -112,19 +112,25 @@ async function boot(): Promise<void> {
   }
   scene.add(sun, sun.target);
 
-  const groundTexture = await new THREE.TextureLoader().loadAsync(`${import.meta.env.BASE_URL}world/ground.png`);
-  const terrain = new Terrain(ground, world, groundTexture);
-  const trees = buildTrees(ground, world, cfg.trees, cfg.shadows);
+  const loader = new THREE.TextureLoader();
+  const [snowTexture, canopyTexture] = await Promise.all([
+    loader.loadAsync(`${import.meta.env.BASE_URL}world/ground.png`),
+    loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy.png`),
+  ]);
+  const terrain = new Terrain(ground, snowTexture, canopyTexture);
+  const trees = new Forest(ground, world, cfg.trees, cfg.shadows);
   scene.add(terrain.group, trees.group, buildLifts(ground, world), buildPlaces(world));
 
   const player = new Player(cfg.shadows);
   scene.add(player.object);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 6000); // lens is set by follow.setAspect()
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera, cfg.zoom);
   const input = new Input(canvas);
 
   const summit = world.places.find((p) => p.id === 'summit');
   const baseLodge = world.places.find((p) => p.id === 'base-lodge');
+  /** Set when the player has jumped somewhere, so the surroundings are built at once, not gradually. */
+  let fillScene = true;
   const teleport = (place: Place): void => {
     // Stand a little way off, on the side facing the view, so the placeholder building ends up
     // behind the camera.
@@ -132,13 +138,14 @@ async function boot(): Promise<void> {
     const dx = lookAt.x - place.x;
     const dz = lookAt.z - place.z;
     const len = Math.hypot(dx, dz) || 1;
-    const px = place.x + (dx / len) * 20;
-    const pz = place.z + (dz / len) * 20;
+    const px = place.x + (dx / len) * 50;
+    const pz = place.z + (dz / len) * 50;
     // Start on groomed snow where there is some nearby, not in the trees.
-    const spot = world.nearestTrailSpot(px, pz, 90) ?? { x: px, z: pz };
+    const spot = world.nearestTrailSpot(px, pz, 225) ?? { x: px, z: pz };
     player.place(spot.x, spot.z, ground);
     follow.faceToward(player.position.x, player.position.z, lookAt.x, lookAt.z);
     player.face(follow.yaw);
+    fillScene = true;
   };
 
   const start = world.places.find((p) => p.id === cfg.at) ?? baseLodge ?? world.places[0];
@@ -176,7 +183,7 @@ async function boot(): Promise<void> {
     `${Math.round(canvas.clientWidth * pixelRatio)}x${Math.round(canvas.clientHeight * pixelRatio)} @${pixelRatio}x`;
   const bench =
     typeof cfg.bench === 'number'
-      ? new BenchRun(cfg.bench, cfg.benchSeconds, follow.yaw, { backend, trees: trees.count, resolution })
+      ? new BenchRun(cfg.bench, cfg.benchSeconds, follow.yaw, { backend, trees: () => trees.count, resolution })
       : null;
   if (cfg.bench === 'done') showBenchResults(deviceLabel());
 
@@ -185,9 +192,13 @@ async function boot(): Promise<void> {
   let sinceHud = 0;
   let frames = 0;
 
-  const cull = (): void => {
-    terrain.cull(camera.position.x, camera.position.z, cfg.viewDist);
-    trees.cull(camera.position.x, camera.position.z, cfg.viewDist);
+  // Trees are drawn out to the smaller of the view distance and the forest's own range; past
+  // that, terrain wears the canopy texture. With trees switched off it wears snow throughout.
+  const treeRange = cfg.trees > 0 ? Math.min(cfg.viewDist, TREE_RANGE) : Infinity;
+  /** @param unlimited build everything in range at once: before the first frame and after a teleport */
+  const cull = (unlimited = false): void => {
+    terrain.cull(camera.position.x, camera.position.z, cfg.viewDist, treeRange, unlimited);
+    trees.cull(camera.position.x, camera.position.z, cfg.viewDist, unlimited);
   };
 
   window.__gore.state = () => ({
@@ -246,7 +257,8 @@ async function boot(): Promise<void> {
     sky.position.copy(camera.position);
     sun.target.position.copy(player.position);
     sun.position.copy(player.position).addScaledVector(sunDir, 150);
-    cull();
+    cull(fillScene);
+    fillScene = false;
 
     renderer.render(scene, camera);
     frames++;

@@ -44,13 +44,15 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
-    title: 'Trees',
+    title: 'Forest',
     param: 'trees',
     current: (c) => String(c.trees),
-    options: ['0', '25000', '50000', '100000', '150000'].map((v) => ({
-      label: v === '0' ? 'None' : `${Number(v) / 1000}k`,
-      value: v,
-    })),
+    options: [
+      { label: 'None', value: '0' },
+      { label: 'Thin', value: '110000' },
+      { label: 'Normal', value: '220000' },
+      { label: 'Thick', value: '330000' },
+    ],
   },
   {
     title: 'Sharpness (pixel ratio limit)',
@@ -81,9 +83,9 @@ const OPTIONS: OptionGroup[] = [
     param: 'view',
     current: (c) => String(c.viewDist),
     options: [
-      { label: '700 m', value: '700' },
-      { label: '1,300 m', value: '1300' },
-      { label: 'Whole mountain', value: '2600' },
+      { label: '2,000 m', value: '2000' },
+      { label: '3,500 m', value: '3500' },
+      { label: 'Whole mountain', value: '6500' },
     ],
   },
 ];
