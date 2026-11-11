@@ -10,7 +10,7 @@ import { buildSigns } from './signs';
 import { Smoke } from './smoke';
 import { snowGuns } from './snowGuns';
 import { buildStreetFurniture } from './streetFurniture';
-import { benches, streetLamps, welcomeSigns } from './streets';
+import { benches, streetLamps, viewBenches, welcomeSigns, type Bench } from './streets';
 import { houseHeight, Town } from './town';
 import { TownPlaces, townPlaceHeight } from './townKit';
 import { resolveTownPlaces, type TownPlace } from './townPlaces';
@@ -32,6 +32,8 @@ export class Built {
   readonly townPlaces: TownPlace[];
   /** Where the depot stands: on the real station's plot, along the rails, with the Snow Train beside it. */
   readonly depot: DepotSetting | null;
+  /** Every bench that can be sat on: by the town's doors, and at the lookouts. */
+  readonly benches: Bench[];
   /** Everything solid, as boxes: the lodges and huts by their models' footprints, the town by its plots, and the train. */
   readonly walls: WallBox[];
   private readonly buildings: Buildings;
@@ -70,7 +72,8 @@ export class Built {
     }
     // Lamps down Main Street, a bench by the doors, a welcome at each end of town, and whatever
     // stands outside the lodges: all joined into the named places' two meshes.
-    const street = buildStreetFurniture(streetLamps(world), benches(townPlaces), welcomeSigns(world), heightAt);
+    this.benches = [...benches(townPlaces), ...viewBenches(world)];
+    const street = buildStreetFurniture(streetLamps(world), this.benches, welcomeSigns(world), heightAt);
     this.named = new TownPlaces(townPlaces, shadows, roof, season, {
       walls: [...train.walls, ...street.walls, ...buildYards(world.places, season, heightAt)],
       panes: [...train.panes, ...street.panes],
@@ -110,6 +113,13 @@ export class Built {
 
   /** True close to a lodge or a named place, or in front of its door: where trees should stand back. */
   near(x: number, z: number): boolean {
+    // Nothing grows in front of a bench that was put there for the view.
+    for (const b of this.benches) {
+      if (!b.view) continue;
+      const ahead = (x - b.x) * Math.sin(b.turn) + (z - b.z) * Math.cos(b.turn);
+      const aside = (x - b.x) * Math.cos(b.turn) - (z - b.z) * Math.sin(b.turn);
+      if (ahead > -5 && ahead < 60 && Math.abs(aside) < 7 + ahead * 0.35) return true;
+    }
     return (
       this.world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30)) ||
       this.townPlaces.some((p) => Math.hypot(p.x - x, p.z - z) < Math.max(p.w, p.d) / 2 + 7 || Math.hypot(p.door.x - x, p.door.z - z) < 11)

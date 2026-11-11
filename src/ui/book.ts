@@ -177,6 +177,11 @@ export class Book {
         })),
       ),
     );
+    if (s.benchesTotal > 0) {
+      out.push(this.heading('Benches', s.benches, s.benchesTotal));
+      out.push(el('p', 'note', 'Sat on, for no reason but the view. Look for them by the doors in town and at the lookouts.'));
+      out.push(this.stamps('bench', (game.benches ?? []).map((b) => ({ name: b.name, day: save.benches[b.id], how: 'Sit a while.' }))));
+    }
     out.push(this.heading('Landmarks', s.landmarks, s.landmarksTotal));
     out.push(el('p', 'note', 'A postcard from everywhere you have stood.'));
     // Each landmark is a postcard: blank until visited, then its picture and the day.

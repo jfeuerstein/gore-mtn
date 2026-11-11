@@ -571,6 +571,9 @@ then models, a real town, sillier characters and a cohesive interface).
   whatever colour is under them: clapboard on the houses, logs on the lodges, brick on the Town
   Hall. Snow on a roof stays smooth. A setting turns it off, for comparing on the phone.
 - **News.** A returning player is told once what has changed since they were last here.
+- **Benches.** There is a new thing to do, which is nothing: sit down. A bench by each door in
+  town and at each lookout, the fire tower and the Saddle. Each is kept in the Passport the
+  first time, and ten earn a patch.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

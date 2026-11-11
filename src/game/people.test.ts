@@ -97,6 +97,22 @@ describe('the errands', () => {
     expect(game.talk('fenn', '2026-11-12', 'winter')?.offer?.id).toBe('overdue');
   });
 
+  it('keeps each bench the first time it is sat on', () => {
+    const benches = [
+      { id: 'bench:a', name: 'Outside the Inn' },
+      { id: 'bench:b', name: 'At Vermont Overlook' },
+    ];
+    const game = new Game({ ...gameWorld, benches }, memory());
+    const first = game.sat('bench:a', DAY);
+    expect(first).toHaveLength(1);
+    expect(first[0]?.detail).toContain('bench 1 of 2');
+    expect(game.sat('bench:a', DAY)).toHaveLength(0);
+    expect(game.sat('bench:nowhere', DAY)).toHaveLength(0);
+    game.sat('bench:b', DAY);
+    expect(game.summary().benches).toBe(2);
+    expect(game.summary().benchesTotal).toBe(2);
+  });
+
   it('counts a round of the town when every door has been called at in one day', () => {
     for (const r of TOWN_ROUND) expect(personById(r.who), r.who).toBeDefined();
     const game = new Game(gameWorld, memory());

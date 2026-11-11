@@ -64,6 +64,8 @@ export interface SaveData {
   pets: string[];
   /** Things the town has handed over (bakes, sandwiches, library books), by id, with the day each was first had. */
   tried: Record<string, string>;
+  /** Benches sat on, by id, with the day each was first sat on. */
+  benches: Record<string, string>;
   /** The town round: who has been called on today, and the days on which everyone was. */
   round: { day: string; who: string[] };
   rounds: string[];
@@ -95,6 +97,7 @@ export function emptySave(): SaveData {
     letters: {},
     pets: [],
     tried: {},
+    benches: {},
     round: { day: '', who: [] },
     rounds: [],
   };
@@ -188,6 +191,7 @@ export function parseSave(text: string | null | undefined): SaveData {
   save.tried = days(raw.tried);
   if (isRecord(raw.round) && isDay(raw.round.day)) save.round = { day: raw.round.day, who: strings(raw.round.who) };
   save.rounds = strings(raw.rounds).filter(isDay);
+  save.benches = days(raw.benches);
   return save;
 }
 

@@ -373,7 +373,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 27 + 3 + 4 + 19 + 12 + 14, inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 28 + 3 + 4 + 19 + 12 + 14 + (await bp.evaluate(() => window.__gore.state().benches.length)), inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -595,6 +595,16 @@ try {
   await tp.tap('#talk-button');
   check('its notices are written out', (await tp.locator('#talk-sheet .line.written').count()) === 1);
   await shut();
+  // A bench outside the post office: sit down, and it goes in the book; push the stick, and stand.
+  const seat = (await townState()).benches.find((b) => b.id === 'bench:north-creek-post-office');
+  await goTo(seat.x + Math.sin(seat.turn) * 1.2, seat.z + Math.cos(seat.turn) * 1.2);
+  const actionReads = (text) => townSettle((want) => !document.getElementById('action-button').hidden && document.getElementById('action-button').textContent === want, text);
+  check('standing by a bench offers a seat', await actionReads('Sit'));
+  await tp.tap('#action-button');
+  check('sitting down is kept in the book, and the button offers to stand', (await actionReads('Stand up')) && (await townState()).seated && (await townState()).book.benches === 1);
+  await tp.tap('#action-button');
+  check('standing up again', await townSettle(() => !window.__gore.state().seated));
+
   // The boards that are chalked up fresh: the snow report reads the sky the tools have pinned.
   await goTo(person('report').x + 0.8, person('report').z + 1.2);
   check('the snow report by the Base Lodge door can be read', await invites('Read the snow report'));

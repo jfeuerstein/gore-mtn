@@ -95,10 +95,60 @@ export function welcomeSigns(world: World): Fixture[] {
   });
 }
 
+/** A bench that can be sat on: where it is, which way it faces, and what the Book calls it. */
+export interface Bench extends Fixture {
+  id: string;
+  name: string;
+  /** True for a bench put where it is for what can be seen from it, rather than against a wall. */
+  view?: boolean;
+}
+
 /** The kinds of place with a bench outside. */
 const WITH_BENCH: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'church', 'cafe', 'deli', 'tavern', 'store', 'cabin'];
 
+/** A sign's capitals as a name: "TOWN HALL & LIBRARY" to "Town Hall & Library". */
+const named = (text: string): string => text.toLowerCase().replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
+
 /** A bench against the front wall of each place people wait at, to one side of the door, facing the street. */
-export function benches(places: readonly TownPlace[]): Fixture[] {
-  return places.filter((p) => WITH_BENCH.includes(p.style)).map((p) => ({ ...fromLocal(p, -Math.min(p.w / 2 - 1.2, 3.6), p.d / 2 + (p.style === 'inn' || p.style === 'cabin' || p.style === 'tavern' ? 1.2 : 0.9)), turn: p.turn }));
+export function benches(places: readonly TownPlace[]): Bench[] {
+  return places
+    .filter((p) => WITH_BENCH.includes(p.style))
+    .map((p) => ({
+      id: `bench:${p.id}`,
+      name: p.sign ? `Outside ${named(p.sign).replace(/^The /, 'the ')}` : p.style === 'church' ? 'By the church door' : 'By the door',
+      ...fromLocal(p, -Math.min(p.w / 2 - 1.2, 3.6), p.d / 2 + (p.style === 'inn' || p.style === 'cabin' || p.style === 'tavern' ? 1.2 : 0.9)),
+      turn: p.turn,
+    }));
+}
+
+/** Places on the mountain with a view worth sitting down for, besides the lookouts the map names. */
+const VIEW_PLACES: Record<string, string> = { summit: 'At the fire tower', 'saddle-lodge': 'At the Saddle' };
+
+/**
+ * A bench at each lookout and at the high places, turned to face the way the ground falls away,
+ * which is where the view is.
+ */
+export function viewBenches(world: World): Bench[] {
+  const hf = world.source;
+  const spots = [
+    ...world.spots.filter((s) => s.kind === 'viewpoint').map((s) => ({ id: s.id, name: `At ${s.name}`, x: s.x, z: s.z })),
+    ...world.places.filter((p) => p.id in VIEW_PLACES).map((p) => ({ id: p.id, name: VIEW_PLACES[p.id] as string, x: p.x - 9, z: p.z + 12 })),
+  ];
+  return spots.flatMap((spot): Bench[] => {
+    // The nearest ground that is dry, clear of walls and not too steep to set a bench on.
+    for (let ring = 0; ring < 6; ring++) {
+      for (let k = 0; k < (ring === 0 ? 1 : 8); k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const x = spot.x + Math.cos(a) * ring * 4;
+        const z = spot.z + Math.sin(a) * ring * 4;
+        if (!clear(world, x, z) || hf.slopeDegAt(x, z) > 14) continue;
+        // Downhill is the way the height drops fastest.
+        const gx = hf.heightAt(x + 6, z) - hf.heightAt(x - 6, z);
+        const gz = hf.heightAt(x, z + 6) - hf.heightAt(x, z - 6);
+        const turn = Math.hypot(gx, gz) > 0.05 ? Math.atan2(-gx, -gz) : 0;
+        return [{ id: `bench:${spot.id}`, name: spot.name, x, z, turn, view: true }];
+      }
+    }
+    return [];
+  });
 }

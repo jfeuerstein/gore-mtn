@@ -92,6 +92,9 @@ export interface BookSummary {
   patchesTotal: number;
   letters: number;
   lettersTotal: number;
+  /** Benches sat on. */
+  benches: number;
+  benchesTotal: number;
   /** Bakes and sandwiches tried, and library books read. */
   tasted: number;
   tastedTotal: number;
@@ -116,6 +119,8 @@ export interface GameWorld extends Ground {
   spots?: readonly { id: string; x: number; z: number }[];
   /** Nonzero where the ground is a road, a lot or water, and no stone lies. */
   openAt?(x: number, z: number): number;
+  /** The benches that can be sat on, by id, with what the Book calls each. */
+  benches?: readonly { id: string; name: string }[];
   /** Named spots, each with ground to stand on, where the day's rumoured stone may lie. */
   rumourSpots?: readonly { name: string; x: number; z: number }[];
   /** The world as wildlife sees it. Without it there is nothing to spot. */
@@ -136,6 +141,10 @@ export class Game {
   readonly paths: Route[];
   readonly peaks: Spot[];
   readonly landmarks: Spot[];
+  /** The benches that can be sat on. */
+  get benches(): readonly { id: string; name: string }[] {
+    return this.world.benches ?? [];
+  }
   /** Every lift with a name, in alphabetical order. */
   readonly liftNames: string[];
   private readonly index: TrailIndex;
@@ -618,6 +627,16 @@ export class Game {
     return talk;
   }
 
+  /** Sit on a bench. The first time on each is kept in the book. */
+  sat(benchId: string, day: string): GameEvent[] {
+    const bench = this.world.benches?.find((b) => b.id === benchId);
+    if (!bench || benchId in this.save.benches) return [];
+    this.save.benches[benchId] = day;
+    this.dirty = true;
+    const count = Object.keys(this.save.benches).length;
+    return [{ kind: 'landmark', title: 'A good sit', detail: `${bench.name} · bench ${count} of ${this.world.benches?.length ?? count}` }];
+  }
+
   /** Take on an errand that was offered. */
   accept(errandId: string, day: string): GameEvent[] {
     const e = errandById(errandId);
@@ -722,6 +741,8 @@ export class Game {
       patchesTotal: PATCHES.length,
       letters: LETTERS.filter((l) => l.id in this.save.letters).length,
       lettersTotal: LETTERS.length,
+      benches: (this.world.benches ?? []).filter((b) => b.id in this.save.benches).length,
+      benchesTotal: this.world.benches?.length ?? 0,
       tasted: OFFERINGS.filter((o) => o.kind !== 'book' && o.id in this.save.tried).length,
       tastedTotal: OFFERINGS.filter((o) => o.kind !== 'book').length,
       read: OFFERINGS.filter((o) => o.kind === 'book' && o.id in this.save.tried).length,

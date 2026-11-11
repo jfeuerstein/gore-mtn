@@ -42,6 +42,8 @@ export class Player {
   readonly object = new THREE.Group();
   readonly position = this.object.position;
   mode: Mode = 'walk';
+  /** A bench sat on, and the way it faces. Null when up and about. */
+  private seat: { yaw: number } | null = null;
   /** Speed over the snow in m/s. */
   speed = 0;
   /** Direction of travel as a yaw, in the same convention as the camera. */
@@ -154,6 +156,7 @@ export class Player {
 
   /** Clip into or out of skis. Either way the player starts from a standstill. On a lift, it takes effect at the top. */
   setMode(mode: 'walk' | 'ski'): void {
+    this.seat = null;
     this.skier.setSkis(mode === 'ski' && this.glide === 'skis');
     // On a lift the bike goes up out of sight; it is back under the rider at the top.
     this.skier.setBike(mode === 'ski' && this.glide === 'bike' && !this.ride);
@@ -168,6 +171,30 @@ export class Player {
       this.lean = 0;
       this.object.rotation.set(0, this.heading, 0);
     }
+  }
+
+  /** True while sitting on a bench. */
+  get seated(): boolean {
+    return this.seat !== null;
+  }
+
+  /**
+   * Sit down on a bench. Only on foot: skis and bikes are stepped off first.
+   * @param yaw the way the bench faces
+   */
+  sit(x: number, z: number, yaw: number, hf: Heightfield): void {
+    if (this.mode !== 'walk') return;
+    this.seat = { yaw };
+    this.speed = 0;
+    this.position.set(x, hf.heightAt(x, z), z);
+    this.heading = yaw;
+    this.travelHeading = yaw;
+    this.object.rotation.set(0, yaw, 0);
+  }
+
+  /** Get up again. Pushing the stick does the same. */
+  stand(): void {
+    this.seat = null;
   }
 
   /**
@@ -225,6 +252,15 @@ export class Player {
     bumpAt: (x: number, z: number, radius: number) => Bump | null,
   ): void {
     const mag = Math.min(1, Math.hypot(moveX, moveY));
+    if (this.seat) {
+      // Sitting until the stick is pushed with some purpose: a resting thumb does not count.
+      if (mag < 0.3) {
+        this.speed = 0;
+        this.show(SEATED, dt, false, 6);
+        return;
+      }
+      this.seat = null;
+    }
     const top = fast ? FAST_SPEED : WALK_SPEED;
     this.speed = mag * top;
     // The stride runs on with the ground covered, and fades in and out as the walker starts and stops.

@@ -264,6 +264,7 @@ async function boot(): Promise<void> {
       openAt: (x, z) => world.openAt(x, z),
       country: countryOf(world),
       spots: namedSpots(world),
+      benches: built.benches,
       // Places a rumoured stone may lie: the lookouts, the ponds and the old workings, each resolved to ground that can be stood on.
       rumourSpots: [...world.spots.filter((sp) => sp.kind === 'viewpoint' || sp.kind === 'quarry'), ...world.ponds.filter((sp) => ['rabbit-pond', 'duck-pond', 'north-creek-reservoir'].includes(sp.id))].flatMap((sp) => {
         const at = locate(world, { spot: sp.id });
@@ -701,6 +702,9 @@ async function boot(): Promise<void> {
     watch,
     away,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
+    // The benches, and whether the player is sitting on one.
+    benches: built.benches.map((b) => ({ id: b.id, x: b.x, z: b.z, turn: b.turn })),
+    seated: player.seated,
     // The town's named places, each with its front: for scripts that want to go and look at one.
     town: townPlaces.map((p) => ({ id: p.id, x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn })),
     stops: stops.map((st) => ({ id: st.id, x: st.x, z: st.z })),
@@ -875,14 +879,28 @@ async function boot(): Promise<void> {
     if (talkSheet.isOpen && !someone && !stop && !welcomed) talkSheet.close();
     // Offer a ride when standing at the foot of a lift.
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
+    // ...and a seat when standing by a bench.
+    const seat = station || player.mode !== 'walk' ? null : (built.benches.find((b) => Math.hypot(b.x - px, b.z - pz) < 2.2) ?? null);
     if (station) {
       hud.setAction(`Ride ${station.lift.name ?? 'the lift'}`, () => {
         pitchAfterRide = follow.pitch;
         player.board(station, liftClock);
       });
-    }
-    else hud.setAction(null);
+    } else if (player.seated) {
+      hud.setAction('Stand up', () => player.stand());
+    } else if (seat) {
+      hud.setAction('Sit', () => {
+        // On the seat, a little out from the back, facing the way the bench does.
+        const at = fromLocal(seat, 0, 0.28);
+        player.sit(at.x, at.z, seat.turn + Math.PI, ground);
+        // At a lookout the camera sits behind, to share the view. Against a wall it comes round in
+        // front, since behind is the inside of a building.
+        follow.yaw = seat.view ? seat.turn + Math.PI : seat.turn;
+        announce(game.sat(seat.id, today));
+      });
+    } else hud.setAction(null);
     if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
+    if (seat && !player.seated) hint('bench', 'A bench', 'Tap Sit. There is no hurry, and the book keeps count.');
     if (someone) hint('talk', 'Someone to talk to', 'A gold mark overhead means they have something for you.');
     if (stop && !someone) hint('shuttle', 'The shuttle', 'It runs between the mountain, the Ski Bowl, town and the old garnet mine.');
     if (townHeart && Math.hypot(player.position.x - townHeart.x, player.position.z - townHeart.z) < 240) {
@@ -968,6 +986,7 @@ async function boot(): Promise<void> {
           'North Creek has opened its doors. The shuttle goes to town: there is a letter for you at the post office every day, and something new at the bakery, the deli and the library.',
           'Everyone has a face now, and there are new neighbours. One is a snowman. One is the Mayor.',
           'Every trail has a sign at its top, the Snow Train is waiting at the depot, and there are three boards on the mountain worth reading.',
+          'And there are benches now, in town and at the lookouts. Walk up to one and sit down. That is all it does.',
         ]);
         welcomed = true;
       }
