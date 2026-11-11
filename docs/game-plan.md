@@ -573,7 +573,8 @@ then models, a real town, sillier characters and a cohesive interface).
 - **News.** A returning player is told once what has changed since they were last here.
 - **Benches.** There is a new thing to do, which is nothing: sit down. A bench by each door in
   town and at each lookout, the fire tower and the Saddle. Each is kept in the Passport the
-  first time, and ten earn a patch.
+  first time, and ten earn a patch. Three conditions stamps are for sitting on a bench with a
+  view under the real sky: First Coffee at sunrise, a Sundowner at sunset, Stargazer at night.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

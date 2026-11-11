@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import type { Trail } from '../world/trails';
-import { buildLandmarks, buildPathBook, buildPeaks, buildTrailBook, CONDITIONS, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare } from './passport';
+import { buildLandmarks, buildPathBook, buildPeaks, buildTrailBook, benchConditionsNow, CONDITIONS, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare } from './passport';
 import type { TrailProgress } from './save';
 
 const trail = (name: string | null, pts: number[], extra: Partial<Trail> = {}): Trail => ({
@@ -190,7 +190,22 @@ describe('the seasons\' conditions', () => {
     for (const season of ['winter', 'spring', 'summer', 'fall'] as const) {
       for (const sun of [-30, 4, 35, 65]) for (const east of [true, false]) for (const weather of [clear, wet]) for (const id of conditionsNow(sun, east, weather, season)) reachable.add(id);
     }
+    // ...some of them only sitting down.
+    for (const sun of [-30, 4, 35]) for (const east of [true, false]) for (const weather of [clear, wet]) for (const id of benchConditionsNow(sun, east, weather)) reachable.add(id);
     expect([...reachable].sort()).toEqual(CONDITIONS.map((c) => c.id).sort());
+  });
+});
+
+describe('benchConditionsNow', () => {
+  const clear = { overcast: 0, snowing: 0 };
+  it('gives a bench with a view its own stamps at sunrise, at sunset and under the stars', () => {
+    expect(benchConditionsNow(4, true, clear)).toEqual(['first-coffee']);
+    expect(benchConditionsNow(4, false, clear)).toEqual(['sundowner']);
+    expect(benchConditionsNow(-20, true, clear)).toEqual(['stargazer']);
+    expect(benchConditionsNow(40, true, clear)).toEqual([]);
+    // Nothing to see under cloud.
+    expect(benchConditionsNow(4, false, { overcast: 1, snowing: 0 })).toEqual([]);
+    expect(benchConditionsNow(-20, false, { overcast: 0, snowing: 0.6 })).toEqual([]);
   });
 });
 

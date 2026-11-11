@@ -12,7 +12,7 @@ import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
 import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
-import { conditionsNow } from './game/passport';
+import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { snowReport, trailOfTheDay, wildlifeLog } from './game/report';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
@@ -299,6 +299,8 @@ async function boot(): Promise<void> {
   /** The hour of the day at the mountain, 0 to 23, whatever clock the phone keeps. */
   const goreHour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
   const hourAtGore = (when: Date): number => Number(goreHour.format(when)) % 24;
+  /** The bench last sat down on. Whether the player is still on it is the player's to say. */
+  let sittingOn: (typeof built.benches)[number] | null = null;
   /** The middle of town, for a word of introduction on first walking in. */
   const townHeart = townPlaces.find((p) => p.id === 'north-creek-post-office') ?? townPlaces.find((p) => p.id === 'copperfield-inn') ?? null;
   /** Say something helpful, the first time it is needed and never again. */
@@ -833,6 +835,10 @@ async function boot(): Promise<void> {
       sinceSlow = 0;
       today = dayKey(new Date());
       watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+      // Sitting on a bench with a view, under the real sky, earns the stamps that are for sitting.
+      if (honestSky && player.seated && sittingOn?.view) {
+        announce(game.skiedIn(benchConditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather), today));
+      }
       if (honestSky && player.mode === 'ski' && player.speed > 3) {
         announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather, season), today));
       }
@@ -896,6 +902,7 @@ async function boot(): Promise<void> {
         // At a lookout the camera sits behind, to share the view. Against a wall it comes round in
         // front, since behind is the inside of a building.
         follow.yaw = seat.view ? seat.turn + Math.PI : seat.turn;
+        sittingOn = seat;
         announce(game.sat(seat.id, today));
       });
     } else hud.setAction(null);

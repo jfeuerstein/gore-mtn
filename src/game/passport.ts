@@ -280,7 +280,24 @@ export const CONDITIONS: readonly Condition[] = [
   { id: 'soaker', name: 'Soaker', how: 'Ride in the rain.', seasons: ['summer', 'fall'] },
   { id: 'peak-foliage', name: 'Peak Foliage', how: 'Ride through the colours on a clear fall day.', seasons: ['fall'] },
   { id: 'harvest-moon', name: 'Harvest Moon', how: 'Ride after dark in fall.', seasons: ['fall'] },
+  // Earned sitting down, on a bench with a view.
+  { id: 'first-coffee', name: 'First Coffee', how: 'Sit on a bench with a view in the first hour after sunrise.' },
+  { id: 'sundowner', name: 'Sundowner', how: 'Sit on a bench with a view in the last hour before sunset.' },
+  { id: 'stargazer', name: 'Stargazer', how: 'Sit on a bench with a view under a clear night sky.' },
 ];
+
+/**
+ * The conditions that hold right now for someone sitting on a bench with a view, by id.
+ * @param sunElevationDeg height of the sun above the horizon
+ * @param sunInEast true before solar noon
+ */
+export function benchConditionsNow(sunElevationDeg: number, sunInEast: boolean, weather: { overcast: number; snowing: number }): string[] {
+  const clear = weather.overcast < 0.35 && weather.snowing < 0.1;
+  if (!clear) return [];
+  if (sunElevationDeg < -6) return ['stargazer'];
+  if (sunElevationDeg > 0 && sunElevationDeg < 9) return [sunInEast ? 'first-coffee' : 'sundowner'];
+  return [];
+}
 
 /**
  * The conditions that hold right now, by id.

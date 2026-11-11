@@ -225,6 +225,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   there, and each summit has a patch for every season. The first visit to each season is a stamp.
   Conditions, some of them particular to a season, are earned by skiing or riding under the real
   calendar, clock and sky only, never a pinned one.
+  Three more are for sitting on a bench with a view: at sunrise, at sunset, and under the stars.
 - Stones lie in four kinds of ground: on the groomed snow (so skiing a trail meets them), beside
   the trails, in steep bare rock and in deep woods (the rarer ones, which take a detour). They
   are laid out patch by patch from the date and the place, so the day's scatter is the same on
