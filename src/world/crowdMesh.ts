@@ -6,6 +6,7 @@ import { buildGliders, buildRuns, buildSeats, buildWalkers, gliderAt, routePoint
 import { figureGeometry } from './figure';
 import { carDistance, riderAlong, type LiftPath } from './lifts';
 import type { World } from './world';
+import { lit } from '../look/material';
 
 /** The same scale the player is drawn at. */
 const SCALE = 0.75;
@@ -95,7 +96,7 @@ export class Crowd {
     town: { x: number; z: number; reach: number } | null,
   ) {
     this.group.name = 'crowd';
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const material = lit({ vertexColors: true, flatShading: true });
     this.runs = buildRuns(world.trails, heightAt);
     // Fewer are out on bikes than on skis.
     this.gliders = buildGliders(this.runs).filter((g) => ride === 'skis' || g.keen < 0.5);

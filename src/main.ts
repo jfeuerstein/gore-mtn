@@ -2,7 +2,7 @@ import '@fontsource/bebas-neue/latin-400.css';
 import '@fontsource/caveat/latin-600.css';
 import * as THREE from 'three/webgpu';
 import { Sound } from './audio/sound';
-import { parseConfig, withParams } from './config';
+import { parseConfig, withKept, withParams } from './config';
 import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
@@ -51,6 +51,7 @@ import { Forest, TREE_RANGE } from './world/trees';
 import { Walls } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
+import { lit, usePrint } from './look/material';
 
 /** A picture of the land in one of the looks being tried: the same picture, repainted on a canvas. */
 function repaint(texture: THREE.Texture, look: WorldLook, season: Season, ground: Heightfield, every: number): THREE.Texture {
@@ -188,7 +189,22 @@ function fillScreen(): void {
 }
 
 async function boot(): Promise<void> {
-  const cfg = parseConfig(location.search);
+  // A look being tried is remembered, so that it is still on when the game is next opened.
+  const looks = withKept(location.search, (key) => {
+    try {
+      return localStorage.getItem(`gore.${key}`);
+    } catch {
+      return null;
+    }
+  });
+  try {
+    for (const [key, value] of Object.entries(looks.keep)) localStorage.setItem(`gore.${key}`, value);
+  } catch {
+    // Private browsing: the look lasts as long as the address does.
+  }
+  const cfg = parseConfig(looks.search);
+  // The print look lights everything in steps; it has to be said before anything is built.
+  usePrint(cfg.look === 'poster');
   pretendShort = cfg.shortPage;
   fillScreen();
   for (const event of ['resize', 'orientationchange', 'pageshow']) window.addEventListener(event, fillScreen);
@@ -305,8 +321,8 @@ async function boot(): Promise<void> {
   zoo.name = 'zoo';
   const lineUp = (x: number, z: number, yaw: number): void => {
     zoo.clear();
-    const flat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-    const soft = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const flat = lit({ vertexColors: true, flatShading: true });
+    const soft = lit({ vertexColors: true });
     const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
     // Four rows of four across the way the player is looking, the small ones in front: an upright screen has no room for more.
     const all = ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
@@ -382,7 +398,7 @@ async function boot(): Promise<void> {
   let sittingOn: (typeof built.benches)[number] | null = null;
   /** How long the player has been sitting still, in seconds, and the bird that has come to sit by them, if one has. */
   let satFor = 0;
-  const visitor = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const visitor = new THREE.Mesh(new THREE.BufferGeometry(), lit({ vertexColors: true, flatShading: true }));
   visitor.visible = false;
   visitor.castShadow = shadows;
   scene.add(visitor);

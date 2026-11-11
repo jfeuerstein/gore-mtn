@@ -140,14 +140,21 @@ moves between those with the real time of day and the real weather at Gore.
 Everything in the game is built in code from simple shapes. There are no model or texture files
 beyond the pipeline's ground pictures, and nothing needs Blender yet.
 
-Two things are being tried beside that, both off unless asked for, for the owner to compare on
-the phone. Neither is settled.
+Two things are being tried beside that, for the owner to compare on the phone. Both are off
+unless asked for, and whichever is chosen in Settings is remembered from one opening of the
+game to the next (`withKept` in `config.ts`; a benchmark step ignores it). The owner likes the
+park print, in the world and for the animals, and asked for it to be pushed further; it is not
+yet the game's own look.
 
 - **Made models** (`models=facet|park|smooth|toy`, or Settings). `tools/models/make-models.mjs`
   asks an image model for a picture of each animal in `tools/models/manifest.mjs`, an
   image-to-3D model (Trellis, through fal) for its shape, and `convert.py` for a game-ready
-  model: stood up, cut down to about a thousand triangles, its texture baked into a colour per
-  face, the colours graded to the picture and cut to a small palette. Three looks come out of
+  model: stood up, made one closed solid (`seal`: a generated shape is a skin with gaps, in
+  pieces, and cut down it would have holes; the owner asked for none), cut down to about a
+  thousand triangles, its texture baked into a colour per face, the colours graded to the
+  picture, cut to a small palette and gathered into patches (`calm`). A test fails if any
+  model has an open edge or a loose piece. The converter needs Python with trimesh,
+  fast-simplification, scipy, scikit-image, pymeshfix and Pillow. Three looks come out of
   the one shape (`LOOKS` in `convert.py`): faceted, a park print (six inks and a dark outline
   hull) and smooth. They are small JSON files under `public/models/`, read by
   `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
@@ -162,7 +169,16 @@ the phone. Neither is settled.
   repaints the pipeline's two pictures of the land when the game loads: `poster` prints them
   in a handful of inks for the season, and `topo` thins those inks toward paper and draws a
   contour line every 10 m of height (every 50 m on the far-off forest). The Map sheet is drawn
-  over the same picture, so it takes the look too. The trees, buildings and light are as ever.
+  over the same picture, so it takes the look too.
+- **The print look goes further than the ground** (`look=poster`), so that the whole picture
+  reads as a poster. Everything the sun lights asks `lit()` in `src/look/material.ts` for its
+  material: a Lambert material as ever, or, printed, three.js's own toon material with a ramp
+  of a few tones (`PRINT_TONES`), so that every face is one flat tone and a hillside breaks
+  into shapes. The sky is bands of flat colour near the horizon under one flat field
+  (`Atmosphere`, by `isPrinted()`), and the animals are the park prints unless others are
+  asked for. The street's surface stays smoothly lit: level ground in steps is a
+  checkerboard. Make any new lit material with `lit()`, never `new MeshLambertMaterial`.
+  `tools/webgpu-smoke.mjs` draws the print look too, since it is a different material.
 
 - `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
   call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),

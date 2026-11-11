@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, parseConfig, withParams } from './config';
+import { withKept } from './config';
 import { makeRng } from './rng';
 
 describe('parseConfig', () => {
@@ -59,5 +60,30 @@ describe('makeRng', () => {
     expect(seq).toEqual(Array.from({ length: 200 }, () => b()));
     expect(seq.every((v) => v >= 0 && v < 1)).toBe(true);
     expect(makeRng(43)()).not.toBe(seq[0]);
+  });
+});
+
+describe('looks being tried', () => {
+  const none = (): string | null => null;
+  const print = (key: string): string | null => (key === 'look' ? 'poster' : null);
+
+  it('keeps a look that is in the address', () => {
+    expect(withKept('?look=poster&at=summit', none)).toEqual({ search: '?look=poster&at=summit', keep: { look: 'poster' } });
+  });
+
+  it('fills in a look that was kept when the address has none, and the printed animals come with it', () => {
+    const { search, keep } = withKept('', print);
+    expect(keep).toEqual({});
+    const cfg = parseConfig(search);
+    expect(cfg.look).toBe('poster');
+    expect(cfg.models).toBe('park');
+  });
+
+  it('lets the address win, so Settings can turn a look off again', () => {
+    expect(parseConfig(withKept('?look=plain', print).search).look).toBe('plain');
+  });
+
+  it('leaves a benchmark step as it is labelled', () => {
+    expect(parseConfig(withKept('?bench=0', print).search).look).toBe('plain');
   });
 });

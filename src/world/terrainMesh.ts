@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from './heightfield';
+import { lit } from '../look/material';
 
 /** Terrain is drawn as square tiles this many cells across. */
 export const TILE_CELLS = 96;
@@ -184,8 +185,8 @@ export class Terrain {
       t.anisotropy = 4;
     }
     // Double-sided so the skirts show whichever way they face.
-    this.snowMaterial = new THREE.MeshLambertMaterial({ map: snowTexture, side: THREE.DoubleSide });
-    this.canopyMaterial = new THREE.MeshLambertMaterial({ map: canopyTexture, side: THREE.DoubleSide });
+    this.snowMaterial = lit({ map: snowTexture, side: THREE.DoubleSide });
+    this.canopyMaterial = lit({ map: canopyTexture, side: THREE.DoubleSide });
 
     for (let r0 = 0; r0 < hf.rows - 1; r0 += TILE_CELLS) {
       for (let c0 = 0; c0 < hf.cols - 1; c0 += TILE_CELLS) {

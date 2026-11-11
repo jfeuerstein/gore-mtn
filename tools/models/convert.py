@@ -31,17 +31,18 @@ from scipy.cluster.vq import kmeans2
 from scipy.spatial import cKDTree
 
 LOOKS = {
-    'facet': dict(faces=1100, colours=8, smooth=False, palette=None),
-    'park': dict(faces=900, colours=6, smooth=False, palette='park'),
-    'smooth': dict(faces=2000, colours=12, smooth=True, palette=None),
+    'facet': dict(faces=1100, colours=8, smooth=False, palette=None, seal=True),
+    'park': dict(faces=1000, colours=6, smooth=False, palette='park', seal=True),
+    'smooth': dict(faces=2000, colours=12, smooth=True, palette=None, seal=True),
     # For a shape that was made low-poly and plainly coloured to begin with: little is taken away.
-    'toy': dict(faces=1400, colours=10, smooth=False, palette=None),
+    'toy': dict(faces=1400, colours=10, smooth=False, palette=None, seal=False),
 }
 
-# The inks of an old park poster: a few earths, two greens, two blues, cream and near-black.
+# The inks of an old park poster, for animals: earths, greys, two blues, cream and near-black.
+# No greens: a dull brown is nearer to a green ink than to a brown one, and no animal here is green.
 PARK = [
     (0xF4, 0xEC, 0xD6), (0xE2, 0xC9, 0x9A), (0xC9, 0x8F, 0x4A), (0xA8, 0x5A, 0x32), (0x7A, 0x3F, 0x2A),
-    (0x4A, 0x33, 0x26), (0x2A, 0x26, 0x24), (0x6F, 0x8A, 0x5A), (0x2F, 0x5A, 0x44), (0x7F, 0xA9, 0xB8),
+    (0x4A, 0x33, 0x26), (0x2A, 0x26, 0x24), (0x9A, 0x7B, 0x5C), (0x5E, 0x66, 0x70), (0x7F, 0xA9, 0xB8),
     (0x2B, 0x4A, 0x5E), (0x8A, 0x8F, 0x96), (0xD9, 0xA4, 0x41), (0xB5, 0x3A, 0x2A), (0xFA, 0xFA, 0xF6),
 ]
 
@@ -89,14 +90,72 @@ def stand(mesh, turn):
     return mesh
 
 
+def seal(mesh, fine=140):
+    """The same shape as one closed solid: no holes, no loose pieces, nothing inside it.
+
+    A generated model is often a skin with gaps in it, in several pieces, with scraps inside.
+    Cut down, the gaps open into holes. So the shape is poured into a block of small cubes
+    (`fine` of them to its height), the cubes are joined up and filled, the biggest piece is
+    kept, and a new skin is drawn round it. Thin parts come out a little stouter.
+    """
+    from scipy import ndimage
+    from skimage import measure
+    pitch = 1.0 / fine
+    grid = mesh.voxelized(pitch)
+    solid = np.pad(grid.matrix, 4)
+    ball = ndimage.generate_binary_structure(3, 1)
+    # Close the gaps, fill what is inside, and leave everything one cube stouter, so that a thin leg is not lost.
+    solid = ndimage.binary_dilation(solid, ball, iterations=2)
+    solid = ndimage.binary_fill_holes(solid)
+    solid = ndimage.binary_erosion(solid, ball, iterations=1)
+    pieces, count = ndimage.label(solid)
+    if count > 1:
+        sizes = ndimage.sum(solid, pieces, range(1, count + 1))
+        solid = pieces == (int(np.argmax(sizes)) + 1)
+    field = ndimage.gaussian_filter(solid.astype(np.float32), 0.9)
+    verts, faces, _, _ = measure.marching_cubes(field, 0.5)
+    # Back from cubes to the model's own measure.
+    origin = np.asarray(grid.transform)[:3, 3] - 4 * pitch
+    out = trimesh.Trimesh(vertices=verts * pitch + origin, faces=faces[:, ::-1], process=True)
+    trimesh.smoothing.filter_taubin(out, iterations=8)
+    return out
+
+
+def calm(mesh, label, rounds=3):
+    """Each face takes the colour most of its neighbours have, so colours lie in patches, not specks."""
+    label = label.copy()
+    pairs = mesh.face_adjacency
+    near = [[] for _ in range(len(mesh.faces))]
+    for a, b in pairs:
+        near[a].append(b)
+        near[b].append(a)
+    for _ in range(rounds):
+        nxt = label.copy()
+        for i, ns in enumerate(near):
+            if len(ns) < 2:
+                continue
+            votes = np.bincount(label[ns])
+            best = int(votes.argmax())
+            if votes[best] >= 2 and best != label[i]:
+                nxt[i] = best
+        label = nxt
+    return label
+
+
 def convert(source, look, turn, picture=None):
     spec = LOOKS[look]
     full, colours = load(source)
     if picture:
         colours = like(colours, picture)
     full = stand(full, turn)
-    thin = full.simplify_quadric_decimation(face_count=spec['faces']) if len(full.faces) > spec['faces'] else full.copy()
+    whole = seal(full) if spec['seal'] else full
+    thin = whole.simplify_quadric_decimation(face_count=spec['faces']) if len(whole.faces) > spec['faces'] else whole.copy()
     thin.remove_unreferenced_vertices()
+    if spec['seal'] and not thin.is_watertight:
+        # Cutting down can pinch a thin part shut; mend whatever that leaves.
+        import pymeshfix
+        v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(thin.vertices, dtype=np.float64), np.ascontiguousarray(thin.faces, dtype=np.int32))
+        thin = trimesh.Trimesh(vertices=v, faces=f, process=True)
     # Each thinned triangle takes the colour of the original where its middle lies.
     _, where = cKDTree(full.triangles_center).query(thin.triangles_center)
     face_colour = colours[where]
@@ -105,7 +164,14 @@ def convert(source, look, turn, picture=None):
     centres, label = kmeans2(face_colour, k, minit='++', seed=7)
     if spec['palette'] == 'park':
         inks = np.array(PARK, dtype=np.float64)
-        centres = inks[((centres[:, None, :] - inks[None, :, :]) ** 2).sum(axis=2).argmin(axis=1)]
+        far = ((centres[:, None, :] - inks[None, :, :]) ** 2).sum(axis=2)
+        # A dark coat is black or brown, not navy, unless it is plainly blue.
+        dark = (centres.mean(axis=1) < 95) & (centres[:, 2] - centres[:, 0] < 50)
+        blue = inks[:, 2] - inks[:, 0] > 25
+        far[np.ix_(dark, blue)] = np.inf
+        centres = inks[far.argmin(axis=1)]
+    if spec['seal']:
+        label = calm(thin, label)
     palette = ['#%02x%02x%02x' % tuple(int(round(min(255, max(0, c)))) for c in centre) for centre in centres]
     return {
         # In thousandths of the model's height.

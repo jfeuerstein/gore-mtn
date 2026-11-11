@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { CABLE_HEIGHT, LINE_OFFSET, towerYaw, type LiftPath } from './lifts';
 import { blocks, type Block } from './shapes';
+import { lit } from '../look/material';
 
 const GATE = 0xe8792b;
 const STEEL = 0x4d5666;
@@ -18,7 +19,7 @@ export function buildLifts(paths: readonly LiftPath[], snowy = true): THREE.Grou
 
   let towerCount = 0;
   for (const path of paths) if (!path.surface) towerCount += path.points.length / 3;
-  const steel = new THREE.MeshLambertMaterial({ color: STEEL, flatShading: true });
+  const steel = lit({ color: STEEL, flatShading: true });
   // A tapered post hanging down from the cable height, and a crossarm with a wheel assembly at
   // each end for the cable to run over.
   const towerGeo = new THREE.CylinderGeometry(0.26, 0.5, CABLE_HEIGHT + 2, 6);
@@ -132,7 +133,7 @@ export function buildLifts(paths: readonly LiftPath[], snowy = true): THREE.Grou
   const cableLines = new THREE.LineSegments(new THREE.BufferGeometry(), cableMat);
   cableLines.geometry.setAttribute('position', new THREE.Float32BufferAttribute(cables, 3));
   cableLines.geometry.computeBoundingSphere();
-  const station = new THREE.Mesh(blocks(works), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const station = new THREE.Mesh(blocks(works), lit({ vertexColors: true, flatShading: true }));
   station.castShadow = true;
   for (const part of [towers, arms, cableLines, station]) part.matrixAutoUpdate = false;
   group.add(towers, arms, cableLines, station);
@@ -150,7 +151,7 @@ export function buildSnowGuns(guns: readonly { x: number; z: number; turn: numbe
     { size: [0.1, 0.1, 1.7], at: [0, 7.35, 0.75], colour: 0xc9ced6, tip: -0.3 },
     { size: [0.36, 0.36, 0.55], at: [0, 7.66, 1.6], colour: 0xe2a52e, tip: -0.3 },
   ]);
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), Math.max(1, guns.length));
+  const mesh = new THREE.InstancedMesh(geo, lit({ vertexColors: true, flatShading: true }), Math.max(1, guns.length));
   mesh.name = 'snow-guns';
   mesh.count = guns.length;
   const m = new THREE.Matrix4();

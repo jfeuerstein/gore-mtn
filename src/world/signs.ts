@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { lit } from '../look/material';
 
 /** One painted sign: its words, where it hangs and which way it faces. */
 export interface SignSpec {
@@ -138,7 +139,7 @@ export async function buildSigns(specs: readonly SignSpec[]): Promise<THREE.Mesh
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
-  const mesh = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({ map: texture }));
+  const mesh = new THREE.Mesh(geometry, lit({ map: texture }));
   mesh.name = 'signs';
   mesh.matrixAutoUpdate = false;
   return mesh;

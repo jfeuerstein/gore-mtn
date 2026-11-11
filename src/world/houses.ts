@@ -4,6 +4,7 @@ import { planHeight, type HouseKind, type HousePlan } from './houseKinds';
 import { blocks, placed, roof, siding, type Block } from './shapes';
 import type { Hanging } from './shopSigns';
 import type { SignSpec } from './signs';
+import { lit } from '../look/material';
 
 /**
  * Every building on the map that has no name of its own, built for what it is: a cape, a
@@ -762,7 +763,7 @@ export class Houses {
     this.group.name = 'town';
     if (plans.length === 0) return;
     const look: Look = { snow: roofColour === SNOW ? SNOW : null, season };
-    const walls = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null });
+    const walls = lit({ vertexColors: true, flatShading: true, map: textured ? siding() : null });
     const chunks = new Map<string, { list: Block[]; extra: THREE.BufferGeometry[]; panes: number[] }>();
     for (const p of plans) {
       const kit = KITS[p.kind](p, look);

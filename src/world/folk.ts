@@ -5,6 +5,7 @@ import { STANDING } from '../player/pose';
 import type { Outfit } from '../player/skier';
 import { figureGeometry } from './figure';
 import { blocks, type Block } from './shapes';
+import { lit } from '../look/material';
 
 /** People further than this from the player are not drawn, in metres. */
 const DRAW_RANGE = 220;
@@ -237,7 +238,7 @@ export class Folk {
   /** @param season some of them dress for it, and one of them is made of it */
   constructor(people: readonly Standing[], castShadow: boolean, season: Season = 'winter') {
     this.group.name = 'folk';
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const material = lit({ vertexColors: true, flatShading: true });
     for (const standing of people) {
       const kind = standing.person.kind ?? 'person';
       const geometry = kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : kind === 'cat' ? cat() : kind === 'snowman' ? tom(season) : standingFigure(standing.person.look);
@@ -349,7 +350,7 @@ const KEEPSAKE_MODEL: Record<string, Block[]> = {
 /** Lost property lying on the mountain while someone is looking for it: a small thing with a mark over it. */
 export class Keepsakes {
   readonly group = new THREE.Group();
-  private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  private readonly material = lit({ vertexColors: true, flatShading: true });
   private readonly shown = new Map<string, { item: Keepsake; mesh: THREE.Mesh; mark: THREE.Mesh }>();
   private time = 0;
 
@@ -400,7 +401,7 @@ export interface Stop {
 export function buildStops(stops: readonly Stop[], castShadow: boolean): THREE.Group {
   const group = new THREE.Group();
   group.name = 'stops';
-  const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  const material = lit({ vertexColors: true, flatShading: true });
   for (const stop of stops) {
     const list: Block[] = [
       // The sign.

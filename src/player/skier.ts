@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { BODY, hipHeight, type Pose } from './pose';
+import { lit } from '../look/material';
 
 /**
  * What makes one person on the mountain look unlike the next: a face in place of the player's
@@ -73,7 +74,7 @@ export class Skier {
   private readonly darkMat: THREE.MeshLambertMaterial;
   /** The parts that have been joined into one mesh each, and the one material they all share. */
   private joined: Joined[] = [];
-  private readonly joinedMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  private readonly joinedMat = lit({ vertexColors: true, flatShading: true });
   private readonly head = new THREE.Group();
   private hat: THREE.Group | null = null;
   private hatStyle = '';
@@ -83,7 +84,7 @@ export class Skier {
     private readonly castShadow: boolean,
     outfit: Outfit = { jacket: 0xe2452f, hat: 0x2f6f8f, style: 'beanie' },
   ) {
-    const mat = (color: number): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ color, flatShading: true });
+    const mat = (color: number): THREE.MeshLambertMaterial => lit({ color, flatShading: true });
     const jacket = (this.jacketMat = mat(outfit.jacket));
     const trousers = (this.trousersMat = mat(outfit.trousers ?? 0x2b3a55));
     const dark = (this.darkMat = mat(0x1f242e));
@@ -367,9 +368,9 @@ export class Skier {
     } else if (style === 'propeller') {
       // A beanie with a propeller on top, which does not turn, or says it does not.
       g.add(dome(), part(new THREE.CylinderGeometry(0.212, 0.212, 0.05, 10), cream, 0, 0.21, 0), part(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 5), dark, 0, 0.46, 0));
-      const blade = part(new THREE.BoxGeometry(0.4, 0.015, 0.07), new THREE.MeshLambertMaterial({ color: 0xe2a52e, flatShading: true }), 0, 0.52, 0);
+      const blade = part(new THREE.BoxGeometry(0.4, 0.015, 0.07), lit({ color: 0xe2a52e, flatShading: true }), 0, 0.52, 0);
       blade.rotation.y = 0.6;
-      g.add(blade, part(new THREE.SphereGeometry(0.03, 5, 4), new THREE.MeshLambertMaterial({ color: 0xc8402d, flatShading: true }), 0, 0.53, 0));
+      g.add(blade, part(new THREE.SphereGeometry(0.03, 5, 4), lit({ color: 0xc8402d, flatShading: true }), 0, 0.53, 0));
     } else if (style === 'straw') {
       // A scarecrow's straw hat: wide, and a little crushed.
       g.add(part(new THREE.CylinderGeometry(0.4, 0.42, 0.03, 12), hat, 0, 0.28, 0), part(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hat, 0, 0.37, 0), part(new THREE.CylinderGeometry(0.205, 0.205, 0.04, 10), dark, 0, 0.31, 0));

@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { blocks, type Block } from './shapes';
 import type { SignSpec } from './signs';
 import { BOARD_COLOURS, BOARD_HEIGHT, BOARD_STEP, LOWEST_BOARD, type SignPost } from './trailSigns';
+import { lit } from '../look/material';
 
 /**
  * The posts that the mountain's signs hang on, as one mesh, and the boards to paint for them.
@@ -34,7 +35,7 @@ export function buildSignPosts(posts: readonly SignPost[], heightAt: (x: number,
       signs.push({ text: board.text, x: post.x, y, z: post.z, turn: post.turn, height: tall, maxWidth: width, width, ...BOARD_COLOURS[board.difficulty], twoSided: true });
     });
   }
-  const mesh = new THREE.Mesh(blocks(list), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  const mesh = new THREE.Mesh(blocks(list), lit({ vertexColors: true, flatShading: true }));
   mesh.name = 'sign-posts';
   mesh.castShadow = castShadow;
   mesh.matrixAutoUpdate = false;

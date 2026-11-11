@@ -6,6 +6,7 @@ import { hasShopPicture, type Hanging } from './shopSigns';
 import type { SignSpec } from './signs';
 import type { Flue } from './smoke';
 import type { TownPlace, TownStyle } from './townPlaces';
+import { lit } from '../look/material';
 
 /**
  * The buildings that have a look of their own, each put together from a small kit: walls, a roof,
@@ -454,7 +455,7 @@ export class TownPlaces {
     this.flues = built.flues;
     this.hangs = built.hangs;
     if (places.length === 0 && also.walls.length === 0) return;
-    const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
+    const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), lit({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
     walls.castShadow = castShadow;
     walls.receiveShadow = true;
     const panes = new THREE.Mesh(blocks([], [built.panes, ...also.panes]), this.glass);

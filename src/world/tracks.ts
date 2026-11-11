@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from './heightfield';
+import { lit } from '../look/material';
 
 /** A new stretch of track is laid each time the skier has travelled this far, in metres. */
 const STEP = 0.5;
@@ -49,7 +50,7 @@ export class SkiTracks {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', this.attribute);
     geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
-    const material = new THREE.MeshLambertMaterial({
+    const material = lit({
       color: colour,
       polygonOffset: true,
       polygonOffsetFactor: -2,

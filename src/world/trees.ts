@@ -4,6 +4,7 @@ import type { Heightfield } from './heightfield';
 import type { Obstacle } from '../player/collide';
 import { blocksSightLine, type Point3 } from './occlusion';
 import type { World } from './world';
+import { lit } from '../look/material';
 
 /** Trees are grouped into square patches this many metres across. */
 const PATCH_SIZE = 320;
@@ -192,7 +193,7 @@ export class Forest {
   private readonly spacing: number;
   private readonly geometry: THREE.BufferGeometry;
   private readonly farGeometry: THREE.BufferGeometry;
-  private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  private readonly material = lit({ vertexColors: true, flatShading: true });
   /** Ducked trees: patch key * 65536 + slot, to present scale. */
   private readonly ducked = new Map<number, number>();
   private readonly blocking = new Set<number>();

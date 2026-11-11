@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import type { Sighting } from '../game/wildlife';
 import type { Season } from '../look/season';
 import { critterGeometry } from './critterModels';
+import { lit } from '../look/material';
 
 /** Creatures further than this from the player are not drawn, in metres. */
 const DRAW_RANGE = 280;
@@ -48,8 +49,8 @@ function markGeometry(): THREE.BufferGeometry {
  */
 export class Critters {
   readonly group = new THREE.Group();
-  private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
-  private readonly soft = new THREE.MeshLambertMaterial({ vertexColors: true });
+  private readonly material = lit({ vertexColors: true, flatShading: true });
+  private readonly soft = lit({ vertexColors: true });
   /** The line round a model in the print look: its own shape a little larger, in ink, seen only from behind. */
   private readonly ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
   private readonly marks: THREE.InstancedMesh;

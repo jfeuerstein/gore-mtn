@@ -2,7 +2,13 @@ import * as THREE from 'three/webgpu';
 import { makeRng } from '../rng';
 import { mixColour, type Palette } from './palette';
 import { skyDirection, type SunPosition } from './sun';
+import { isPrinted } from './material';
 
+/** How many bands of colour the sky has from the horizon to overhead, in the print look. */
+const SKY_BANDS = 6;
+/** How tall each band is, as a share of the way up the dome, and how far up the sky's colours the field above them is taken from. */
+const BAND_HEIGHT = 0.055;
+const FIELD = 0.55;
 /** How far away the sky and the far hills are drawn. Inside the camera's far limit. */
 const SKY_RADIUS = 12000;
 /** How many stars there are, on a clear night. */
@@ -28,6 +34,7 @@ export class Atmosphere {
   readonly lightDirection = new THREE.Vector3(0, 1, 0);
 
   private readonly sky = new THREE.Group();
+  private readonly banded: boolean;
   private readonly dome: THREE.Mesh;
   private readonly disc: THREE.Mesh;
   private readonly stars: THREE.Mesh;
@@ -40,7 +47,9 @@ export class Atmosphere {
   constructor() {
     this.group.name = 'atmosphere';
 
-    const geo = new THREE.SphereGeometry(1, 32, 16);
+    // In the print look the sky is bands of flat colour: every face of the dome is one colour, not a blend of its corners.
+    this.banded = isPrinted();
+    const geo = this.banded ? new THREE.SphereGeometry(1, 32, 48).toNonIndexed() : new THREE.SphereGeometry(1, 32, 16);
     geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geo.getAttribute('position').count * 3), 3));
     this.dome = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false }));
     this.dome.scale.setScalar(SKY_RADIUS);
@@ -148,7 +157,15 @@ export class Atmosphere {
     const colours = geo.getAttribute('color') as THREE.BufferAttribute;
     const out = colours.array as Float32Array;
     for (let i = 0; i < pos.count; i++) {
-      const up = Math.min(1, Math.max(0, pos.getY(i)));
+      let up = Math.min(1, Math.max(0, pos.getY(i)));
+      if (this.banded) {
+        // The height of the face this corner belongs to, cut into bands.
+        const first = i - (i % 3);
+        // By its lowest corner, which both faces of a panel of the dome share: so a band ends along a level line.
+        const mid = Math.min(pos.getY(first), pos.getY(first + 1), pos.getY(first + 2));
+        // Bands low down, where they lie level, and one flat field above them.
+        up = (Math.min(SKY_BANDS, Math.floor(Math.max(0, mid) / BAND_HEIGHT)) / SKY_BANDS) * FIELD;
+      }
       let from = horizon;
       let to = middle;
       let t = up / 0.22;

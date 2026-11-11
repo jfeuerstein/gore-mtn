@@ -5,6 +5,7 @@ import type { SignSpec } from './signs';
 import type { Flue } from './smoke';
 import type { WallBox } from './walls';
 import type { Place } from './trails';
+import { lit } from '../look/material';
 
 export { PLACE_FOOTPRINT, PLACE_HEIGHT } from './placeSizes';
 
@@ -506,7 +507,7 @@ export class Buildings {
       }
     }
     if (list.length === 0) return;
-    const body = new THREE.Mesh(blocks(list, extra), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
+    const body = new THREE.Mesh(blocks(list, extra), lit({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
     body.castShadow = castShadow;
     body.receiveShadow = true;
     const geo = new THREE.BufferGeometry();

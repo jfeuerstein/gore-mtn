@@ -134,7 +134,8 @@ export function parseConfig(search: string): Config {
     crowd: q.has('crowd') ? q.get('crowd') === '1' : d.crowd,
     zoo: q.get('zoo') === '1',
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
-    models: oneOf(q.get('models'), ['blocks', 'facet', 'park', 'smooth', 'toy'] as const) ?? d.models,
+    // The print look brings the printed animals with it, unless others are asked for.
+    models: oneOf(q.get('models'), ['blocks', 'facet', 'park', 'smooth', 'toy'] as const) ?? (q.get('look') === 'poster' ? 'park' : d.models),
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 12000),
     at: q.get('at') ?? d.at,
@@ -162,4 +163,27 @@ export function withParams(search: string, changes: Record<string, string | null
   }
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+/**
+ * The looks being tried are kept from one opening of the game to the next, so that one can be
+ * lived with on the phone, where the Home Screen opens the game with no options at all. An
+ * option in the address is kept; one that is missing is filled in from what was kept. A
+ * benchmark step is left alone: it must measure what its label says.
+ */
+export const KEPT_OPTIONS = ['look', 'models'] as const;
+export function withKept(search: string, kept: (key: string) => string | null): { search: string; keep: Record<string, string> } {
+  const q = new URLSearchParams(search);
+  const keep: Record<string, string> = {};
+  if (q.has('bench')) return { search, keep };
+  for (const key of KEPT_OPTIONS) {
+    const given = q.get(key);
+    if (given !== null) keep[key] = given;
+    else {
+      const was = kept(key);
+      if (was) q.set(key, was);
+    }
+  }
+  const out = q.toString();
+  return { search: out ? `?${out}` : '', keep };
 }

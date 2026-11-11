@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { carCount, carDistance, LINE_OFFSET, pointAlong, RIDER_DROP, type LiftPath } from './lifts';
 import { blocks } from './shapes';
+import { lit } from '../look/material';
 
 const STEEL = 0x4d5666;
 const SEAT = 0x2f3b4d;
@@ -61,7 +62,7 @@ export class LiftCars {
 
   constructor(paths: readonly LiftPath[], castShadow: boolean) {
     this.group.name = 'lift-cars';
-    const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const material = lit({ vertexColors: true, flatShading: true });
     for (const cabins of [false, true]) {
       const cars: Fleet['cars'] = [];
       for (const path of paths) {

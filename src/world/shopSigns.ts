@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { SHOP_SIGN_ART, SHOP_SIGN_COLS } from './shopSignArt';
+import { lit } from '../look/material';
 
 /**
  * The picture signs that hang out over shop doors: a boot for the outfitters, a loaf for the
@@ -70,7 +71,7 @@ export async function buildHangingSigns(hangs: readonly Hanging[]): Promise<THRE
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geo.computeBoundingSphere();
-  const mesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: sheet }));
+  const mesh = new THREE.Mesh(geo, lit({ map: sheet }));
   mesh.name = 'shop-signs';
   mesh.matrixAutoUpdate = false;
   return mesh;
