@@ -16,7 +16,7 @@ import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { snowReport, trailOfTheDay, wildlifeLog } from './game/report';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
-import { SPECIES, watchFor } from './game/wildlife';
+import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book } from './ui/book';
 import { TalkSheet, type Choice, type Written } from './ui/talk';
@@ -30,6 +30,7 @@ import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/
 import { Built } from './world/built';
 import { signName } from './world/streets';
 import { countryOf } from './world/country';
+import { critterGeometry } from './world/critterModels';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { LiftCars } from './world/liftCars';
@@ -90,6 +91,9 @@ window.__gore = {
  * words where it is used: a returning player is told once.
  */
 const NEWS = 'news-town';
+
+/** How long someone must sit still on a bench before a bird will come to it, in seconds. */
+const STILLNESS = 6;
 
 /** What the mountain is doing while it loads. One is shown, by the minute of the hour. */
 const LOADING_LINES = [
@@ -299,6 +303,12 @@ async function boot(): Promise<void> {
   const hourAtGore = (when: Date): number => Number(goreHour.format(when)) % 24;
   /** The bench last sat down on. Whether the player is still on it is the player's to say. */
   let sittingOn: (typeof built.benches)[number] | null = null;
+  /** How long the player has been sitting still, in seconds, and the bird that has come to sit by them, if one has. */
+  let satFor = 0;
+  const visitor = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+  visitor.visible = false;
+  visitor.castShadow = shadows;
+  scene.add(visitor);
   /** The middle of town, for a word of introduction on first walking in. */
   const townHeart = townPlaces.find((p) => p.id === 'north-creek-post-office') ?? townPlaces.find((p) => p.id === 'copperfield-inn') ?? null;
   /** Say something helpful, the first time it is needed and never again. */
@@ -916,6 +926,28 @@ async function boot(): Promise<void> {
     if (someone) hud.setTalk(`${APPROACH[someone.person.kind ?? 'person']} ${someone.person.name}`, () => talkTo(someone));
     else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
     else hud.setTalk(null);
+    // Sit still for a little while by day and a bird comes to the bench. It is gone on standing.
+    if (player.seated && sittingOn) {
+      // By the clock on the wall, not the game's steps: a slow frame is still time spent sitting.
+      satFor += Math.min(1, frameMs / 1000);
+      if (satFor > STILLNESS && !visitor.visible) {
+        const bird = benchVisitor(sittingOn.id, season, watch);
+        if (bird) {
+          visitor.geometry = critterGeometry(bird.id, season);
+          // On the end of the bench's back, turned toward whoever is sitting there.
+          const perch = fromLocal(sittingOn, 0.62, -0.14);
+          visitor.position.set(perch.x, ground.heightAt(sittingOn.x, sittingOn.z) + 1.02, perch.z);
+          visitor.rotation.y = sittingOn.turn + Math.PI / 2;
+          // The field guide's models are made large, to be seen across a slope. On a bench, a bird is bird-sized.
+          visitor.scale.setScalar(0.38);
+          visitor.visible = true;
+          announce(game.visitedBy(bird.id, today));
+        }
+      }
+    } else if (satFor > 0) {
+      satFor = 0;
+      visitor.visible = false;
+    }
     // On a lift the camera levels out to take in the mountain ahead, then goes back to how the
     // player had it.
     if (player.mode === 'lift') follow.settlePitch(LIFT_PITCH, dt);

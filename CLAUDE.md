@@ -294,6 +294,9 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   the stick also stands. `Player.sit` is the state, `Game.sat` keeps each bench the first time,
   and the Passport lists them. At a lookout the camera sits behind, for the view, and trees
   are kept out of it (`Built.near`); at a door it comes round in front.
+  Sit still for a few seconds by day and a bird comes to the bench (`benchVisitor` in
+  `wildlife.ts`: a chickadee, or a Canada jay at the high benches in the snow months) and is
+  entered in the field guide.
 - The town round (`TOWN_ROUND`): calling at the post office, the inn, the bakery, the deli and
   the library in one day is counted, and shown as a punch card on the Pack page.
 - The town gives small things daily, all data: a letter at the post office

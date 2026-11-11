@@ -18,6 +18,7 @@ import {
   type Country,
   type Sighting,
   type Watch,
+  benchVisitor,
 } from './wildlife';
 
 describe('the field guide', () => {
@@ -189,5 +190,29 @@ describe('spotReach', () => {
   it('lets plants be walked right up to and keeps animals at a distance', () => {
     expect(spotReach(speciesById('trillium') as never)).toBeLessThan(spotReach(speciesById('deer') as never));
     expect(spotReach(speciesById('rumor') as never)).toBeGreaterThan(spotReach(speciesById('deer') as never));
+  });
+});
+
+describe('benchVisitor', () => {
+  it('sends a chickadee to anyone sitting still by day, and a jay to the high benches in the snow', () => {
+    expect(benchVisitor('bench:north-creek-post-office', 'summer', 'day')?.id).toBe('chickadee');
+    expect(benchVisitor('bench:vermont-overlook', 'winter', 'dawn')?.id).toBe('chickadee');
+    expect(benchVisitor('bench:summit', 'winter', 'day')?.id).toBe('grayjay');
+    expect(benchVisitor('bench:summit', 'summer', 'day')?.id).toBe('chickadee');
+    expect(benchVisitor('bench:summit', 'winter', 'night')).toBeNull();
+    expect(benchVisitor('bench:cafe', 'fall', 'dusk')).toBeNull();
+  });
+
+  it('only ever sends a bird that is about in that season and at that hour', () => {
+    for (const season of ['winter', 'spring', 'summer', 'fall'] as const) {
+      for (const watch of ['dawn', 'day', 'dusk', 'night'] as const) {
+        for (const bench of ['bench:summit', 'bench:cafe']) {
+          const bird = benchVisitor(bench, season, watch);
+          if (!bird) continue;
+          expect(!bird.seasons || bird.seasons.includes(season), `${bird.id} in ${season}`).toBe(true);
+          expect(!bird.watches || bird.watches.includes(watch), `${bird.id} at ${watch}`).toBe(true);
+        }
+      }
+    }
   });
 });

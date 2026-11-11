@@ -62,7 +62,7 @@ In the order you will meet it:
   Street have something new to eat, and Fenn at the Town Hall lends a book. Read the
   noticeboard. Greet the Mayor.
 - A bench. Walk up to one, tap Sit, and look at the view for a minute. The ones at the
-  lookouts and the fire tower face the best of it.
+  lookouts and the fire tower face the best of it. Sit still and see who turns up.
 - The three boards: the snow report by the Base Lodge door, the trail of the day outside the
   Saddle Lodge, and the observer's log at the foot of the fire tower. They read the real sky,
   your passport and your field guide.

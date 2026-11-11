@@ -599,3 +599,16 @@ export function spotReach(s: Species): number {
 /** A shy creature bolts when the player is this close and moving faster than a gentle pace. */
 export const SHY_REACH = 34;
 export const GENTLE_SPEED = 8.5;
+
+/** The benches high on the mountain, where the camp robber keeps watch for sandwiches. */
+const HIGH_BENCHES: readonly string[] = ['bench:summit', 'bench:saddle-lodge'];
+
+/**
+ * Who comes to sit by someone who has been sitting still on a bench: a chickadee by day, and at
+ * the high benches in the snow months a Canada jay. Nobody comes at dusk or after dark.
+ */
+export function benchVisitor(benchId: string, season: Season, watch: Watch): Species | null {
+  if (watch !== 'dawn' && watch !== 'day') return null;
+  const id = HIGH_BENCHES.includes(benchId) && (season === 'winter' || season === 'spring') && watch === 'day' ? 'grayjay' : 'chickadee';
+  return SPECIES.find((s) => s.id === id) ?? null;
+}

@@ -578,6 +578,8 @@ then models, a real town, sillier characters and a cohesive interface).
   town and at each lookout, the fire tower and the Saddle. Each is kept in the Passport the
   first time, and ten earn a patch. Three conditions stamps are for sitting on a bench with a
   view under the real sky: First Coffee at sunrise, a Sundowner at sunset, Stargazer at night.
+  Sit still for a few seconds by day and a chickadee lands on the bench beside you, as the
+  field guide always said it would.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

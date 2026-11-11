@@ -627,6 +627,14 @@ export class Game {
     return talk;
   }
 
+  /** Something has come to the player, rather than the other way about: a bird to a bench. It goes in the guide. */
+  visitedBy(speciesId: string, day: string): GameEvent[] {
+    const species = SPECIES.find((s) => s.id === speciesId);
+    if (!species) return [];
+    this.dirty = true;
+    return [this.record({ id: `visitor:${speciesId}`, x: 0, z: 0, species, roll: 0 }, day)];
+  }
+
   /** Sit on a bench. The first time on each is kept in the book. */
   sat(benchId: string, day: string): GameEvent[] {
     const bench = this.world.benches?.find((b) => b.id === benchId);

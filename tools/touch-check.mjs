@@ -602,6 +602,8 @@ try {
   check('standing by a bench offers a seat', await actionReads('Sit'));
   await tp.tap('#action-button');
   check('sitting down is kept in the book, and the button offers to stand', (await actionReads('Stand up')) && (await townState()).seated && (await townState()).book.benches === 1);
+  // Sit still by day and a chickadee comes to the bench, and goes in the field guide.
+  check('sitting still brings a chickadee to the bench', await townSettle(() => [...document.querySelectorAll('.toast')].some((t) => /Chickadee/.test(t.textContent))));
   await tp.tap('#action-button');
   check('standing up again', await townSettle(() => !window.__gore.state().seated));
 
