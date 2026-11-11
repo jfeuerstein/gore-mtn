@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { angleDiff, followYaw, framingFor, verticalFovDeg } from './cameraMath';
+import { pinchedZoom, ZOOM_MAX, ZOOM_MIN } from './cameraMath';
 
 const horizontalFov = (aspect: number) =>
   (2 * Math.atan(Math.tan((verticalFovDeg(aspect) * Math.PI) / 360) * aspect) * 180) / Math.PI;
@@ -100,5 +101,20 @@ describe('followYaw', () => {
 
   it('turns more gently for a gentle push', () => {
     expect(followYaw(0, 1, 0.3, 0.1)).toBeLessThan(followYaw(0, 1, 1, 0.1));
+  });
+});
+
+describe('pinching the camera', () => {
+  it('comes closer as the fingers part and backs off as they close', () => {
+    expect(pinchedZoom(1.3, 100 / 200)).toBeCloseTo(0.7);
+    expect(pinchedZoom(1.3, 200 / 100)).toBeCloseTo(2.4);
+    expect(pinchedZoom(1.3, 100 / 125)).toBeCloseTo(1.04);
+  });
+
+  it('stops at its limits and ignores nonsense', () => {
+    expect(pinchedZoom(1, 0.01)).toBe(ZOOM_MIN);
+    expect(pinchedZoom(1, 100)).toBe(ZOOM_MAX);
+    expect(pinchedZoom(1.3, Number.NaN)).toBe(1.3);
+    expect(pinchedZoom(1.3, 0)).toBe(1.3);
   });
 });

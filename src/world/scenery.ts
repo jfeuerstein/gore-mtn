@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
 import { CABLE_HEIGHT, LINE_OFFSET, towerYaw, type LiftPath } from './lifts';
 import { blocks, type Block } from './shapes';
-import { lit } from '../look/material';
+import { isPrinted, lit } from '../look/material';
+import { outlined } from './outline';
 
 const GATE = 0xe8792b;
 const STEEL = 0x4d5666;
@@ -19,17 +20,20 @@ export function buildLifts(paths: readonly LiftPath[], snowy = true): THREE.Grou
 
   let towerCount = 0;
   for (const path of paths) if (!path.surface) towerCount += path.points.length / 3;
-  const steel = lit({ color: STEEL, flatShading: true });
+  // Printed, a tower has a dark line round it: the line is in its own shape, coloured on its corners.
+  const printed = isPrinted();
+  const steel = lit({ color: STEEL, flatShading: true, vertexColors: printed });
   // A tapered post hanging down from the cable height, and a crossarm with a wheel assembly at
   // each end for the cable to run over.
   const towerGeo = new THREE.CylinderGeometry(0.26, 0.5, CABLE_HEIGHT + 2, 6);
   towerGeo.translate(0, -(CABLE_HEIGHT + 2) / 2, 0);
+  const tower = printed ? outlined(towerGeo, 0.09) : towerGeo;
   const armGeo = blocks([
     { size: [LINE_OFFSET * 2 + 0.6, 0.4, 0.4], at: [0, 0.1, 0], colour: 0xffffff },
     { size: [0.35, 0.3, 2.4], at: [LINE_OFFSET, 0.12, 0], colour: 0xffffff },
     { size: [0.35, 0.3, 2.4], at: [-LINE_OFFSET, 0.12, 0], colour: 0xffffff },
   ]);
-  const towers = new THREE.InstancedMesh(towerGeo, steel, Math.max(1, towerCount));
+  const towers = new THREE.InstancedMesh(tower, steel, Math.max(1, towerCount));
   const arms = new THREE.InstancedMesh(armGeo, steel, Math.max(1, towerCount));
   towers.count = arms.count = towerCount;
   const q = new THREE.Quaternion();

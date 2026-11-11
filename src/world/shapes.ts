@@ -1,4 +1,6 @@
 import * as THREE from 'three/webgpu';
+import { isPrinted } from '../look/material';
+import { inkFor, OUTLINE, rim, rimmed } from '../look/print';
 
 /** One coloured block of a model. Sizes and positions are in the model's own units. */
 export interface Block {
@@ -16,9 +18,15 @@ export interface Block {
  * their colour from the vertices, and can be instanced. This is how the game's lodges, towers and
  * chairs are made: simple shapes, no asset files. Each also carries the coordinates `siding()`
  * needs, for the things that wear it.
+ *
+ * In the print, every colour is the nearest ink, and every block big enough to make part of the
+ * model's outline has a dark rim round it (`rim` in `look/print.ts`): the same block a little
+ * larger and inside out, in the same geometry, so that it costs no draw call.
  * @param course the height of one course of siding in the model's own units
+ * @param line how far the rim stands out, in the model's own units; 0 for none
  */
-export function blocks(list: readonly Block[], extra: readonly THREE.BufferGeometry[] = [], course = COURSE): THREE.BufferGeometry {
+export function blocks(list: readonly Block[], extra: readonly THREE.BufferGeometry[] = [], course = COURSE, line = RIM): THREE.BufferGeometry {
+  const printed = isPrinted();
   const positions: number[] = [];
   const normals: number[] = [];
   const colours: number[] = [];
@@ -34,12 +42,16 @@ export function blocks(list: readonly Block[], extra: readonly THREE.BufferGeome
     const own = flat.getAttribute('color');
     // A piece made here before keeps the courses it was given then, however it has been turned since.
     const laid = colour === null ? flat.getAttribute('uv') : undefined;
-    if (colour !== null) c.setHex(colour);
+    if (colour !== null) c.setHex(printed ? inkFor(colour) : colour);
     for (let i = 0; i < p.count; i++) {
       positions.push(p.getX(i), p.getY(i), p.getZ(i));
       normals.push(n.getX(i), n.getY(i), n.getZ(i));
       if (colour !== null) colours.push(c.r, c.g, c.b);
-      else colours.push(own.getX(i), own.getY(i), own.getZ(i));
+      else if (printed) {
+        // A piece that brought its own colours has each brought to its ink.
+        c.setHex(inkFor(c.setRGB(own.getX(i), own.getY(i), own.getZ(i)).getHex()));
+        colours.push(c.r, c.g, c.b);
+      } else colours.push(own.getX(i), own.getY(i), own.getZ(i));
       // Courses run level round the walls, and across a roof or a floor from front to back.
       // Snow has none: whatever is snow-coloured is left smooth.
       const r = colours[colours.length - 3] as number;
@@ -51,26 +63,75 @@ export function blocks(list: readonly Block[], extra: readonly THREE.BufferGeome
       else uvs.push(0, (Math.abs(n.getY(i)) > 0.5 ? p.getZ(i) : p.getY(i)) / course);
     }
   };
+  // The rims, kept to the end so that the model's own faces come first.
+  const rims: number[] = [];
+  const outline = printed && line > 0;
+  const box = new THREE.Box3();
+  const span = new THREE.Vector3();
   for (const b of list) {
     const geo = new THREE.BoxGeometry(b.size[0], b.size[1], b.size[2]);
     q.setFromEuler(e.set(b.tip ?? 0, b.turn ?? 0, 0, 'YXZ'));
     geo.applyMatrix4(m.compose(new THREE.Vector3(...b.at), q, new THREE.Vector3(1, 1, 1)));
     add(geo, b.colour);
+    if (outline && rimmed(b.size[0], b.size[1], b.size[2])) {
+      // A box's rim is a box: the same one, a line's width bigger all round, inside out.
+      const big = new THREE.BoxGeometry(Math.abs(b.size[0]) + line * 2, Math.abs(b.size[1]) + line * 2, Math.abs(b.size[2]) + line * 2).toNonIndexed();
+      big.applyMatrix4(m);
+      const at = big.getAttribute('position');
+      for (let t = 0; t < at.count; t += 3) for (const k of [t, t + 2, t + 1]) rims.push(at.getX(k), at.getY(k), at.getZ(k));
+    }
   }
   // Ready-made pieces (which must carry their own colours) are appended as they are.
-  for (const geo of extra) add(geo, null);
+  for (const geo of extra) {
+    add(geo, null);
+    // A piece that was itself made here has had its rims: joining pieces must not rim them again.
+    if (!outline || geo.userData.made) continue;
+    box.setFromBufferAttribute(geo.getAttribute('position') as THREE.BufferAttribute).getSize(span);
+    if (!rimmed(span.x, span.y, span.z)) continue;
+    const flat = geo.index ? geo.toNonIndexed() : geo;
+    // One by one: a big piece has too many corners to hand over all at once.
+    const round = rim(flat.getAttribute('position').array as ArrayLike<number>, line);
+    for (let i = 0; i < round.length; i++) rims.push(round[i] as number);
+  }
+  if (rims.length > 0) {
+    c.setHex(OUTLINE);
+    for (let i = 0; i < rims.length; i += 9) {
+      // One way of facing for the whole triangle, worked out from its corners.
+      const ux = (rims[i + 3] as number) - (rims[i] as number);
+      const uy = (rims[i + 4] as number) - (rims[i + 1] as number);
+      const uz = (rims[i + 5] as number) - (rims[i + 2] as number);
+      const vx = (rims[i + 6] as number) - (rims[i] as number);
+      const vy = (rims[i + 7] as number) - (rims[i + 1] as number);
+      const vz = (rims[i + 8] as number) - (rims[i + 2] as number);
+      const nx = uy * vz - uz * vy;
+      const ny = uz * vx - ux * vz;
+      const nz = ux * vy - uy * vx;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      for (let k = 0; k < 9; k += 3) {
+        positions.push(rims[i + k] as number, rims[i + k + 1] as number, rims[i + k + 2] as number);
+        normals.push(nx / len, ny / len, nz / len);
+        colours.push(c.r, c.g, c.b);
+        // Ink has no boards in it.
+        uvs.push(0, SMOOTH);
+      }
+    }
+  }
   const out = new THREE.BufferGeometry();
   out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
   out.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
   out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   out.computeBoundingSphere();
+  out.userData.made = true;
   return out;
 }
 
 /** The colour of snow on a roof, which wears no courses, and the place on the texture that is smooth. */
 const SNOW = new THREE.Color(0xf2f5fa);
 const SMOOTH = 0.03;
+
+/** How far a rim stands out from what it outlines, in metres: about a pixel or two at the distance buildings are seen from. */
+export const RIM = 0.085;
 
 /** The height of one course of boards, shingles or bricks, in metres: what `siding()` repeats over. */
 export const COURSE = 0.32;
@@ -93,7 +154,8 @@ export function siding(): THREE.Texture | null {
   if (!ctx) return null;
   for (let y = 0; y < 32; y++) {
     // The top of the canvas is the top of a course.
-    const shade = y >= 29 ? 0.7 : 1 - (y / 29) * 0.1;
+    // Printed, a course is flat with one hard line under it, as a pen would draw clapboard: no shading down the board.
+    const shade = isPrinted() ? (y >= 28 ? 0.6 : 1) : y >= 29 ? 0.7 : 1 - (y / 29) * 0.1;
     const v = Math.round(255 * shade);
     ctx.fillStyle = `rgb(${v}, ${v}, ${v})`;
     ctx.fillRect(0, y, 4, 1);

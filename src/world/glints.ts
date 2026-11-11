@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { MOST_PER_PATCH, type Find } from '../game/minerals';
-import { lit } from '../look/material';
+import { isPrinted, lit } from '../look/material';
+import { outlined } from './outline';
 
 /** How tall a find is drawn, in metres: far larger than life, so it can be seen from the camera. */
 const GEM_HEIGHT = 1;
@@ -84,7 +85,9 @@ export class Glints {
 
   constructor(castShadow: boolean) {
     this.group.name = 'glints';
-    this.stones = new THREE.InstancedMesh(gemGeometry(), lit({ color: 0xffffff }), CAPACITY);
+    // Printed, a stone has a dark line round it, as everything has: the line is part of the stone's own shape.
+    const printed = isPrinted();
+    this.stones = new THREE.InstancedMesh(printed ? outlined(gemGeometry(), 0.045) : gemGeometry(), lit({ color: 0xffffff, vertexColors: printed }), CAPACITY);
     this.stones.name = 'glint-stones';
     this.stones.castShadow = castShadow;
     // Give every instance a colour from the start, so the colour buffer exists before the first draw.

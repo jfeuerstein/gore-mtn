@@ -30,7 +30,7 @@ function soundness(m: ModelFile): { open: number; pieces: number } {
 // The models are made by tools/models/make-models.mjs. A generated shape is a skin with gaps
 // in it until the converter makes one solid of it; these fail if that step is ever lost.
 describe('made models', () => {
-  for (const look of ['facet', 'park', 'smooth']) {
+  for (const look of ['park']) {
     it(`has no holes and no loose pieces in the ${look} look`, () => {
       const models = read(look);
       expect(Object.keys(models).length).toBeGreaterThanOrEqual(16);

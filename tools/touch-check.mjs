@@ -132,6 +132,32 @@ try {
   await page.locator('#map-sheet button', { hasText: 'Close' }).tap();
   check('the map closes', !(await page.locator('#map-sheet').isVisible()));
 
+  // Two fingers on the picture, off the stick, set how far back the camera stands; and it is remembered.
+  const zoomWas = (await page.evaluate(() => window.__gore.state())).zoom;
+  const pinchBy = (from, to) =>
+    page.evaluate(async ([a, b]) => {
+      const canvas = document.getElementById('game');
+      const fire = (type, id, x) => canvas.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: x, clientY: 220, bubbles: true }));
+      const was = window.__gore.state().zoom;
+      fire('pointerdown', 11, 200 - a / 2);
+      fire('pointerdown', 12, 200 + a / 2);
+      for (let i = 1; i <= 6; i++) {
+        const w = a + ((b - a) * i) / 6;
+        fire('pointermove', 11, 200 - w / 2);
+        fire('pointermove', 12, 200 + w / 2);
+      }
+      fire('pointerup', 11, 200 - b / 2);
+      fire('pointerup', 12, 200 + b / 2);
+      // The pinch is taken up at the next frame, and frames are slow here: wait for it.
+      for (let i = 0; i < 40 && window.__gore.state().zoom === was; i++) await new Promise((r) => setTimeout(r, 100));
+      return window.__gore.state().zoom;
+    }, [from, to]);
+  const apart = await pinchBy(80, 160);
+  check('the camera stands well back to begin with, and a pinch apart brings it nearer', zoomWas === 1.3 && apart < zoomWas * 0.6, `${zoomWas} to ${apart.toFixed(2)}`);
+  const together = await pinchBy(200, 100);
+  check('and a pinch together sends it back', together > apart * 1.8, `to ${together.toFixed(2)}`);
+  check('the distance is remembered for next time', Math.abs(Number(await page.evaluate(() => localStorage.getItem('gore.zoom'))) - together) < 0.01);
+
   // Trees are solid: walk straight at the nearest one and never end up inside its trunk.
   const tree = (await page.evaluate(() => window.__gore.state())).nearestTree;
   check('there is a tree nearby to walk into', tree !== null);
@@ -757,7 +783,7 @@ try {
   check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
   await np.tap('#ski-button');
   await np.tap('#menu-button');
-  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 4).join() === 'Your book,Sound,Camera distance,For testing');
+  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 3).join() === 'Your book,Sound,For testing');
   await np.locator('#sound-off').tap();
   check('sound can be turned off', (await np.evaluate(() => window.__gore.state().sound)) === false && (await np.getAttribute('#sound-off', 'aria-pressed')) === 'true');
   await np.locator('#sound-on').tap();

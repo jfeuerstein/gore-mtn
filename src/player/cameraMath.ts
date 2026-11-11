@@ -74,3 +74,16 @@ export function followYaw(yaw: number, heading: number, amount: number, dt: numb
   if (!always && Math.abs(diff) > TOWARD_CAMERA) return yaw;
   return yaw + diff * Math.min(1, FOLLOW_RATE * amount * dt);
 }
+
+/** How near and how far a pinch may bring the camera, as multiples of the framing's own distance. */
+export const ZOOM_MIN = 0.7;
+export const ZOOM_MAX = 2.4;
+
+/**
+ * The camera's distance after a pinch.
+ * @param factor how the distance changes: the spread of the fingers before, over their spread now
+ */
+export function pinchedZoom(zoom: number, factor: number): number {
+  if (!Number.isFinite(factor) || factor <= 0) return zoom;
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom * factor));
+}

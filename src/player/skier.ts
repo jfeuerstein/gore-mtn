@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { BODY, hipHeight, type Pose } from './pose';
-import { lit } from '../look/material';
+import { isPrinted, lit } from '../look/material';
+import { inkFor, OUTLINE, rim } from '../look/print';
 
 /**
  * What makes one person on the mountain look unlike the next: a face in place of the player's
@@ -53,6 +54,9 @@ interface Joined {
  * Colours are flat and the jacket is the most saturated thing on the mountain, so the player can
  * always find themselves.
  */
+/** How far the dark rim round a printed figure stands out, in metres: the figure is about 1.4 tall. */
+const FIGURE_RIM = 0.02;
+
 export class Skier {
   readonly root = new THREE.Group();
   private readonly rig = new THREE.Group();
@@ -257,11 +261,13 @@ export class Skier {
    * flat-coloured ones: anything that shines by itself (a miner's lamp) stays as it is.
    */
   private join(part: THREE.Object3D): void {
-    const meshes = part.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh && c.material instanceof THREE.MeshLambertMaterial && c.material !== this.joinedMat);
+    // Lit, either way of lighting: the print's material is not the plain one.
+    const meshes = part.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh && (c.material instanceof THREE.MeshLambertMaterial || c.material instanceof THREE.MeshToonMaterial) && c.material !== this.joinedMat);
     if (meshes.length === 0) return;
     const positions: number[] = [];
     const normals: number[] = [];
     const paints: Joined['paints'] = [];
+    const rims: Float32Array[] = [];
     for (const mesh of meshes) {
       mesh.updateMatrix();
       const geo = (mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone()).applyMatrix4(mesh.matrix);
@@ -272,12 +278,39 @@ export class Skier {
         positions.push(p.getX(i), p.getY(i), p.getZ(i));
         normals.push(n.getX(i), n.getY(i), n.getZ(i));
       }
+      // Printed, whatever is stout enough to make part of the figure's outline has a dark rim round it.
+      geo.computeBoundingBox();
+      const size = (geo.boundingBox as THREE.Box3).getSize(new THREE.Vector3());
+      if (isPrinted() && Math.min(size.x, size.y, size.z) >= FIGURE_RIM * 3) rims.push(rim(p.array as Float32Array, FIGURE_RIM));
       part.remove(mesh);
+    }
+    const painted = positions.length / 3;
+    for (const round of rims) {
+      for (let i = 0; i < round.length; i += 9) {
+        const ux = (round[i + 3] as number) - (round[i] as number);
+        const uy = (round[i + 4] as number) - (round[i + 1] as number);
+        const uz = (round[i + 5] as number) - (round[i + 2] as number);
+        const vx = (round[i + 6] as number) - (round[i] as number);
+        const vy = (round[i + 7] as number) - (round[i + 1] as number);
+        const vz = (round[i + 8] as number) - (round[i + 2] as number);
+        const nx = uy * vz - uz * vy;
+        const ny = uz * vx - ux * vz;
+        const nz = ux * vy - uy * vx;
+        const len = Math.hypot(nx, ny, nz) || 1;
+        for (let k = 0; k < 9; k += 3) {
+          positions.push(round[i + k] as number, round[i + k + 1] as number, round[i + k + 2] as number);
+          normals.push(nx / len, ny / len, nz / len);
+        }
+      }
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-    geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(positions.length), 3));
+    const colours = new Float32Array(positions.length);
+    // The rim is ink, whatever the outfit: it is coloured once, here, and never repainted.
+    const ink = new THREE.Color(OUTLINE);
+    for (let i = painted; i < positions.length / 3; i++) colours.set([ink.r, ink.g, ink.b], i * 3);
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
     const mesh = new THREE.Mesh(geometry, this.joinedMat);
     mesh.castShadow = this.castShadow;
     part.add(mesh);
@@ -289,8 +322,11 @@ export class Skier {
   /** Give a joined part the colours its materials have now. */
   private paint(joined: Joined): void {
     const colours = joined.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+    const c = new THREE.Color();
     for (const { material, from, count } of joined.paints) {
-      const c = material.color;
+      // Printed, every colour of an outfit is the nearest ink.
+      if (isPrinted()) c.setHex(inkFor(material.color.getHex()));
+      else c.copy(material.color);
       for (let i = from; i < from + count; i++) colours.setXYZ(i, c.r, c.g, c.b);
     }
     colours.needsUpdate = true;

@@ -20,8 +20,8 @@ export const TRIPO_SHAPE = {
   turn: 180,
 };
 
-/** The looks each model is converted into: see tools/models/convert.py. */
-export const LOOKS = ['facet', 'park', 'smooth'];
+/** The looks each model is converted into: see tools/models/convert.py, which can make others (faceted, smooth) to try. */
+export const LOOKS = ['park'];
 
 /**
  * Animals of the field guide, by species id. `turn` is degrees about upright to face it front,

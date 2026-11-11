@@ -11,7 +11,7 @@
 //
 // --tripo makes the named models a second way, to set beside the first: Tripo makes the shape
 // straight from the words, already low-poly and plainly coloured, and the converter only tidies
-// it (the toy look). Those go to public/models/toy.json. A shape costs Tripo credits, so only the ones named are made.
+// it (the toy look). Those stay in the cache, as toy.json: the game ships the park prints only. A shape costs Tripo credits, so only the ones named are made.
 //
 // Needs Python with trimesh, fast-simplification, scipy and Pillow for the converter.
 import { execFileSync } from 'node:child_process';
@@ -86,7 +86,8 @@ for (const id of Object.keys(MODELS)) {
   if (existsSync(file)) theirs[id] = JSON.parse(readFileSync(file, 'utf8'));
 }
 if (Object.keys(theirs).length) {
-  writeFileSync(`${ROOT}public/models/toy.json`, JSON.stringify(theirs));
+  // Kept out of the game: these are for setting beside the others, not for shipping.
+  writeFileSync(`${CACHE}/toy.json`, JSON.stringify(theirs));
   console.log(`toy: ${Object.keys(theirs).length} models`);
 }
 console.log(`${made} new model(s) asked of fal`);

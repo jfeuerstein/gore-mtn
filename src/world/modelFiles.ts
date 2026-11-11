@@ -21,7 +21,7 @@ export interface ModelFile {
 }
 
 /** The looks a model can be had in, besides the game's own blocks. */
-export const MODEL_LOOKS = ['facet', 'park', 'smooth', 'toy'] as const;
+export const MODEL_LOOKS = ['park'] as const;
 export type ModelLook = (typeof MODEL_LOOKS)[number];
 
 /** Every model of one look, by id. Nothing, if the file cannot be had: the blocks are used instead. */
@@ -75,13 +75,22 @@ export function modelGeometry(file: ModelFile, height: number): { geometry: THRE
   const shell: number[] = [];
   // How far out the outline stands: a little, against the size of the thing.
   const ink = height * 0.022;
+  const second = new THREE.Vector3();
+  const third = new THREE.Vector3();
+  const face = new THREE.Vector3();
   for (let t = 0; t < file.f.length; t += 3) {
     const tint = colour[file.c[t / 3] as number] ?? colour[0] ?? new THREE.Color(0x888888);
+    // A faceted look is lit face by face: each corner of a face carries the way the face looks.
+    at(file.f[t] as number, a);
+    at(file.f[t + 1] as number, second);
+    at(file.f[t + 2] as number, third);
+    face.copy(second.sub(a)).cross(third.sub(a)).normalize();
     for (let e = 0; e < 3; e++) {
       const i = file.f[t + e] as number;
       at(i, a);
       positions.push(a.x, a.y, a.z);
-      normals.push(normal[i * 3] as number, normal[i * 3 + 1] as number, normal[i * 3 + 2] as number);
+      if (file.smooth) normals.push(normal[i * 3] as number, normal[i * 3 + 1] as number, normal[i * 3 + 2] as number);
+      else normals.push(face.x, face.y, face.z);
       colours.push(tint.r, tint.g, tint.b);
       if (file.outline) shell.push(a.x + (normal[i * 3] as number) * ink, a.y + (normal[i * 3 + 1] as number) * ink, a.z + (normal[i * 3 + 2] as number) * ink);
     }

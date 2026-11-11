@@ -60,17 +60,6 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
-    title: 'Camera distance',
-    param: 'zoom',
-    current: (c) => String(c.zoom),
-    options: [
-      { label: 'Closer', value: '0.75' },
-      { label: 'Normal', value: '1' },
-      { label: 'Further', value: '1.3' },
-      { label: 'Furthest', value: '1.6' },
-    ],
-  },
-  {
     title: 'Renderer',
     param: 'renderer',
     current: (c) => c.renderer,
@@ -95,73 +84,6 @@ const OPTIONS: OptionGroup[] = [
     param: 'dpr',
     current: (c) => String(c.dpr),
     options: ['1', '2', '3'].map((v) => ({ label: v, value: v })),
-  },
-  {
-    title: 'Shadows',
-    param: 'shadows',
-    current: (c) => (c.shadows ? '1' : '0'),
-    options: [
-      { label: 'Off', value: '0' },
-      { label: 'On', value: '1' },
-    ],
-  },
-  {
-    title: 'Boards and shingles on buildings',
-    param: 'siding',
-    current: (c) => (c.siding ? '1' : '0'),
-    options: [
-      { label: 'Plain', value: '0' },
-      { label: 'On', value: '1' },
-    ],
-  },
-  {
-    title: 'World look',
-    param: 'look',
-    current: (c) => c.look,
-    options: [
-      { label: 'As it is', value: 'plain' },
-      { label: 'Park print', value: 'poster' },
-      { label: 'Contour map', value: 'topo' },
-    ],
-  },
-  {
-    title: 'Animal models',
-    param: 'models',
-    current: (c) => c.models,
-    options: [
-      { label: 'Blocks', value: 'blocks' },
-      { label: 'Faceted', value: 'facet' },
-      { label: 'Park print', value: 'park' },
-      { label: 'Smooth', value: 'smooth' },
-      { label: 'Toy', value: 'toy' },
-    ],
-  },
-  {
-    title: 'Line the animals up to compare',
-    param: 'zoo',
-    current: (c) => (c.zoo ? '1' : '0'),
-    options: [
-      { label: 'Off', value: '0' },
-      { label: 'On', value: '1' },
-    ],
-  },
-  {
-    title: 'Other people on the mountain',
-    param: 'crowd',
-    current: (c) => (c.crowd ? '1' : '0'),
-    options: [
-      { label: 'Nobody', value: '0' },
-      { label: 'On', value: '1' },
-    ],
-  },
-  {
-    title: 'Terrain detail',
-    param: 'stride',
-    current: (c) => String(c.stride),
-    options: [
-      { label: 'Full', value: '1' },
-      { label: 'Half', value: '2' },
-    ],
   },
   {
     title: 'Frame-rate readout',
@@ -355,9 +277,6 @@ export class Hud {
       }
     };
 
-    const camera = OPTIONS.find((g) => g.param === 'zoom');
-    if (camera) optionGroup(camera);
-
     // Everything below is for trying things out and for measuring, not for playing.
     const testing = add(this.menuEl, 'h2', 'For testing');
     testing.className = 'divider';
@@ -378,7 +297,7 @@ export class Hud {
     fast.type = 'button';
     fast.id = 'fast-button';
 
-    for (const group of OPTIONS) if (group.param !== 'zoom') optionGroup(group);
+    for (const group of OPTIONS) optionGroup(group);
 
     add(this.menuEl, 'h2', 'Report');
     const row = add(this.menuEl, 'div');

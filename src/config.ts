@@ -20,12 +20,12 @@ export interface Config {
   shadows: boolean;
   /** Whether walls and roofs wear their courses of boards and shingles, or are left plain. */
   siding: boolean;
-  /** How the land is painted: as the pipeline painted it, as a screen print, or as a map with contours. */
+  /** How the world is drawn: as a park print, which is the game's look, or plainly as it was before, to set beside it. */
   look: WorldLook;
   /** Put up the day's flyer whether or not it has been seen today, to look at it. */
   flyer: boolean;
-  /** Which models the animals are: the game's own blocks, or ones made outside it in one of the looks being tried. */
-  models: 'blocks' | 'facet' | 'park' | 'smooth' | 'toy';
+  /** Which models the animals are: the park prints made outside the game, or the game's own blocks, to set beside them. */
+  models: 'blocks' | 'park';
   /** Line every animal that has a made model up in a row in front of the player, to compare looks. */
   zoo: boolean;
   /** Whether anyone else is about: skiers on the trails, people on the chairs, the town out walking. */
@@ -74,9 +74,9 @@ export const DEFAULTS: Config = {
   shadows: true,
   siding: true,
   crowd: true,
-  look: 'plain',
+  look: 'poster',
   flyer: false,
-  models: 'blocks',
+  models: 'park',
   zoo: false,
   stride: 1,
   viewDist: 6500,
@@ -84,7 +84,7 @@ export const DEFAULTS: Config = {
   pos: null,
   yaw: null,
   pitch: null,
-  zoom: 1,
+  zoom: 1.3,
   ski: false,
   hud: true,
   me: true,
@@ -138,8 +138,7 @@ export function parseConfig(search: string): Config {
     zoo: q.get('zoo') === '1',
     flyer: q.get('flyer') === '1',
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
-    // The print look brings the printed animals with it, unless others are asked for.
-    models: oneOf(q.get('models'), ['blocks', 'facet', 'park', 'smooth', 'toy'] as const) ?? (q.get('look') === 'poster' ? 'park' : d.models),
+    models: oneOf(q.get('models'), ['blocks', 'park'] as const) ?? d.models,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 12000),
     at: q.get('at') ?? d.at,
@@ -169,25 +168,3 @@ export function withParams(search: string, changes: Record<string, string | null
   return s ? `?${s}` : '';
 }
 
-/**
- * The looks being tried are kept from one opening of the game to the next, so that one can be
- * lived with on the phone, where the Home Screen opens the game with no options at all. An
- * option in the address is kept; one that is missing is filled in from what was kept. A
- * benchmark step is left alone: it must measure what its label says.
- */
-export const KEPT_OPTIONS = ['look', 'models'] as const;
-export function withKept(search: string, kept: (key: string) => string | null): { search: string; keep: Record<string, string> } {
-  const q = new URLSearchParams(search);
-  const keep: Record<string, string> = {};
-  if (q.has('bench')) return { search, keep };
-  for (const key of KEPT_OPTIONS) {
-    const given = q.get(key);
-    if (given !== null) keep[key] = given;
-    else {
-      const was = kept(key);
-      if (was) q.set(key, was);
-    }
-  }
-  const out = q.toString();
-  return { search: out ? `?${out}` : '', keep };
-}

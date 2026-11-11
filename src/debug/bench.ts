@@ -46,6 +46,8 @@ export const BENCH_STEPS: readonly BenchStep[] = [
   { label: 'Main Street at dusk, snowing', params: { at: 'cafe', time: 'dusk', weather: 'snow' } },
   { label: 'Base Lodge in fall', params: { at: 'base-lodge', season: 'fall' } },
   { label: 'Down Sunway at lift speed', params: {}, travel: 'Sunway', long: 3 },
+  // What the park print costs: the same view as step 6, drawn as the game was before it.
+  { label: 'Base Lodge, before the print', params: { at: 'base-lodge', look: 'plain', models: 'blocks' } },
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
@@ -60,6 +62,8 @@ const BENCH_BASELINE: Record<string, string> = {
   dpr: '2',
   view: '6500',
   crowd: '1',
+  look: 'poster',
+  models: 'park',
 };
 
 export const DEFAULT_BENCH_SECONDS = 5;

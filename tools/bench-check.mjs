@@ -8,7 +8,7 @@ import { preview } from 'vite';
 import { devices, launchBrowser } from './browser.mjs';
 
 const shot = process.argv[2];
-const STEPS = 12;
+const STEPS = 13;
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const base = `http://127.0.0.1:${server.httpServer.address().port}/`;

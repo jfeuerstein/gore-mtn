@@ -30,8 +30,19 @@ export class FollowCamera {
    */
   constructor(
     readonly camera: THREE.PerspectiveCamera,
-    private readonly zoom = 1,
+    private zoom = 1,
   ) {}
+
+  /** How far back the camera stands, as a multiple of the framing's own distance. */
+  get zoomNow(): number {
+    return this.zoom;
+  }
+
+  /** Stand the camera nearer or further, as a pinch asks. */
+  setZoom(zoom: number): void {
+    this.zoom = zoom;
+    this.distance = framingFor(this.camera.aspect, zoom).distance;
+  }
 
   /** Fit the lens and framing to the screen shape. Call whenever the canvas is resized. */
   setAspect(aspect: number): void {

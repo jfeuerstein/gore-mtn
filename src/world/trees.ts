@@ -5,6 +5,8 @@ import type { Obstacle } from '../player/collide';
 import { blocksSightLine, type Point3 } from './occlusion';
 import type { World } from './world';
 import { lit } from '../look/material';
+import { isPrinted } from '../look/material';
+import { flatColoured, outlined } from './outline';
 
 /** Trees are grouped into square patches this many metres across. */
 const PATCH_SIZE = 320;
@@ -16,6 +18,11 @@ const PATCH_SIZE = 320;
 export const TREE_RANGE = 2600;
 /** Patches further than this from the camera are drawn with a five-triangle tree. */
 const LOD_DISTANCE = 450;
+/** Within this of the camera, a patch's trees are drawn with a dark line round them, in metres. */
+const RIM_DISTANCE = 60;
+/** How far that line stands out, in the tree model's own units (a tree is about 3.6 tall), and how many of its corners are trunk, which has none. */
+const RIM_WIDTH = 0.032;
+const TRUNK_CORNERS = 24;
 /** Beyond these distances a patch draws only a share of its trees; they overlap too much to tell. */
 const THIN_HALF = 1100;
 const THIN_THIRD = 1800;
@@ -80,6 +87,21 @@ export const FIR: TreeStyle = {
   ],
   farBase: 0x30494a,
   farTip: 0xcfdadc,
+};
+
+/**
+ * The fir as it is printed: three flat tones, spruce below, snow in shade on the middle boughs
+ * and snow in the light at the top.
+ */
+export const PRINT_FIR: TreeStyle = {
+  trunk: 0x3a3436,
+  tiers: [
+    { radius: 1.0, y0: 0.6, y1: 2.5, sides: 6, base: 0x2b4a4c, tip: 0x2b4a4c },
+    { radius: 0.74, y0: 1.7, y1: 3.1, sides: 6, base: 0x9db4d4, tip: 0x9db4d4 },
+    { radius: 0.46, y0: 2.6, y1: 3.6, sides: 5, base: 0xf2f5fa, tip: 0xf2f5fa },
+  ],
+  farBase: 0x5f7f8c,
+  farTip: 0xdfe8f2,
 };
 
 /**
@@ -194,6 +216,8 @@ export class Forest {
   private readonly geometry: THREE.BufferGeometry;
   private readonly farGeometry: THREE.BufferGeometry;
   private readonly material = lit({ vertexColors: true, flatShading: true });
+  /** The near tree with a dark line round it, for the patches nearest the camera; null when the world is not printed. */
+  private readonly rimGeometry: THREE.BufferGeometry | null = null;
   /** Ducked trees: patch key * 65536 + slot, to present scale. */
   private readonly ducked = new Map<number, number>();
   private readonly blocking = new Set<number>();
@@ -213,11 +237,19 @@ export class Forest {
      * snowy fir. Trees stand in the same places whichever is used.
      */
     private readonly dress: ((x: number, z: number, kindRoll: number, pickRoll: number) => TreeDress | null) | null = null,
-    style: TreeStyle = dress ? PLAIN_TREE : FIR,
+    style: TreeStyle = dress ? PLAIN_TREE : isPrinted() ? PRINT_FIR : FIR,
   ) {
     this.group.name = 'trees';
     this.geometry = buildTreeGeometry(style);
     this.farGeometry = buildFarTreeGeometry(style);
+    if (isPrinted()) {
+      // Printed, each tier of a tree is one flat tone, and the trees close by have a line round them.
+      // A dressed tree's greys are left as they are, to shade the colour it is given.
+      const same = (hex: number): number => hex;
+      flatColoured(this.geometry, same);
+      flatColoured(this.farGeometry, same);
+      this.rimGeometry = outlined(this.geometry, RIM_WIDTH, TRUNK_CORNERS);
+    }
     this.cols = Math.ceil(hf.width / PATCH_SIZE);
     this.rows = Math.ceil(hf.depth / PATCH_SIZE);
     if (target <= 0) {
@@ -369,6 +401,11 @@ export class Forest {
       const shown = dist < range;
       p.mesh.visible = shown && dist < LOD_DISTANCE;
       p.far.visible = shown && !p.mesh.visible;
+      // The line round a tree is only drawn where it can be seen: on the patches nearest the camera.
+      if (this.rimGeometry && p.mesh.visible) {
+        const wanted = dist < RIM_DISTANCE ? this.rimGeometry : this.geometry;
+        if (p.mesh.geometry !== wanted) p.mesh.geometry = wanted;
+      }
       // Trees within a patch are in shuffled order, so the first n are an even sample of it.
       const share = dist < THIN_HALF ? 1 : dist < THIN_THIRD ? 0.5 : 1 / 3;
       p.far.count = Math.max(1, Math.round(p.mesh.count * share));

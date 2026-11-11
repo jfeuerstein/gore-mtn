@@ -2,13 +2,13 @@ import '@fontsource/bebas-neue/latin-400.css';
 import '@fontsource/caveat/latin-600.css';
 import * as THREE from 'three/webgpu';
 import { Sound } from './audio/sound';
-import { parseConfig, withKept, withParams } from './config';
+import { parseConfig, withParams } from './config';
+import { pinchedZoom } from './player/cameraMath';
 import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
 import { restyle, type WorldLook } from './look/worldLook';
-import type { Heightfield } from './world/heightfield';
 import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
@@ -57,8 +57,8 @@ import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 import { lit, usePrint } from './look/material';
 
-/** A picture of the land in one of the looks being tried: the same picture, repainted on a canvas. */
-function repaint(texture: THREE.Texture, look: WorldLook, season: Season, ground: Heightfield, every: number): THREE.Texture {
+/** A picture of the land as a print: the same picture, repainted on a canvas in the season's inks. */
+function repaint(texture: THREE.Texture, look: WorldLook, season: Season): THREE.Texture {
   if (look === 'plain') return texture;
   const image = texture.image as HTMLImageElement;
   const canvas = document.createElement('canvas');
@@ -68,7 +68,7 @@ function repaint(texture: THREE.Texture, look: WorldLook, season: Season, ground
   if (!ctx) return texture;
   ctx.drawImage(image, 0, 0);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  restyle(pixels.data, canvas.width, canvas.height, look, season, ground, every);
+  restyle(pixels.data, look, season);
   ctx.putImageData(pixels, 0, 0);
   texture.dispose();
   return new THREE.CanvasTexture(canvas);
@@ -196,20 +196,7 @@ function fillScreen(): void {
 }
 
 async function boot(): Promise<void> {
-  // A look being tried is remembered, so that it is still on when the game is next opened.
-  const looks = withKept(location.search, (key) => {
-    try {
-      return localStorage.getItem(`gore.${key}`);
-    } catch {
-      return null;
-    }
-  });
-  try {
-    for (const [key, value] of Object.entries(looks.keep)) localStorage.setItem(`gore.${key}`, value);
-  } catch {
-    // Private browsing: the look lasts as long as the address does.
-  }
-  const cfg = parseConfig(looks.search);
+  const cfg = parseConfig(location.search);
   // The print look lights everything in steps; it has to be said before anything is built.
   usePrint(cfg.look === 'poster');
   pretendShort = cfg.shortPage;
@@ -280,9 +267,9 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/ground-${season}.png`),
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy-${season}.png`),
   ]);
-  // A look being tried repaints both pictures before anything is drawn with them.
-  const snowPicture = repaint(snowTexture, cfg.look, season, ground, 10);
-  const canopyPicture = repaint(canopyTexture, cfg.look, season, ground, 50);
+  // The print repaints both pictures in the season's inks before anything is drawn with them.
+  const snowPicture = repaint(snowTexture, cfg.look, season);
+  const canopyPicture = repaint(canopyTexture, cfg.look, season);
   const terrain = new Terrain(ground, snowPicture, canopyPicture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
@@ -419,7 +406,19 @@ async function boot(): Promise<void> {
   window.addEventListener('pagehide', () => game.persist());
   document.addEventListener('visibilitychange', () => game.persist());
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
-  const follow = new FollowCamera(camera, cfg.zoom);
+  // How far back the camera stands is the player's to set, by pinching, and is remembered.
+  // An address that names a distance has its way, for the tools.
+  const ZOOM_KEY = 'gore.zoom';
+  const zoomKept = (): number => {
+    if (new URLSearchParams(location.search).has('zoom')) return cfg.zoom;
+    try {
+      const kept = Number(localStorage.getItem(ZOOM_KEY));
+      return kept > 0 ? pinchedZoom(kept, 1) : cfg.zoom;
+    } catch {
+      return cfg.zoom;
+    }
+  };
+  const follow = new FollowCamera(camera, zoomKept());
   const input = new Input(canvas);
 
   const summit = world.places.find((p) => p.id === 'summit');
@@ -941,6 +940,7 @@ async function boot(): Promise<void> {
     // How many others are in the picture just now.
     flag: game.save.flag,
     flyer: flyer.isOpen,
+    zoom: follow.zoomNow,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
     // The benches, and whether the player is sitting on one.
@@ -1008,6 +1008,15 @@ async function boot(): Promise<void> {
     input.update();
     const drag = input.consumeLook();
     follow.look(drag.dx, drag.dy);
+    const pinch = input.consumePinch();
+    if (pinch !== 1) {
+      follow.setZoom(pinchedZoom(follow.zoomNow, pinch));
+      try {
+        localStorage.setItem(ZOOM_KEY, follow.zoomNow.toFixed(3));
+      } catch {
+        // Private browsing: the distance lasts until the game is put away.
+      }
+    }
     // The lifts run on their own clock, which the chairs and any rider share.
     liftClock += dt;
     liftCars.update(liftClock);

@@ -90,8 +90,8 @@ spring from April, summer from June, fall from mid-September.
 - A season is a repaint of the same mountain, not a different one. The pipeline paints the ground
   and the far-off forest for each; the game loads the pair for the season it is in. Trees stand
   in the same places all year.
-- Winter is the look the owner chose and is left exactly as it was: every tree a snowy fir. Out
-  of winter each tree is dressed from `SEASON_LOOK`: spruce and fir stay green, and the hardwoods
+- In winter every tree is a snowy fir (printed: spruce below, snow in shade on the middle
+  boughs, snow in the light at the top). Out of winter each tree is dressed from `SEASON_LOOK`: spruce and fir stay green, and the hardwoods
   of the lower slopes are bare or budding in spring, green in summer, and red, orange and gold in
   fall. The dress is a colour per tree (instance colour over a plain grey tree) and a change of
   proportions, so it costs no extra draw calls.
@@ -137,48 +137,64 @@ moves between those with the real time of day and the real weather at Gore.
 
 ## Models
 
-Everything in the game is built in code from simple shapes. There are no model or texture files
-beyond the pipeline's ground pictures, and nothing needs Blender yet.
+Nearly everything in the game is built in code from simple shapes; the animals are made
+outside it. There are no texture files beyond the pipeline's ground pictures.
 
-Two things are being tried beside that, for the owner to compare on the phone. Both are off
-unless asked for, and whichever is chosen in Settings is remembered from one opening of the
-game to the next (`withKept` in `config.ts`; a benchmark step ignores it). The owner likes the
-park print, in the world and for the animals, and asked for it to be pushed further; it is not
-yet the game's own look.
+### The park print
 
-- **Made models** (`models=facet|park|smooth|toy`, or Settings). `tools/models/make-models.mjs`
+The game's look is a park print: the owner chose it, for the world and for the animals, after
+trying it beside the plain look. Four things make it, and anything new must take all four.
+
+- **Inks.** `src/look/print.ts` (pure, tested) holds the short list of inks everything made is
+  coloured from (`INKS`, `inkFor`). `blocks()` brings every colour it is given to its ink, and
+  so does a figure's outfit. The land has its own inks for each season
+  (`src/look/worldLook.ts`), which the pipeline's two pictures are repainted in when the game
+  loads. Trees keep the colours `SEASON_LOOK` gives them, a flat tone to each tier.
+- **Light in steps.** Everything the sun lights asks `lit()` in `src/look/material.ts` for its
+  material: three.js's own toon material with a ramp of a few tones (`PRINT_TONES`), so that
+  every face is one flat tone and a hillside breaks into shapes. It has no flat shading of
+  its own, so a shape that wants facets carries a normal for each face. The street's surface
+  stays smoothly lit: level ground in steps is a checkerboard. Make any new lit material with
+  `lit()`, never `new MeshLambertMaterial`.
+- **A line round things.** `rim()` in `print.ts` makes a shape's outline: the same shape a
+  little larger, inside out, in ink. It goes into the same geometry, so it costs triangles
+  but no draw call. `blocks()` gives one to every block stout enough to make part of a
+  model's outline (`rimmed`: not posts, rails or panes) and to ready-made pieces such as
+  roofs, once: a geometry it has made is marked, and is not rimmed again when pieces are
+  joined. `outlined()` in `src/world/outline.ts` does the same for a tree (only on the patches
+  nearest the camera, `RIM_DISTANCE`), a stone and a lift tower; `Skier.join` for each part of
+  a figure, which is how the people and the crowd get theirs. The animals bring their own.
+  Nothing with a rim may be drawn two-sided: the rim would cover it.
+- **A banded sky.** Bands of flat colour near the horizon under one flat field (`Atmosphere`).
+- The boards and shingles on buildings (`siding()`) are flat with one hard line under each
+  course, as a pen would draw clapboard.
+- `look=plain&models=blocks` in the address draws the game as it was before the print, for
+  setting one beside the other and for the benchmark's last step. It is not in Settings.
+- The print costs no draw calls and about 160,000 to 210,000 triangles in a view (the rims).
+  Not yet measured on the phone.
+
+### Made models
+
+- The animals of the field guide are made outside the game. `tools/models/make-models.mjs`
   asks an image model for a picture of each animal in `tools/models/manifest.mjs`, an
   image-to-3D model (Trellis, through fal) for its shape, and `convert.py` for a game-ready
   model: stood up, made one closed solid (`seal`: a generated shape is a skin with gaps, in
   pieces, and cut down it would have holes; the owner asked for none), cut down to about a
   thousand triangles, its texture baked into a colour per face, the colours graded to the
-  picture, cut to a small palette and gathered into patches (`calm`). A test fails if any
-  model has an open edge or a loose piece. The converter needs Python with trimesh,
-  fast-simplification, scipy, scikit-image, pymeshfix and Pillow. Three looks come out of
-  the one shape (`LOOKS` in `convert.py`): faceted, a park print (six inks and a dark outline
-  hull) and smooth. They are small JSON files under `public/models/`, read by
-  `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
-  same height. No textures and no new materials: vertex colours on the plain material, as
-  everything else. `zoo=1` lines sixteen animals up in front of the player to compare.
-  `toy` is the same animals made a second way, for six of them so far: `--tripo id,id` has
-  Tripo make the shape straight from the words, already low-poly and plainly coloured (about
-  30 credits and two or three minutes each), and the converter only tidies it. They come out
-  as chunky toys, where the first way comes out nearer to life. An animal with no model in
-  the look that is on keeps its blocks.
-- **World looks** (`look=poster|topo`, or Settings). `src/look/worldLook.ts` (pure, tested)
-  repaints the pipeline's two pictures of the land when the game loads: `poster` prints them
-  in a handful of inks for the season, and `topo` thins those inks toward paper and draws a
-  contour line every 10 m of height (every 50 m on the far-off forest). The Map sheet is drawn
-  over the same picture, so it takes the look too.
-- **The print look goes further than the ground** (`look=poster`), so that the whole picture
-  reads as a poster. Everything the sun lights asks `lit()` in `src/look/material.ts` for its
-  material: a Lambert material as ever, or, printed, three.js's own toon material with a ramp
-  of a few tones (`PRINT_TONES`), so that every face is one flat tone and a hillside breaks
-  into shapes. The sky is bands of flat colour near the horizon under one flat field
-  (`Atmosphere`, by `isPrinted()`), and the animals are the park prints unless others are
-  asked for. The street's surface stays smoothly lit: level ground in steps is a
-  checkerboard. Make any new lit material with `lit()`, never `new MeshLambertMaterial`.
-  `tools/webgpu-smoke.mjs` draws the print look too, since it is a different material.
+  picture, cut to six inks and gathered into patches (`calm`), with a dark outline hull. A
+  test fails if any model has an open edge or a loose piece. The converter needs Python with
+  trimesh, fast-simplification, scipy, scikit-image, pymeshfix and Pillow.
+- They are one small JSON file, `public/models/park.json`, read by `src/world/modelFiles.ts`,
+  and stand in for the block models in `critterModels.ts` at the same height. A species with
+  no made model keeps its blocks: the birds and plants are still blocks. `zoo=1` lines the
+  made animals up in front of the player.
+- The converter can make other looks from the same shape (faceted, smooth), and `--tripo
+  id,id` has Tripo make a shape straight from the words (about 30 credits each); the owner
+  tried those and chose the park print, so neither ships.
+
+### Built in code
+
+Everything else is built in code from simple shapes.
 
 - `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
   call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),
@@ -190,8 +206,7 @@ yet the game's own look.
 - Walls and roofs wear courses of boards and shingles: one small texture drawn in code
   (`siding()` in `shapes.ts`) that only varies up and down and multiplies the colour under it.
   `blocks()` gives every model the coordinates for it; anything snow-coloured is left smooth.
-  The lodges, the town's houses and the named places use it. `siding=0`, or Settings, turns it
-  off, so the owner can compare the two on the phone.
+  The lodges, the town's houses and the named places use it. `siding=0` turns it off.
 - Main Street is a street. Buildings whose fronts are on it in town are shops (false fronts,
   brick blocks, two-storey porches, little storefronts), each with a trade of its own from
   `SHOP_SIGNS`, given out in order along the street so no two neighbours match. The trades are
@@ -414,8 +429,8 @@ yet the game's own look.
   them and for `folk.ts`.
 - Everyone goes in at night (`busyness`), and it thins at dawn and dusk. A skier grows from
   nothing at the top of a run and shrinks away at the bottom, so nobody pops in or out.
-- `crowd=0`, or Settings, sends everyone home, to see what they cost. Keep their jackets
-  quieter than the player's.
+- `crowd=0` sends everyone home, to see what they cost. Keep their jackets quieter than the
+  player's.
 
 ## Sound, hints and patches
 
@@ -433,8 +448,12 @@ yet the game's own look.
 - `public/sw.js` keeps a copy of the game for playing with no signal. It asks the network first
   and falls back to its copy, so a new push is never hidden by an old one. It is registered only
   over https, so the dev server and the tools never see it.
-- Settings lead with what a player wants (the save code, sound, camera distance). Everything for
-  testing is below the "For testing" line; put new debug options there.
+- Settings lead with what a player wants (the save code and sound). Everything for testing is
+  below the "For testing" line: places to go to, a season, an hour and a sky to pin, the
+  renderer, how thick the forest is, sharpness, the frame-rate readout and how far is drawn.
+  Shadows, boards and shingles, the other people and full terrain detail are simply on; they
+  can still be turned off from the address (`shadows=0`, `siding=0`, `crowd=0`, `stride=2`),
+  which the benchmark uses.
 
 ## Pictures and lettering
 
@@ -528,11 +547,12 @@ yet the game's own look.
 - The owner measures on the phone with Settings > Run benchmark, which steps through fixed settings
   (`src/debug/bench.ts`) and ends with a block of text to paste back. Change the step list when a
   new question needs answering; run `node tools/bench-check.mjs` after touching it.
-- The steps now (twelve, about a minute and a half): the Saddle Lodge as before, to set beside
+- The steps now (thirteen, about a minute and a half): the Saddle Lodge as before, to set beside
   the earlier run; then the Base Lodge and Main Street, each with and without the other people;
   Main Street without shadows and on a snowy dusk; the Base Lodge in fall; and one step that is
-  carried down Sunway at lift speed, which measures building ground and forest while travelling.
-  Season, time and weather are pinned for every step.
+  carried down Sunway at lift speed, which measures building ground and forest while travelling;
+  and last, the Base Lodge drawn as the game was before the print, to set beside step 6 and
+  see what the print costs. Season, time and weather are pinned for every step.
 - A benchmark step never writes to the player's book: it stands in places and seasons the
   player has not been.
 - Read the results by frame-time bucket, not only by fps. Frames land on the display's refresh
@@ -554,8 +574,11 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
   shorter than the screen it shows. The note at the top of `src/style.css` explains the scheme:
   the picture fills the screen, and controls keep within the part the page is sure to cover.
   Attach new overlays to `#app`, and use `--bottom-clear` for anything placed near the bottom.
-- The camera sits well back and high, so the player is small (about 6% of the screen height) and
-  sits just below the middle, above where the thumb rests. Framing
+- The camera sits well back and high, so the player is small (about 5% of the screen height) and
+  sits just below the middle, above where the thumb rests. How far back is the player's to
+  set: two fingers on the picture, off the stick, pinch it nearer or further (a mouse wheel
+  does the same), and the distance is remembered (`gore.zoom`). `zoom` in the address has its
+  way, for the tools. Framing
   and lens come from `framingFor()` in `src/player/cameraMath.ts`; touch zones from
   `src/input/zones.ts`.
 - Screenshots default to the upright phone size. Judge composition in that shape, not on a wide
@@ -614,6 +637,11 @@ none slower than 29 ms, using 4.5 to 6.3 ms of CPU per frame.
 The day before (2026-11-10), with only the mountain, lifts and forest built: 60 fps at every
 step, 104 draw calls and 623k triangles in the thick forest, about 4.4 ms of CPU. So everything
 added since has cost about 50 draw calls and 1 ms.
+
+Those measurements were all taken before the park print. In headless runs the print adds no
+draw calls and 160,000 to 210,000 triangles (Saddle Lodge 1,032k, Main Street 1,147k), which is
+about what the thick-forest step drew at 60 fps. The owner's next benchmark run will say what
+it costs on the phone: compare step 6 with the last step.
 
 What the benchmark still does not show is heat and battery over a long session: each step
 measures five seconds (fifteen for the trail). The owner should say if the phone runs warm.

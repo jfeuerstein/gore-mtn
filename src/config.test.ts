@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULTS, parseConfig, withParams } from './config';
-import { withKept } from './config';
 import { makeRng } from './rng';
 
 describe('parseConfig', () => {
@@ -20,8 +19,8 @@ describe('parseConfig', () => {
     expect(c.pos).toEqual({ x: 12.5, z: -3 });
     expect(c.yaw).toBe(1.5);
     expect(c.pitch).toBeNull();
-    expect(c.zoom).toBe(1);
-    expect(parseConfig('?zoom=1.3').zoom).toBe(1.3);
+    expect(c.zoom).toBe(1.3);
+    expect(parseConfig('?zoom=1.6').zoom).toBe(1.6);
     expect(parseConfig('?zoom=99').zoom).toBe(3);
   });
 
@@ -63,27 +62,19 @@ describe('makeRng', () => {
   });
 });
 
-describe('looks being tried', () => {
-  const none = (): string | null => null;
-  const print = (key: string): string | null => (key === 'look' ? 'poster' : null);
-
-  it('keeps a look that is in the address', () => {
-    expect(withKept('?look=poster&at=summit', none)).toEqual({ search: '?look=poster&at=summit', keep: { look: 'poster' } });
+describe('the look', () => {
+  it('is the park print, world and animals, unless the plain one is asked for', () => {
+    expect(parseConfig('').look).toBe('poster');
+    expect(parseConfig('').models).toBe('park');
+    expect(parseConfig('?look=plain&models=blocks').look).toBe('plain');
+    expect(parseConfig('?look=plain&models=blocks').models).toBe('blocks');
+    // A look that is no longer made falls back to the game's own.
+    expect(parseConfig('?look=topo&models=smooth').look).toBe('poster');
+    expect(parseConfig('?look=topo&models=smooth').models).toBe('park');
   });
 
-  it('fills in a look that was kept when the address has none, and the printed animals come with it', () => {
-    const { search, keep } = withKept('', print);
-    expect(keep).toEqual({});
-    const cfg = parseConfig(search);
-    expect(cfg.look).toBe('poster');
-    expect(cfg.models).toBe('park');
-  });
-
-  it('lets the address win, so Settings can turn a look off again', () => {
-    expect(parseConfig(withKept('?look=plain', print).search).look).toBe('plain');
-  });
-
-  it('leaves a benchmark step as it is labelled', () => {
-    expect(parseConfig(withKept('?bench=0', print).search).look).toBe('plain');
+  it('stands the camera well back unless told otherwise', () => {
+    expect(parseConfig('').zoom).toBe(1.3);
+    expect(parseConfig('?zoom=1').zoom).toBe(1);
   });
 });

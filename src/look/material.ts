@@ -47,5 +47,7 @@ function tones(): THREE.DataTexture {
 export function lit(params: THREE.MeshLambertMaterialParameters = {}): THREE.MeshLambertMaterial {
   if (!printed) return new THREE.MeshLambertMaterial(params);
   // The two take the same settings and are used the same way from here on.
-  return new THREE.MeshToonMaterial({ ...(params as THREE.MeshToonMaterialParameters), gradientMap: tones() }) as unknown as THREE.MeshLambertMaterial;
+  // The toon material has no flat shading of its own: a shape that wants facets brings a normal for each face.
+  const { flatShading: _flat, ...rest } = params;
+  return new THREE.MeshToonMaterial({ ...(rest as THREE.MeshToonMaterialParameters), gradientMap: tones() }) as unknown as THREE.MeshLambertMaterial;
 }

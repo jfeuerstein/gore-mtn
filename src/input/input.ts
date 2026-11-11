@@ -6,8 +6,9 @@ const STICK_RADIUS = 56;
 /**
  * Touch, mouse and keyboard input.
  * Touch: one thumb is enough. A touch in the stick zone (see zones.ts) is a movement stick that
- * appears where it lands; a touch elsewhere, or a second finger, drags the camera.
- * Desktop: WASD or arrows to move, Shift to go fast, drag to look.
+ * appears where it lands; a touch elsewhere, or a second finger, drags the camera. Two fingers
+ * off the stick pinch the camera nearer or further: a convenience, never a need.
+ * Desktop: WASD or arrows to move, Shift to go fast, drag to look, wheel for distance.
  */
 export class Input {
   moveX = 0;
@@ -17,6 +18,8 @@ export class Input {
   fastToggle = false;
   private lookDX = 0;
   private lookDY = 0;
+  /** How the camera's distance should change for the pinching done since it was last asked for: 1 is no change. */
+  private pinch = 1;
   private stickId: number | null = null;
   private stickOrigin = { x: 0, y: 0 };
   private touchMove = { x: 0, y: 0 };
@@ -41,6 +44,14 @@ export class Input {
     surface.addEventListener('pointerup', this.onUp);
     surface.addEventListener('pointercancel', this.onUp);
     surface.addEventListener('contextmenu', (e) => e.preventDefault());
+    surface.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        this.pinch *= e.deltaY > 0 ? 1.08 : 1 / 1.08;
+      },
+      { passive: false },
+    );
     // Safari's own pinch and rotate gestures would otherwise zoom the page.
     for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
       document.addEventListener(type, (e) => e.preventDefault());
@@ -56,6 +67,23 @@ export class Input {
     this.lookDX = 0;
     this.lookDY = 0;
     return out;
+  }
+
+  /**
+   * Pinching since the last call, as a factor for the camera's distance: fingers moving apart
+   * bring it nearer (less than 1), fingers closing send it back. A mouse wheel does the same.
+   */
+  consumePinch(): number {
+    const out = this.pinch;
+    this.pinch = 1;
+    return out;
+  }
+
+  /** How far apart the two fingers that are turning the camera are, or 0 if there are not two. */
+  private spread(): number {
+    if (this.looks.size < 2) return 0;
+    const [a, b] = [...this.looks.values()] as [{ x: number; y: number }, { x: number; y: number }];
+    return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
   /** Refresh `moveX`, `moveY` and `fast` from the current keys and touches. Call once per frame. */
@@ -81,7 +109,11 @@ export class Input {
 
   private readonly onDown = (e: PointerEvent): void => {
     e.preventDefault();
-    this.surface.setPointerCapture(e.pointerId);
+    try {
+      this.surface.setPointerCapture(e.pointerId);
+    } catch {
+      // Not a pointer the browser will hold: it is followed while it stays on the picture.
+    }
     const role =
       e.pointerType === 'mouse'
         ? 'look'
@@ -112,6 +144,15 @@ export class Input {
     }
     const last = this.looks.get(e.pointerId);
     if (last) {
+      // Two fingers off the stick are a pinch: they set the camera's distance and do not turn it.
+      const before = this.spread();
+      if (before > 0) {
+        last.x = e.clientX;
+        last.y = e.clientY;
+        const now = this.spread();
+        if (before > 8 && now > 8) this.pinch *= before / now;
+        return;
+      }
       this.lookDX += e.clientX - last.x;
       this.lookDY += e.clientY - last.y;
       last.x = e.clientX;
