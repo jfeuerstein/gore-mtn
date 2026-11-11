@@ -13,7 +13,7 @@ import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
 // Winter is the plain path; fall also dresses each tree in its own colour.
-const queries = process.argv[2] ? [process.argv[2]] : ['season=winter&trees=20000&view=900', 'season=fall&trees=20000&view=900'];
+const queries = process.argv[2] ? [process.argv[2]] : ['season=winter&trees=20000&view=900&intro=0', 'season=fall&trees=20000&view=900&intro=0'];
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const browser = await launchBrowser({ webgpu: true });
 const allProblems = [];

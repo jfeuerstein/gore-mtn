@@ -23,6 +23,8 @@ const address = server.httpServer.address();
 // to the next. Unless the query says otherwise, take them at midday under a clear sky.
 const params = new URLSearchParams(query);
 if (!params.has('season')) params.set('season', 'winter');
+// No words of welcome over the picture, unless they are what is being looked at.
+if (!params.has('intro')) params.set('intro', '0');
 if (!params.has('time')) params.set('time', 'midday');
 if (!params.has('weather')) params.set('weather', 'clear');
 const url = `http://127.0.0.1:${address.port}/?${params}`;

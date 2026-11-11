@@ -2,8 +2,9 @@
 
 A cozy 3D collectathon set on the real Gore Mountain and in North Creek, NY. Ski and hike the mountain in every season, collect garnets and minerals, and fill a trail passport. Built for iPhone as a web app.
 
-**Status:** milestones 2 and 3 are built and being playtested. The real mountain is there at close to life size with every trail and lift, under the real time of day and weather at Gore. You can ski it, ride the lifts, pick up the day's scatter of garnets and minerals, and fill a passport of trails, lifts, summits and landmarks.
+**Status:** built through to a long playtest. The real mountain and North Creek at close to life size, in four seasons that follow the calendar, under the real time of day and weather at Gore. Ski it in winter and spring and ride it in summer and fall; ride every lift; pick up the day's scatter of garnets and minerals; spot wildlife for a field guide; run errands for the people of the mountain; and take the Snow Train from the depot to another season.
 
+- [Playtest guide](docs/playtest.md): what to try, and what to tell me
 - [Game plan](docs/game-plan.md): scope, art direction, tech stack, roadmap
 - [CLAUDE.md](CLAUDE.md): how the project is built and checked
 - [Credits](CREDITS.md): data sources and licenses
@@ -15,4 +16,4 @@ npm install
 npm run dev
 ```
 
-Hold the phone upright. One thumb on the lower part of the screen moves; the camera follows. Drag the upper part of the screen, or use a second finger, to look around. Tap Skis to clip in: left and right steer, up tucks, down brakes. At an orange gate at the foot of a lift, tap Ride. Map opens the trail map and Book shows what you have collected. Desktop: WASD, Shift to go fast, drag to look.
+Hold the phone upright. One thumb on the lower part of the screen moves; the camera follows. Drag the upper part of the screen, or use a second finger, to look around. Tap Skis (or Bike, once the snow has gone) to glide: left and right steer, up tucks or pedals, down brakes. At an orange gate at the foot of a lift, tap Ride. Walk up to someone with a gold mark to talk. Map opens the trail map and Book shows everything collected. Desktop: WASD, Shift to go fast, drag to look.

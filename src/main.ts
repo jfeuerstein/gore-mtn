@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { Sound } from './audio/sound';
 import { parseConfig, withParams } from './config';
 import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
@@ -248,10 +249,22 @@ async function boot(): Promise<void> {
   );
   const toasts = new Toasts(cfg.hud);
   const book = new Book(game);
+  // Sound starts with the first touch, which is when a browser will let it.
+  const sound = new Sound();
+  // Safari counts the end of a touch, not its start, as the player's say-so; listen for both.
+  for (const gesture of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) window.addEventListener(gesture, () => sound.unlock(), { passive: true });
   const announce = (events: readonly GameEvent[]): void => {
     if (events.length === 0) return;
     for (const event of events) toasts.show(event);
+    // One tune for a batch, the grandest of them, so several stamps at once do not clash.
+    const order = ['patch', 'peak', 'season', 'gear', 'mineral', 'trail', 'path', 'lift', 'landmark', 'condition', 'errand', 'sighting', 'item'];
+    const lead = [...events].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))[0] as GameEvent;
+    sound.play(lead.kind, lead.detail);
     book.refresh();
+  };
+  /** Say something helpful, the first time it is needed and never again. */
+  const hint = (id: string, title: string, detail: string): void => {
+    if (cfg.intro && game.hint(id)) toasts.show({ kind: 'hint', title, detail });
   };
   // Keep the book safe when the game is put away.
   window.addEventListener('pagehide', () => game.persist());
@@ -263,6 +276,8 @@ async function boot(): Promise<void> {
   const summit = world.places.find((p) => p.id === 'summit');
   const baseLodge = world.places.find((p) => p.id === 'base-lodge');
   let liftClock = 0;
+  /** True while the welcome is on the screen. */
+  let welcomed = false;
   /** The camera pitch to return to after a lift ride, while that is still under way. */
   let pitchAfterRide: number | null = null;
   /** Set when the player has jumped somewhere, so the surroundings are built at once, not gradually. */
@@ -436,10 +451,16 @@ async function boot(): Promise<void> {
       holds: (code) => saveFromCode(code) !== null,
       restore: (code) => {
         const save = saveFromCode(code);
-        if (save) game.restore(save);
+        if (save) {
+          game.restore(save);
+          player.setOutfit(game.outfit());
+          layKeepsakes();
+        }
         return Boolean(save);
       },
     },
+    { enabled: () => sound.enabled, set: (on) => sound.setEnabled(on) },
+    world.attribution,
   );
 
   let pixelRatio = 1;
@@ -562,6 +583,8 @@ async function boot(): Promise<void> {
     items: [...game.save.items],
     wearing: { ...game.save.gear },
     pass: game.save.pass,
+    sound: sound.enabled,
+    hints: [...game.save.hints],
     sightings: game.sightingsNear(player.position.x, player.position.z, today, season, watch).map((s) => ({ x: s.x, z: s.z, species: s.species.id, kin: s.species.kin, shy: Boolean(s.species.shy) })),
     speed: player.speed,
     heading: player.travelHeading,
@@ -598,8 +621,8 @@ async function boot(): Promise<void> {
     const dt = Math.min(0.05, frameMs / 1000);
 
     input.update();
-    const look = input.consumeLook();
-    follow.look(look.dx, look.dy);
+    const drag = input.consumeLook();
+    follow.look(drag.dx, drag.dy);
     // The lifts run on their own clock, which the chairs and any rider share.
     liftClock += dt;
     liftCars.update(liftClock);
@@ -643,6 +666,7 @@ async function boot(): Promise<void> {
       for (const { find, event } of game.pickUp(px, pz, today)) {
         glints.pickedUp(find, (x, z) => ground.heightAt(x, z));
         announce([event]);
+        hint('stone', 'Your first stone', 'It is in the Book. A new scatter lies out every day.');
       }
     }
     glints.show(game.findsNear(px, pz, today), (x, z) => ground.heightAt(x, z));
@@ -650,6 +674,7 @@ async function boot(): Promise<void> {
     // Wildlife: anything come close to is seen and goes in the field guide, then makes off. A shy
     // creature come upon at speed bolts first. From a lift everything below can be watched at ease.
     const looked = game.lookAbout(px, pz, player.mode === 'lift' ? 0 : player.speed, today, season, watch);
+    if (looked.seen.length > 0) hint('guide', 'In the field guide', 'A pale blue mark shows anything you have not seen before.');
     for (const { sighting, event } of looked.seen) {
       if (sighting.species.kin === 'animal' || sighting.species.kin === 'bird' || sighting.species.id === 'rumor') critters.flee(sighting, px, pz);
       else critters.settle(sighting);
@@ -671,8 +696,25 @@ async function boot(): Promise<void> {
         announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather, season), today));
       }
       layKeepsakes();
+      announce(game.checkPatches(today));
       game.persist();
     }
+    // The sound of where the player is and what they are doing.
+    sound.update(
+      dt,
+      {
+        mode: player.mode,
+        glide: player.glide,
+        speed: player.speed,
+        slip: player.slip,
+        height: Math.min(1, Math.max(0, player.position.y / 990)),
+        falling: weather.snowing,
+        rain: look.falling === 'rain',
+      },
+      sunNow.elevation < -0.1,
+      season === 'summer' && sunNow.elevation < -0.02,
+    );
+    if (player.mode === 'ski') hint(look.ride === 'bike' ? 'bike' : 'skis', look.ride === 'bike' ? 'On the bike' : 'On skis', look.ride === 'bike' ? 'Left and right steer. Thumb up pedals, thumb down brakes.' : 'Left and right steer. Thumb up tucks, thumb down stops.');
     // People turn to watch the player come; lost property waits to be picked up.
     folk.update(dt, player.position, (id) => game.hasBusiness(id, season), follow.yaw);
     keepsakes.update(dt, follow.yaw);
@@ -683,10 +725,11 @@ async function boot(): Promise<void> {
         layKeepsakes();
       }
     }
-    // Wandering off ends a conversation.
+    // Wandering off ends a conversation. The welcome stays until it is read or closed.
+    if (welcomed && !talkSheet.isOpen) welcomed = false;
     const someone = player.mode === 'lift' ? null : folk.nearest(px, pz, 7);
     const stop = player.mode === 'lift' || someone ? null : (stops.find((st) => Math.hypot(st.x - px, st.z - pz) < 9) ?? null);
-    if (talkSheet.isOpen && !someone && !stop) talkSheet.close();
+    if (talkSheet.isOpen && !someone && !stop && !welcomed) talkSheet.close();
     // Offer a ride when standing at the foot of a lift.
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
     if (station) {
@@ -696,6 +739,8 @@ async function boot(): Promise<void> {
       });
     }
     else hud.setAction(null);
+    if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
+    if (someone) hint('talk', 'Someone to talk to', 'A gold mark overhead means they have something for you.');
     if (someone) hud.setTalk(`Talk to ${someone.person.name}`, () => talkTo(someone));
     else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
     else hud.setTalk(null);
@@ -759,8 +804,24 @@ async function boot(): Promise<void> {
     if (frames === 3) {
       document.getElementById('loading')?.remove();
       window.__gore.ready = true;
+      // A few words of welcome, the first time the game is opened.
+      if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint('welcome')) {
+        talkSheet.open('Welcome to Gore', 'A quiet mountain, in your pocket', [
+          'Nothing here is timed, and nothing can go wrong. Wander.',
+          'Rest a thumb on the lower part of the screen to walk. Drag higher up to look around.',
+          `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill. The lifts will bring you back up.`,
+          'Stones glint on the ground. Trails, lifts and summits stamp your passport. The Book, bottom right, keeps it all.',
+        ]);
+        welcomed = true;
+      }
     }
   });
 }
 
 boot().catch((err: unknown) => showFatal(String((err as Error)?.stack ?? err)));
+
+// Keep a copy of the game for when there is no signal. Only where it is really installed: a
+// development server or a test would only be confused by an older copy.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined));
+}

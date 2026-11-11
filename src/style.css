@@ -237,6 +237,13 @@ body {
   min-height: 20px;
   text-align: center;
 }
+#menu .divider {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  opacity: 1;
+}
 #menu .close {
   float: right;
   font-weight: 600;
@@ -278,7 +285,8 @@ body {
 /* Things just earned, announced near the top where they can be read and are out of the thumb's way. */
 #toasts {
   position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 118px);
+  /* Under the place name, and under the frame-rate readout when that is showing. */
+  top: calc(max(8px, env(safe-area-inset-top)) + 92px);
   left: 0;
   right: 0;
   display: flex;
@@ -286,6 +294,9 @@ body {
   align-items: center;
   gap: 6px;
   pointer-events: none;
+}
+.show-stats #toasts {
+  top: calc(max(8px, env(safe-area-inset-top)) + 118px);
 }
 .toast {
   display: flex;
@@ -347,6 +358,22 @@ body {
 }
 .toast b {
   font-size: 14px;
+}
+/* A hint is a sentence, not a label: let it run to two lines. */
+.toast-hint {
+  border-radius: 18px;
+  max-width: min(320px, calc(100% - 28px));
+}
+.toast-hint small {
+  white-space: normal;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.toast-hint .mark {
+  background: var(--ink);
+}
+.toast-patch .mark {
+  background: #b7791f;
 }
 .toast small {
   font-size: 11px;
@@ -532,6 +559,12 @@ body {
 #book-sheet .stamp.lift.earned {
   color: #2b62c9;
   background: rgba(43, 98, 201, 0.06);
+}
+#book-sheet .stamp.patch.earned {
+  color: #b7791f;
+  background: rgba(183, 121, 31, 0.1);
+  border-width: 3px;
+  border-style: double;
 }
 #book-sheet .stamp.season.earned {
   color: #7a4fa3;
@@ -923,6 +956,12 @@ body {
   font-size: 18px;
   font-weight: 600;
   background: #e6edf7;
+}
+#loading b {
+  display: block;
+  font-size: 44px;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
 }
 #fatal {
   font: 13px/1.5 ui-monospace, Menlo, monospace;

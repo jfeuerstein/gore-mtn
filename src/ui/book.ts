@@ -1,6 +1,7 @@
 import type { Game } from '../game/game';
 import { MINERALS } from '../game/minerals';
 import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
+import { PATCHES } from '../game/patches';
 import { ERRANDS, GEAR, personById } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
@@ -141,6 +142,9 @@ export class Book {
     const s = game.summary();
     const out: HTMLElement[] = [];
 
+    out.push(this.heading('Patches', s.patches, s.patchesTotal));
+    out.push(el('p', 'note', 'For the long hauls: finishing a whole kind of thing.'));
+    out.push(this.stamps('patch', PATCHES.map((p) => ({ name: p.name, day: save.patches[p.id], how: p.how }))));
     out.push(this.heading('Seasons', s.seasons, SEASONS.length));
     out.push(this.stamps('season', SEASONS.map((season) => ({ name: SEASON_NAME[season], day: save.seasons[season], how: 'Visit the mountain.' }))));
     out.push(this.heading('Summits', s.seasonPeaks, s.seasonPeaksTotal));

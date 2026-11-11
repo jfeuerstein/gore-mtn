@@ -24,7 +24,7 @@ try {
   const page = await context.newPage();
   page.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
   // A short measuring time keeps this quick; zoom is here to prove the player's own settings come back.
-  await page.goto(`${base}?zoom=1.3&benchsecs=0.3`);
+  await page.goto(`${base}?zoom=1.3&benchsecs=0.3&intro=0`);
   await page.waitForFunction(() => window.__gore?.ready, null, { timeout: 120000 });
   await page.tap('#menu-button');
   await page.locator('#menu button', { hasText: 'Run benchmark' }).tap();

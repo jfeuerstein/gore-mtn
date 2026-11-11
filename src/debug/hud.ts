@@ -115,6 +115,15 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
+    title: 'Frame-rate readout',
+    param: 'stats',
+    current: (c) => (c.stats ? '1' : '0'),
+    options: [
+      { label: 'Off', value: '0' },
+      { label: 'On', value: '1' },
+    ],
+  },
+  {
     title: 'View distance',
     param: 'view',
     current: (c) => String(c.viewDist),
@@ -166,9 +175,15 @@ export class Hud {
     private readonly place: () => Record<string, string | null> = () => ({}),
     /** The player's book as a code to keep somewhere safe, and a way to bring one back. */
     private readonly book: { code(): string; holds(code: string): boolean; restore(code: string): boolean } | null = null,
+    /** Sound on or off. */
+    private readonly sound: { enabled(): boolean; set(on: boolean): void } | null = null,
+    /** Where the map and its data come from, for the credits. */
+    private readonly attribution = '',
   ) {
     const root = document.getElementById('hud') as HTMLElement;
     root.hidden = !cfg.hud;
+    this.statsEl.hidden = !cfg.stats;
+    (document.getElementById('app') ?? document.body).classList.toggle('show-stats', cfg.stats);
     const button = document.getElementById('menu-button') as HTMLButtonElement;
     button.addEventListener('click', () => {
       this.menuEl.hidden = !this.menuEl.hidden;
@@ -201,22 +216,6 @@ export class Hud {
     close.type = 'button';
     close.className = 'close';
     close.addEventListener('click', () => (this.menuEl.hidden = true));
-
-    add(this.menuEl, 'h2', 'Go to');
-    const go = add(this.menuEl, 'div');
-    go.className = 'row';
-    for (const place of places) {
-      const b = add(go, 'button', place.name);
-      b.type = 'button';
-      b.addEventListener('click', () => {
-        onTeleport(place);
-        this.menuEl.hidden = true;
-      });
-    }
-    // For getting about while testing: on foot, the stick moves at the speed of a fast lift.
-    const fast = add(go, 'button', 'Fast travel');
-    fast.type = 'button';
-    fast.id = 'fast-button';
 
     if (this.book) {
       const book = this.book;
@@ -264,7 +263,28 @@ export class Hud {
       });
     }
 
-    for (const group of OPTIONS) {
+    if (this.sound) {
+      const sound = this.sound;
+      add(this.menuEl, 'h2', 'Sound');
+      const row = add(this.menuEl, 'div');
+      row.className = 'row';
+      const buttons = (['On', 'Off'] as const).map((label) => {
+        const b = add(row, 'button', label);
+        b.type = 'button';
+        b.id = `sound-${label.toLowerCase()}`;
+        return b;
+      });
+      const show = (): void => buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(sound.enabled() === (i === 0))));
+      buttons.forEach((b, i) =>
+        b.addEventListener('click', () => {
+          sound.set(i === 0);
+          show();
+        }),
+      );
+      show();
+    }
+
+    const optionGroup = (group: OptionGroup): void => {
       add(this.menuEl, 'h2', group.title);
       const row = add(this.menuEl, 'div');
       row.className = 'row';
@@ -284,7 +304,32 @@ export class Hud {
       if (group.param === 'weather') {
         add(this.menuEl, 'p', 'Real follows the calendar, the clock and the sky over Gore. The others are for trying a moment out; the game goes back to Real the next time it is opened.');
       }
+    };
+
+    const camera = OPTIONS.find((g) => g.param === 'zoom');
+    if (camera) optionGroup(camera);
+
+    // Everything below is for trying things out and for measuring, not for playing.
+    const testing = add(this.menuEl, 'h2', 'For testing');
+    testing.className = 'divider';
+    add(this.menuEl, 'p', 'These jump about the mountain, pin a season or an hour, and trade looks for speed. Changing one reloads the page.');
+    add(this.menuEl, 'h2', 'Go to');
+    const go = add(this.menuEl, 'div');
+    go.className = 'row';
+    for (const place of places) {
+      const b = add(go, 'button', place.name);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        onTeleport(place);
+        this.menuEl.hidden = true;
+      });
     }
+    // For getting about while testing: on foot, the stick moves at the speed of a fast lift.
+    const fast = add(go, 'button', 'Fast travel');
+    fast.type = 'button';
+    fast.id = 'fast-button';
+
+    for (const group of OPTIONS) if (group.param !== 'zoom') optionGroup(group);
 
     add(this.menuEl, 'h2', 'Report');
     const row = add(this.menuEl, 'div');
@@ -301,6 +346,10 @@ export class Hud {
     bench.type = 'button';
     bench.addEventListener('click', () => startBench(this.cfg.benchSeconds));
     add(this.menuEl, 'p', 'Changing a setting reloads the page. The benchmark tries nine settings by itself; leave the phone alone until it shows the results.');
+
+    add(this.menuEl, 'h2', 'About');
+    add(this.menuEl, 'p', 'Gore is a personal, non-commercial fan project, not affiliated with or endorsed by Gore Mountain or any business in North Creek.');
+    add(this.menuEl, 'p', `${this.attribution} Weather: Open-Meteo. Drawn with three.js.`.trim());
   }
 
   /** One line that can be pasted back into a Claude session. */

@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestones 0 and 1 are done. Milestone 2 (the look) and milestone 3 (the collecting loop) are built and waiting on the owner's verdict. The mountain changes with the real time of day and weather; the skier, lodges and lifts are proper models; and there is now a book to fill: a trail passport and a mineral collection, kept between visits. See the roadmap.
+**Status:** built through to a state fit for a long playtest. The whole mountain and North Creek are there in four seasons, with skiing, a mountain bike, every lift, a passport, minerals, a field guide of wildlife, ten people with errands, things to wear, a shuttle, the Snow Train, sound, and offline play. None of what came after milestone 1 has had the owner's verdict yet; `docs/playtest.md` is the guide to trying it, and the questions to answer are at the end of the roadmap.
 
 ## 2. What the game is
 
@@ -307,8 +307,8 @@ Each milestone ends with something playable on your phone and a single question 
 | 1 | Greybox skiing (done) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? Yes. |
 | 2 | The look (built, awaiting verdict) | Four looks compared and a direction chosen; time of day and weather; a jointed skier with walking, skiing, tucking, stopping and sitting poses; lodges, huts, the depot and the fire tower with windows that light after dark; lift towers with moving chairs and gondola cabins | Would you set a screenshot as your wallpaper? |
 | 3 | The collecting loop (built, awaiting verdict) | A fresh scatter of stones every day, picked up by skiing or walking up to them; trail stamps with progress kept between runs; lift pins, summit patches, landmark and condition stamps; the Book; saves, with a save code as a backup. Digging and tools are left for later. | Does a five-minute session end with something new? |
-| 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
-| 5 | Slice polish | Audio, onboarding, offline install, icon, credits | Would you show it to a friend? |
+| 4 | People and seasons (built, awaiting verdict) | All four seasons, a mountain bike for summer and fall, North Creek from the real map, a field guide of wildlife, ten people with twenty errands, hats and jackets, a shuttle, and the Snow Train from the depot to any season | Does another season feel like a different visit? |
+| 5 | Polish (built, awaiting verdict) | Sound made in code, a welcome and first-time hints, patches for the long goals, offline play, a Settings sheet with the testing aids set apart, credits | Would you show it to a friend? |
 
 **Slice contents:** the Base Lodge to the Saddle Lodge; the Adirondack Express; Sunway, Quicksilver, Otter Slide, Foxlair, and Ruby Run; about 12 minerals and 15 passport entries; winter plus one other season.
 
@@ -498,6 +498,36 @@ name, so they are placed a short walk down Main Street from the depot.
   will take the player to any season, and home again. This is how the other seasons are meant to
   be visited; Settings can still pin one for a quick look.
 
+#### Polish for the playtest
+
+- **Sound**, made on the spot with Web Audio; there are no sound files. Wind that rises with speed
+  and height, the hiss of a carve and the scrape of a skid, a lower rumble for the bike, a lift's
+  hum, rain, footsteps, a few notes for anything earned, and now and then a chickadee by day or
+  an owl at night. It starts with the first touch and can be turned off in Settings.
+- **A welcome** of four short lines the first time the game is opened, and a hint the first time
+  each thing comes up: skis, a lift, a stone, a sighting, someone to talk to. Each is given once.
+- **Patches**: twenty-two of them, for finishing a whole kind of thing (every green trail, every
+  lift, every mineral, all sixteen seasonal summits, seeing The Rumor for yourself).
+- **Offline play.** Installed to the Home Screen, the game keeps a copy of itself and starts
+  without a signal. With a signal it always fetches the newest version first.
+- **Settings** now lead with the book's save code, sound and camera distance. Everything for
+  testing sits below a line. The frame-rate readout is off unless turned on there.
+
+#### What to judge
+
+The questions still open from milestones 2 and 3 stand. To those, add:
+
+1. Each season on the phone: do the colours hold up, by day, at dusk and at night? Are the
+   dressed trees and the stones' colours right? (Both use per-instance colour, which could only
+   be checked here in the fallback renderer.)
+2. The bike: is it fun down a trail? Too fast, too slow, too slippery?
+3. Wildlife: is spotting things a pleasure or clutter? Is "go gently" clear, and fair?
+4. The people: is the talk the right length? Are the errands things you want to do?
+5. Town: does North Creek feel like North Creek? Are the café and deli where you remember them?
+6. Sound: pleasant, or tiring over a long session? Anything missing, anything to remove?
+7. The frame rate, now there is far more on the mountain. Settings > Run benchmark would tell.
+8. After a week: does the book still pull you back, and what do you wish were in it?
+
 ## 10. Risks and honest perspectives
 
 - **Ski feel on a touchscreen is the whole game.** If milestone 1 is not fun, nothing after it will fix that. Spend disproportionate time there.
@@ -520,7 +550,6 @@ name, so they are placed a short walk down Main Street from the depot.
 
 ## 12. Open questions
 
-1. The verdicts on milestones 2 and 3 (see the lists under each in the roadmap).
-2. Are Café Sarah and Izzy's Market & Deli the places you remember?
-3. Hiking: part of the first slice, or skiing only until the second season?
+1. The verdicts on everything since milestone 1 (see "What to judge" in the roadmap).
+2. Are Café Sarah and Izzy's Market & Deli the places you remember? The game has a baker and a sandwich maker on Main Street standing in for them, unnamed, until this is known.
 4. The fal key has not been needed so far: everything is built in code. If it is, it gets entered through a secure form or environment settings, never pasted into chat or committed.

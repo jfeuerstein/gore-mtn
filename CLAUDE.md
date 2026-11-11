@@ -43,7 +43,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
+  `hud`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby and the last announcement) and a few
   actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
@@ -200,8 +200,9 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   mesh each, drawn within 280 m, with a pale blue mark over anything not yet in the guide. A new
   species needs an entry in `SPECIES` and a model; tests check both exist.
 - `src/world/glints.ts` draws the stones near the player: one instanced mesh coloured per
-  instance, and one of unlit gold twinkles, two draw calls in all. This is the one place that
-  uses per-instance colour; the owner has yet to confirm it on the phone's WebGPU.
+  instance, and one of unlit gold twinkles, two draw calls in all. Stones, the dressed trees of
+  spring, summer and fall, and the town's houses all take their colour per instance; the owner
+  has yet to confirm that on the phone's WebGPU.
 - `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
   announcements at the top of the screen. With `hud=0` announcements are hidden too.
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
@@ -232,13 +233,31 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   Train, once its pass is earned from Conductor Bea, carries them to another season: the choice
   is kept in the save (`away`) and the game reopens in it. The `season` option still overrides.
 
+## Sound, hints and patches
+
+- Sound is made in code (`src/audio/`): no sound files. `soundscape.ts` (pure, tested) works out
+  how loud the wind, the skis, a lift and the rain should be for what the player is doing, and
+  the tune for each kind of thing earned; `sound.ts` plays them with Web Audio. It starts on the
+  first touch, as browsers require, and Settings turns it off. Keep it quiet: it is there to make
+  movement feel like movement.
+- `Game.hint(id)` is true once. `main.ts` uses it for the welcome and for a hint the first time
+  each thing comes up. `intro=0` turns both off; the tools set it.
+- `src/game/patches.ts` lists the patches for finishing a whole kind of thing. They are checked
+  once a second against a tally of the book. Add one as a line of data.
+- `public/sw.js` keeps a copy of the game for playing with no signal. It asks the network first
+  and falls back to its copy, so a new push is never hidden by an old one. It is registered only
+  over https, so the dev server and the tools never see it.
+- Settings lead with what a player wants (the save code, sound, camera distance). Everything for
+  testing is below the "For testing" line; put new debug options there.
+
 ## Trail map
 
 - The Map button opens `src/ui/trailMap.ts`, a bottom sheet drawn on a 2D canvas over the
   pipeline's canopy picture. West is up, so the summit is at the top as on a ski map; the
   projection is `src/ui/mapView.ts` (pure, tested).
-- It shows every trail by difficulty, every lift with a ring where you board, the main places, and
-  an arrow for the player. Tapping a trail or lift names it.
+- It shows every trail by difficulty, every lift with a ring where you board, the paths through
+  the woods as dotted lines, the main places, and an arrow for the player. Tapping a trail, lift
+  or path names it.
 
 ## Measuring performance
 
@@ -286,6 +305,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
+
+Since that was measured, a great deal has been added (seasons, the town, wildlife, people), none
+of it yet measured on the phone. In headless runs the full forest near a lodge now draws 190 to
+270 calls, over the target above; the owner's next benchmark will say whether that matters.
 
 Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
 life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,

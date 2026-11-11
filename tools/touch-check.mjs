@@ -17,7 +17,7 @@ const shot = process.argv[2];
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 // A fixed time and sky, so the checks do not depend on when they are run, and light settings,
 // because software rendering is slow and several checks wait on the game to cover ground.
-const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&season=winter&time=midday&weather=clear`;
+const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&stats=1&intro=0&season=winter&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
@@ -372,7 +372,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 3 + 4 + 11 + 12 + 14, inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 22 + 3 + 4 + 11 + 12 + 14, inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -432,6 +432,7 @@ try {
   }
   const skied = await bookState();
   check(`skiing the length of ${short1.name} stamps it`, skied.book.trails >= 1, `${skied.book.trails} stamped, ${run(short1).toFixed(0)} m`);
+  check('the first trail earns a patch', await bookSettle(() => window.__gore.state().book.patches >= 1), (await bookState()).toast);
   await bp.tap('#book-button');
   check('the book opens at the page it was left on', (await bp.getAttribute('#book-sheet [data-tab=minerals]', 'aria-pressed')) === 'true' && (await bp.locator('#book-sheet .mineral.earned').count()) === 1);
   await bp.tap('#book-sheet [data-tab=passport]');
@@ -594,6 +595,41 @@ try {
   const returned = await railState();
   check('and the train brings the player home to the real season', returned.season === homeSeason && returned.away === null, returned.season);
   await rail.context.close();
+
+  // A first visit: a few words of welcome, hints as things come up, and a quiet screen.
+  const fresh1 = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  const np = await fresh1.newPage();
+  np.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
+  const plain = url.replace('&stats=1&intro=0', '');
+  await np.goto(plain);
+  await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  await np.waitForSelector('#talk-sheet:not([hidden])', { timeout: 20000 }).catch(() => {});
+  check('a new player is welcomed', (await np.locator('#talk-sheet').isVisible()) && (await np.locator('#talk-sheet .names b').textContent()) === 'Welcome to Gore');
+  check('the frame-rate readout is out of the way unless asked for', !(await np.locator('#stats').isVisible()));
+  let pages = 1;
+  for (; pages < 8 && (await np.locator('#talk-sheet .choices button', { hasText: /^Next$/ }).count()) > 0; pages++) await np.locator('#talk-sheet .choices button', { hasText: /^Next$/ }).tap();
+  check('the welcome is a few short pages and then gets out of the way', pages >= 3 && pages <= 5 && (await np.locator('#talk-sheet .choices button').allTextContents()).join() === 'Goodbye', `${pages} pages`);
+  await np.locator('#talk-sheet .choices button', { hasText: 'Goodbye' }).tap();
+  check('and closes', !(await np.locator('#talk-sheet').isVisible()));
+  await np.tap('#ski-button');
+  check('putting skis on for the first time brings a hint', await np.waitForFunction(() => window.__gore.state().hints.includes('skis') && [...document.querySelectorAll('#toasts .toast-hint b')].some((b) => b.textContent === 'On skis'), null, { timeout: 30000 }).then(() => true, () => false));
+  const hintBox = await np.locator('#toasts .toast-hint').first().boundingBox();
+  check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
+  await np.tap('#ski-button');
+  await np.tap('#menu-button');
+  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 4).join() === 'Your book,Sound,Camera distance,For testing');
+  await np.locator('#sound-off').tap();
+  check('sound can be turned off', (await np.evaluate(() => window.__gore.state().sound)) === false && (await np.getAttribute('#sound-off', 'aria-pressed')) === 'true');
+  await np.locator('#sound-on').tap();
+  check('and on again', (await np.evaluate(() => window.__gore.state().sound)) === true);
+  check('the credits name where the map comes from', /OpenStreetMap/.test(await np.locator('#menu').textContent()) && /USGS/.test(await np.locator('#menu').textContent()));
+  await np.locator('#menu .close').tap();
+  await np.waitForTimeout(1500);
+  await np.reload();
+  await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  await np.waitForTimeout(800);
+  check('the welcome is given once only', !(await np.locator('#talk-sheet').isVisible()) && (await np.evaluate(() => window.__gore.state().hints)).includes('welcome'));
+  await fresh1.close();
 
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: the `shortpage` option tells the game the
