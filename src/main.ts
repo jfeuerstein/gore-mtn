@@ -14,6 +14,7 @@ import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
+import { snowReport } from './game/report';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { watchFor } from './game/wildlife';
 import { Input } from './input/input';
@@ -26,33 +27,21 @@ import { Player } from './player/player';
 import { pushOut } from './player/collide';
 import { BIKE, fallLineYaw, SKI, SPRING_SKI } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
-import { Buildings, PLACE_FOOTPRINT, PLACE_HEIGHT } from './world/buildings';
+import { Built } from './world/built';
 import { countryOf } from './world/country';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { LiftCars } from './world/liftCars';
 import { Glints } from './world/glints';
-import { buildLifts, buildSnowGuns } from './world/scenery';
-import { snowGuns } from './world/snowGuns';
+import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
-import { houseHeight, Town } from './world/town';
 import { fromLocal } from './world/footprints';
-import { depotSetting, TRACK_OUT, TRAIN_LENGTH, trainCars } from './world/railway';
-import { buildSignPosts } from './world/signPosts';
-import { buildStreetFurniture } from './world/streetFurniture';
-import { benches, streetLamps, welcomeSigns } from './world/streets';
-import { buildSigns } from './world/signs';
-import { Smoke } from './world/smoke';
-import { TownPlaces, townPlaceHeight } from './world/townKit';
-import { buildTrain } from './world/train';
-import { trailSignPosts } from './world/trailSigns';
-import { resolveTownPlaces, townPlaceAt } from './world/townPlaces';
+import { townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
-import { Walls, type WallBox } from './world/walls';
-import { buildYards } from './world/yards';
+import { Walls } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 
@@ -207,15 +196,10 @@ async function boot(): Promise<void> {
   ]);
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
-  // Trees keep out of lift corridors and stand back from buildings.
-  // The places with a name and a look of their own: the inn, the post office, the old mine works.
-  const townPlaces = resolveTownPlaces(world);
-  // The depot stands on the real station's plot, along the rails, with the Snow Train beside it.
-  const depotAt = depotSetting(world);
-  const styled = new Set([...townPlaces.map((p) => p.building), depotAt?.building ?? -1]);
-  const nearBuilding = (x: number, z: number): boolean =>
-    world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30)) ||
-    townPlaces.some((p) => Math.hypot(p.x - x, p.z - z) < Math.max(p.w, p.d) / 2 + 7 || Math.hypot(p.door.x - x, p.door.z - z) < 11);
+  // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
+  const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows);
+  const { townPlaces, depot: depotAt } = built;
+  // Trees keep out of lift corridors and stand back from buildings...
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
   const trees = new Forest(
@@ -223,59 +207,12 @@ async function boot(): Promise<void> {
     world,
     cfg.trees,
     shadows,
-    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || nearBuilding(x, z),
+    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || built.near(x, z),
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
-  const placeSettings: Record<string, { x: number; y: number; z: number; turn: number }> = depotAt ? { depot: { ...depotAt, y: ground.heightAt(depotAt.x, depotAt.z) } } : {};
-  const buildings = new Buildings(world.places, shadows, look.roof, placeSettings);
-  // Every other building is one of the town's plain houses.
-  const plain = world.buildings.filter((_, i) => !styled.has(i));
-  const town = new Town(plain, shadows, look.roof);
-  const train = buildTrain(trainCars(world), (x, z) => ground.heightAt(x, z), look.roof);
-  if (placeSettings.depot) {
-    // The station's name board, under the eaves on the platform side.
-    const board = fromLocal(placeSettings.depot, 0, 4.44);
-    train.signs.push({ text: 'NORTH CREEK', ...board, y: placeSettings.depot.y - 0.8 + 5.6, turn: placeSettings.depot.turn, height: 0.95, maxWidth: 6.8, width: 6.8, board: '#f5f2ea', ink: '#22304a' });
-  }
-  // Lamps down Main Street, a bench by the doors, and a welcome at each end of town.
-  const street = buildStreetFurniture(streetLamps(world), benches(townPlaces), welcomeSigns(world), (x, z) => ground.heightAt(x, z));
-  const townNamed = new TownPlaces(townPlaces, shadows, look.roof, season, {
-    walls: [...train.walls, ...street.walls, ...buildYards(world.places, season, (x, z) => ground.heightAt(x, z))],
-    panes: [...train.panes, ...street.panes],
-    signs: [...train.signs, ...street.signs],
-  });
   const liftCars = new LiftCars(liftPaths, shadows);
-  scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, buildings.group, town.group, townNamed.group);
-  // While there is snow to make, the guns stand along the wide trails.
-  if (season === 'winter' || season === 'spring') {
-    scene.add(buildSnowGuns(snowGuns(world.trails, (x, z) => world.onTrail(x, z)), (x, z) => ground.heightAt(x, z), shadows));
-  }
-  // Smoke from the chimneys that are lit, and steam from the engine.
-  const smoke = new Smoke([...townNamed.flues, ...train.flues]);
-  scene.add(smoke.mesh);
-  // Signs: the town's shopfronts, a board at the top of every trail and a name at the foot of every lift.
-  // All of them are painted onto one sheet, a moment after the rest, once the lettering has loaded.
-  const signPosts = buildSignPosts(
-    trailSignPosts(world.trails, world.lifts, (x, z) => ground.heightAt(x, z), (x, z) => world.onTrail(x, z)),
-    (x, z) => ground.heightAt(x, z),
-    shadows,
-  );
-  scene.add(signPosts.mesh);
-  void buildSigns([...townNamed.signs, ...signPosts.signs]).then((mesh) => {
-    if (mesh) scene.add(mesh);
-  });
-  // Buildings are solid: the lodges and huts by their models' footprints, the town by its plots.
-  const walls = new Walls([
-    ...world.places.flatMap((p): WallBox[] => {
-      const size = PLACE_FOOTPRINT[p.id];
-      const set = placeSettings[p.id];
-      return size ? [{ x: set?.x ?? p.x, z: set?.z ?? p.z, w: size[0], d: size[1], turn: set?.turn ?? 0, top: (set?.y ?? p.y) + (PLACE_HEIGHT[p.id] ?? 8) }] : [];
-    }),
-    // The train is as solid as a house.
-    ...(depotAt?.rails ? [{ ...fromLocal(depotAt, 0, TRACK_OUT), w: TRAIN_LENGTH + 0.6, d: 3.1, turn: depotAt.turn, top: ground.heightAt(depotAt.x, depotAt.z) + 5 } satisfies WallBox] : []),
-    ...plain.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + houseHeight(b) })),
-    ...townPlaces.map((p): WallBox => ({ x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn, top: p.y + townPlaceHeight(p.style, p.w, p.d) })),
-  ]);
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, built.group);
+  const walls = new Walls(built.walls);
   /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
   const bumpAt = (x: number, z: number, radius: number) => {
     const trunk = trees.trunkAt(x, z, radius);
@@ -545,11 +482,17 @@ async function boot(): Promise<void> {
       talk.lines.push(`Where to? It is ${SEASON_NAME[season].toLowerCase()} here.`);
     }
     const lines: (string | Written)[] = [...talk.lines];
+    // The snow report is chalked up from the sky as it is this minute.
+    if (standing.person.id === 'report') {
+      const conditions = { season, overcast: weather.overcast, falling: weather.snowing, watch, day: today };
+      lines.splice(0, lines.length, snowReport(conditions, world.lifts.length, new Set(world.trails.filter((t) => t.name && !t.area).map((t) => t.name)).size));
+    }
     // A letter is read on the spot, in the hand it was written in.
     if (talk.letter) lines.push({ written: talk.letter.text, signed: talk.letter.signed });
     const board = talk.person.kind === 'board';
     talkSheet.open(
-      board ? 'The noticeboard' : talk.person.name,
+      // A board's name is written small ("the noticeboard"); as a title it takes a capital.
+      board ? talk.person.name.charAt(0).toUpperCase() + talk.person.name.slice(1) : talk.person.name,
       talk.person.role,
       board ? lines.map((line) => (typeof line === 'string' ? { written: line } : line)) : lines,
       choices,
@@ -672,10 +615,7 @@ async function boot(): Promise<void> {
     const air = airFor(season, palette.snowfall, sunDeg);
     snowfall.setKind(air.kind);
     snowfall.setAmount(air.amount);
-    buildings.setLamps(palette.lamps);
-    town.setLamps(palette.lamps);
-    townNamed.setLamps(palette.lamps);
-    smoke.setDaylight(1 - palette.lamps);
+    built.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -791,7 +731,7 @@ async function boot(): Promise<void> {
     // The lifts run on their own clock, which the chairs and any rider share.
     liftClock += dt;
     liftCars.update(liftClock);
-    smoke.update(liftClock, player.position.x, player.position.z);
+    built.update(liftClock, player.position.x, player.position.z);
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, firmAt, bumpAt, liftClock);
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {

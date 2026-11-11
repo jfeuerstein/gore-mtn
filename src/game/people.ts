@@ -432,6 +432,17 @@ export const PEOPLE: readonly Person[] = [
     ],
   },
   {
+    // What it says is chalked up fresh from the real sky each time it is read (`snowReport`).
+    id: 'report',
+    name: 'the snow report',
+    kind: 'board',
+    role: 'Chalked up by the Base Lodge door',
+    at: { place: 'base-lodge', aside: -11 },
+    look: { jacket: 0x8a6a3c, trousers: 0x8a6a3c, hat: 0x8a6a3c, style: 'beanie' },
+    hello: 'SNOW REPORT. Conditions: yes. Details to follow, when somebody finds the chalk.',
+    chat: ['SNOW REPORT. Conditions: yes. Lifts: turning. Trails: open. Chalk: still missing.', 'SNOW REPORT. See yesterday. It was a good one.'],
+  },
+  {
     id: 'biscuit',
     name: 'Biscuit',
     kind: 'dog',

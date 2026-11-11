@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Take a screenshot of the built game so changes can be checked by eye without a phone.
 //
-//   npm run build && node tools/shot.mjs <out.png> ["at=summit&trees=20000"] [width] [height] [scale] [script]
+//   npm run build && node tools/shot.mjs <out.png> ["at=summit&trees=20000"] [width] [height] [scale] [script] [save]
 //
 // The optional script runs in the page once the game is ready, to set a scene the address cannot:
 // "document.getElementById('book-button').click()" opens the book, for example. It may be async.
+// The optional save is a book to start with, as JSON (what the game keeps in localStorage), for
+// looking at pages of the Book with things in them.
 //
 // Defaults to an upright iPhone 17 Pro screen (402 x 874 points). Use scale 2 for an image a
 // person will look at.
@@ -15,7 +17,7 @@ import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
 
-const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1', script = ''] = process.argv.slice(2);
+const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1', script = '', save = ''] = process.argv.slice(2);
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const address = server.httpServer.address();
@@ -40,6 +42,8 @@ try {
     if (m.type() === 'error' || m.type() === 'warning') console.error(`[page ${m.type()}] ${m.text()}`);
   });
   page.on('pageerror', (e) => console.error(`[page error] ${e.message}`));
+  // A book to open the game with: the save as JSON, put where the game keeps it before it starts.
+  if (save) await page.addInitScript((text) => localStorage.setItem('gore.book', text), save);
   await page.goto(url);
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const error = await page.evaluate(() => window.__gore.error);

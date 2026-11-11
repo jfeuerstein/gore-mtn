@@ -143,7 +143,8 @@ try {
   before = after;
   await touch('touchStart', [pushed, top]);
   await touch('touchMove', [pushed, { ...top, x: top.x - 120, y: top.y + 40 }]);
-  await page.waitForTimeout(300);
+  // Wait on the camera having turned, not on the clock: a busy machine can be slow to draw a frame.
+  await page.waitForFunction((from) => window.__gore.state().yaw - from > 0.4, before.yaw, { timeout: 10000 }).catch(() => {});
   if (shot) await page.screenshot({ path: shot });
   after = await state();
   check('second finger turns the camera', after.yaw - before.yaw > 0.4, `yaw ${(after.yaw - before.yaw).toFixed(2)}`);

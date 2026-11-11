@@ -136,6 +136,9 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
   this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
   glow after dark and in falling snow.
+- `src/world/built.ts` puts together everything people have built apart from the lifts (lodges,
+  the town, the train, lamps, signs, snow guns, smoke) and gives the game one group to add, one
+  list of walls, `setLamps` for the hour and `update` for what moves. Add new structures there.
 - The places with names have buildings of their own. `src/world/townPlaces.ts` (pure, tested)
   lists them, ties each to a real footprint or named point on the map, turns it to face its road
   and gives it a door; `src/world/townKit.ts` builds each from a kit by style (inn, store, post
