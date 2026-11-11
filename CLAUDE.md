@@ -268,6 +268,10 @@ Everything else is built in code from simple shapes.
   stands beside its platform (`src/world/railway.ts`, pure, tested; `train.ts` for the model).
   The train is joined into the town's meshes and is as solid as a house.
 - The skier (`src/player/skier.ts`) is rigid parts jointed at hips, knees, shoulders and elbows.
+  The parts with flesh to them (limbs, the coat, boots, the head, mittens) are faceted solids,
+  not boxes: `stack()` piles rings one on another, each turned half a step, so the sides are
+  triangles, as the animals' are; `Skier.join` gives every face one normal. Small things
+  (goggles, hair, an apron, hat brims) are still boxes.
   `src/player/pose.ts` (pure, tested) gives the joint angles for walking, a ski stance, a tuck, a
   hockey stop and sitting on a chair; the player eases between them. Add a new action as a pose
   there, not as keyframes.

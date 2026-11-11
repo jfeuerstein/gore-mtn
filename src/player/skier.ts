@@ -54,6 +54,67 @@ interface Joined {
  * Colours are flat and the jacket is the most saturated thing on the mountain, so the player can
  * always find themselves.
  */
+/** One ring of a stacked shape: how high it is, how wide and deep, and how far forward or back its middle is. */
+interface Ring {
+  y: number;
+  w: number;
+  d: number;
+  z?: number;
+}
+
+/**
+ * A faceted solid made of rings stacked one on another, each turned half a step from the one
+ * below, so that its sides are triangles: the way the animals are faceted, where a box or a
+ * cylinder would read as a toy brick. Closed top and bottom. This is what limbs, the coat and
+ * anything else on the figure with some flesh to it are made of.
+ */
+function stack(rings: readonly Ring[], sides: number): THREE.BufferGeometry {
+  const at = (ring: Ring, k: number, i: number): number[] => {
+    const a = ((i + (k % 2) * 0.5) / sides) * Math.PI * 2;
+    return [(Math.sin(a) * ring.w) / 2, ring.y, (Math.cos(a) * ring.d) / 2 + (ring.z ?? 0)];
+  };
+  const pos: number[] = [];
+  const tri = (a: number[], b: number[], c: number[]): void => {
+    pos.push(...a, ...b, ...c);
+  };
+  for (let k = 0; k + 1 < rings.length; k++) {
+    const lo = rings[k] as Ring;
+    const hi = rings[k + 1] as Ring;
+    // Which way round the half step goes changes from one band to the next.
+    const lean = k % 2 === 0 ? 1 : 0;
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      if (lean) {
+        tri(at(lo, k, i), at(lo, k, j), at(hi, k + 1, i));
+        tri(at(lo, k, j), at(hi, k + 1, j), at(hi, k + 1, i));
+      } else {
+        tri(at(lo, k, i), at(lo, k, j), at(hi, k + 1, j));
+        tri(at(lo, k, i), at(hi, k + 1, j), at(hi, k + 1, i));
+      }
+    }
+  }
+  const first = rings[0] as Ring;
+  const last = rings[rings.length - 1] as Ring;
+  const top = rings.length - 1;
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    tri([0, first.y, first.z ?? 0], at(first, 0, j), at(first, 0, i));
+    tri([0, last.y, last.z ?? 0], at(last, top, i), at(last, top, j));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** A sphere cut into flat faces, for a head or a mitten. */
+function facets(radius: number, detail: number, sx = 1, sy = 1, sz = 1): THREE.BufferGeometry {
+  const geo = new THREE.IcosahedronGeometry(radius, detail);
+  geo.scale(sx, sy, sz);
+  geo.computeVertexNormals();
+  return geo;
+}
+
 /** How far the dark rim round a printed figure stands out, in metres: the figure is about 1.4 tall. */
 const FIGURE_RIM = 0.02;
 
@@ -102,18 +163,43 @@ export class Skier {
       mesh.position.set(x, y, z);
       return mesh;
     };
+    /** A limb hanging down from its joint: stout at the top, slimmer at the bottom, with a little swell between. */
+    const limb = (topW: number, topD: number, botW: number, botD: number, length: number, m: THREE.Material): THREE.Mesh =>
+      new THREE.Mesh(
+        stack(
+          [
+            { y: -length, w: botW, d: botD },
+            { y: -length * 0.55, w: (topW + botW) / 2 + 0.012, d: (topD + botD) / 2 + 0.012 },
+            { y: 0, w: topW, d: topD },
+          ],
+          6,
+        ),
+        m,
+      );
 
     // Legs: hip -> thigh -> knee -> shin -> foot (boot and ski).
     for (const side of [-1, 1]) {
       const hip = new THREE.Group();
       hip.position.set(side * 0.12, 0, 0);
-      hip.add(box(0.17, BODY.thigh, 0.19, trousers, 0, -BODY.thigh / 2, 0));
+      hip.add(limb(0.2, 0.22, 0.16, 0.18, BODY.thigh, trousers));
       const knee = new THREE.Group();
       knee.position.y = -BODY.thigh;
-      knee.add(box(0.15, BODY.shin, 0.17, trousers, 0, -BODY.shin / 2, 0));
+      knee.add(limb(0.165, 0.185, 0.13, 0.15, BODY.shin, trousers));
       const foot = new THREE.Group();
       foot.position.y = -BODY.shin;
-      foot.add(box(0.19, BODY.boot, 0.34, dark, 0, -BODY.boot / 2, -0.05));
+      // A boot: high at the heel and the ankle, running down to the toe.
+      const boot = new THREE.Mesh(
+        stack(
+          [
+            { y: -BODY.boot, w: 0.2, d: 0.36, z: -0.05 },
+            { y: -BODY.boot * 0.45, w: 0.2, d: 0.33, z: -0.04 },
+            { y: 0, w: 0.17, d: 0.2, z: 0.02 },
+          ],
+          6,
+        ),
+        dark,
+      );
+      foot.add(boot);
       const ski = new THREE.Group();
       ski.add(box(0.12, 0.035, 1.7, skiMat, 0, -BODY.boot - 0.018, -0.1));
       const tip = box(0.12, 0.035, 0.24, skiMat, 0, -BODY.boot + 0.03, -1.04);
@@ -131,14 +217,35 @@ export class Skier {
     }
 
     // Body: jacket, pack, head, and the arms hung from the shoulders.
-    const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.27, 0.6, 8), jacket);
-    coat.position.y = 0.3;
+    // The coat: full at the hem, drawn in a little at the waist, broad at the chest and closing to the collar.
+    const coat = new THREE.Mesh(
+      stack(
+        [
+          { y: 0, w: 0.54, d: 0.5 },
+          { y: 0.2, w: 0.47, d: 0.43 },
+          { y: 0.44, w: 0.52, d: 0.42 },
+          { y: 0.6, w: 0.34, d: 0.32 },
+        ],
+        8,
+      ),
+      jacket,
+    );
     this.torso.add(coat, box(0.34, 0.4, 0.16, leather, 0, 0.36, 0.26));
     const head = this.head;
     head.position.y = 0.62;
-    const face = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), skin);
+    const face = new THREE.Mesh(facets(0.19, 1, 1, 1.06, 1), skin);
     face.position.y = 0.17;
-    const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.1, 8), cream);
+    const scarf = new THREE.Mesh(
+      stack(
+        [
+          { y: -0.05, w: 0.42, d: 0.4 },
+          { y: 0.02, w: 0.38, d: 0.36 },
+          { y: 0.06, w: 0.33, d: 0.32 },
+        ],
+        7,
+      ),
+      cream,
+    );
     scarf.position.y = 0.01;
     const goggles = box(0.3, 0.08, 0.08, dark, 0, 0.19, -0.16);
     head.add(face, scarf);
@@ -186,10 +293,12 @@ export class Skier {
     for (const side of [-1, 1]) {
       const shoulder = new THREE.Group();
       shoulder.position.set(side * 0.27, 0.52, 0);
-      shoulder.add(box(0.13, 0.3, 0.14, jacket, 0, -0.15, 0));
+      shoulder.add(limb(0.16, 0.17, 0.125, 0.135, 0.3, jacket));
       const elbow = new THREE.Group();
       elbow.position.y = -0.3;
-      elbow.add(box(0.12, 0.26, 0.13, jacket, 0, -0.13, 0), box(0.14, 0.13, 0.15, dark, 0, -0.32, 0));
+      const mitten = new THREE.Mesh(facets(0.085, 0, 0.95, 1.05, 1.05), dark);
+      mitten.position.y = -0.32;
+      elbow.add(limb(0.135, 0.145, 0.11, 0.12, 0.26, jacket), mitten);
       // The pole hangs from the mitten; Skier.pose() swings it to point where the pose says.
       const pole = new THREE.Group();
       pole.position.y = -0.32;
@@ -274,9 +383,33 @@ export class Skier {
       const p = geo.getAttribute('position');
       const n = geo.getAttribute('normal');
       paints.push({ material: mesh.material as THREE.MeshLambertMaterial, from: positions.length / 3, count: p.count });
-      for (let i = 0; i < p.count; i++) {
-        positions.push(p.getX(i), p.getY(i), p.getZ(i));
-        normals.push(n.getX(i), n.getY(i), n.getZ(i));
+      // Every face keeps one way of facing, so that it is lit as one flat tone: the figure is
+      // faceted, as the animals are, whichever way it is lit.
+      for (let t = 0; t + 2 < p.count; t += 3) {
+        const ux = p.getX(t + 1) - p.getX(t);
+        const uy = p.getY(t + 1) - p.getY(t);
+        const uz = p.getZ(t + 1) - p.getZ(t);
+        const vx = p.getX(t + 2) - p.getX(t);
+        const vy = p.getY(t + 2) - p.getY(t);
+        const vz = p.getZ(t + 2) - p.getZ(t);
+        let nx = uy * vz - uz * vy;
+        let ny = uz * vx - ux * vz;
+        let nz = ux * vy - uy * vx;
+        const len = Math.hypot(nx, ny, nz);
+        // A sliver with no face to speak of keeps the normal it came with.
+        if (len < 1e-12) {
+          nx = n.getX(t);
+          ny = n.getY(t);
+          nz = n.getZ(t);
+        } else {
+          nx /= len;
+          ny /= len;
+          nz /= len;
+        }
+        for (let k = 0; k < 3; k++) {
+          positions.push(p.getX(t + k), p.getY(t + k), p.getZ(t + k));
+          normals.push(nx, ny, nz);
+        }
       }
       // Printed, whatever is stout enough to make part of the figure's outline has a dark rim round it.
       geo.computeBoundingBox();
@@ -366,7 +499,7 @@ export class Skier {
       mesh.position.set(x, y, z);
       return mesh;
     };
-    const dome = (): THREE.Mesh => part(new THREE.SphereGeometry(0.205, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), hat, 0, 0.2, 0);
+    const dome = (): THREE.Mesh => part(new THREE.SphereGeometry(0.205, 7, 3, 0, Math.PI * 2, 0, Math.PI / 2), hat, 0, 0.2, 0);
     if (style === 'trapper') {
       // Fur-lined, with flaps over the ears.
       g.add(dome(), part(new THREE.BoxGeometry(0.34, 0.08, 0.08), cream, 0, 0.24, -0.17));
