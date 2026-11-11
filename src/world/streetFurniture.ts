@@ -1,7 +1,7 @@
 import type * as THREE from 'three/webgpu';
 import { blocks, placed, type Block } from './shapes';
 import type { SignSpec } from './signs';
-import type { Fixture } from './streets';
+import type { Bridge, Fixture } from './streets';
 
 /**
  * The lamps, benches and welcome signs of North Creek as geometry, to be joined into the
@@ -35,11 +35,43 @@ function bench(): Block[] {
   ];
 }
 
+/**
+ * A bridge, its length along its own x: a deck, a railing down each side, and for a long span a
+ * steel truss over the road, painted the green of Adirondack highway bridges.
+ */
+function bridge(length: number): Block[] {
+  const GREEN = 0x3f6b5a;
+  const half = 4.6;
+  const list: Block[] = [{ size: [length + 6, 0.5, half * 2 + 0.6], at: [0, 0.05, 0], colour: 0x5a5f68 }];
+  const posts = Math.max(2, Math.round(length / 3));
+  for (const side of [-1, 1]) {
+    list.push({ size: [length + 4, 0.14, 0.14], at: [0, 1.25, side * half], colour: 0xc9ced6 }, { size: [length + 4, 0.1, 0.1], at: [0, 0.8, side * half], colour: 0xc9ced6 });
+    for (let i = 0; i <= posts; i++) list.push({ size: [0.14, 1.1, 0.14], at: [-length / 2 - 2 + (i * (length + 4)) / posts, 0.75, side * half], colour: 0xc9ced6 });
+  }
+  if (length < 30) return list;
+  // The truss: a top chord each side on uprights, braced crosswise overhead, with sloped ends.
+  const bays = Math.max(4, Math.round(length / 7));
+  const bay = length / bays;
+  const top = 6.2;
+  for (const side of [-1, 1]) {
+    list.push({ size: [length - bay * 2, 0.4, 0.4], at: [0, top, side * (half + 0.3)], colour: GREEN });
+    for (let i = 1; i < bays; i++) list.push({ size: [0.3, top, 0.3], at: [-length / 2 + i * bay, top / 2, side * (half + 0.3)], colour: GREEN });
+    for (const end of [-1, 1]) {
+      // The end post leans in from the abutment to the first upright.
+      const run = Math.hypot(bay, top);
+      list.push({ size: [0.36, 0.36, run], at: [end * (length / 2 - bay / 2), top / 2, side * (half + 0.3)], colour: GREEN, turn: end * (Math.PI / 2), tip: Math.atan2(top, bay) });
+    }
+  }
+  for (let i = 1; i < bays; i++) list.push({ size: [0.3, 0.3, half * 2 + 0.6], at: [-length / 2 + i * bay, top, 0], colour: GREEN });
+  return list;
+}
+
 export function buildStreetFurniture(
   lamps: readonly Fixture[],
   seats: readonly Fixture[],
   welcomes: readonly Fixture[],
   heightAt: (x: number, z: number) => number,
+  spans: readonly Bridge[] = [],
 ): { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[] } {
   const walls: THREE.BufferGeometry[] = [];
   const panes: THREE.BufferGeometry[] = [];
@@ -49,6 +81,13 @@ export function buildStreetFurniture(
     const y = heightAt(at.x, at.z);
     walls.push(placed(blocks(model.list), at.x, y, at.z, at.turn));
     panes.push(placed(blocks(model.panes), at.x, y, at.z, at.turn));
+  }
+  // A bridge is level, at the height of the road where it meets the bank.
+  for (const span of spans) {
+    const ex = (Math.cos(span.turn) * (span.length / 2 + 2));
+    const ez = (-Math.sin(span.turn) * (span.length / 2 + 2));
+    const y = Math.max(heightAt(span.x + ex, span.z + ez), heightAt(span.x - ex, span.z - ez), heightAt(span.x, span.z));
+    walls.push(placed(blocks(bridge(span.length)), span.x, y, span.z, span.turn));
   }
   for (const at of seats) walls.push(placed(blocks(bench()), at.x, heightAt(at.x, at.z), at.z, at.turn));
   for (const at of welcomes) {

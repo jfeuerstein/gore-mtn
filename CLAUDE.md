@@ -159,6 +159,8 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   flowers in spring and summer, pumpkins in fall. Lamps down Main Street, benches by the doors
   and a welcome sign at each end of town (`src/world/streets.ts`, pure, tested;
   `streetFurniture.ts`) are joined into the same two meshes.
+  Where a road has water on both sides there is a bridge (`bridges` there): railings for a
+  culvert, a green steel truss for the highway over the Hudson.
 - Smoke rises from the chimneys that are lit (every season but summer) and steam from the
   engine (`src/world/smoke.ts`): one instanced mesh, moved every frame, drawn only near the
   player. A kit reports its chimney tops as `flues`.

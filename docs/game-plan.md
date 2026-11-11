@@ -571,6 +571,8 @@ then models, a real town, sillier characters and a cohesive interface).
   whatever colour is under them: clapboard on the houses, logs on the lodges, brick on the Town
   Hall. Snow on a roof stays smooth. A setting turns it off, for comparing on the phone.
 - **News.** A returning player is told once what has changed since they were last here.
+- **A bridge.** The highway now crosses the Hudson east of town on a green steel truss, found
+  from the map (wherever a road has water on both sides), with railings at the culverts.
 - **Benches.** There is a new thing to do, which is nothing: sit down. A bench by each door in
   town and at each lookout, the fire tower and the Saddle. Each is kept in the Passport the
   first time, and ten earn a patch. Three conditions stamps are for sitting on a bench with a

@@ -95,6 +95,61 @@ export function welcomeSigns(world: World): Fixture[] {
   });
 }
 
+/** A stretch of road with water on both sides: a bridge, or for a short one a culvert with railings. */
+export interface Bridge {
+  /** The middle of the span, and the turn that lays its own x along the road. */
+  x: number;
+  z: number;
+  turn: number;
+  /** Length of the span in metres. */
+  length: number;
+}
+
+/** How far to either side of the road is looked at for water, and the shortest span worth railings. */
+const BANK = 7;
+const SHORTEST_SPAN = 6;
+
+/** Where the roads cross water: found from the map, wherever a road has water on both sides of it. */
+export function bridges(world: World): Bridge[] {
+  const out: Bridge[] = [];
+  for (const road of world.roads) {
+    // Tracks through the woods ford their brooks.
+    if (road.kind === 'track') continue;
+    const p = road.pts;
+    let from: { x: number; z: number } | null = null;
+    let last = { x: 0, z: 0 };
+    const close = (): void => {
+      if (!from) return;
+      const length = Math.hypot(last.x - from.x, last.z - from.z) + 3;
+      const mid = { x: (from.x + last.x) / 2, z: (from.z + last.z) / 2 };
+      // The map draws a road both ways, or in pieces that meet: one bridge for each crossing.
+      if (length >= SHORTEST_SPAN && !out.some((b) => Math.hypot(b.x - mid.x, b.z - mid.z) < Math.max(20, b.length))) {
+        out.push({ ...mid, turn: Math.atan2(-(last.z - from.z), last.x - from.x), length });
+      }
+      from = null;
+    };
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const ax = p[i] as number;
+      const az = p[i + 1] as number;
+      const len = Math.hypot((p[i + 2] as number) - ax, (p[i + 3] as number) - az);
+      if (len === 0) continue;
+      const dx = ((p[i + 2] as number) - ax) / len;
+      const dz = ((p[i + 3] as number) - az) / len;
+      for (let d = 0; d < len; d += 3) {
+        const x = ax + dx * d;
+        const z = az + dz * d;
+        const wet = world.openAt(x - dz * BANK, z + dx * BANK) === OPEN_WATER && world.openAt(x + dz * BANK, z - dx * BANK) === OPEN_WATER;
+        if (wet) {
+          from ??= { x, z };
+          last = { x, z };
+        } else close();
+      }
+    }
+    close();
+  }
+  return out;
+}
+
 /** A bench that can be sat on: where it is, which way it faces, and what the Book calls it. */
 export interface Bench extends Fixture {
   id: string;

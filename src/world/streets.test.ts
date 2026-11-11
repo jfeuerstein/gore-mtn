@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nearestOnLines } from './footprints';
-import { benches, streetLamps, viewBenches, welcomeSigns } from './streets';
+import { benches, bridges, streetLamps, viewBenches, welcomeSigns } from './streets';
+import { OPEN_WATER } from './world';
 import { loadTestWorld } from './testWorld';
 import { resolveTownPlaces } from './townPlaces';
 import { insideBox } from './walls';
@@ -67,5 +68,21 @@ describe('street furniture', () => {
     expect(new Set(seats.map((b) => b.id)).size).toBe(seats.length);
     expect(seats.some((b) => b.name === 'Outside Post Office')).toBe(true);
     for (const seat of seats) expect(seat.name).toMatch(/^(Outside|By) /);
+  });
+
+  it('finds where roads cross water, the highway bridge over the Hudson among them', () => {
+    const spans = bridges(world);
+    expect(spans.length).toBeGreaterThanOrEqual(1);
+    expect(spans.length).toBeLessThan(12);
+    const longest = [...spans].sort((a, b) => b.length - a.length)[0];
+    expect(longest?.length).toBeGreaterThan(40);
+    for (const b of spans) {
+      // Water on both sides of its middle, square to the road.
+      const sx = Math.sin(b.turn);
+      const sz = Math.cos(b.turn);
+      expect(world.openAt(b.x + sx * 7, b.z + sz * 7), `${b.x.toFixed(0)},${b.z.toFixed(0)}`).toBe(OPEN_WATER);
+      expect(world.openAt(b.x - sx * 7, b.z - sz * 7), `${b.x.toFixed(0)},${b.z.toFixed(0)}`).toBe(OPEN_WATER);
+    }
+    for (const a of spans) for (const b of spans) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(20);
   });
 });

@@ -10,7 +10,7 @@ import { buildSigns } from './signs';
 import { Smoke } from './smoke';
 import { snowGuns } from './snowGuns';
 import { buildStreetFurniture } from './streetFurniture';
-import { benches, streetLamps, viewBenches, welcomeSigns, type Bench } from './streets';
+import { benches, bridges, streetLamps, viewBenches, welcomeSigns, type Bench } from './streets';
 import { houseHeight, Town } from './town';
 import { TownPlaces, townPlaceHeight } from './townKit';
 import { resolveTownPlaces, type TownPlace } from './townPlaces';
@@ -73,7 +73,7 @@ export class Built {
     // Lamps down Main Street, a bench by the doors, a welcome at each end of town, and whatever
     // stands outside the lodges: all joined into the named places' two meshes.
     this.benches = [...benches(townPlaces), ...viewBenches(world)];
-    const street = buildStreetFurniture(streetLamps(world), this.benches, welcomeSigns(world), heightAt);
+    const street = buildStreetFurniture(streetLamps(world), this.benches, welcomeSigns(world), heightAt, bridges(world));
     this.named = new TownPlaces(townPlaces, shadows, roof, season, {
       walls: [...train.walls, ...street.walls, ...buildYards(world.places, season, heightAt)],
       panes: [...train.panes, ...street.panes],
