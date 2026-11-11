@@ -769,6 +769,29 @@ try {
   await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   await np.waitForTimeout(800);
   check('the welcome is given once only', !(await np.locator('#talk-sheet').isVisible()) && (await np.evaluate(() => window.__gore.state().hints)).includes('welcome'));
+  // The day's flyer: put up the first time the game is opened on a day (after the welcome has had its turn), and once.
+  check("the day's flyer is put up on the next opening", await np.locator('#flyer').isVisible());
+  const paper = await np.locator('#flyer .paper').boundingBox();
+  check('the flyer fits the screen, over its lower part', paper !== null && paper.x >= 0 && paper.x + paper.width <= width && paper.y > height * 0.2 && paper.y + paper.height <= height + 4, paper ? `${Math.round(paper.y)} to ${Math.round(paper.y + paper.height)} of ${height}` : 'none');
+  const leadRows = await np.locator('#flyer .lead').count();
+  check('it names three leads, each with a flag to plant', leadRows === 3 && (await np.locator('#flyer .lead .flag').count()) === 3, (await np.locator('#flyer .lead b').allTextContents()).join(' | '));
+  const flyerButtons = await np.locator('#flyer button').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ h: r.height, y: r.top, bottom: r.bottom })));
+  const goBox = await np.locator('#flyer .go').boundingBox();
+  check('its buttons are thumb-sized and on the screen, and the way out is under the thumb', flyerButtons.every((b) => b.h >= 44 && b.y > 0 && b.bottom <= height) && goBox !== null && goBox.y > height * 0.66, goBox ? `Let's go at ${Math.round(goBox.y)} of ${height}` : 'none');
+  await np.locator('#flyer .lead .flag').first().tap();
+  const flagged = await np.evaluate(() => window.__gore.state().flag);
+  check('planting a flag from the flyer sets it', flagged !== null && /^Top of /.test(flagged.label) && (await np.locator('#flyer .lead .flag').first().textContent()) === 'Flagged', flagged ? flagged.label : 'none');
+  await np.locator('#flyer .go').tap();
+  check("and Let's go puts it away, with the way to the flag showing", !(await np.locator('#flyer').isVisible()) && (await np.locator('#flag-pointer').isVisible()));
+  await np.tap('#map-button');
+  await np.locator('#map-sheet .today').tap();
+  check('the map has a way back to it, and it is the same flyer', (await np.locator('#flyer').isVisible()) && !(await np.locator('#map-sheet').isVisible()) && (await np.locator('#flyer .lead .flag').first().textContent()) === 'Flagged');
+  await np.locator('#flyer .go').tap();
+  await np.waitForTimeout(1500);
+  await np.reload();
+  await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  await np.waitForTimeout(800);
+  check('the flyer is put up once a day only', !(await np.locator('#flyer').isVisible()) && (await np.evaluate(() => window.__gore.state().flag)) !== null);
   await fresh1.close();
 
   // Someone coming back with a book from before the town opened is told the news, once.

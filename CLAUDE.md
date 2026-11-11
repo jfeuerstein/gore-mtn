@@ -55,7 +55,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -475,6 +475,28 @@ yet the game's own look.
 - The owner tried a rounded face and chose the poster capitals: Bebas Neue stays. The style
   sheet reads `--display`, `--display-weight` and `--display-case`, should that ever be revisited.
 
+## The day's flyer
+
+- The owner asked for a daily loop in the manner of an exploration-heavy Animal Crossing:
+  see what is different today, pick somewhere to go, make an outing of it. The flyer is the
+  first step. `src/game/today.ts` (pure, tested) says what is on it; `src/ui/flyer.ts` shows
+  it: a sheet of paper pinned up over the lower part of the screen, the first time the game
+  is opened on a calendar day (`Game.flyerDue`, after the welcome and the news have had their
+  turn). The map's `Today` button brings it back. `flyer=1` puts it up for the tools.
+- It names three leads (`pickLeads`), each in a different part of the mountain: the trail of
+  the day (the one the Saddle Lodge board has picked), a place with no postcard yet, and
+  either someone with something for the player or the inn's rumour, day about. The rumour's
+  lead only says to ask Marge: where the stone lies is hers to tell. The three are chosen once
+  and kept in the save (`leads`), so the flyer reads the same all day; one that has been done
+  since is ticked and struck through.
+- Each lead has a `Flag` button that plants the player's flag on it. A lead is never a chore:
+  nothing is lost by ignoring it, there is no reward for doing all three, and tomorrow there
+  are three more. Add a kind of lead by adding a builder beside `trailLead` and a place for it
+  in `pickLeads`; its wording follows the rules for how people talk.
+- Not built yet, and the owner's to decide: somewhere of the player's own that shows what
+  they have found (a cabin), things that answer overnight (a feeder, a planting), and town
+  projects that add a place to the map.
+
 ## Trail map
 
 - The Map button opens `src/ui/trailMap.ts`, a bottom sheet drawn on a 2D canvas over the
@@ -498,6 +520,7 @@ yet the game's own look.
   (`flag`), stands in the world as a pennant on a pole, and a pointer under the place name
   gives its name, the distance and an arrow that turns with the camera. Coming to it takes it
   up (`Game.reachedFlag`). It is only a mark to steer by: it earns nothing.
+- The `Today` button in the map's head puts the day's flyer back up.
 - `window.__gore.map()` says where the map is looking, for the tools.
 
 ## Measuring performance

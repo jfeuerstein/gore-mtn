@@ -45,7 +45,7 @@ const NOTES: readonly string[] = [
 ];
 
 /** What the sky is doing, in a report's words. */
-function sky(c: Conditions): string {
+export function sky(c: Conditions): string {
   const snow = c.season === 'winter' || c.season === 'spring';
   if (c.falling > 0.6) return snow ? 'SNOWING. A lot' : 'RAIN, pretty steady';
   if (c.falling > 0.05) return snow ? 'flurries' : 'a passing shower';
@@ -80,7 +80,7 @@ export function snowReport(c: Conditions, lifts: number, trails: number): string
 }
 
 /** A small repeatable number from a day. */
-function dayNumber(day: string): number {
+export function dayNumber(day: string): number {
   let seed = 0;
   for (let i = 0; i < day.length; i++) seed = (seed * 31 + day.charCodeAt(i)) >>> 0;
   return seed;
@@ -105,10 +105,20 @@ const REASONS: readonly string[] = [
 export function trailOfTheDay(trails: readonly { name: string; difficulty: Difficulty; glade: boolean }[], stamped: (name: string) => boolean, day: string, riding = false): string {
   const title = riding ? 'RIDE OF THE DAY' : 'TRAIL OF THE DAY';
   const todo = trails.filter((t) => !stamped(t.name));
-  if (todo.length === 0) return `${title}: whichever you like!\nYou've done every single one. We checked the book twice.`;
-  const seed = dayNumber(day);
-  const pick = todo[seed % todo.length] as (typeof todo)[number];
-  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${REASONS[(seed >>> 3) % REASONS.length]}.\n${todo.length} still to stamp.`;
+  const pick = trailPick(trails, stamped, day);
+  if (!pick) return `${title}: whichever you like!\nYou've done every single one. We checked the book twice.`;
+  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${trailReason(day)}.\n${todo.length} still to stamp.`;
+}
+
+/** The day's trail: one not yet stamped, the same one all day, for the board and for the flyer. Null when every trail is stamped. */
+export function trailPick<T extends { name: string }>(trails: readonly T[], stamped: (name: string) => boolean, day: string): T | null {
+  const todo = trails.filter((t) => !stamped(t.name));
+  return todo.length === 0 ? null : (todo[dayNumber(day) % todo.length] as T);
+}
+
+/** Why today's trail is today's trail. */
+export function trailReason(day: string): string {
+  return REASONS[(dayNumber(day) >>> 3) % REASONS.length] as string;
 }
 
 const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime', dusk: 'last light', night: 'after dark' };

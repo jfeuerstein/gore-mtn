@@ -71,6 +71,10 @@ export interface SaveData {
   rounds: string[];
   /** The flag the player has planted on the map, to find their way to; null when there is none. */
   flag: { x: number; z: number; label: string } | null;
+  /** The last day the flyer was put in front of the player: it is shown once, on the day's first opening. */
+  flyer: string;
+  /** The leads on today's flyer, by id, chosen once so that they are the same all day. */
+  leads: { day: string; ids: string[] };
 }
 
 export function emptySave(): SaveData {
@@ -103,6 +107,8 @@ export function emptySave(): SaveData {
     round: { day: '', who: [] },
     rounds: [],
     flag: null,
+    flyer: '',
+    leads: { day: '', ids: [] },
   };
 }
 
@@ -195,6 +201,8 @@ export function parseSave(text: string | null | undefined): SaveData {
   if (isRecord(raw.round) && isDay(raw.round.day)) save.round = { day: raw.round.day, who: strings(raw.round.who) };
   save.rounds = strings(raw.rounds).filter(isDay);
   save.benches = days(raw.benches);
+  if (isDay(raw.flyer)) save.flyer = raw.flyer;
+  if (isRecord(raw.leads) && isDay(raw.leads.day)) save.leads = { day: raw.leads.day, ids: strings(raw.leads.ids).slice(0, 6) };
   if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {
     save.flag = { x: raw.flag.x, z: raw.flag.z, label: typeof raw.flag.label === 'string' ? raw.flag.label.slice(0, 80) : 'Your flag' };
   }

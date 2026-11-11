@@ -16,7 +16,10 @@ import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
-import { snowReport, trailOfTheDay, wildlifeLog } from './game/report';
+import { letterWaiting } from './game/letters';
+import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
+import { flyerDate, personLead, pickLeads, placeLead, rumourLead, trailLead, type Lead } from './game/today';
+import { Flyer, type FlyerPage } from './ui/flyer';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
 import { Input } from './input/input';
@@ -481,17 +484,26 @@ async function boot(): Promise<void> {
   );
   // One sheet at a time.
   const talkSheet = new TalkSheet();
+  const flyer = new Flyer();
   trailMap.onOpen = () => {
     book.close();
     talkSheet.close();
+    flyer.close();
   };
   book.onOpen = () => {
     trailMap.close();
     talkSheet.close();
+    flyer.close();
   };
   talkSheet.onOpen = () => {
     trailMap.close();
     book.close();
+    flyer.close();
+  };
+  flyer.onOpen = () => {
+    trailMap.close();
+    book.close();
+    talkSheet.close();
   };
 
   // --- People, lost property and the shuttle --------------------------------------------------
@@ -845,6 +857,46 @@ async function boot(): Promise<void> {
   if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
   /** The watch of the day, which decides what wildlife is about. */
   let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+  // --- Today's flyer ---------------------------------------------------------------------------
+  // Every lead there could be, with whether it is still open: a trail without its stamp, a place
+  // without its postcard, someone with something for the player, and the inn's rumour.
+  const leadsNow = (): { lead: Lead; open: boolean }[] => {
+    const riding = look.ride === 'bike';
+    const trails = game.trails.flatMap((t) => {
+      const line = world.trails.find((w) => w.name === t.name && !w.area);
+      return line ? [{ lead: trailLead(t, line.pts[0] as number, line.pts[1] as number, today, riding), open: !game.save.trails[t.name]?.stamped }] : [];
+    });
+    const places = game.landmarks.map((l) => ({ lead: placeLead(l, today), open: !(l.id in game.save.landmarks) }));
+    const people = standings.filter((st) => (st.person.kind ?? 'person') !== 'board').map((st) => ({ lead: personLead(st.person, st.x, st.z), open: game.hasBusiness(st.person.id, season) }));
+    const marge = standings.find((st) => st.person.id === 'marge');
+    const rumour = marge && game.rumour(today) ? [{ lead: rumourLead(marge.person.name, marge.x, marge.z), open: !game.rumourFound(today) }] : [];
+    return [...trails, ...places, ...people, ...rumour];
+  };
+  const flyerPage = (): FlyerPage => {
+    const all = leadsNow();
+    const ids = game.leadsFor(today, () => {
+      const pick = trailPick(game.trails, (name) => Boolean(game.save.trails[name]?.stamped), today);
+      return pickLeads(all.filter((l) => l.open).map((l) => l.lead), today, pick ? `trail:${pick.name}` : null);
+    });
+    const letter = letterWaiting(game.save, game.save.letters, today);
+    return {
+      date: flyerDate(today),
+      sky: `${SEASON_NAME[season]} · ${sky({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }).toLowerCase()}`,
+      leads: ids.flatMap((id) => {
+        const found = all.find((l) => l.lead.id === id);
+        return found ? [{ ...found.lead, done: !found.open }] : [];
+      }),
+      note: letter ? "P.S. There's a letter for you at the post office." : null,
+      flagged: game.save.flag,
+    };
+  };
+  flyer.onFlag = (lead) => {
+    game.plant({ x: lead.x, z: lead.z, label: lead.flag });
+    showFlag();
+    pointToFlag();
+  };
+  // The map has a way back to the flyer, for the rest of the day.
+  trailMap.onToday = () => flyer.open(flyerPage);
   const heightAt = (x: number, z: number): number => ground.heightAt(x, z);
   let sinceSlow = 0;
   /**
@@ -888,6 +940,7 @@ async function boot(): Promise<void> {
     away,
     // How many others are in the picture just now.
     flag: game.save.flag,
+    flyer: flyer.isOpen,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
     // The benches, and whether the player is sitting on one.
@@ -1224,6 +1277,9 @@ async function boot(): Promise<void> {
           "Also - benches! In town and at the lookouts.\nWalk up to one and sit down. That's all it does.",
         ]);
         welcomed = true;
+      } else if (cfg.flyer || (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.flyerDue(today))) {
+        // The first time the game is opened on a day, the day's flyer is put up.
+        flyer.open(flyerPage);
       }
     }
   });

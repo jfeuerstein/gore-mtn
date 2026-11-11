@@ -138,6 +138,8 @@ export class TrailMap {
   onFlag: ((flag: MapFlag | null) => void) | null = null;
   /** Called when the map opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
+  /** Called by the Today button: the day's flyer, to be looked at again. */
+  onToday: (() => void) | null = null;
 
   /**
    * @param backdrop the pipeline's picture of the whole mountain from afar, north up
@@ -174,7 +176,9 @@ export class TrailMap {
     this.sheet.id = 'map-sheet';
     this.sheet.hidden = true;
     const head = el('div', 'head');
-    head.append(el('h2', '', 'Trail map'), button('Close', 'Close the map', () => this.close()));
+    const today = button('Today', "Look at today's flyer again", () => this.onToday?.());
+    today.className = 'today';
+    head.append(el('h2', '', 'Trail map'), today, button('Close', 'Close the map', () => this.close()));
 
     // The map itself, with its buttons down its right-hand edge, where a thumb is.
     const frame = el('div', 'frame');

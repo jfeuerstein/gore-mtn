@@ -55,6 +55,20 @@ describe('Game', () => {
     expect(s.mineralsTotal).toBe(12);
   });
 
+  it('puts the flyer out once a day, with the same leads on it all day', () => {
+    const store = memory();
+    const game = new Game(gameWorld, store);
+    expect(game.flyerDue(DAY)).toBe(true);
+    expect(game.flyerDue(DAY)).toBe(false);
+    expect(new Game(gameWorld, store).flyerDue(DAY)).toBe(false);
+    expect(game.flyerDue('2099-01-01')).toBe(true);
+    expect(game.leadsFor(DAY, () => ['trail:Sunway', 'rumour'])).toEqual(['trail:Sunway', 'rumour']);
+    // Asked again, the choice is not made again.
+    expect(game.leadsFor(DAY, () => ['trail:Twister'])).toEqual(['trail:Sunway', 'rumour']);
+    expect(new Game(gameWorld, store).leadsFor(DAY, () => [])).toEqual(['trail:Sunway', 'rumour']);
+    expect(game.leadsFor('2099-01-01', () => ['place:quarry'])).toEqual(['place:quarry']);
+  });
+
   it('keeps a flag where it is planted, and takes it up when the player comes to it', () => {
     const store = memory();
     const game = new Game(gameWorld, store);

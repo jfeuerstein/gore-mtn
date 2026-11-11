@@ -643,6 +643,208 @@ body {
   color: var(--paper);
 }
 
+#map-sheet .head {
+  gap: 8px;
+}
+#map-sheet .head h2 {
+  margin-right: auto;
+}
+/* The way back to the day's flyer. */
+#map-sheet .head .today {
+  background: var(--red);
+  color: #fff;
+}
+
+/*
+ * The day's flyer: a sheet of paper pinned up over the lower part of the screen, a little
+ * askew, as a notice is on a lodge's board. What is on it is to be read; what is to be pressed
+ * (a Flag by each lead, and the way out) is down where the thumb is.
+ */
+#flyer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 14px calc(var(--sheet-pad) + 4px);
+  pointer-events: none;
+}
+#flyer .paper {
+  position: relative;
+  pointer-events: auto;
+  box-sizing: border-box;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 22px 16px 14px;
+  background-color: #fbf6e6;
+  background-image: var(--grain);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow:
+    0 3px 0 var(--ink),
+    0 14px 30px rgba(20, 28, 44, 0.38);
+  transform: rotate(-1.1deg);
+  transform-origin: 50% 0;
+}
+/* The pin it hangs from. */
+#flyer .pin {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--ink);
+  box-shadow: 0 2px 0 rgba(34, 48, 74, 0.5);
+}
+#flyer .masthead {
+  text-align: center;
+  padding-bottom: 9px;
+  border-bottom: 3px double var(--ink);
+}
+#flyer h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 34px;
+  font-weight: var(--display-weight);
+  line-height: 0.95;
+  letter-spacing: 0.05em;
+  text-transform: var(--display-case);
+  color: var(--red);
+}
+#flyer .dateline {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  text-transform: var(--display-case);
+  color: var(--ink);
+}
+#flyer .lead {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 0 10px;
+  border-bottom: 2px dotted var(--kraft);
+}
+#flyer .lead > i {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  font-family: var(--body);
+  font-style: normal;
+  font-size: 15px;
+  color: #fff;
+  background: #2b62c9;
+}
+#flyer .lead-place > i {
+  background: #2f6b4f;
+}
+#flyer .lead-person > i,
+#flyer .lead-rumour > i {
+  background: #c98f1f;
+}
+#flyer .lead > div {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+#flyer .lead small {
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.09em;
+  text-transform: var(--display-case);
+  color: var(--ink-soft);
+}
+#flyer .lead b {
+  font-family: var(--display);
+  font-size: 23px;
+  font-weight: var(--display-weight);
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: var(--display-case);
+}
+#flyer .lead span {
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+/* Done since the flyer went up: ticked, and struck through as on a list. */
+#flyer .lead.done > i {
+  background: var(--paper);
+  color: #2f6b4f;
+}
+#flyer .lead.done b {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  color: var(--ink-soft);
+}
+#flyer .lead.done span {
+  font-family: var(--hand);
+  font-size: 19px;
+  line-height: 1;
+  color: #2f6b4f;
+}
+#flyer button {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 12px 13px 9px;
+  min-width: 64px;
+  min-height: 44px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 0 var(--ink);
+}
+#flyer button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+#flyer .flag {
+  flex: none;
+}
+#flyer .flag[aria-pressed='true'] {
+  background: var(--red);
+  color: #fff;
+}
+#flyer .note,
+#flyer .none {
+  margin: 10px 0 0;
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--ink);
+  white-space: pre-line;
+}
+#flyer .none {
+  text-align: center;
+  padding: 14px 0;
+}
+#flyer .go {
+  display: block;
+  width: 100%;
+  margin-top: 13px;
+  font-size: 22px;
+  min-height: 50px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 2px 0 rgba(34, 48, 74, 0.5);
+}
+
 /* The way to the player's flag: under the place name, out of the way of Settings. */
 #flag-pointer {
   position: absolute;

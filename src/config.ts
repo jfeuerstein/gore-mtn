@@ -22,6 +22,8 @@ export interface Config {
   siding: boolean;
   /** How the land is painted: as the pipeline painted it, as a screen print, or as a map with contours. */
   look: WorldLook;
+  /** Put up the day's flyer whether or not it has been seen today, to look at it. */
+  flyer: boolean;
   /** Which models the animals are: the game's own blocks, or ones made outside it in one of the looks being tried. */
   models: 'blocks' | 'facet' | 'park' | 'smooth' | 'toy';
   /** Line every animal that has a made model up in a row in front of the player, to compare looks. */
@@ -73,6 +75,7 @@ export const DEFAULTS: Config = {
   siding: true,
   crowd: true,
   look: 'plain',
+  flyer: false,
   models: 'blocks',
   zoo: false,
   stride: 1,
@@ -133,6 +136,7 @@ export function parseConfig(search: string): Config {
     siding: q.has('siding') ? q.get('siding') === '1' : d.siding,
     crowd: q.has('crowd') ? q.get('crowd') === '1' : d.crowd,
     zoo: q.get('zoo') === '1',
+    flyer: q.get('flyer') === '1',
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
     // The print look brings the printed animals with it, unless others are asked for.
     models: oneOf(q.get('models'), ['blocks', 'facet', 'park', 'smooth', 'toy'] as const) ?? (q.get('look') === 'poster' ? 'park' : d.models),

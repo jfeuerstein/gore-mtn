@@ -714,6 +714,34 @@ export class Game {
     return true;
   }
 
+  /** True once a day, the first time it is asked: the flyer is due. */
+  flyerDue(day: string): boolean {
+    if (this.save.flyer === day) return false;
+    this.save.flyer = day;
+    this.dirty = true;
+    this.persist();
+    return true;
+  }
+
+  /**
+   * The leads on today's flyer, by id. They are chosen the first time they are asked for on a
+   * day and kept, so that the flyer reads the same in the evening as it did in the morning.
+   * @param choose picks from what is open now
+   */
+  leadsFor(day: string, choose: () => string[]): string[] {
+    if (this.save.leads.day !== day) {
+      this.save.leads = { day, ids: choose() };
+      this.dirty = true;
+      this.persist();
+    }
+    return this.save.leads.ids;
+  }
+
+  /** True if the stone the inn is talking about today has been picked up. */
+  rumourFound(day: string): boolean {
+    return this.save.found.day === day && this.save.found.spots.includes(`rumour:${day}`);
+  }
+
   /** Plant the player's flag somewhere, or take it up (null). It is only a mark to steer by: it earns nothing. */
   plant(flag: SaveData['flag']): void {
     this.save.flag = flag;

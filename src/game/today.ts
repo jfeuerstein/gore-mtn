@@ -1,0 +1,103 @@
+import { DIFFICULTY_MARK, type Difficulty } from '../world/trails';
+import { dayNumber, trailReason } from './report';
+
+/**
+ * The flyer: what is worth doing on the mountain today. It is shown once, the first time the
+ * game is opened on a calendar day, and can be looked at again from the map. It names three
+ * leads, each somewhere different, and each can have the player's flag planted on it. No DOM
+ * or three.js here.
+ *
+ * A lead is never a chore: nothing is lost by ignoring it, and tomorrow there are three more.
+ */
+export type LeadKind = 'trail' | 'place' | 'person' | 'rumour';
+
+export interface Lead {
+  /** Which lead this is, kept in the save for the day: "trail:Sunway", "place:fire-tower". */
+  id: string;
+  kind: LeadKind;
+  /** The small line over it: what kind of lead it is. */
+  head: string;
+  /** What or who it is. */
+  title: string;
+  /** A line on why today. */
+  why: string;
+  /** Where the flag goes, and what it is called. */
+  x: number;
+  z: number;
+  flag: string;
+}
+
+/** A trail not yet stamped, flagged at its top. */
+export function trailLead(trail: { name: string; difficulty: Difficulty; glade: boolean }, x: number, z: number, day: string, riding: boolean): Lead {
+  const why = trailReason(day);
+  return {
+    id: `trail:${trail.name}`,
+    kind: 'trail',
+    head: riding ? 'Ride of the day' : 'Trail of the day',
+    title: `${DIFFICULTY_MARK[trail.difficulty]} ${trail.name}${trail.glade ? ' (in the trees)' : ''}`,
+    why: `${why.charAt(0).toUpperCase()}${why.slice(1)}.`,
+    x,
+    z,
+    flag: `Top of ${trail.name}`,
+  };
+}
+
+/** Why a place is worth the trip, one a day, turn about. */
+const PLACE_WHYS: readonly string[] = ["You don't have the postcard yet.", "It's a nice day for it.", "Nobody's been up there in a while.", 'Bring back a postcard.'];
+
+/** Somewhere worth a postcard that has not been visited. */
+export function placeLead(spot: { id: string; name: string; x: number; z: number }, day: string): Lead {
+  return { id: `place:${spot.id}`, kind: 'place', head: 'Worth the trip', title: spot.name, why: PLACE_WHYS[(dayNumber(day) >>> 5) % PLACE_WHYS.length] as string, x: spot.x, z: spot.z, flag: spot.name };
+}
+
+/** Someone with something for the player. */
+export function personLead(person: { id: string; name: string; role: string }, x: number, z: number): Lead {
+  return { id: `person:${person.id}`, kind: 'person', head: "Somebody's looking for you", title: person.name, why: `${person.role}. Go say hi.`, x, z, flag: person.name };
+}
+
+/** The inn's rumour of a stone: the flyer only says to ask. Where it lies is the innkeeper's to tell. */
+export function rumourLead(innkeeper: string, x: number, z: number): Lead {
+  return { id: 'rumour', kind: 'rumour', head: 'Heard at the inn', title: 'A stone, supposedly', why: `${innkeeper} knows where. Ask her.`, x, z, flag: `${innkeeper}, at the inn` };
+}
+
+/** How many leads a flyer carries. */
+export const LEADS = 3;
+
+/**
+ * Today's leads, chosen from what is still open: a trail, a place, and either someone with
+ * something for the player or the inn's rumour, so that the three lie in different parts of
+ * the mountain. The same three all day, whatever is done in the meantime.
+ * @param open every lead that could be offered today, in a settled order
+ * @param trailOfDay the id of the trail the Saddle Lodge board has picked, so the two agree
+ */
+export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string | null = null): string[] {
+  const seed = dayNumber(day);
+  const of = (kind: LeadKind): Lead[] => open.filter((l) => l.kind === kind);
+  const one = (list: readonly Lead[], shift: number): Lead | undefined => (list.length === 0 ? undefined : list[(seed >>> shift) % list.length]);
+  const trails = of('trail');
+  const picked: Lead[] = [];
+  const add = (lead: Lead | undefined): void => {
+    if (lead && picked.length < LEADS && !picked.includes(lead)) picked.push(lead);
+  };
+  add(trails.find((l) => l.id === trailOfDay) ?? one(trails, 0));
+  add(one(of('place'), 5));
+  // The rumour and the neighbours take turns, day about, when both are to be had.
+  const people = of('person');
+  const rumour = of('rumour');
+  const askFirst = seed % 2 === 0 ? rumour : people;
+  add(one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
+  // Short of three, whatever else is open makes up the number.
+  for (const lead of [...of('place'), ...trails, ...people, ...rumour]) add(lead);
+  return picked.map((l) => l.id);
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** The date at the top of the flyer: "Wednesday · Nov 11". */
+export function flyerDate(day: string): string {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  // Noon, so that no time zone can tip it into the day before.
+  const weekday = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay();
+  return `${WEEKDAYS[weekday]} · ${MONTHS[m - 1]} ${d}`;
+}
