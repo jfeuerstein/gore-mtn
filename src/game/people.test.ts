@@ -87,6 +87,16 @@ describe('the errands', () => {
     expect(game.talk('biscuit', DAY, 'winter')?.lines[0]).not.toBe(remark?.lines[0]);
   });
 
+  it('asks an errand once a day, and has other things to say if it is turned down', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.talk('fenn', DAY, 'winter')?.offer?.id).toBe('overdue');
+    // Not taken. The next time, the day's book instead; the day after, the errand again.
+    const second = game.talk('fenn', DAY, 'winter');
+    expect(second?.offer).toBeUndefined();
+    expect(second?.events.some((e) => e.kind === 'item')).toBe(true);
+    expect(game.talk('fenn', '2026-11-12', 'winter')?.offer?.id).toBe('overdue');
+  });
+
   it('counts a round of the town when every door has been called at in one day', () => {
     for (const r of TOWN_ROUND) expect(personById(r.who), r.who).toBeDefined();
     const game = new Game(gameWorld, memory());

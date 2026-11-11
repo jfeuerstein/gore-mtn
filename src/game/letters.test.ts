@@ -102,7 +102,8 @@ describe('the post office, the inn and the dog', () => {
     const game = new Game(gameWorld, memory());
     const rumour = game.rumour(DAY);
     if (!rumour) throw new Error('no rumour');
-    // She says hello, and then passes it straight on.
+    // She says hello and asks her errand; the next time, she passes on the day's talk.
+    expect(game.talk('marge', DAY, 'winter')?.offer?.id).toBe('the-bet');
     const said = game.talk('marge', DAY, 'winter')?.lines.join(' ') ?? '';
     expect(said).toContain(rumour.place);
     expect(game.talk('marge', DAY, 'winter')?.lines.join(' ')).not.toContain(rumour.place);

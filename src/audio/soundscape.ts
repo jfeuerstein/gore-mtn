@@ -95,6 +95,11 @@ export function jingleFor(kind: string, detail = ''): Jingle | null {
       return { notes: [D[4], D[5], D[7]] as number[], gap: 0.12, gain: 0.4, voice: 'pluck' };
     case 'gear':
       return { notes: [D[5], D[7], D[8], D[10]] as number[], gap: 0.09, gain: 0.45, voice: 'bell' };
+    case 'toll': {
+      // The church clock: one low stroke for each hour, by the twelve-hour clock.
+      const strokes = Math.min(12, Math.max(1, Math.round(Number(detail)) || 1));
+      return { notes: Array.from({ length: strokes }, () => 196), gap: 1.4, gain: 0.5, voice: 'bell' };
+    }
     case 'train':
       // A steam whistle: three notes at once, a little sour, as they are.
       return { notes: [392, 466.16, 587.33], gap: 0, gain: 0.4, voice: 'whistle' };

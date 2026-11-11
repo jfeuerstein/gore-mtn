@@ -150,6 +150,14 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   flowers in spring and summer, pumpkins in fall. Lamps down Main Street, benches by the doors
   and a welcome sign at each end of town (`src/world/streets.ts`, pure, tested;
   `streetFurniture.ts`) are joined into the same two meshes.
+- Smoke rises from the chimneys that are lit (every season but summer) and steam from the
+  engine (`src/world/smoke.ts`): one instanced mesh, moved every frame, drawn only near the
+  player. A kit reports its chimney tops as `flues`.
+- Outside the lodges (`src/world/yards.ts`) there are racks of skis in the snow months and
+  picnic tables otherwise. In winter and spring snow guns stand down the edges of the wide
+  groomed trails (`src/world/snowGuns.ts`, pure, tested): one instanced mesh.
+- The town's plain houses (`src/world/town.ts`) are one unit house stretched to each footprint.
+  Its walls go on down below the floor so a house on a slope has no gap under it.
 - The lifts (`src/world/scenery.ts`) are four draw calls for the whole mountain: towers and
   crossarms instanced, every cable in one set of lines, and one mesh for the gates, the
   stations at each end, the attendants' shacks and the carpets' belts.
@@ -278,6 +286,8 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 
 ## Sound, hints and patches
 
+- The church in town strikes the hour, by the real clock at Gore, for anyone within earshot,
+  and the Snow Train whistles before it leaves. Neither happens under a pinned time.
 - Sound is made in code (`src/audio/`): no sound files. `soundscape.ts` (pure, tested) works out
   how loud the wind, the skis, a lift and the rain should be for what the player is doing, and
   the tune for each kind of thing earned; `sound.ts` plays them with Web Audio. It starts on the

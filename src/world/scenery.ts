@@ -138,3 +138,30 @@ export function buildLifts(paths: readonly LiftPath[], snowy = true): THREE.Grou
   group.add(towers, arms, cableLines, station);
   return group;
 }
+
+/**
+ * The snow guns: a tall pole at the edge of the trail, its head leaning out over the snow, and
+ * a hydrant box at its foot. One instanced mesh for all of them.
+ */
+export function buildSnowGuns(guns: readonly { x: number; z: number; turn: number }[], heightAt: (x: number, z: number) => number, castShadow: boolean): THREE.InstancedMesh {
+  const geo = blocks([
+    { size: [0.5, 0.9, 0.5], at: [0, 0.45, 0], colour: 0x2b5fb5 },
+    { size: [0.14, 7.2, 0.14], at: [0, 3.6, 0], colour: 0xc9ced6 },
+    { size: [0.1, 0.1, 1.7], at: [0, 7.35, 0.75], colour: 0xc9ced6, tip: -0.3 },
+    { size: [0.36, 0.36, 0.55], at: [0, 7.66, 1.6], colour: 0xe2a52e, tip: -0.3 },
+  ]);
+  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), Math.max(1, guns.length));
+  mesh.name = 'snow-guns';
+  mesh.count = guns.length;
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  const p = new THREE.Vector3();
+  const one = new THREE.Vector3(1, 1, 1);
+  guns.forEach((gun, i) => mesh.setMatrixAt(i, m.compose(p.set(gun.x, heightAt(gun.x, gun.z) - 0.2, gun.z), q.setFromAxisAngle(up, gun.turn), one)));
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.computeBoundingSphere();
+  mesh.castShadow = castShadow;
+  mesh.matrixAutoUpdate = false;
+  return mesh;
+}

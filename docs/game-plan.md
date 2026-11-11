@@ -553,6 +553,14 @@ then models, a real town, sillier characters and a cohesive interface).
 - **They notice your hat.** Eighteen people have something to say about a hat or jacket they
   know, once a day. The trail map marks anyone who is waiting for you with a gold diamond.
   The Snow Train whistles twice before it leaves.
+- **Faces.** The people were all the player's figure in another coat. Now each has a face and
+  something of their own: Hazel's braid and patrol cross, Otto's white moustache, Gus's beard
+  and apron, Dot's glasses and brass buttons, and Pip, who is nine, is the height of a nine
+  year old.
+- **Small life.** Smoke from the chimneys that are lit and steam from the engine; racks of skis
+  outside the lodges in the snow months and picnic tables the rest of the year; snow guns down
+  the edges of the wide trails in winter and spring; doors and chimneys on the town's houses;
+  and the church strikes the real hour.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

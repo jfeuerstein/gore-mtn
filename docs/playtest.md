@@ -59,6 +59,8 @@ milestone 1 has had your thumbs on it, so expect rough edges and say where they 
 - **Sound on a real speaker.** I have only seen the numbers, not heard it.
 - **The live weather.** Still unverified from this side.
 - **Offline play.** After one launch with a signal, try opening the game in aeroplane mode.
+- **Smoke, signs, lamps and the train on WebGPU.** All new, all only seen here in the fallback
+  renderer. Smoke should be pale puffs over the inn's chimneys and the engine, not dark stones.
 - **The lettering.** The interface and every sign in the world use two bundled typefaces. If
   signs show as blank boards, or the buttons fall back to a plain face, tell me.
 - **The town's houses and the trail signs on WebGPU.** The houses are coloured per instance and

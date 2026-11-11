@@ -32,7 +32,8 @@ import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { LiftCars } from './world/liftCars';
 import { Glints } from './world/glints';
-import { buildLifts } from './world/scenery';
+import { buildLifts, buildSnowGuns } from './world/scenery';
+import { snowGuns } from './world/snowGuns';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { houseHeight, Town } from './world/town';
@@ -245,6 +246,10 @@ async function boot(): Promise<void> {
   });
   const liftCars = new LiftCars(liftPaths, shadows);
   scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, buildings.group, town.group, townNamed.group);
+  // While there is snow to make, the guns stand along the wide trails.
+  if (season === 'winter' || season === 'spring') {
+    scene.add(buildSnowGuns(snowGuns(world.trails, (x, z) => world.onTrail(x, z)), (x, z) => ground.heightAt(x, z), shadows));
+  }
   // Smoke from the chimneys that are lit, and steam from the engine.
   const smoke = new Smoke([...townNamed.flues, ...train.flues]);
   scene.add(smoke.mesh);
@@ -325,6 +330,12 @@ async function boot(): Promise<void> {
     sound.play(lead.kind, lead.detail);
     book.refresh();
   };
+  const church = townPlaces.find((p) => p.style === 'church') ?? null;
+  /** The hour the church last struck, so it strikes once as each hour comes round. */
+  let struck: number | null = null;
+  /** The hour of the day at the mountain, 0 to 23, whatever clock the phone keeps. */
+  const goreHour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' });
+  const hourAtGore = (when: Date): number => Number(goreHour.format(when)) % 24;
   /** The middle of town, for a word of introduction on first walking in. */
   const townHeart = townPlaces.find((p) => p.id === 'north-creek-post-office') ?? townPlaces.find((p) => p.id === 'copperfield-inn') ?? null;
   /** Say something helpful, the first time it is needed and never again. */
@@ -851,6 +862,12 @@ async function boot(): Promise<void> {
         announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather, season), today));
       }
       layKeepsakes();
+      // The church in town strikes the hour, by the real clock at Gore, for anyone near enough to hear.
+      if (cfg.time === 'real') {
+        const hour = hourAtGore(new Date());
+        if (struck !== null && hour !== struck && church && Math.hypot(px - church.x, pz - church.z) < 600) sound.play('toll', String(hour % 12 || 12));
+        struck = hour;
+      }
       announce(game.checkPatches(today));
       game.persist();
     }

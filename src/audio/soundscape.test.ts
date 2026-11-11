@@ -66,6 +66,10 @@ describe('jingleFor', () => {
       for (const note of j?.notes ?? []) expect(note).toBeGreaterThan(100);
     }
     expect(jingleFor('hint')).toBeNull();
+    // The church strikes the hour: one stroke for each, and never more than twelve.
+    expect(jingleFor('toll', '3')?.notes).toHaveLength(3);
+    expect(jingleFor('toll', '12')?.notes).toHaveLength(12);
+    expect(jingleFor('toll', '40')?.notes).toHaveLength(12);
   });
 
   it('makes more of a first find than of one more of the same', () => {

@@ -153,6 +153,8 @@ export class Game {
   private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
   private readonly chatted = new Map<string, number>();
+  /** The day each errand was last asked, so that one turned down is not pressed. */
+  private readonly asked = new Map<string, string>();
   /** The day each person last remarked on what the player is wearing. */
   private readonly noticed = new Map<string, string>();
   private readonly sightPatches = new Map<string, Sighting[]>();
@@ -575,7 +577,9 @@ export class Game {
       const offer = this.nextErrand(personId, season);
       if (waiting) {
         talk.lines.push(waiting.nudge);
-      } else if (offer) {
+      } else if (offer && this.asked.get(offer.id) !== day) {
+        // Each errand is asked once a day. Turned down, they talk of other things until tomorrow.
+        this.asked.set(offer.id, day);
         talk.lines.push(offer.ask);
         talk.offer = offer;
       } else if (this.treated.get(personId) !== day && offeringFrom(personId, save.tried, day)) {
