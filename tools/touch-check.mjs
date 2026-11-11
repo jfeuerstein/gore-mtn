@@ -712,6 +712,25 @@ try {
   check('the welcome is given once only', !(await np.locator('#talk-sheet').isVisible()) && (await np.evaluate(() => window.__gore.state().hints)).includes('welcome'));
   await fresh1.close();
 
+  // Someone coming back with a book from before the town opened is told the news, once.
+  const back1 = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  await back1.addInitScript(() => {
+    if (!localStorage.getItem('gore.book')) localStorage.setItem('gore.book', JSON.stringify({ hints: ['welcome', 'skis'], lifts: { Sunway: '2026-11-01' } }));
+  });
+  const bk = await back1.newPage();
+  bk.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
+  await bk.goto(plain);
+  await bk.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  await bk.waitForSelector('#talk-sheet:not([hidden])', { timeout: 20000 }).catch(() => {});
+  check('a returning player is told what is new', (await bk.locator('#talk-sheet').isVisible()) && (await bk.locator('#talk-sheet .names b').textContent()) === 'Since you were last here');
+  await bk.locator('#talk-sheet .close').tap();
+  await bk.waitForTimeout(1500);
+  await bk.reload();
+  await bk.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  await bk.waitForTimeout(800);
+  check('and is told once', !(await bk.locator('#talk-sheet').isVisible()) && (await bk.evaluate(() => window.__gore.state().book.lifts)) === 1);
+  await back1.close();
+
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: the `shortpage` option tells the game the
   // screen is 62 points taller than the page.

@@ -60,7 +60,11 @@ export async function buildSigns(specs: readonly SignSpec[]): Promise<THREE.Mesh
       cx = 0;
       cy += CELL;
     }
-    if (cy + CELL > ATLAS) break;
+    if (cy + CELL > ATLAS) {
+      // Out of room on the sheet. The signs left over will be bare boards: say so, where a developer will see it.
+      console.warn(`signs: the sheet is full; "${s.text}" and any after it are not painted`);
+      break;
+    }
     ctx.fillStyle = s.board;
     ctx.fillRect(cx, cy, w, CELL);
     // A painted border, set in from the edge.

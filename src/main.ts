@@ -87,6 +87,12 @@ window.__gore = {
 /** A sign's capitals as a name: "TOWN HALL & LIBRARY" to "Town Hall & Library". */
 const titleCase = (text: string): string => text.toLowerCase().replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
 
+/**
+ * The hint that marks the latest news as told. Change it when there is news again, and the
+ * words where it is used: a returning player is told once.
+ */
+const NEWS = 'news-town';
+
 /** What the mountain is doing while it loads. One is shown, by the minute of the hour. */
 const LOADING_LINES = [
   'Loading the mountain…',
@@ -952,6 +958,16 @@ async function boot(): Promise<void> {
           'Rest a thumb on the lower part of the screen to walk. Drag higher up to look around.',
           `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill. The lifts will bring you back up.`,
           'Stones glint on the ground. Trails, lifts and summits stamp your passport. The Book, bottom right, keeps it all.',
+        ]);
+        welcomed = true;
+        // Someone new has just been told everything. The news is for those who were here before.
+        game.hint(NEWS);
+      } else if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint(NEWS)) {
+        // Once, for someone coming back to a mountain that has changed since they last opened it.
+        talkSheet.open('Since you were last here', 'News from the mountain', [
+          'North Creek has opened its doors. The shuttle goes to town: there is a letter for you at the post office every day, and something new at the bakery, the deli and the library.',
+          'Everyone has a face now, and there are new neighbours. One is a snowman. One is the Mayor.',
+          'Every trail has a sign at its top, the Snow Train is waiting at the depot, and there are three boards on the mountain worth reading.',
         ]);
         welcomed = true;
       }
