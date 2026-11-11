@@ -38,6 +38,13 @@ export interface Outfit {
   features?: Features;
 }
 
+/** A part of the figure whose meshes have been joined, and which of its vertices are painted from which material. */
+interface Joined {
+  part: THREE.Object3D;
+  mesh: THREE.Mesh;
+  paints: { material: THREE.MeshLambertMaterial; from: number; count: number }[];
+}
+
 /**
  * The skier: a small figure of rigid parts, jointed at hips, knees, shoulders and elbows and posed
  * by a Pose. About 2 model units tall, facing -z, feet at the origin.
@@ -64,6 +71,9 @@ export class Skier {
   private readonly hatMat: THREE.MeshLambertMaterial;
   private readonly creamMat: THREE.MeshLambertMaterial;
   private readonly darkMat: THREE.MeshLambertMaterial;
+  /** The parts that have been joined into one mesh each, and the one material they all share. */
+  private joined: Joined[] = [];
+  private readonly joinedMat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
   private readonly head = new THREE.Group();
   private hat: THREE.Group | null = null;
   private hatStyle = '';
@@ -232,6 +242,57 @@ export class Skier {
       if (o instanceof THREE.Mesh) o.castShadow = castShadow;
     });
     this.setOutfit(outfit);
+    // Each rigid part of the figure is several boxes in several colours. Joined, each part is one
+    // mesh: a dozen draw calls for the figure in place of two dozen, and the same again in shadow.
+    const joints: THREE.Object3D[] = [];
+    this.root.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) joints.push(o);
+    });
+    for (const joint of joints) this.join(joint);
+  }
+
+  /**
+   * Join a part's own meshes into one that takes its colours from its vertices. Only the lit,
+   * flat-coloured ones: anything that shines by itself (a miner's lamp) stays as it is.
+   */
+  private join(part: THREE.Object3D): void {
+    const meshes = part.children.filter((c): c is THREE.Mesh => c instanceof THREE.Mesh && c.material instanceof THREE.MeshLambertMaterial && c.material !== this.joinedMat);
+    if (meshes.length === 0) return;
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const paints: Joined['paints'] = [];
+    for (const mesh of meshes) {
+      mesh.updateMatrix();
+      const geo = (mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone()).applyMatrix4(mesh.matrix);
+      const p = geo.getAttribute('position');
+      const n = geo.getAttribute('normal');
+      paints.push({ material: mesh.material as THREE.MeshLambertMaterial, from: positions.length / 3, count: p.count });
+      for (let i = 0; i < p.count; i++) {
+        positions.push(p.getX(i), p.getY(i), p.getZ(i));
+        normals.push(n.getX(i), n.getY(i), n.getZ(i));
+      }
+      part.remove(mesh);
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(positions.length), 3));
+    const mesh = new THREE.Mesh(geometry, this.joinedMat);
+    mesh.castShadow = this.castShadow;
+    part.add(mesh);
+    const joined: Joined = { part, mesh, paints };
+    this.joined.push(joined);
+    this.paint(joined);
+  }
+
+  /** Give a joined part the colours its materials have now. */
+  private paint(joined: Joined): void {
+    const colours = joined.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+    for (const { material, from, count } of joined.paints) {
+      const c = material.color;
+      for (let i = from; i < from + count; i++) colours.setXYZ(i, c.r, c.g, c.b);
+    }
+    colours.needsUpdate = true;
   }
 
   /** Change the colours of jacket and hat, and the hat itself if its style differs. */
@@ -239,14 +300,24 @@ export class Skier {
     this.jacketMat.color.setHex(outfit.jacket);
     this.hatMat.color.setHex(outfit.hat);
     if (outfit.trousers !== undefined) this.trousersMat.color.setHex(outfit.trousers);
-    if (outfit.style === this.hatStyle) return;
-    this.hatStyle = outfit.style;
-    if (this.hat) this.head.remove(this.hat);
-    this.hat = this.buildHat(outfit.style);
-    this.hat.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.castShadow = this.castShadow;
-    });
-    this.head.add(this.hat);
+    if (outfit.style !== this.hatStyle) {
+      this.hatStyle = outfit.style;
+      const built = this.joined.length > 0;
+      if (this.hat) {
+        this.head.remove(this.hat);
+        const old = this.hat;
+        this.joined = this.joined.filter((j) => j.part !== old);
+      }
+      this.hat = this.buildHat(outfit.style);
+      this.hat.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.castShadow = this.castShadow;
+      });
+      this.head.add(this.hat);
+      // A hat put on after the figure was joined up is joined in its turn.
+      if (built) this.join(this.hat);
+    }
+    // The joined parts wear their colours on their vertices, so a change of coat is a repaint.
+    for (const joined of this.joined) this.paint(joined);
   }
 
   /** A hat, sitting on a head whose crown is about 0.36 above the neck. */

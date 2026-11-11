@@ -41,12 +41,15 @@ function standingFigure(outfit: Outfit): THREE.BufferGeometry {
     const geo = (o.geometry as THREE.BufferGeometry).index ? (o.geometry as THREE.BufferGeometry).toNonIndexed() : (o.geometry as THREE.BufferGeometry).clone();
     geo.applyMatrix4(o.matrixWorld);
     const colour = (o.material as THREE.MeshLambertMaterial).color;
+    // A part of the figure that has been joined up wears its colours on its vertices.
+    const own = geo.getAttribute('color');
     const p = geo.getAttribute('position');
     const n = geo.getAttribute('normal');
     for (let i = 0; i < p.count; i++) {
       positions.push(p.getX(i), p.getY(i), p.getZ(i));
       normals.push(n.getX(i), n.getY(i), n.getZ(i));
-      colours.push(colour.r, colour.g, colour.b);
+      if (own) colours.push(own.getX(i), own.getY(i), own.getZ(i));
+      else colours.push(colour.r, colour.g, colour.b);
     }
   });
   const out = new THREE.BufferGeometry();

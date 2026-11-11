@@ -34,6 +34,56 @@ interface Tile {
   snow: (THREE.Mesh | null)[];
   /** Canopy-textured mesh per level, for tiles beyond where trees are drawn. */
   canopy: (THREE.Mesh | null)[];
+  /** What `cull` last decided for it: the level to show (-1 for none), and in which texture. */
+  shownLevel: number;
+  shownCanopy: boolean;
+}
+
+/**
+ * A square of tiles that is drawn as one mesh while every tile in it is far enough off to be at
+ * its coarsest. Most of the mountain is that far from wherever the camera is, so this is what
+ * keeps a view of the whole of it from costing a draw call for every tile.
+ */
+interface Block {
+  tiles: Tile[];
+  /** All the tiles' coarsest geometry joined, made the first time it is wanted. */
+  geometry: THREE.BufferGeometry | null;
+  snow: THREE.Mesh | null;
+  canopy: THREE.Mesh | null;
+}
+
+/** Tiles along each side of a block. */
+const BLOCK_TILES = 3;
+
+/** Several tile geometries as one: the same triangles, in one buffer. */
+function joinGeometries(parts: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
+  let count = 0;
+  let indices = 0;
+  for (const part of parts) {
+    count += part.getAttribute('position').count;
+    indices += part.getIndex()?.count ?? 0;
+  }
+  const positions = new Float32Array(count * 3);
+  const normals = new Float32Array(count * 3);
+  const uvs = new Float32Array(count * 2);
+  const index: number[] = new Array<number>(indices);
+  let v = 0;
+  let k = 0;
+  for (const part of parts) {
+    positions.set(part.getAttribute('position').array as Float32Array, v * 3);
+    normals.set(part.getAttribute('normal').array as Float32Array, v * 3);
+    uvs.set(part.getAttribute('uv').array as Float32Array, v * 2);
+    const own = part.getIndex();
+    if (own) for (let i = 0; i < own.count; i++) index[k++] = own.getX(i) + v;
+    v += part.getAttribute('position').count;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  geo.setIndex(index);
+  geo.computeBoundingSphere();
+  return geo;
 }
 
 /** Every `step`th index from `from` to `to`, always ending on `to`. */
@@ -119,6 +169,7 @@ function buildTileGeometry(hf: Heightfield, c0: number, c1: number, r0: number, 
 export class Terrain {
   readonly group = new THREE.Group();
   private readonly tiles: Tile[] = [];
+  private readonly blocks: Block[] = [];
   private readonly snowMaterial: THREE.MeshLambertMaterial;
   private readonly canopyMaterial: THREE.MeshLambertMaterial;
 
@@ -140,7 +191,7 @@ export class Terrain {
       for (let c0 = 0; c0 < hf.cols - 1; c0 += TILE_CELLS) {
         const c1 = Math.min(c0 + TILE_CELLS, hf.cols - 1);
         const r1 = Math.min(r0 + TILE_CELLS, hf.rows - 1);
-        const tile: Tile = { c0, c1, r0, r1, centerX: 0, centerZ: 0, radius: 0, snow: [], canopy: [] };
+        const tile: Tile = { c0, c1, r0, r1, centerX: 0, centerZ: 0, radius: 0, snow: [], canopy: [], shownLevel: -1, shownCanopy: false };
         // Every tile always has its coarsest level, so there is something to draw at once.
         const mesh = this.mesh(tile, COARSEST, false);
         const sphere = mesh.geometry.boundingSphere as THREE.Sphere;
@@ -148,8 +199,28 @@ export class Terrain {
         tile.centerZ = sphere.center.z;
         tile.radius = sphere.radius;
         this.tiles.push(tile);
+        // Its block: the square of tiles it is joined with when all of them are far away.
+        const across = Math.ceil(Math.ceil((hf.cols - 1) / TILE_CELLS) / BLOCK_TILES);
+        const b = Math.floor(r0 / TILE_CELLS / BLOCK_TILES) * across + Math.floor(c0 / TILE_CELLS / BLOCK_TILES);
+        (this.blocks[b] ??= { tiles: [], geometry: null, snow: null, canopy: null }).tiles.push(tile);
       }
     }
+  }
+
+  /** The mesh that draws a whole block in one texture, made the first time it is wanted. */
+  private blockMesh(block: Block, canopy: boolean): THREE.Mesh {
+    const existing = canopy ? block.canopy : block.snow;
+    if (existing) return existing;
+    // Every tile keeps its coarsest geometry for good, so there is always something to join.
+    block.geometry ??= joinGeometries(block.tiles.map((t) => (t.snow[COARSEST] ?? t.canopy[COARSEST])?.geometry).filter((g): g is THREE.BufferGeometry => g !== undefined));
+    const mesh = new THREE.Mesh(block.geometry, canopy ? this.canopyMaterial : this.snowMaterial);
+    mesh.receiveShadow = true;
+    mesh.matrixAutoUpdate = false;
+    mesh.visible = false;
+    this.group.add(mesh);
+    if (canopy) block.canopy = mesh;
+    else block.snow = mesh;
+    return mesh;
   }
 
   /** Tint the snow and the distant forest, for the time of day and the weather. */
@@ -214,13 +285,29 @@ export class Terrain {
         }
       }
 
-      for (let l = 0; l < LEVELS.length; l++) {
-        const snow = tile.snow[l];
-        const far = tile.canopy[l];
-        if (snow) snow.visible = dist < viewDist && l === level && !canopy;
-        if (far) far.visible = dist < viewDist && l === level && canopy;
-        // Let go of fine levels the camera has left well behind.
-        if (l < COARSEST && (snow || far) && dist > (LEVELS[l] as (typeof LEVELS)[number]).range * KEEP) this.drop(tile, l);
+      tile.shownLevel = dist < viewDist ? level : -1;
+      tile.shownCanopy = canopy;
+      // Let go of fine levels the camera has left well behind.
+      for (let l = 0; l < COARSEST; l++) {
+        if ((tile.snow[l] || tile.canopy[l]) && dist > (LEVELS[l] as (typeof LEVELS)[number]).range * KEEP) this.drop(tile, l);
+      }
+    }
+
+    // A block whose tiles are all at their coarsest, in the same texture, is drawn as one mesh.
+    // Otherwise each of its tiles is drawn by itself, as it always was.
+    for (const block of this.blocks) {
+      const first = block.tiles[0] as Tile;
+      const joined = block.tiles.length > 1 && block.tiles.every((t) => t.shownLevel === COARSEST && t.shownCanopy === first.shownCanopy);
+      if (joined) this.blockMesh(block, first.shownCanopy);
+      if (block.snow) block.snow.visible = joined && !first.shownCanopy;
+      if (block.canopy) block.canopy.visible = joined && first.shownCanopy;
+      for (const tile of block.tiles) {
+        for (let l = 0; l < LEVELS.length; l++) {
+          const snow = tile.snow[l];
+          const far = tile.canopy[l];
+          if (snow) snow.visible = !joined && l === tile.shownLevel && !tile.shownCanopy;
+          if (far) far.visible = !joined && l === tile.shownLevel && tile.shownCanopy;
+        }
       }
     }
   }

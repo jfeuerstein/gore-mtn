@@ -580,6 +580,10 @@ then models, a real town, sillier characters and a cohesive interface).
   view under the real sky: First Coffee at sunrise, a Sundowner at sunset, Stargazer at night.
   Sit still for a few seconds by day and a chickadee lands on the bench beside you, as the
   field guide always said it would.
+- **Fewer draw calls.** Measured by switching parts of the scene off: the figure cost forty and
+  the terrain, seen from town, a hundred and twenty-seven. Far terrain is now drawn in blocks
+  and each rigid part of the figure is one mesh. The Base Lodge view went from 179 calls to
+  146 and the view from town from 256 to 179, with no change to the picture.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 
@@ -643,6 +647,7 @@ Decisions made while you were away that are yours to overrule. Each is easy to c
    has the museum's point, so that a train could stand at its platform.
 6. **The new neighbours**: a snowman, a weather prophet, a patroller, a cat who is mayor. Tell
    me which are funny and which are too much. All of it is data in `src/game/people.ts`.
-7. **Frame rate.** Draw calls are over the cautious target (see the Performance budget in
-   CLAUDE.md). Settings > For testing > Run benchmark, pasted back, would say whether it matters.
+7. **Frame rate.** Draw calls are back at about the cautious target after two reductions (see
+   the Performance budget in CLAUDE.md), but none of this has run on the phone. Settings > For
+   testing > Run benchmark, pasted back, would settle it.
 8. The verdicts on everything since milestone 1 (see "What to judge" in the roadmap).

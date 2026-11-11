@@ -401,16 +401,22 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 anything repeated; first load under 15 MB.
 
 Since that was measured, a great deal has been added (seasons, the town, wildlife, people, signs,
-the train), none of it yet measured on the phone. In headless runs a view from a lodge or the
-depot draws 180 to 310 calls, over the target above; the owner's next benchmark will say
-whether that matters. `node tools/census.mjs` shows where they go: terrain tiles (252 on the
-mountain, those in view drawn) and forest patches are most of it; the player's figure is about
-twenty; the lodges, the town, the lifts, the signs and the train are a dozen between them.
-At the benchmark's own spot and settings, a headless run now reports 118 to 171 draw calls
-across its steps (it was 104 on the phone when the owner last measured) and about 4 ms of
-our own code per frame.
-If the phone says it matters, the far terrain tiles are the place to start (join them into
-larger pieces), then the player's figure (join the parts that move together).
+the train), none of it yet measured on the phone. In headless runs a view from the Base Lodge
+now draws about 146 calls and the wide view from town about 179: at or a little over the target
+above. The owner's next benchmark will say whether that matters. Three things keep it there:
+
+- Far terrain is drawn in blocks. While every tile in a three-by-three block is at its coarsest
+  detail and in the same texture, the block is one mesh (`Terrain.cull`); otherwise its tiles
+  are drawn one by one as before.
+- The figure's rigid parts are each one mesh (`Skier.join`), painted on their vertices and
+  repainted when the outfit changes. About thirteen meshes on foot, where there were twenty.
+- The lodges, the named places, the lifts, the signs and the train are a dozen meshes in all.
+
+`node tools/census.mjs` lists what is switched on by part of the scene, and
+`window.__gore.show(part, false)` hides a part, to see what it costs in `state().drawCalls`.
+At the benchmark's own spot and settings, before the last two of those reductions, a headless
+run reported 118 to 171 draw calls across its steps (it was 104 on the phone when the owner
+last measured) and about 4 ms of our own code per frame.
 
 Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
 life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,

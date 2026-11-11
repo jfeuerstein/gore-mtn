@@ -67,6 +67,8 @@ interface DebugHandle {
   place(x: number, z: number): void;
   /** How many things are set to be drawn, by the part of the scene they belong to: where the draw calls go. */
   census(): Record<string, number>;
+  /** Show or hide a part of the scene by name (as `census` lists them), to see what it costs. */
+  show(part: string, on: boolean): void;
 }
 
 declare global {
@@ -84,6 +86,7 @@ window.__gore = {
   face: () => {},
   place: () => {},
   census: () => ({}),
+  show: () => {},
 };
 
 /**
@@ -756,6 +759,9 @@ async function boot(): Promise<void> {
       if (n > 0) counts[top.name || top.type] = (counts[top.name || top.type] ?? 0) + n;
     }
     return counts;
+  };
+  window.__gore.show = (part, on) => {
+    for (const top of scene.children) if ((top.name || top.type) === part) top.visible = on;
   };
   window.__gore.face = (yaw) => {
     player.face(yaw);
