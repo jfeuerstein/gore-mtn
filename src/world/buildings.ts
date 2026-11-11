@@ -79,11 +79,12 @@ function hut(): Model {
 /** North Creek's depot: a long, low station with a wide platform roof and a sign. */
 function depot(): Model {
   const m = lodge(26, 8, 1);
+  // The platform runs along the track side, just wide enough to wait on: the train stands at its edge.
   const extra = blocks([
-    { size: [34, 0.5, 4.5], at: [0, 0.25, 6.6], colour: STONE },
-    { size: [34, 0.3, 5], at: [0, 4.3, 6.4], colour: TIMBER_DARK },
-    { size: [34.4, 0.35, 5.4], at: [0, 4.62, 6.4], colour: ROOF_SNOW },
-    ...[-14, -7, 0, 7, 14].map((x): Block => ({ size: [0.35, 4, 0.35], at: [x, 2.2, 8.4], colour: TIMBER_DARK })),
+    { size: [28, 0.5, 3], at: [0, 0.25, 5.55], colour: STONE },
+    { size: [28.6, 0.3, 3.6], at: [0, 4.3, 5.5], colour: TIMBER_DARK },
+    { size: [29, 0.35, 4], at: [0, 4.62, 5.5], colour: ROOF_SNOW },
+    ...[-12, -6, 0, 6, 12].map((x): Block => ({ size: [0.35, 4, 0.35], at: [x, 2.2, 6.7], colour: TIMBER_DARK })),
     { size: [7, 1.1, 0.25], at: [0, 5.6, 4.3], colour: TRIM },
   ]);
   return { walls: blocks([], [m.walls, extra]), windows: m.windows };
@@ -136,26 +137,35 @@ export class Buildings {
   readonly group = new THREE.Group();
   private readonly glass = new THREE.MeshBasicMaterial({ color: GLASS_DARK.getHex(), vertexColors: true });
 
-  /** @param roof the colour of the roofs: snow, or shingle */
-  constructor(places: readonly Place[], castShadow: boolean, roof = 0xf2f5fa) {
+  /**
+   * @param roof the colour of the roofs: snow, or shingle
+   * @param settings where a building stands and how it is turned, when that is not simply at its place, square to the compass
+   */
+  constructor(places: readonly Place[], castShadow: boolean, roof = 0xf2f5fa, settings: Record<string, { x: number; y: number; z: number; turn: number }> = {}) {
     this.group.name = 'buildings';
     ROOF_SNOW = roof;
-    const walls = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    // Every lodge, hut and tower is set down where it stands and joined to the rest: two draw
+    // calls for all of them, walls and windows, wherever the player is.
+    const wallParts: THREE.BufferGeometry[] = [];
+    const paneParts: THREE.BufferGeometry[] = [];
     for (const place of places) {
       const make = MODELS[place.id];
       if (!make) continue;
       const model = make();
-      const body = new THREE.Mesh(model.walls, walls);
-      body.castShadow = castShadow;
-      body.receiveShadow = true;
-      const panes = new THREE.Mesh(model.windows, this.glass);
-      for (const mesh of [body, panes]) {
+      const set = settings[place.id];
+      for (const [geo, parts] of [[model.walls, wallParts], [model.windows, paneParts]] as const) {
         // Sunk a little, so the footing meets the snow on sloping ground.
-        mesh.position.set(place.x, place.y - 0.8, place.z);
-        mesh.matrixAutoUpdate = false;
-        mesh.updateMatrix();
-        this.group.add(mesh);
+        parts.push(placed(geo, set?.x ?? place.x, (set?.y ?? place.y) - 0.8, set?.z ?? place.z, set?.turn ?? 0));
       }
+    }
+    if (wallParts.length === 0) return;
+    const body = new THREE.Mesh(blocks([], wallParts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    body.castShadow = castShadow;
+    body.receiveShadow = true;
+    const panes = new THREE.Mesh(blocks([], paneParts), this.glass);
+    for (const mesh of [body, panes]) {
+      mesh.matrixAutoUpdate = false;
+      this.group.add(mesh);
     }
   }
 

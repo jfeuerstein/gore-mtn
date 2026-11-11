@@ -36,9 +36,14 @@ import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { houseHeight, Town } from './world/town';
+import { fromLocal } from './world/footprints';
+import { depotSetting, TRACK_OUT, TRAIN_LENGTH, trainCars } from './world/railway';
 import { buildSignPosts } from './world/signPosts';
+import { buildStreetFurniture } from './world/streetFurniture';
+import { benches, streetLamps, welcomeSigns } from './world/streets';
 import { buildSigns } from './world/signs';
 import { TownPlaces, townPlaceHeight } from './world/townKit';
+import { buildTrain } from './world/train';
 import { trailSignPosts } from './world/trailSigns';
 import { resolveTownPlaces, townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
@@ -66,6 +71,8 @@ interface DebugHandle {
   face(yaw: number): void;
   /** Stand the player at a position. */
   place(x: number, z: number): void;
+  /** How many things are set to be drawn, by the part of the scene they belong to: where the draw calls go. */
+  census(): Record<string, number>;
 }
 
 declare global {
@@ -82,6 +89,7 @@ window.__gore = {
   setView: () => {},
   face: () => {},
   place: () => {},
+  census: () => ({}),
 };
 
 function showFatal(message: string): void {
@@ -199,7 +207,9 @@ async function boot(): Promise<void> {
   // Trees keep out of lift corridors and stand back from buildings.
   // The places with a name and a look of their own: the inn, the post office, the old mine works.
   const townPlaces = resolveTownPlaces(world);
-  const styled = new Set(townPlaces.map((p) => p.building));
+  // The depot stands on the real station's plot, along the rails, with the Snow Train beside it.
+  const depotAt = depotSetting(world);
+  const styled = new Set([...townPlaces.map((p) => p.building), depotAt?.building ?? -1]);
   const nearBuilding = (x: number, z: number): boolean =>
     world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30)) ||
     townPlaces.some((p) => Math.hypot(p.x - x, p.z - z) < Math.max(p.w, p.d) / 2 + 7 || Math.hypot(p.door.x - x, p.door.z - z) < 11);
@@ -213,13 +223,26 @@ async function boot(): Promise<void> {
     (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || nearBuilding(x, z),
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
-  const buildings = new Buildings(world.places, shadows, look.roof);
+  const placeSettings: Record<string, { x: number; y: number; z: number; turn: number }> = depotAt ? { depot: { ...depotAt, y: ground.heightAt(depotAt.x, depotAt.z) } } : {};
+  const buildings = new Buildings(world.places, shadows, look.roof, placeSettings);
   // Every other building is one of the town's plain houses.
   const plain = world.buildings.filter((_, i) => !styled.has(i));
   const town = new Town(plain, shadows, look.roof);
-  const townNamed = new TownPlaces(townPlaces, shadows, look.roof);
+  const train = buildTrain(trainCars(world), (x, z) => ground.heightAt(x, z), look.roof);
+  if (placeSettings.depot) {
+    // The station's name board, under the eaves on the platform side.
+    const board = fromLocal(placeSettings.depot, 0, 4.44);
+    train.signs.push({ text: 'NORTH CREEK', ...board, y: placeSettings.depot.y - 0.8 + 5.6, turn: placeSettings.depot.turn, height: 0.95, maxWidth: 6.8, width: 6.8, board: '#f5f2ea', ink: '#22304a' });
+  }
+  // Lamps down Main Street, a bench by the doors, and a welcome at each end of town.
+  const street = buildStreetFurniture(streetLamps(world), benches(townPlaces), welcomeSigns(world), (x, z) => ground.heightAt(x, z));
+  const townNamed = new TownPlaces(townPlaces, shadows, look.roof, season, {
+    walls: [...train.walls, ...street.walls],
+    panes: [...train.panes, ...street.panes],
+    signs: [...train.signs, ...street.signs],
+  });
   const liftCars = new LiftCars(liftPaths, shadows);
-  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group, town.group, townNamed.group);
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, buildings.group, town.group, townNamed.group);
   // Signs: the town's shopfronts, a board at the top of every trail and a name at the foot of every lift.
   // All of them are painted onto one sheet, a moment after the rest, once the lettering has loaded.
   const signPosts = buildSignPosts(
@@ -235,8 +258,11 @@ async function boot(): Promise<void> {
   const walls = new Walls([
     ...world.places.flatMap((p): WallBox[] => {
       const size = PLACE_FOOTPRINT[p.id];
-      return size ? [{ x: p.x, z: p.z, w: size[0], d: size[1], turn: 0, top: p.y + (PLACE_HEIGHT[p.id] ?? 8) }] : [];
+      const set = placeSettings[p.id];
+      return size ? [{ x: set?.x ?? p.x, z: set?.z ?? p.z, w: size[0], d: size[1], turn: set?.turn ?? 0, top: (set?.y ?? p.y) + (PLACE_HEIGHT[p.id] ?? 8) }] : [];
     }),
+    // The train is as solid as a house.
+    ...(depotAt?.rails ? [{ ...fromLocal(depotAt, 0, TRACK_OUT), w: TRAIN_LENGTH + 0.6, d: 3.1, turn: depotAt.turn, top: ground.heightAt(depotAt.x, depotAt.z) + 5 } satisfies WallBox] : []),
     ...plain.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + houseHeight(b) })),
     ...townPlaces.map((p): WallBox => ({ x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn, top: p.y + townPlaceHeight(p.style, p.w, p.d) })),
   ]);
@@ -293,6 +319,8 @@ async function boot(): Promise<void> {
     sound.play(lead.kind, lead.detail);
     book.refresh();
   };
+  /** The middle of town, for a word of introduction on first walking in. */
+  const townHeart = townPlaces.find((p) => p.id === 'north-creek-post-office') ?? townPlaces.find((p) => p.id === 'copperfield-inn') ?? null;
   /** Say something helpful, the first time it is needed and never again. */
   const hint = (id: string, title: string, detail: string): void => {
     if (cfg.intro && game.hint(id)) toasts.show({ kind: 'hint', title, detail });
@@ -397,17 +425,31 @@ async function boot(): Promise<void> {
       return [{ person, x, y: ground.heightAt(x, z), z }];
     }
     const at = standAt(person.at);
-    return at ? [{ person, ...at }] : [];
+    if (!at) return [];
+    // The groomer's snowcat is parked a little way off; the patroller's sled lies at her feet.
+    const beside = person.prop === 'snowcat' ? standAt(person.at, 9, 6) : person.prop === 'sled' ? standAt(person.at, 1.6, -0.6) : null;
+    return [{ person, ...at, ...(beside ? { prop: { ...beside, turn: person.prop === 'snowcat' ? 2.5 : 0.4 } } : {}) }];
   });
-  const folk = new Folk(standings, shadows);
+  const folk = new Folk(standings, shadows, season);
+  // On the map, a gold diamond for everyone with something for the player.
+  trailMap.marks = () =>
+    standings
+      .filter((st) => game.hasBusiness(st.person.id, season))
+      .map((st) => ({ x: st.x, z: st.z, label: `${st.person.name} · ${st.person.role}` }));
   const keepsakes = new Keepsakes();
+  /** A step given in a building's own frame (along its front, out from it), as a step in the world. */
+  const offsetFrom = (at: { turn: number }, lx: number, lz: number): [number, number] => {
+    const step = fromLocal({ x: 0, z: 0, turn: at.turn }, lx, lz);
+    return [step.x, step.z];
+  };
   // The shuttle runs between the mountain, the Ski Bowl and town.
   const stops: Stop[] = [
     ['base-lodge', 'the Base Lodge'],
     ['ski-bowl-lodge', 'the Ski Bowl'],
     ['depot', 'North Creek'],
   ].flatMap(([id, name]): Stop[] => {
-    const at = standAt({ place: id as string }, 13, 7);
+    // The depot's stop is on the town side of the station, away from the track.
+    const at = id === 'depot' && depotAt?.rails ? standAt({ place: 'depot' }, ...offsetFrom(depotAt, -21, -15)) : standAt({ place: id as string }, 13, 7);
     return at ? [{ id: id as string, name: name as string, ...at }] : [];
   });
   // And out to the old garnet mine, where the tours have always gone by bus.
@@ -432,7 +474,12 @@ async function boot(): Promise<void> {
   const rideTrain = (to: Season | null): void => {
     if (!game.ride(to)) return;
     const depot = stops.find((st) => st.id === 'depot');
-    location.assign(withParams(location.search, { season: null, at: null, pos: depot ? `${depot.x.toFixed(1)},${(depot.z + 6).toFixed(1)}` : null, ski: null }) || location.pathname);
+    // Two toots on the whistle, and off. The game opens again in the season the train has reached.
+    talkSheet.close();
+    sound.play('train');
+    toasts.show({ kind: 'season', title: 'All aboard', detail: to ? `Next stop: ${SEASON_NAME[to].toLowerCase()}` : 'Next stop: home' });
+    const next = withParams(location.search, { season: null, at: null, pos: depot ? `${depot.x.toFixed(1)},${(depot.z + 6).toFixed(1)}` : null, ski: null }) || location.pathname;
+    window.setTimeout(() => location.assign(next), 1700);
   };
 
   /** What there is to remark on just now: the weather first, then the hour. */
@@ -680,6 +727,17 @@ async function boot(): Promise<void> {
     player.place(x, z, ground);
     fillScene = true;
   };
+  window.__gore.census = () => {
+    const counts: Record<string, number> = {};
+    for (const top of scene.children) {
+      let n = 0;
+      top.traverseVisible((o) => {
+        if ((o as THREE.Mesh).isMesh || (o as THREE.Line).isLine || (o as THREE.Points).isPoints) n++;
+      });
+      if (n > 0) counts[top.name || top.type] = (counts[top.name || top.type] ?? 0) + n;
+    }
+    return counts;
+  };
   window.__gore.face = (yaw) => {
     player.face(yaw);
     follow.yaw = yaw;
@@ -816,6 +874,10 @@ async function boot(): Promise<void> {
     else hud.setAction(null);
     if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
     if (someone) hint('talk', 'Someone to talk to', 'A gold mark overhead means they have something for you.');
+    if (stop && !someone) hint('shuttle', 'The shuttle', 'It runs between the mountain, the Ski Bowl, town and the old garnet mine.');
+    if (townHeart && Math.hypot(player.position.x - townHeart.x, player.position.z - townHeart.z) < 240) {
+      hint('town', 'North Creek', 'Something new every day: a letter at the post office, a bake on Main Street, a book at the library.');
+    }
     if (someone) hud.setTalk(`${APPROACH[someone.person.kind ?? 'person']} ${someone.person.name}`, () => talkTo(someone));
     else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
     else hud.setTalk(null);

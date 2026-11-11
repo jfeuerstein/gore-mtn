@@ -23,6 +23,7 @@ node tools/shot.mjs out.png "" 402 874 2 "document.getElementById('book-button')
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
+NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits and plates (needs the fal key)
 ```
 
 Run `npm test`, `npm run build`, `node tools/touch-check.mjs` and `node tools/webgpu-smoke.mjs`
@@ -43,7 +44,9 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
+  `hud`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
+  `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby and the last announcement) and a few
   actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
@@ -131,6 +134,18 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
   this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
   glow after dark and in falling snow.
+- The places with names have buildings of their own. `src/world/townPlaces.ts` (pure, tested)
+  lists them, ties each to a real footprint or named point on the map, turns it to face its road
+  and gives it a door; `src/world/townKit.ts` builds each from a kit by style (inn, store, post
+  office, church, hall, barn, cafe, deli, mill, cabin and so on) with its front at its own +z.
+  All of them are joined into two meshes, walls and windows. Add a place by adding a listing.
+- Every word in the world is painted by `src/world/signs.ts` onto one canvas and drawn as one
+  mesh: shopfronts, the depot's name, the train's, and a board at the top of every named trail
+  and the foot of every lift (`src/world/trailSigns.ts`, pure, tested; posts in `signPosts.ts`).
+  A sign is a `SignSpec`; give it a `width` for a board of a set size.
+- The depot stands on the real station's plot, lengthways along the rails, and the Snow Train
+  stands beside its platform (`src/world/railway.ts`, pure, tested; `train.ts` for the model).
+  The train is joined into the town's meshes and is as solid as a house.
 - The skier (`src/player/skier.ts`) is rigid parts jointed at hips, knees, shoulders and elbows.
   `src/player/pose.ts` (pure, tested) gives the joint angles for walking, a ski stance, a tuck, a
   hockey stop and sitting on a chair; the player eases between them. Add a new action as a pose
@@ -226,7 +241,18 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   world. Lost property is placed the same way and lies out only while its errand is in hand.
 - `src/world/folk.ts` draws the people: the player's own jointed figure in another outfit, posed
   once and joined into a single mesh, so each costs one draw call. A gold mark hangs over anyone
-  with something for the player. `src/ui/talk.ts` is the sheet they speak in.
+  with something for the player. `src/ui/talk.ts` is the sheet they speak in, with their
+  portrait; anything written (a letter, a notice) is shown as handwriting on ruled paper.
+- Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted, and the
+  `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
+  A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
+- Someone whose whereabouts fall at one of the town's named places stands by its front door.
+- People remark on the moment (`moods`: snowing, raining, night, dawn, dusk) before small talk.
+- The town gives small things daily, all data: a letter at the post office
+  (`src/game/letters.ts`, sent once what it mentions has happened), the inn's rumour of a rare
+  stone lying at a named spot (`Game.rumour`), and one new bake, sandwich or library book from
+  June, Walt and Fenn (`src/game/offerings.ts`; every sandwich is named after a real trail and
+  the library's books are true). They are kept on the Pack page.
 - The second action button (`Hud.setTalk`) is for talking and for the shuttle, and sits above
   the first when both are offered, as beside a lift.
 - The shuttle carries the player between the Base Lodge, the Ski Bowl and the depot. The Snow
@@ -249,6 +275,20 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   over https, so the dev server and the tools never see it.
 - Settings lead with what a player wants (the save code, sound, camera distance). Everything for
   testing is below the "For testing" line; put new debug options there.
+
+## Pictures and lettering
+
+- The portraits on the talk sheet and the plates in the Book are painted by an image model
+  through fal (`tools/art/`): `manifest.mjs` holds one prompt per person, mineral and species
+  and the one look they share; `make-art.mjs` asks for whatever is missing, trims it and saves
+  a small WebP under `public/art/`. A test checks that everyone and everything has a picture.
+  `--redo id,id --bump 1` paints one again with another seed.
+- The prompts never name the game, the mountain's owner or the player. The key is never in the
+  repo: here it is a network secret on the environment, sent by the session's proxy.
+- The interface has a look of its own, set out at the top of `src/style.css`: paper, ink and
+  enamel colours as variables, Bebas Neue for headings and buttons, Caveat for anything
+  handwritten, both bundled from `@fontsource`. Use the variables; do not add new colours or
+  faces without the owner's say.
 
 ## Trail map
 

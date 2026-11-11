@@ -1,4 +1,5 @@
-import { distSqToSegment, type Footprint } from './trails';
+import { faceToward, nearestOnLines } from './footprints';
+import type { Footprint } from './trails';
 import type { Whereabouts } from '../game/people';
 import { locate, slug } from './whereabouts';
 import type { World } from './world';
@@ -25,7 +26,6 @@ interface Listing {
 
 export const TOWN_LISTINGS: readonly Listing[] = [
   { id: 'copperfield-inn', sign: 'COPPERFIELD INN', style: 'inn', building: 'Phoenix Inn Resort' },
-  { id: 'freight-house', sign: 'FREIGHT HOUSE', style: 'shed', building: 'North Creek' },
   { id: 'tops', sign: 'MARKET', style: 'store', building: 'Tops' },
   { id: 'church', sign: '', style: 'church', building: 'Saint James Catholic Church' },
   { id: 'johnsburg-town-hall', sign: 'TOWN HALL & LIBRARY', style: 'hall', building: 'Johnsburg Town Hall' },
@@ -70,42 +70,6 @@ export interface TownPlace {
   building: number;
 }
 
-/** The point on any road nearest to a position. */
-function nearestRoad(world: World, x: number, z: number): { x: number; z: number } | null {
-  let best: { x: number; z: number } | null = null;
-  let bestSq = Infinity;
-  for (const road of world.roads) {
-    const p = road.pts;
-    for (let i = 0; i + 3 < p.length; i += 2) {
-      const ax = p[i] as number;
-      const az = p[i + 1] as number;
-      const bx = p[i + 2] as number;
-      const bz = p[i + 3] as number;
-      const sq = distSqToSegment(x, z, ax, az, bx, bz);
-      if (sq >= bestSq) continue;
-      bestSq = sq;
-      const len = (bx - ax) ** 2 + (bz - az) ** 2;
-      const t = len > 0 ? Math.min(1, Math.max(0, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / len)) : 0;
-      best = { x: ax + (bx - ax) * t, z: az + (bz - az) * t };
-    }
-  }
-  return best;
-}
-
-/**
- * A footprint turned so that its own +z side is the one that faces a point (its road). The
- * width and depth swap when a short side is the front.
- */
-export function faceToward(b: { x: number; z: number; w: number; d: number; turn: number }, tx: number, tz: number): { w: number; d: number; turn: number } {
-  const dx = tx - b.x;
-  const dz = tz - b.z;
-  // The footprint's own axes, as three.js turns a model: x along (cos, -sin), z along (sin, cos).
-  const alongX = dx * Math.cos(b.turn) - dz * Math.sin(b.turn);
-  const alongZ = dx * Math.sin(b.turn) + dz * Math.cos(b.turn);
-  if (Math.abs(alongZ) >= Math.abs(alongX)) return alongZ >= 0 ? { w: b.w, d: b.d, turn: b.turn } : { w: b.w, d: b.d, turn: b.turn + Math.PI };
-  return alongX >= 0 ? { w: b.d, d: b.w, turn: b.turn + Math.PI / 2 } : { w: b.d, d: b.w, turn: b.turn - Math.PI / 2 };
-}
-
 /** How far out from the front wall the spot by the door is: clear of a porch. */
 const DOOR_OUT = 4.5;
 
@@ -142,7 +106,7 @@ export function resolveTownPlaces(world: World): TownPlace[] {
       base = world.buildings[index] as Footprint;
     }
     if (!base) continue;
-    const road = nearestRoad(world, base.x, base.z) ?? { x: base.x, z: base.z + 10 };
+    const road = nearestOnLines(world.roads, base.x, base.z) ?? { x: base.x, z: base.z + 10 };
     const facing = faceToward(base, road.x, road.z);
     const sin = Math.sin(facing.turn);
     const cos = Math.cos(facing.turn);
@@ -184,3 +148,5 @@ export function townPlaceFor(places: readonly TownPlace[], spot: string): TownPl
     return (listing?.spot === spot) || (listing?.building !== undefined && slug(listing.building) === spot);
   });
 }
+
+export { faceToward };

@@ -3,7 +3,8 @@ import { loadTestWorld } from '../world/testWorld';
 import { Game, type GameWorld, type SaveStore } from './game';
 import { letterWaiting, LETTERS } from './letters';
 import { MINERALS } from './minerals';
-import { personById } from './people';
+import { OFFERINGS } from './offerings';
+import { ERRANDS, personById } from './people';
 import { emptySave } from './save';
 
 const world = loadTestWorld();
@@ -56,17 +57,19 @@ describe('the letters', () => {
   it('can all be had in the end by someone who has done everything', () => {
     const save = emptySave();
     for (const l of LETTERS) if (l.from) save.met[l.from] = '2026-11-01';
-    for (const id of ['tower-special', 'ottos-coffee', 'lost-kite']) save.errands[id] = { taken: '2026-11-01', done: '2026-11-01' };
+    for (const e of ERRANDS) save.errands[e.id] = { taken: '2026-11-01', done: '2026-11-01' };
+    for (const o of OFFERINGS) save.tried[o.id] = '2026-11-01';
     for (const id of ['snowman', 'rumor']) save.sightings[id] = { count: 1, first: '2026-11-01' };
     const had: Record<string, string> = {};
     for (let day = 1; day <= LETTERS.length; day++) {
-      const key = `2026-12-${String(day).padStart(2, '0')}`;
+      // A letter a day, on into January.
+      const key = day <= 31 ? `2026-12-${String(day).padStart(2, '0')}` : `2027-01-${String(day - 31).padStart(2, '0')}`;
       const letter = letterWaiting(save, had, key);
       expect(letter, key).not.toBeNull();
       had[letter?.id ?? ''] = key;
     }
     expect(Object.keys(had)).toHaveLength(LETTERS.length);
-    expect(letterWaiting(save, had, '2027-01-01')).toBeNull();
+    expect(letterWaiting(save, had, '2027-03-01')).toBeNull();
   });
 });
 
@@ -115,11 +118,11 @@ describe('the post office, the inn and the dog', () => {
 
   it('lets people remark on the weather and the hour before their usual talk', () => {
     const game = new Game(gameWorld, memory());
-    game.talk('bram', DAY, 'winter');
-    expect(personById('bram')?.moods?.snowing).toContain(game.talk('bram', DAY, 'winter', 'snowing')?.lines[0]);
+    game.talk('pickles', DAY, 'winter');
+    expect(personById('pickles')?.moods?.snowing).toContain(game.talk('pickles', DAY, 'winter', 'snowing')?.lines[0]);
     const quiet = new Game(gameWorld, memory());
-    quiet.talk('bram', DAY, 'winter');
-    expect(personById('bram')?.moods?.snowing).not.toContain(quiet.talk('bram', DAY, 'winter')?.lines[0]);
+    quiet.talk('pickles', DAY, 'winter');
+    expect(personById('pickles')?.moods?.snowing).not.toContain(quiet.talk('pickles', DAY, 'winter')?.lines[0]);
   });
 
   it('counts a pat of the dog once a day', () => {

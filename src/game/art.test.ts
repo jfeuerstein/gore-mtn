@@ -1,6 +1,9 @@
 import { existsSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { loadTestWorld } from '../world/testWorld';
+import { namedSpots } from '../world/whereabouts';
 import { MINERALS } from './minerals';
+import { buildLandmarks } from './passport';
 import { PEOPLE } from './people';
 import { SPECIES } from './wildlife';
 
@@ -17,6 +20,14 @@ describe('generated art', () => {
   it('has a plate for every mineral and every entry in the field guide', () => {
     expect(MINERALS.filter((m) => !existsSync(art('minerals', m.id))).map((m) => m.id)).toEqual([]);
     expect(SPECIES.filter((s) => !existsSync(art('species', s.id))).map((s) => s.id)).toEqual([]);
+  });
+
+  it('has a postcard for every landmark in the passport', () => {
+    const world = loadTestWorld();
+    const landmarks = buildLandmarks(world.places, namedSpots(world));
+    expect(landmarks.length).toBeGreaterThanOrEqual(20);
+    expect(landmarks.filter((l) => !existsSync(art('places', l.id))).map((l) => l.id)).toEqual([]);
+    for (const l of landmarks) expect(statSync(art('places', l.id)).size, l.id).toBeLessThan(60000);
   });
 
   it('keeps each picture small enough for a phone on a chairlift', () => {

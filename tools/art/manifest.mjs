@@ -31,6 +31,10 @@ export const PEOPLE_ART = {
   fenn: person('a gentle elderly librarian man with half-moon glasses and a neat white moustache, a brown tweed jacket and a tan brimmed hat, holding a book'),
   sven: person('a tall cheerful Scandinavian ski instructor man with a blond beard, a green ski jacket and a white knit beanie'),
   bram: person('a broad quiet snow groomer driver man with dark stubble, an orange work jacket and a black fur trapper hat with ear flaps, holding a coffee mug'),
+  tom: 'head and shoulders portrait of a dignified snowman with coal eyes, a carrot nose, a black top hat with a cream band and a long striped knitted scarf, a faintly worried expression',
+  flurry: person('a theatrical older woman fortune teller with wild grey curls, a purple quilted jacket, a fringed shawl and a mustard yellow knit beanie, one eyebrow raised, holding a snow globe'),
+  ivy: person('a calm capable ski patrol woman with a dark braid, a red ski patrol jacket with a white cross and a red ski helmet with goggles pushed up, holding a green thermos'),
+  pickles: 'head and shoulders portrait of a fat, solemn orange tabby cat wearing a tiny gold mayoral chain of office, sitting very upright, looking unimpressed',
   biscuit: 'head and shoulders portrait of a big friendly Saint Bernard mountain dog with a little wooden barrel on its collar, tongue out, snow on its nose',
   amos: person('a very old retired miner with a long white beard, a weathered tan canvas jacket and a yellow miner hard hat with a lamp on the front'),
 };
@@ -95,4 +99,32 @@ export const SPECIES_ART = {
   snowman: creature('a cheerful lopsided snowman with a carrot nose, stick arms, a red scarf and a black top hat, front view'),
   cairn: plant('a small cairn of flat grey stones stacked one on another, with one little red garnet on the top'),
   rumor: 'a very blurry, out-of-focus picture of a tall shaggy dark sasquatch creature mid-stride between snowy fir trees at dusk, seen from far away, looking back over its shoulder, mysterious but friendly',
+};
+
+/**
+ * Postcards for the passport's landmarks, by landmark id: a small scene each, in the same hand.
+ * They describe a kind of place, not the place itself.
+ */
+const card = (what) => `a small vignette scene of ${what}, like a tiny vintage travel postcard illustration`;
+export const PLACE_ART = {
+  'fire-tower': card('a steel fire lookout tower with a little red-roofed cabin on top, on a snowy forested mountain summit'),
+  'saddle-lodge': card('a cosy timber ski lodge with a snow-covered roof and a smoking stone chimney, high on a mountain among fir trees'),
+  'base-lodge': card('a big timber ski lodge at the foot of a snowy mountain, with skis leaning in a rack outside'),
+  'ski-bowl-lodge': card('a small old-fashioned village ski hill with a wooden lodge and one chairlift, rooftops behind'),
+  depot: card('a little old wooden railway depot with a platform canopy and a small black steam locomotive waiting, snow falling'),
+  'vermont-overlook': card('a wooden lookout railing on a mountain ledge, with blue ridges fading into the far distance'),
+  'twister-cliffs': card('grey rock cliffs beside a winding snowy ski trail through fir trees'),
+  'windy-hill-lookout': card('a bare windy hilltop with one bent pine tree and a view over a river valley'),
+  'scenic-view': card('a wooden bench at a roadside lookout facing forested mountains in autumn colours'),
+  'barton-mine': card('an abandoned old garnet mine: rusted iron sheds and an ore cart on rails, dark red stones scattered on the ground'),
+  'garnet-quarry': card('an open rock quarry with terraced grey walls studded with dark red garnet crystals'),
+  'rabbit-pond': card('a small still pond in the woods with reeds, and a rabbit sitting at the water\'s edge'),
+  'copperfield-inn': card('a long cream-coloured country inn with a green roof, dormer windows and a front porch, lamps lit, in snow'),
+  'north-creek-post-office': card('a small brick village post office with a flag on a pole and a blue mailbox outside'),
+  'town-of-johnsburg-library': card('a red brick town hall with white columns and a little cupola, a noticeboard outside and an orange cat on the steps'),
+  'tannery-pond-community-association': card('a big red barn-like community hall beside a mill pond, with ducks'),
+  'saint-james-catholic-church': card('a white wooden village church with a tall steeple, in snow'),
+  'becks-tavern': card('a dark timber roadside tavern with a porch and warm lit windows at dusk'),
+  'gore-mt-mineral-shop': card('a log cabin rock shop with a giant dark red garnet crystal on a stone plinth outside'),
+  'old-gondola-mid-station': card('an abandoned concrete ski gondola station overgrown in a fir forest, with one old red gondola cabin left beside it'),
 };

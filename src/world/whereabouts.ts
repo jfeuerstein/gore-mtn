@@ -1,5 +1,7 @@
 import type { Whereabouts } from '../game/people';
+import { fromLocal } from './footprints';
 import { PLACE_FOOTPRINT } from './placeSizes';
+import { depotSetting } from './railway';
 import { OPEN_WATER, type World } from './world';
 
 /** A point a distance along a line of x, z pairs, clamped to its ends. */
@@ -80,6 +82,9 @@ export function locate(world: World, at: Whereabouts): { x: number; z: number } 
   if ('place' in at) {
     const place = world.places.find((p) => p.id === at.place);
     if (!place) return null;
+    // The depot lies along the rails. Its conductor waits off the end of the platform, by the engine.
+    const depot = place.id === 'depot' ? depotSetting(world) : null;
+    if (depot?.rails) return fromLocal(depot, 15.6 + (at.aside ?? 0), 5.2);
     const [w, d] = PLACE_FOOTPRINT[place.id] ?? [8, 6];
     // By the door, which is on the south wall a little west of the middle; a tower has none, so
     // just south of it. The depot's platform and its roof posts run along that side, so stand beyond them.

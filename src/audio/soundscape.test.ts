@@ -59,7 +59,7 @@ describe('levelsFor', () => {
 
 describe('jingleFor', () => {
   it('has a tune for everything that can be earned', () => {
-    for (const kind of ['mineral', 'trail', 'path', 'lift', 'peak', 'landmark', 'condition', 'season', 'sighting', 'errand', 'gear', 'item', 'patch']) {
+    for (const kind of ['mineral', 'trail', 'path', 'lift', 'peak', 'landmark', 'condition', 'season', 'sighting', 'errand', 'gear', 'item', 'patch', 'train']) {
       const j = jingleFor(kind);
       expect(j, kind).not.toBeNull();
       expect(j?.notes.length).toBeGreaterThan(0);

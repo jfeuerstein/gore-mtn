@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import type { Season } from '../look/season';
 import { blocks, placed, roof, type Block } from './shapes';
 import type { SignSpec } from './signs';
 import type { TownPlace, TownStyle } from './townPlaces';
@@ -307,12 +308,66 @@ export function townPlaceHeight(style: TownStyle, w: number, d: number): number 
  * be painted for them.
  * @param roofColour snow in winter, each building's own roof otherwise
  */
-export function buildTownPlaces(places: readonly TownPlace[], roofColour: number): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[] } {
+/** The kinds of place that are dressed for the season: where somebody is in and out of the door all day. */
+const DRESSED: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'cafe', 'deli', 'house', 'tavern', 'cabin', 'store', 'church'];
+
+/**
+ * What the season puts round a front door: a wreath and a string of lights along the front in
+ * winter (the lights go with the windows, so they come on at dusk), tubs of flowers in spring
+ * and summer, pumpkins in the fall.
+ */
+function dressing(p: TownPlace, season: Season): { list: Block[]; panes: Block[] } {
+  const list: Block[] = [];
+  const panes: Block[] = [];
+  const front = p.d / 2;
+  // The model is sunk half a metre, so the ground at the front wall is at 0.5 in its own heights.
+  const ground = 0.5;
+  if (season === 'winter') {
+    list.push(
+      { size: [0.66, 0.66, 0.07], at: [0, 2.45, front + 0.2], colour: 0x2f6a44 },
+      { size: [0.32, 0.32, 0.08], at: [0, 2.45, front + 0.21], colour: DOOR },
+      { size: [0.2, 0.14, 0.09], at: [0, 2.17, front + 0.22], colour: 0xc8402d },
+    );
+    const span = Math.min(p.w * 0.9, 24);
+    const bulbs = Math.max(6, Math.round(span / 1.1));
+    for (let i = 0; i <= bulbs; i++) {
+      // Hung in shallow loops from one end of the front to the other.
+      const sag = Math.abs(Math.sin((i / bulbs) * Math.PI * Math.max(2, Math.round(span / 5)))) * 0.22;
+      panes.push({ size: [0.13, 0.13, 0.13], at: [-span / 2 + (i * span) / bulbs, 3.72 - sag, front + 0.45], colour: 0xffffff });
+    }
+  } else if (season === 'fall') {
+    list.push(
+      { size: [0.52, 0.4, 0.52], at: [1.45, ground + 0.2, front + 0.75], colour: 0xe8742a },
+      { size: [0.36, 0.28, 0.36], at: [1.95, ground + 0.14, front + 1.05], colour: 0xd9822b },
+      { size: [0.08, 0.12, 0.08], at: [1.45, ground + 0.45, front + 0.75], colour: 0x4f6b3a },
+      { size: [0.44, 0.34, 0.44], at: [-1.5, ground + 0.17, front + 0.8], colour: 0xe2a52e },
+    );
+  } else {
+    const petals = season === 'spring' ? [0xe2a52e, 0xc8402d] : [0xd9638a, 0xf4ead8];
+    for (const side of [-1, 1]) {
+      list.push(
+        { size: [0.62, 0.5, 0.62], at: [side * 1.5, ground + 0.25, front + 0.7], colour: 0x6b4a33 },
+        { size: [0.56, 0.2, 0.56], at: [side * 1.5, ground + 0.58, front + 0.7], colour: 0x4f8a3a },
+        { size: [0.2, 0.16, 0.2], at: [side * 1.5 - 0.13, ground + 0.72, front + 0.62], colour: petals[0] as number },
+        { size: [0.2, 0.16, 0.2], at: [side * 1.5 + 0.14, ground + 0.72, front + 0.82], colour: petals[1] as number },
+        { size: [0.16, 0.14, 0.16], at: [side * 1.5 + 0.1, ground + 0.74, front + 0.56], colour: petals[0] as number },
+      );
+    }
+  }
+  return { list, panes };
+}
+
+export function buildTownPlaces(places: readonly TownPlace[], roofColour: number, season: Season = 'winter'): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[] } {
   const wallParts: THREE.BufferGeometry[] = [];
   const paneParts: THREE.BufferGeometry[] = [];
   const signs: SignSpec[] = [];
   for (const p of places) {
     const kit = STYLES[p.style](p, roofColour);
+    if (DRESSED.includes(p.style)) {
+      const dress = dressing(p, season);
+      kit.list.push(...dress.list);
+      kit.panes.push(...dress.panes);
+    }
     // Sunk a little, so the footing meets the ground on a slope.
     const set = (geo: THREE.BufferGeometry): THREE.BufferGeometry => placed(geo, p.x, p.y - 0.5, p.z, p.turn);
     wallParts.push(set(blocks(kit.list, kit.extra)));
@@ -348,15 +403,19 @@ export class TownPlaces {
   /** The signs to be painted for these places. */
   readonly signs: SignSpec[];
 
-  constructor(places: readonly TownPlace[], castShadow: boolean, roofColour: number) {
+  /**
+   * @param season the doors are dressed for it
+   * @param also other things made the same way (the train, the street lamps), to be joined into the same two meshes
+   */
+  constructor(places: readonly TownPlace[], castShadow: boolean, roofColour: number, season: Season, also: { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[] } = { walls: [], panes: [], signs: [] }) {
     this.group.name = 'town-places';
-    const built = buildTownPlaces(places, roofColour);
-    this.signs = built.signs;
-    if (places.length === 0) return;
-    const walls = new THREE.Mesh(built.walls, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    const built = buildTownPlaces(places, roofColour, season);
+    this.signs = [...built.signs, ...also.signs];
+    if (places.length === 0 && also.walls.length === 0) return;
+    const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     walls.castShadow = castShadow;
     walls.receiveShadow = true;
-    const panes = new THREE.Mesh(built.panes, this.glass);
+    const panes = new THREE.Mesh(blocks([], [built.panes, ...also.panes]), this.glass);
     for (const mesh of [walls, panes]) {
       mesh.matrixAutoUpdate = false;
       this.group.add(mesh);

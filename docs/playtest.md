@@ -39,6 +39,14 @@ milestone 1 has had your thumbs on it, so expect rough edges and say where they 
 - Rabbit Pond, and the paths through the woods, which are dotted lines on the map.
 - A summer night, for the fireflies. A fall day from the summit, for the colour.
 - Whatever it is that walks the woods near The Rumor at dusk. Go very gently.
+- North Creek on foot, door to door: Dot at the post office has a letter for you each day,
+  Marge at the Copperfield Inn has the day's rumour of a rare stone, June and Walt on Main
+  Street have something new to eat, and Fenn at the Town Hall lends a book. Read the
+  noticeboard. Greet the Mayor.
+- The Snow Train at the depot, after dark, with its windows lit.
+- The old gondola's mid station, in the woods on the mountain. It is on no sign.
+- Tom, by the Ski Bowl lodge. Visit him in every season.
+- The Mineral Shop, out west past the summit, by shuttle: there is a garnet outside you cannot miss.
 
 ## What I could not check from here
 
@@ -51,6 +59,10 @@ milestone 1 has had your thumbs on it, so expect rough edges and say where they 
 - **Sound on a real speaker.** I have only seen the numbers, not heard it.
 - **The live weather.** Still unverified from this side.
 - **Offline play.** After one launch with a signal, try opening the game in aeroplane mode.
+- **The lettering.** The interface and every sign in the world use two bundled typefaces. If
+  signs show as blank boards, or the buttons fall back to a plain face, tell me.
+- **The town's houses and the trail signs on WebGPU.** The houses are coloured per instance and
+  the signs are one painted texture; both are new since you last looked.
 
 ## What to tell me
 
@@ -59,7 +71,10 @@ The full list is under "What to judge" in `docs/game-plan.md`. In short:
 - Is each season worth the train ride? Which looks wrong?
 - Is the bike fun?
 - Wildlife and people: pleasure or clutter? Too much talk, too little?
-- Does town feel like North Creek, and are the café and the deli where you remember them?
+- Does town feel like North Creek? I put June's bakery and Walt's deli in real buildings on Main
+  Street, but I chose which. Say if they should move, and what else the town is missing.
+- The new look of the menus and the Book, the portraits and the plates: right for the game?
+- The new people: funny, or too much?
 - Is the sound pleasant after twenty minutes?
 - After a week of five-minute visits: does the book still pull you back?
 

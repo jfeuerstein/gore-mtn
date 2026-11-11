@@ -153,6 +153,8 @@ export class Game {
   private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
   private readonly chatted = new Map<string, number>();
+  /** The day each person last remarked on what the player is wearing. */
+  private readonly noticed = new Map<string, string>();
   private readonly sightPatches = new Map<string, Sighting[]>();
   private sightKey = '';
   private about: readonly Sighting[] = [];
@@ -585,6 +587,10 @@ export class Game {
           save.tried[offering.id] = day;
           talk.events.push({ kind: 'item', title: offering.name, detail: `${OFFERING_KIND[offering.kind]} · noted in your book` });
         }
+      } else if (talk.lines.length === 0 && this.noticed.get(personId) !== day && (person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket])) {
+        // They have something to say about what the player has on. Once a day is enough.
+        this.noticed.set(personId, day);
+        talk.lines.push((person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket]) as string);
       } else if (talk.lines.length === 0) {
         const n = this.chatted.get(personId) ?? 0;
         this.chatted.set(personId, n + 1);

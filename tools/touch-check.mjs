@@ -529,6 +529,26 @@ try {
   check('tapping the hat puts it on', (await townState()).wearing.hat === 'hat-trapper' && (await tp.locator('#book-sheet .wardrobe button.on', { hasText: 'trapper' }).count()) === 1);
   await tp.locator('#book-sheet .close').tap();
 
+  /** Put the talk sheet away, whatever it is showing. */
+  const shut = async () => {
+    if (await tp.locator('#talk-sheet').isVisible()) await tp.locator('#talk-sheet .close').tap();
+  };
+  // With her errand done, June has the day's bake to hand over, once.
+  await goTo(person('june').x + 0.8, person('june').z + 0.8);
+  await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Talk to June');
+  await tp.tap('#talk-button');
+  const bake = await hear();
+  await shut();
+  check('the bakery has something new today, and it goes in the book', (await townState()).book.tasted === 1, bake.said.join(' / ').slice(0, 120));
+  await tp.tap('#talk-button');
+  await hear();
+  await shut();
+  check('but only one a day', (await townState()).book.tasted === 1);
+  await tp.tap('#book-button');
+  await tp.tap('#book-sheet [data-tab=pack]');
+  check('the pack keeps a ticket for it', (await tp.locator('#book-sheet .ticket').count()) === 1);
+  await tp.locator('#book-sheet .close').tap();
+
   // The shuttle between the mountain and town.
   const stops = (await townState()).stops;
   const baseStop = stops.find((st) => st.id === 'base-lodge');
@@ -561,13 +581,24 @@ try {
   }
   const letterLook = letter ? await tp.locator('#talk-sheet .line.written').evaluate((el) => ({ font: getComputedStyle(el).fontFamily, signed: el.querySelector('.signed')?.textContent ?? '' })) : null;
   check('she hands over the day\'s letter, in handwriting and signed', letter && /Caveat/.test(letterLook.font) && letterLook.signed.length > 2, JSON.stringify(letterLook));
-  await tp.locator('#talk-sheet .choices button').last().tap();
+  await shut();
   check('the letter is kept in the book', (await townState()).book.letters === 1);
   await goTo(person('notices').x + 0.8, person('notices').z + 0.8);
   check('the noticeboard outside the town hall can be read', (await invites('Read the noticeboard')) || (await invites('Read the notices')), await tp.locator('#talk-button').textContent());
   await tp.tap('#talk-button');
   check('its notices are written out', (await tp.locator('#talk-sheet .line.written').count()) === 1);
-  await tp.locator('#talk-sheet .choices button').last().tap();
+  await shut();
+  await goTo(person('pickles').x + 0.6, person('pickles').z + 0.6);
+  check('the Mayor, who is a cat, can be petted', await invites('Pet Mayor Pickles'));
+  await goTo(person('tom').x + 0.8, person('tom').z + 1.2);
+  check('the snowman by the Ski Bowl lodge can be talked to', await invites('Talk to Tom'));
+  // The landmarks walked past in town are postcards in the passport.
+  await tp.tap('#book-button');
+  await tp.tap('#book-sheet [data-tab=passport]');
+  const cards = await tp.locator('#book-sheet .postcard').count();
+  const sent = await tp.locator('#book-sheet .postcard.earned img').count();
+  check('landmarks are postcards, with a picture once visited', cards === 20 && sent >= 2 && (await townSettle(() => [...document.querySelectorAll('#book-sheet .postcard.earned img')].every((img) => img.complete && img.naturalWidth > 0))), `${sent} of ${cards}`);
+  await tp.locator('#book-sheet .close').tap();
   await goTo(person('biscuit').x + 0.8, person('biscuit').z + 0.8);
   check('the dog at the Saddle Lodge can be petted', await invites('Pet Biscuit'));
   await tp.tap('#talk-button');
@@ -587,7 +618,7 @@ try {
           window.__gore.place(px, pz);
           requestAnimationFrame(() => requestAnimationFrame(() => done()));
         }),
-      [bea.x + 1.5, bea.z + 3],
+      [bea.x + 0.8, bea.z + 0.8],
     );
     await rp.waitForFunction(() => !document.getElementById('talk-button').hidden, null, { timeout: 30000 });
     await rp.tap('#talk-button');

@@ -506,12 +506,43 @@ name, so they are placed a short walk down Main Street from the depot.
   an owl at night. It starts with the first touch and can be turned off in Settings.
 - **A welcome** of four short lines the first time the game is opened, and a hint the first time
   each thing comes up: skis, a lift, a stone, a sighting, someone to talk to. Each is given once.
-- **Patches**: twenty-two of them, for finishing a whole kind of thing (every green trail, every
+- **Patches**: twenty-two of them at first (twenty-six now), for finishing a whole kind of thing (every green trail, every
   lift, every mineral, all sixteen seasonal summits, seeing The Rumor for yourself).
 - **Offline play.** Installed to the Home Screen, the game keeps a copy of itself and starts
   without a signal. With a signal it always fetches the newest version first.
 - **Settings** now lead with the book's save code, sound and camera distance. Everything for
   testing sits below a line. The frame-rate readout is off unless turned on there.
+
+#### A look of its own, and a town worth walking through
+
+Built after the owner's review ("I really like the direction"; make the bike a little faster;
+then models, a real town, sillier characters and a cohesive interface).
+
+- **The interface** is drawn as a ski poster and a field notebook: tall condensed capitals
+  (Bebas Neue), handwriting for anything written (Caveat), cream paper, navy ink and enamel
+  colours, with hard little shadows as on a pin badge. The label that names the trail under the
+  player takes that trail's colour, like its sign.
+- **Pictures.** Everyone who can be talked to has a portrait, and every mineral and species has
+  a plate in the Book, all in one gouache-and-pencil look, as from an old field guide. They are
+  painted through fal by `tools/art`, a few cents for the lot.
+- **North Creek has its places.** The Copperfield Inn, the post office, the Town Hall and
+  library, St James, Tannery Pond, June's bakery and Walt's deli on Main Street, the market,
+  the tavern, and out west the Mineral Shop and the works of the old Barton mine, each built
+  from a kit on its real plot, facing its road, with a painted sign and windows that light
+  after dark. The first gondola's mid station still stands on the hill.
+- **Signs.** A board at the top of every named trail (green circle, blue square, black diamond)
+  and a name at the foot of every lift.
+- **The depot and the Snow Train.** The depot now lies along the real rails, and the train
+  waits at its platform: a black engine with a garnet-red cab, a tender and two green coaches.
+- **Something every day.** A letter at the post office; the inn's rumour of a rare stone at a
+  named spot; one new thing from June's oven, Walt's board (every sandwich named for a trail)
+  and Fenn's shelves (twelve short, true books of local history); a dog to pat; a noticeboard.
+- **More people, and odder ones.** Dot the postmaster, Marge the innkeeper, Fenn the librarian,
+  Sven the instructor, Bram the groomer with his snowcat, Ivy on patrol with her sled, Madame
+  Flurry who foretells the weather afterwards, Biscuit the dog, Mayor Pickles (a cat), and Tom,
+  who is a snowman in winter and a scarecrow in summer. Seven more errands and five more hats.
+- **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
+  that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 
 #### What to judge
 
@@ -527,6 +558,12 @@ The questions still open from milestones 2 and 3 stand. To those, add:
 6. Sound: pleasant, or tiring over a long session? Anything missing, anything to remove?
 7. The frame rate, now there is far more on the mountain. Settings > Run benchmark would tell.
 8. After a week: does the book still pull you back, and what do you wish were in it?
+9. The new look of the interface: is it the right character? Are the two typefaces readable at
+   a glance, on a chairlift, with a thumb in the way?
+10. The portraits and plates: do they belong to this game? Any that look wrong?
+11. The town's buildings and signs: recognisable? Anything in the wrong place, or missing?
+12. The daily things (letter, rumour, bake, sandwich, book): a pleasure, or a chore?
+13. The new people: funny, or too much?
 
 ## 10. Risks and honest perspectives
 

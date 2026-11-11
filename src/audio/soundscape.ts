@@ -62,8 +62,11 @@ export interface Jingle {
   notes: number[];
   gap: number;
   gain: number;
-  /** 'bell' rings on; 'pluck' is short and dry; 'thud' is a rubber stamp coming down before the notes. */
-  voice: 'bell' | 'pluck' | 'thud';
+  /**
+   * 'bell' rings on; 'pluck' is short and dry; 'thud' is a rubber stamp coming down before the
+   * notes; 'whistle' sounds its notes together, twice: a short toot and a long one.
+   */
+  voice: 'bell' | 'pluck' | 'thud' | 'whistle';
 }
 
 // A pentatonic scale on D, so any run of notes sounds settled.
@@ -92,6 +95,9 @@ export function jingleFor(kind: string, detail = ''): Jingle | null {
       return { notes: [D[4], D[5], D[7]] as number[], gap: 0.12, gain: 0.4, voice: 'pluck' };
     case 'gear':
       return { notes: [D[5], D[7], D[8], D[10]] as number[], gap: 0.09, gain: 0.45, voice: 'bell' };
+    case 'train':
+      // A steam whistle: three notes at once, a little sour, as they are.
+      return { notes: [392, 466.16, 587.33], gap: 0, gain: 0.4, voice: 'whistle' };
     case 'item':
       return { notes: [D[7], D[5]] as number[], gap: 0.1, gain: 0.35, voice: 'pluck' };
     default:

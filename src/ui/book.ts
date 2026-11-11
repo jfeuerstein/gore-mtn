@@ -34,7 +34,7 @@ const SEASON_WORDS = (s: Species): string => (s.seasons ? s.seasons.map((q) => S
 const WATCH_WORDS = (s: Species): string => (s.watches ? s.watches.join(', ') : '');
 
 /** A picture from the game's generated art: a mineral's or a species' plate. Left out if it cannot be had. */
-function plate(set: 'minerals' | 'species', id: string): HTMLImageElement {
+function plate(set: 'minerals' | 'species' | 'places', id: string): HTMLImageElement {
   const img = document.createElement('img');
   img.className = 'plate';
   img.alt = '';
@@ -175,7 +175,19 @@ export class Book {
       ),
     );
     out.push(this.heading('Landmarks', s.landmarks, s.landmarksTotal));
-    out.push(this.stamps('landmark', game.landmarks.map((p) => ({ name: p.name, day: save.landmarks[p.id], how: 'Pay a visit.' }))));
+    out.push(el('p', 'note', 'A postcard from everywhere you have stood.'));
+    // Each landmark is a postcard: blank until visited, then its picture and the day.
+    const cards = el('div', 'stamps postcards');
+    for (const place of game.landmarks) {
+      const day = save.landmarks[place.id];
+      const card = el('div', `stamp landmark postcard ${day ? 'earned' : 'todo'}`);
+      if (day) card.appendChild(plate('places', place.id));
+      else card.appendChild(el('span', 'badge', '?'));
+      card.appendChild(el('b', '', place.name));
+      card.appendChild(el('small', '', day ? shortDay(day) : 'Pay a visit.'));
+      cards.appendChild(card);
+    }
+    out.push(cards);
     out.push(this.heading('Conditions', s.conditions, s.conditionsTotal));
     out.push(this.stamps('condition', CONDITIONS.map((c) => ({ name: c.name, day: save.conditions[c.id], how: c.how }))));
     out.push(this.heading('Lifts', s.lifts, s.liftsTotal));

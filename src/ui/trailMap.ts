@@ -14,6 +14,14 @@ const LIFT_COLOUR = '#c2412d';
 const PATH_COLOUR = '#f4e4b8';
 /** Places worth a label on the map, by id. */
 const LABELLED = new Set(['base-lodge', 'saddle-lodge', 'summit', 'ski-bowl-lodge', 'depot']);
+/** Something marked on the map with a gold diamond: someone with an errand, say. */
+export interface MapMark {
+  x: number;
+  z: number;
+  /** What the caption says when it is tapped. */
+  label: string;
+}
+
 /** How close a tap must land to a trail or lift to pick it, in screen points. */
 const TAP_REACH = 16;
 
@@ -27,7 +35,9 @@ export class TrailMap {
   private readonly caption: HTMLElement;
   private view: MapView | null = null;
   private timer = 0;
-  private picked: { trail?: Trail; lift?: LiftPath; path?: string } | null = null;
+  private picked: { trail?: Trail; lift?: LiftPath; path?: string; mark?: MapMark } | null = null;
+  /** People with something for the player, and anything else worth a mark. Asked for each time the map is drawn. */
+  marks: () => MapMark[] = () => [];
   /** Called when the map opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
 
@@ -65,6 +75,7 @@ export class TrailMap {
       [TRAIL_COLOUR.advanced, '◆ most difficult'],
       [LIFT_COLOUR, '— lift'],
       ['#8a6a3c', '⋯ path'],
+      ['#b9770e', '◆ someone waiting'],
     ] as const) {
       const item = document.createElement('span');
       item.style.color = colour;
@@ -193,6 +204,23 @@ export class TrailMap {
       ctx.fillText(label, p.u + (left ? -6 : 6), p.v + rise);
     }
 
+    // Gold diamonds for whoever has something for the player, as over their heads.
+    for (const mark of this.marks()) {
+      const p = view.toMap(mark.x, mark.z);
+      const big = this.picked?.mark?.label === mark.label ? 7 : 5;
+      ctx.beginPath();
+      ctx.moveTo(p.u, p.v - big);
+      ctx.lineTo(p.u + big * 0.72, p.v);
+      ctx.lineTo(p.u, p.v + big);
+      ctx.lineTo(p.u - big * 0.72, p.v);
+      ctx.closePath();
+      ctx.fillStyle = '#ffb02e';
+      ctx.strokeStyle = '#1f2a3a';
+      ctx.lineWidth = 1.3;
+      ctx.fill();
+      ctx.stroke();
+    }
+
     // You are here: an arrowhead pointing the way the player faces.
     const you = this.where();
     const here = view.toMap(you.x, you.z);
@@ -221,7 +249,7 @@ export class TrailMap {
     const at = view.toWorld(e.clientX - box.left, e.clientY - box.top);
     const reach = TAP_REACH / view.scale;
     let best = reach;
-    let found: { trail?: Trail; lift?: LiftPath; path?: string } | null = null;
+    let found: { trail?: Trail; lift?: LiftPath; path?: string; mark?: MapMark } | null = null;
     for (const path of this.lifts) {
       const d = distToPolyline(at.x, at.z, path.lift.pts);
       if (d < best) {
@@ -245,8 +273,13 @@ export class TrailMap {
         found = { path: path.name };
       }
     }
+    // A diamond is small, and is what someone tapping near one is after.
+    for (const mark of this.marks()) {
+      if (Math.hypot(mark.x - at.x, mark.z - at.z) < reach * 1.2) found = { mark };
+    }
     this.picked = found;
-    if (found?.path) this.caption.textContent = `Path: ${found.path}`;
+    if (found?.mark) this.caption.textContent = found.mark.label;
+    else if (found?.path) this.caption.textContent = `Path: ${found.path}`;
     else if (found?.lift) this.caption.textContent = `Lift: ${found.lift.lift.name ?? 'unnamed'}`;
     else if (found?.trail) this.caption.textContent = `${DIFFICULTY_MARK[found.trail.difficulty]} ${found.trail.name}${found.trail.glade ? ' (glade)' : ''}`;
     else this.caption.textContent = 'Tap a trail or lift to see its name.';

@@ -16,7 +16,7 @@ const SETS = {
   people: { art: manifest.PEOPLE_ART, size: 256 },
   minerals: { art: manifest.MINERAL_ART, size: 384 },
   species: { art: manifest.SPECIES_ART ?? {}, size: 384 },
-  places: { art: manifest.PLACE_ART ?? {}, size: 512 },
+  places: { art: manifest.PLACE_ART ?? {}, size: 384 },
 };
 const args = process.argv.slice(2);
 const redo = new Set((args.find((a, i) => args[i - 1] === '--redo') ?? '').split(',').filter(Boolean));

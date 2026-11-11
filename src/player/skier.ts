@@ -205,6 +205,33 @@ export class Skier {
     } else if (style === 'lamp') {
       // A miner's hard hat with its lamp, which stays lit.
       g.add(dome(), part(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 12), hat, 0, 0.22, 0), part(new THREE.BoxGeometry(0.1, 0.09, 0.06), new THREE.MeshBasicMaterial({ color: 0xfff0a8 }), 0, 0.3, -0.2));
+    } else if (style === 'tophat') {
+      // A snowman's top hat, with a band.
+      g.add(part(new THREE.CylinderGeometry(0.33, 0.33, 0.03, 12), hat, 0, 0.27, 0), part(new THREE.CylinderGeometry(0.19, 0.18, 0.34, 10), hat, 0, 0.45, 0), part(new THREE.CylinderGeometry(0.195, 0.195, 0.06, 10), cream, 0, 0.32, 0));
+    } else if (style === 'helmet') {
+      // A patroller's helmet: a full dome, a short peak, and goggles pushed up on it.
+      g.add(part(new THREE.SphereGeometry(0.235, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), hat, 0, 0.17, 0), part(new THREE.BoxGeometry(0.3, 0.03, 0.1), dark, 0, 0.25, -0.24), part(new THREE.BoxGeometry(0.34, 0.09, 0.05), dark, 0, 0.34, -0.2), part(new THREE.BoxGeometry(0.26, 0.06, 0.02), new THREE.MeshBasicMaterial({ color: 0xffd76a }), 0, 0.34, -0.23));
+    } else if (style === 'antlers') {
+      // A plain cap with a pair of felt antlers.
+      g.add(dome());
+      for (const side of [-1, 1]) {
+        const beam = part(new THREE.BoxGeometry(0.045, 0.34, 0.045), cream, side * 0.13, 0.52, 0);
+        beam.rotation.z = -side * 0.35;
+        const tine = part(new THREE.BoxGeometry(0.04, 0.16, 0.04), cream, side * 0.24, 0.56, 0);
+        tine.rotation.z = -side * 1.1;
+        const brow = part(new THREE.BoxGeometry(0.04, 0.13, 0.04), cream, side * 0.1, 0.5, -0.06);
+        brow.rotation.x = -0.9;
+        g.add(beam, tine, brow);
+      }
+    } else if (style === 'propeller') {
+      // A beanie with a propeller on top, which does not turn, or says it does not.
+      g.add(dome(), part(new THREE.CylinderGeometry(0.212, 0.212, 0.05, 10), cream, 0, 0.21, 0), part(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 5), dark, 0, 0.46, 0));
+      const blade = part(new THREE.BoxGeometry(0.4, 0.015, 0.07), new THREE.MeshLambertMaterial({ color: 0xe2a52e, flatShading: true }), 0, 0.52, 0);
+      blade.rotation.y = 0.6;
+      g.add(blade, part(new THREE.SphereGeometry(0.03, 5, 4), new THREE.MeshLambertMaterial({ color: 0xc8402d, flatShading: true }), 0, 0.53, 0));
+    } else if (style === 'straw') {
+      // A scarecrow's straw hat: wide, and a little crushed.
+      g.add(part(new THREE.CylinderGeometry(0.4, 0.42, 0.03, 12), hat, 0, 0.28, 0), part(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hat, 0, 0.37, 0), part(new THREE.CylinderGeometry(0.205, 0.205, 0.04, 10), dark, 0, 0.31, 0));
     } else {
       // A beanie with a turned-up cuff and a pompom.
       g.add(dome(), part(new THREE.CylinderGeometry(0.212, 0.212, 0.07, 10), cream, 0, 0.21, 0), part(new THREE.SphereGeometry(0.07, 6, 5), cream, 0, 0.43, 0));

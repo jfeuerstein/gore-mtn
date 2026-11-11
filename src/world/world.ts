@@ -12,6 +12,7 @@ interface WorldFile {
   paths: Path[];
   water: { name: string; kind: string; pts: number[] }[];
   roads: Road[];
+  rails?: { pts: number[] }[];
   buildings: Footprint[];
   ponds: NamedSpot[];
   spots: NamedSpot[];
@@ -35,6 +36,8 @@ export interface World {
   paths: Path[];
   water: { name: string; kind: string; pts: number[] }[];
   roads: Road[];
+  /** The railway, as lines. */
+  rails: { pts: number[] }[];
   /** Houses and other buildings that are not places of their own. */
   buildings: Footprint[];
   ponds: NamedSpot[];
@@ -111,6 +114,7 @@ export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: Arr
     paths: meta.paths,
     water: meta.water,
     roads: meta.roads,
+    rails: meta.rails ?? [],
     buildings: meta.buildings,
     ponds: meta.ponds,
     spots: meta.spots,

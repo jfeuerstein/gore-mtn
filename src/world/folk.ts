@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Person } from '../game/people';
+import type { Season } from '../look/season';
 import { STANDING } from '../player/pose';
 import { Skier, type Outfit } from '../player/skier';
 import { blocks, type Block } from './shapes';
@@ -16,6 +17,8 @@ export interface Standing {
   x: number;
   y: number;
   z: number;
+  /** Where the thing that stands beside them is, if they have one. */
+  prop?: { x: number; y: number; z: number; turn: number };
 }
 
 /**
@@ -97,6 +100,151 @@ function dog(): THREE.BufferGeometry {
   ]);
 }
 
+/** A fat orange cat, sitting very upright, in a chain of office. */
+function cat(): THREE.BufferGeometry {
+  const orange = 0xd9822b;
+  const cream = 0xf4ead8;
+  const gold = 0xe2b94a;
+  return blocks([
+    { size: [0.34, 0.34, 0.44], at: [0, 0.19, 0.08], colour: orange },
+    { size: [0.28, 0.42, 0.26], at: [0, 0.44, -0.1], colour: orange },
+    { size: [0.15, 0.28, 0.03], at: [0, 0.42, -0.235], colour: cream },
+    { size: [0.07, 0.3, 0.08], at: [-0.08, 0.15, -0.2], colour: cream },
+    { size: [0.07, 0.3, 0.08], at: [0.08, 0.15, -0.2], colour: cream },
+    // Head, ears, muzzle, and a pair of green eyes with opinions.
+    { size: [0.32, 0.27, 0.27], at: [0, 0.76, -0.14], colour: orange },
+    { size: [0.09, 0.11, 0.07], at: [-0.11, 0.94, -0.13], colour: orange },
+    { size: [0.09, 0.11, 0.07], at: [0.11, 0.94, -0.13], colour: orange },
+    { size: [0.15, 0.09, 0.06], at: [0, 0.7, -0.29], colour: cream },
+    { size: [0.055, 0.05, 0.02], at: [-0.08, 0.8, -0.28], colour: 0x4f8a3a },
+    { size: [0.055, 0.05, 0.02], at: [0.08, 0.8, -0.28], colour: 0x4f8a3a },
+    // The chain of office, and a tail curled round.
+    { size: [0.24, 0.035, 0.03], at: [0, 0.6, -0.245], colour: gold },
+    { size: [0.08, 0.08, 0.03], at: [0, 0.53, -0.255], colour: gold },
+    { size: [0.08, 0.08, 0.42], at: [0.2, 0.06, 0.26], colour: orange, turn: 0.7 },
+  ]);
+}
+
+/** Coal eyes, a carrot and a striped scarf: what Tom keeps, whatever else he is made of that season. */
+function tomsFace(y: number, front: number): Block[] {
+  return [
+    { size: [0.07, 0.07, 0.04], at: [-0.12, y + 0.08, front], colour: 0x1c1c20 },
+    { size: [0.07, 0.07, 0.04], at: [0.12, y + 0.08, front], colour: 0x1c1c20 },
+    { size: [0.08, 0.08, 0.3], at: [0, y - 0.02, front - 0.14], colour: 0xe8742a },
+  ];
+}
+function tomsScarf(y: number, width: number): Block[] {
+  return [
+    { size: [width, 0.13, width], at: [0, y, 0], colour: 0xb53a2a },
+    { size: [0.15, 0.2, 0.05], at: [0.18, y - 0.16, -width / 2 - 0.02], colour: 0xe2a52e },
+    { size: [0.15, 0.2, 0.05], at: [0.18, y - 0.36, -width / 2 - 0.02], colour: 0xb53a2a },
+  ];
+}
+
+/**
+ * Tom. In winter a snowman in a top hat; in spring what is left of one; in summer and fall a
+ * scarecrow in the same scarf, with a pumpkin for company once the leaves turn.
+ */
+function tom(season: Season): THREE.BufferGeometry {
+  const snow = 0xf4f6fa;
+  const black = 0x22262d;
+  const hat = (y: number): Block[] => [
+    { size: [0.62, 0.05, 0.62], at: [0, y, 0], colour: black },
+    { size: [0.4, 0.36, 0.4], at: [0, y + 0.2, 0], colour: black },
+    { size: [0.42, 0.07, 0.42], at: [0, y + 0.07, 0], colour: 0xf4ead8 },
+  ];
+  if (season === 'winter') {
+    return blocks([
+      { size: [1.15, 0.85, 1.15], at: [0, 0.42, 0], colour: snow },
+      { size: [0.86, 0.7, 0.86], at: [0, 1.15, 0], colour: snow },
+      { size: [0.6, 0.55, 0.6], at: [0, 1.74, 0], colour: snow },
+      ...tomsFace(1.74, -0.31),
+      ...tomsScarf(1.47, 0.72),
+      { size: [0.08, 0.08, 0.04], at: [0, 1.25, -0.44], colour: black },
+      { size: [0.08, 0.08, 0.04], at: [0, 1.02, -0.44], colour: black },
+      ...hat(2.04),
+      // Twig arms, raised a little, as if about to make a point.
+      { size: [0.05, 0.05, 0.75], at: [-0.74, 1.4, 0], colour: 0x6b4a33, turn: Math.PI / 2, tip: 0.45 },
+      { size: [0.05, 0.05, 0.75], at: [0.74, 1.4, 0], colour: 0x6b4a33, turn: -Math.PI / 2, tip: 0.45 },
+    ]);
+  }
+  if (season === 'spring') {
+    // Travelling light.
+    return blocks([
+      { size: [0.8, 0.38, 0.8], at: [0, 0.19, 0], colour: snow },
+      { size: [0.5, 0.42, 0.5], at: [0, 0.58, 0], colour: snow },
+      ...tomsFace(0.58, -0.26),
+      ...tomsScarf(0.36, 0.62),
+      ...hat(0.82),
+      { size: [0.05, 0.05, 0.75], at: [0.7, 0.04, 0.2], colour: 0x6b4a33, turn: 0.9 },
+    ]);
+  }
+  const straw = 0xd9b65a;
+  return blocks([
+    { size: [0.12, 2.1, 0.12], at: [0, 1.05, 0.06], colour: 0x6b4a33 },
+    { size: [1.7, 0.1, 0.1], at: [0, 1.58, 0.06], colour: 0x6b4a33 },
+    // A plaid shirt and patched trousers, stuffed.
+    { size: [0.7, 0.75, 0.32], at: [0, 1.38, 0], colour: 0xa9483a },
+    { size: [0.5, 0.24, 0.24], at: [-0.56, 1.58, 0], colour: 0xa9483a },
+    { size: [0.5, 0.24, 0.24], at: [0.56, 1.58, 0], colour: 0xa9483a },
+    { size: [0.18, 0.22, 0.18], at: [-0.88, 1.56, 0], colour: straw },
+    { size: [0.18, 0.22, 0.18], at: [0.88, 1.56, 0], colour: straw },
+    { size: [0.5, 0.62, 0.28], at: [0, 0.74, 0], colour: 0x4a5a78 },
+    { size: [0.42, 0.14, 0.22], at: [0, 0.38, 0], colour: straw },
+    // A burlap head, with the same face.
+    { size: [0.42, 0.44, 0.42], at: [0, 2.02, 0], colour: 0xcdb38a },
+    ...tomsFace(2.02, -0.22),
+    ...tomsScarf(1.79, 0.5),
+    { size: [0.84, 0.05, 0.84], at: [0, 2.26, 0], colour: straw },
+    { size: [0.42, 0.2, 0.42], at: [0, 2.37, 0], colour: straw },
+    ...(season === 'fall'
+      ? [
+          { size: [0.46, 0.34, 0.46], at: [0.62, 0.17, -0.25], colour: 0xe8742a } as Block,
+          { size: [0.08, 0.12, 0.08], at: [0.62, 0.39, -0.25], colour: 0x4f6b3a } as Block,
+        ]
+      : []),
+  ]);
+}
+
+/** The snowcat: tracks, a red cab, a blade in front and the comb behind that lays the corduroy. Its front is its own -z. */
+function snowcat(): THREE.BufferGeometry {
+  const red = 0xc8402d;
+  const dark = 0x22262d;
+  const glass = 0x3d4a5e;
+  return blocks([
+    { size: [0.75, 0.7, 4.7], at: [-1.2, 0.35, 0], colour: dark },
+    { size: [0.75, 0.7, 4.7], at: [1.2, 0.35, 0], colour: dark },
+    { size: [1.9, 0.5, 4.3], at: [0, 0.9, 0], colour: red },
+    { size: [1.9, 1.3, 1.9], at: [0, 1.8, -0.7], colour: red },
+    { size: [1.7, 0.75, 0.06], at: [0, 2, -1.66], colour: glass },
+    { size: [0.06, 0.75, 1.5], at: [-0.96, 2, -0.7], colour: glass },
+    { size: [0.06, 0.75, 1.5], at: [0.96, 2, -0.7], colour: glass },
+    { size: [2.05, 0.12, 2.05], at: [0, 2.5, -0.7], colour: dark },
+    { size: [0.2, 0.2, 0.2], at: [0, 2.66, -0.7], colour: 0xe8742a },
+    { size: [1.9, 0.65, 1.7], at: [0, 1.47, 1.15], colour: 0x9f3324 },
+    // The blade, carried just off the snow.
+    { size: [3.7, 0.85, 0.25], at: [0, 0.6, -2.85], colour: 0xe2a52e, tip: 0.18 },
+    { size: [0.16, 0.16, 0.7], at: [-0.8, 0.65, -2.5], colour: dark },
+    { size: [0.16, 0.16, 0.7], at: [0.8, 0.65, -2.5], colour: dark },
+    // The tiller and its comb.
+    { size: [3.5, 0.4, 0.55], at: [0, 0.32, 2.8], colour: dark },
+    { size: [3.5, 0.06, 0.6], at: [0, 0.1, 3.25], colour: 0xe2a52e },
+  ]);
+}
+
+/** A patrol sled: an orange toboggan with long handles, a blanket roll and a white cross. */
+function sled(): THREE.BufferGeometry {
+  return blocks([
+    { size: [0.62, 0.22, 2.1], at: [0, 0.16, 0], colour: 0xe8742a },
+    { size: [0.5, 0.2, 0.55], at: [0, 0.37, 0.45], colour: 0xb53a2a },
+    { size: [0.3, 0.02, 0.1], at: [0, 0.28, -0.4], colour: 0xfffdf7 },
+    { size: [0.1, 0.02, 0.3], at: [0, 0.28, -0.4], colour: 0xfffdf7 },
+    { size: [0.05, 0.05, 1.3], at: [-0.3, 0.55, -1.5], colour: 0x9aa0a8, tip: -0.5 },
+    { size: [0.05, 0.05, 1.3], at: [0.3, 0.55, -1.5], colour: 0x9aa0a8, tip: -0.5 },
+    { size: [0.66, 0.05, 0.05], at: [0, 0.86, -2.07], colour: 0x9aa0a8 },
+  ]);
+}
+
 /** A small upright diamond that hangs over someone with something to say, or something to be picked up. */
 function flag(colour: number): THREE.Mesh {
   const w = 0.2;
@@ -115,15 +263,29 @@ function flag(colour: number): THREE.Mesh {
 export class Folk {
   readonly group = new THREE.Group();
   private readonly figures: { standing: Standing; body: THREE.Mesh; mark: THREE.Mesh; yaw: number }[] = [];
+  private readonly props = new Map<string, THREE.Mesh>();
   private time = 0;
 
-  constructor(people: readonly Standing[], castShadow: boolean) {
+  /** @param season some of them dress for it, and one of them is made of it */
+  constructor(people: readonly Standing[], castShadow: boolean, season: Season = 'winter') {
     this.group.name = 'folk';
     const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
     for (const standing of people) {
       const kind = standing.person.kind ?? 'person';
-      const body = new THREE.Mesh(kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : standingFigure(standing.person.look), material);
-      body.scale.setScalar(kind === 'person' ? SCALE : 1);
+      const geometry = kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : kind === 'cat' ? cat() : kind === 'snowman' ? tom(season) : standingFigure(standing.person.look);
+      const body = new THREE.Mesh(geometry, material);
+      body.scale.setScalar(kind === 'person' ? SCALE : kind === 'cat' ? 0.62 : 1);
+      // Whatever stands beside them: one more mesh, shown and hidden with its owner.
+      if (standing.prop && standing.person.prop) {
+        const prop = new THREE.Mesh(standing.person.prop === 'snowcat' ? snowcat() : sled(), material);
+        prop.position.set(standing.prop.x, standing.prop.y, standing.prop.z);
+        prop.rotation.y = standing.prop.turn;
+        prop.castShadow = castShadow;
+        prop.matrixAutoUpdate = false;
+        prop.updateMatrix();
+        this.group.add(prop);
+        this.props.set(standing.person.id, prop);
+      }
       body.position.set(standing.x, standing.y, standing.z);
       // Facing south to begin with, out from the door.
       body.rotation.y = Math.PI;
@@ -162,10 +324,13 @@ export class Folk {
       const dist = Math.hypot(dx, dz);
       const shown = dist < DRAW_RANGE;
       body.visible = shown;
+      const prop = this.props.get(standing.person.id);
+      if (prop) prop.visible = shown;
       mark.visible = shown && hasBusiness(standing.person.id);
       if (!shown) continue;
       const kind = standing.person.kind ?? 'person';
-      if (kind === 'board') {
+      // A board and a snowman stay as they were put.
+      if (kind === 'board' || kind === 'snowman') {
         if (mark.visible) {
           mark.position.set(standing.x, standing.y + 3 + Math.sin(this.time * 2.2) * 0.08, standing.z);
           mark.rotation.y = cameraYaw;
@@ -181,7 +346,7 @@ export class Folk {
       const wag = kind === 'dog' && dist < NOTICE_RANGE ? Math.sin(this.time * 11) * 0.09 : 0;
       body.rotation.set(Math.sin(this.time * 0.8 + standing.x) * 0.025, f.yaw + wag, Math.sin(this.time * 0.6 + standing.z) * 0.02 + wag * 0.5);
       if (mark.visible) {
-        mark.position.set(standing.x, standing.y + (kind === 'dog' ? 1.9 : 2.25) + Math.sin(this.time * 2.2 + standing.z) * 0.08, standing.z);
+        mark.position.set(standing.x, standing.y + (kind === 'dog' ? 1.9 : kind === 'cat' ? 1.25 : 2.25) + Math.sin(this.time * 2.2 + standing.z) * 0.08, standing.z);
         mark.rotation.y = cameraYaw;
       }
     }

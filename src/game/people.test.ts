@@ -77,6 +77,16 @@ describe('the errands', () => {
     }
   });
 
+  it('only has people remark on things that can be worn, and remark once a day', () => {
+    for (const person of PEOPLE) for (const id of Object.keys(person.wearing ?? {})) expect(gearById(id), `${person.id}: ${id}`).toBeDefined();
+    const game = new Game(gameWorld, memory());
+    game.save.gear = { owned: ['hat-antlers'], hat: 'hat-antlers', jacket: '' };
+    game.talk('biscuit', DAY, 'winter');
+    const remark = game.talk('biscuit', DAY, 'winter');
+    expect(remark?.lines[0]).toBe(personById('biscuit')?.wearing?.['hat-antlers']);
+    expect(game.talk('biscuit', DAY, 'winter')?.lines[0]).not.toBe(remark?.lines[0]);
+  });
+
   it('can each earn every piece of gear but the two the player starts in', () => {
     const earned = new Set(ERRANDS.map((e) => e.reward?.gear).filter(Boolean));
     for (const g of GEAR) {
