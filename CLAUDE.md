@@ -398,6 +398,9 @@ depot draws 180 to 310 calls, over the target above; the owner's next benchmark 
 whether that matters. `node tools/census.mjs` shows where they go: terrain tiles (252 on the
 mountain, those in view drawn) and forest patches are most of it; the player's figure is about
 twenty; the lodges, the town, the lifts, the signs and the train are a dozen between them.
+At the benchmark's own spot and settings, a headless run now reports 118 to 171 draw calls
+across its steps (it was 104 on the phone when the owner last measured) and about 4 ms of
+our own code per frame.
 If the phone says it matters, the far terrain tiles are the place to start (join them into
 larger pieces), then the player's figure (join the parts that move together).
 

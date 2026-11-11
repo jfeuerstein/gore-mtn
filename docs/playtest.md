@@ -3,10 +3,28 @@
 This is the game as it stands after being taken past the vertical slice. Nothing in it since
 milestone 1 has had your thumbs on it, so expect rough edges and say where they are.
 
+## New since your review
+
+In the order you will meet it:
+
+1. **The look of the interface**: poster lettering, paper and enamel, portraits when people talk,
+   plates in the Book. The bike is faster.
+2. **At the Base Lodge**: a snow report chalked up by the door, racks of skis, a name board at
+   the foot of each lift, a station over each lift's wheel, and faces on everybody.
+3. **On the mountain**: a sign at the top of every trail, snow guns down the wide ones, a
+   trail-of-the-day board at the Saddle, the observer's log at the fire tower, and benches at
+   the lookouts.
+4. **In North Creek** (by shuttle): named buildings with signs, lamps and smoke; the Snow Train
+   standing at a depot that now lies along the rails; a post office, an inn, a bakery, a deli
+   and a library that each have something for you every day; and a mayor.
+5. **In the Book**: postcards for landmarks, letters, a town round, tickets for what you have
+   tasted and read, benches, and more hats.
+
 ## Before you start
 
 - Open the game from the Home Screen icon as before. A new version arrives by itself. You will
-  get the welcome once, even though your book is not new; close it or read it through.
+  get a few lines once: the welcome if your book has never seen it, otherwise a note of what is
+  new. Close it or read it through.
 - Your existing book carries over. Stamps earned before the seasons were told apart count as
   winter's.
 - Sound starts with your first touch. The phone's silent mode may mute it; Settings > Sound
