@@ -40,7 +40,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { trail: 5, trailside: 5, rock: 4, mine: 7 },
     size: 3,
     largest: 30,
-    about: "New York's state gem. Gore's garnets are among the largest in the world.",
+    about: "New York's state gem. Gore's garnets are some of the biggest in the world.",
     hint: 'On the trails, beside them and in bare rock.',
   },
   {
@@ -62,7 +62,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { trail: 4, trailside: 4, rock: 2, forest: 3 },
     size: 5,
     largest: 25,
-    about: 'The pale mineral that makes up much of the Adirondacks.',
+    about: 'The pale mineral that a lot of the Adirondacks is made of.',
     hint: 'Almost anywhere.',
   },
   {
@@ -73,7 +73,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { trail: 3, trailside: 3, forest: 3 },
     size: 4,
     largest: 22,
-    about: 'Clear to milky, and hard enough to scratch glass.',
+    about: 'Clear to milky. Hard enough to scratch glass.',
     hint: 'On the trails and in the woods.',
   },
   {
@@ -84,7 +84,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { trail: 0.8, trailside: 2, rock: 3, mine: 1 },
     size: 3,
     largest: 15,
-    about: 'Iron ore, mined across the Adirondacks in the 1800s. A magnet picks it up.',
+    about: 'Iron ore. They mined it all over the Adirondacks in the 1800s. A magnet picks it up.',
     hint: 'In bare rock, and now and then on or beside a trail.',
   },
   {
@@ -106,7 +106,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { rock: 4, trailside: 1 },
     size: 2,
     largest: 12,
-    about: "Fool's gold: brassy cubes that are iron and sulphur, not gold.",
+    about: "Fool's gold. Brassy little cubes of iron and sulfur.",
     hint: 'In bare rock on steep ground.',
   },
   {
@@ -117,7 +117,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { rock: 3, forest: 2 },
     size: 3,
     largest: 14,
-    about: 'Soft and grey. Adirondack graphite went into pencils made at Ticonderoga.',
+    about: 'Soft and gray. Adirondack graphite went into the pencils made at Ticonderoga.',
     hint: 'In bare rock and in the woods.',
   },
   {
@@ -128,7 +128,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { rock: 2 },
     size: 4,
     largest: 18,
-    about: 'A feldspar that flashes blue and green when it catches the light.',
+    about: 'A feldspar that flashes blue and green when the light hits it right.',
     hint: 'In bare rock on steep ground. Rare.',
   },
   {
@@ -139,7 +139,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { rock: 1.5, forest: 0.6 },
     size: 3,
     largest: 16,
-    about: 'Long black crystals with grooves down their sides.',
+    about: 'Long black crystals with grooves down the sides.',
     hint: 'In bare rock. Rare.',
   },
   {
@@ -150,7 +150,7 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { forest: 1.2 },
     size: 5,
     largest: 20,
-    about: 'White and fibrous. It is mined at Willsboro, in the eastern Adirondacks.',
+    about: 'White and fibrous. They mine it at Willsboro, over in the eastern Adirondacks.',
     hint: 'Deep in the woods. Rare.',
   },
   {
@@ -161,8 +161,8 @@ export const MINERALS: readonly Mineral[] = [
     habitats: { trail: 0.15, trailside: 0.35, rock: 0.5, mine: 1 },
     size: 1.5,
     largest: 6,
-    about: 'Clear, deep red, and flawless enough to cut.',
-    hint: 'Where the ordinary garnets are, once in a long while. Oftener round the old workings.',
+    about: 'Clear, deep red, and clean enough to cut.',
+    hint: 'Wherever the regular garnets are, once in a long while. More often around the old workings.',
   },
 ];
 

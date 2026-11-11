@@ -8,7 +8,7 @@ import { preview } from 'vite';
 import { devices, launchBrowser } from './browser.mjs';
 
 const shot = process.argv[2];
-const STEPS = 9;
+const STEPS = 12;
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const base = `http://127.0.0.1:${server.httpServer.address().port}/`;
@@ -40,7 +40,7 @@ try {
   const numbered = lines.filter((l) => /^\d+\. /.test(l));
   check('every step reported', numbered.length === STEPS, `${numbered.length} of ${STEPS}`);
   check('each line carries frame, cpu and scene numbers', numbered.every((l) => / fps, p95 .* cpu .* calls, .* tris, \d+ trees/.test(l)));
-  check('both renderers were asked for', numbered.some((l) => l.includes('WebGL 2,')) && numbered.some((l) => l.includes('WebGPU,')));
+  check('both renderers were asked for', numbered.some((l) => l.split(' [')[0].includes('WebGL 2')) && numbered.some((l) => !l.split(' [')[0].includes('WebGL 2')));
   check('tree counts differ between steps', new Set(numbered.map((l) => l.match(/(\d+) trees/)[1])).size >= 3);
   check('returns to the player\'s own settings', page.url().includes('zoom=1.3') && !page.url().includes('trees='));
   if (shot) await page.screenshot({ path: shot });

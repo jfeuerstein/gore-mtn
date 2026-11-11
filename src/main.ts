@@ -33,6 +33,8 @@ import { countryOf } from './world/country';
 import { critterGeometry } from './world/critterModels';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
+import { buildRoute, busyness, routePoint } from './world/crowd';
+import { Crowd } from './world/crowdMesh';
 import { LiftCars } from './world/liftCars';
 import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
@@ -185,6 +187,9 @@ async function boot(): Promise<void> {
       }
     },
     write: (text: string): void => {
+      // A benchmark step stands at lodges, walks through town and is carried down a trail in
+      // seasons the player may never have seen. None of that is the player's doing: it is not kept.
+      if (typeof cfg.bench === 'number') return;
       try {
         localStorage.setItem(SAVE_KEY, text);
       } catch {
@@ -241,7 +246,13 @@ async function boot(): Promise<void> {
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
   const liftCars = new LiftCars(liftPaths, shadows);
+  // Everybody else: skiers down the trails, people on the chairs, the town out walking Main Street.
+  const townMiddle = world.places.find((p) => p.id === 'depot');
+  const crowd = cfg.crowd
+    ? new Crowd(world, liftPaths, (x, z) => ground.heightAt(x, z), season, look.ride, shadows, townMiddle ? { x: townMiddle.x, z: townMiddle.z, reach: 520 } : null)
+    : null;
   scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, built.group);
+  if (crowd) scene.add(crowd.group);
   const walls = new Walls(built.walls);
   /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
   const bumpAt = (x: number, z: number, radius: number) => {
@@ -622,6 +633,14 @@ async function boot(): Promise<void> {
     typeof cfg.bench === 'number'
       ? new BenchRun(cfg.bench, cfg.benchSeconds, follow.yaw, { backend, trees: () => trees.count, resolution })
       : null;
+  // The trail a travelling step is carried down: the longest piece of it on the map.
+  const benchTrail = bench?.step.travel
+    ? world.trails
+        .filter((t) => t.name === bench.step.travel && !t.area)
+        .map((t) => buildRoute(t.pts))
+        .sort((a, b) => b.length - a.length)[0]
+    : undefined;
+  const benchRoute = benchTrail && benchTrail.length > 50 ? benchTrail : null;
   if (cfg.bench === 'done') showBenchResults(deviceLabel());
 
   const stats = new FrameStats();
@@ -718,6 +737,8 @@ async function boot(): Promise<void> {
     toast: toasts.last,
     watch,
     away,
+    // How many others are in the picture just now.
+    crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
     // The benches, and whether the player is sitting on one.
     benches: built.benches.map((b) => ({ id: b.id, x: b.x, z: b.z, turn: b.turn })),
@@ -787,6 +808,7 @@ async function boot(): Promise<void> {
     liftClock += dt;
     liftCars.update(liftClock);
     built.update(liftClock, player.position.x, player.position.z);
+    crowd?.update(liftClock, dt, player.position, busyness(watch));
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, firmAt, bumpAt, liftClock);
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {
@@ -970,7 +992,16 @@ async function boot(): Promise<void> {
           ? Math.max(Math.min(1, player.speed / 3), Math.abs(input.moveX)) * 2.5
           : Math.min(1, Math.hypot(input.moveX, input.moveY));
     follow.follow(player.travelHeading, followAmount, dt, player.mode !== 'walk');
-    if (bench) follow.yaw = bench.yawAt(now);
+    if (bench && benchRoute) {
+      // A step that travels: carried down the trail, looking the way it goes.
+      const d = bench.travelled(now) % benchRoute.length;
+      const at = routePoint(benchRoute, d);
+      const ahead = routePoint(benchRoute, d + 8);
+      player.place(at.x, at.z, ground);
+      const yaw = Math.atan2(-(ahead.x - at.x), -(ahead.z - at.z));
+      player.face(yaw);
+      follow.yaw = yaw;
+    } else if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground, player.speed, dt, (x, z) => walls.roofAt(x, z));
     trees.update(player.position, camera.position, dt);
     sinceSky += frameMs;

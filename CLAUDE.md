@@ -47,10 +47,10 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
-  (including the book's counts, the stones lying nearby and the last announcement) and a few
+  (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
   actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
   heights, the trail mask, where no trees grow (`open.bin.gz`: roads, lots, paths, water) and how
@@ -152,6 +152,8 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   and gives it a door; `src/world/townKit.ts` builds each from a kit by style (inn, store, post
   office, church, hall, barn, cafe, deli, mill, cabin and so on) with its front at its own +z.
   All of them are joined into two meshes, walls and windows. Add a place by adding a listing.
+- If the signs do not all fit on their sheet at full size, `signs.ts` draws them all a little
+  smaller until they do. No board is left bare.
 - Every word in the world is painted by `src/world/signs.ts` onto one canvas and drawn as one
   mesh: shopfronts, the depot's name, the train's, and a board at the top of every named trail
   and the foot of every lift (`src/world/trailSigns.ts`, pure, tested; posts in `signPosts.ts`).
@@ -322,6 +324,26 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   Train, once its pass is earned from Conductor Bea, carries them to another season: the choice
   is kept in the save (`away`) and the game reopens in it. The `season` option still overrides.
 
+## Other people
+
+- The player is not alone on the hill. `src/world/crowd.ts` (pure, tested) says where everyone
+  else is: skiers down the groomed, named trails (bikes in summer and fall, and fewer of them),
+  people on about one chair in three, and four of the town walking a stretch of Main Street and
+  back. Nobody is simulated: each is placed from the lift clock, so the crowd costs a little
+  arithmetic and nothing is kept.
+- They are nobody in particular: no names, nothing to say, nothing to collect. Anyone worth
+  talking to belongs in `people.ts`.
+- `src/world/crowdMesh.ts` draws them. Skiers are three instanced meshes (three outfits) and
+  chair riders one, each figure washed with a pale colour of its own so a few outfits look like
+  a crowd; that is four draw calls for the mountain, seven with shadows. A walker is a mesh
+  each, stepped through six pictures of a stride, and stops and looks at the player if the
+  player stands in the way. `src/world/figure.ts` makes a figure in a pose as one geometry, for
+  them and for `folk.ts`.
+- Everyone goes in at night (`busyness`), and it thins at dawn and dusk. A skier grows from
+  nothing at the top of a run and shrinks away at the bottom, so nobody pops in or out.
+- `crowd=0`, or Settings, sends everyone home, to see what they cost. Keep their jackets
+  quieter than the player's.
+
 ## Sound, hints and patches
 
 - The church in town strikes the hour, by the real clock at Gore, for anyone within earshot,
@@ -370,6 +392,13 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - The owner measures on the phone with Settings > Run benchmark, which steps through fixed settings
   (`src/debug/bench.ts`) and ends with a block of text to paste back. Change the step list when a
   new question needs answering; run `node tools/bench-check.mjs` after touching it.
+- The steps now (twelve, about a minute and a half): the Saddle Lodge as before, to set beside
+  the earlier run; then the Base Lodge and Main Street, each with and without the other people;
+  Main Street without shadows and on a snowy dusk; the Base Lodge in fall; and one step that is
+  carried down Sunway at lift speed, which measures building ground and forest while travelling.
+  Season, time and weather are pinned for every step.
+- A benchmark step never writes to the player's book: it stands in places and seasons the
+  player has not been.
 - Read the results by frame-time bucket, not only by fps. Frames land on the display's refresh
   grid: 17 ms is on time at 60 fps, 25 ms and 33 ms are late frames.
 - `cpu` is time spent in our own frame callback. Late frames with a small `cpu` mean the delay is
@@ -413,9 +442,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 anything repeated; first load under 15 MB.
 
 Since that was measured, a great deal has been added (seasons, the town, wildlife, people, signs,
-the train), none of it yet measured on the phone. In headless runs a view from the Base Lodge
-now draws about 146 calls and the wide view from town about 179: at or a little over the target
-above. The owner's next benchmark will say whether that matters. Three things keep it there:
+the train, and now other skiers), none of it yet measured on the phone. In headless runs a view
+from the Base Lodge now draws about 169 calls and the view of the bakery from across Main
+Street about 188, of which the other people are 7 and 5: over the target above. The owner's
+next benchmark will say whether that matters. Three things keep it there:
 
 - Far terrain is drawn in blocks. While every tile in a three-by-three block is at its coarsest
   detail and in the same texture, the block is one mesh (`Terrain.cull`); otherwise its tiles

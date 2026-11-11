@@ -36,7 +36,7 @@ const NOTES: readonly string[] = [
   "Bram groomed everything last night. He'd like that noted.",
   "Please don't feed the Mayor. He's had plenty.",
   'The lost and found is up to fourteen left mittens. Come get yours.',
-  "No lift lines today. It's pretty much just you.",
+  "No lift lines today. Go around again.",
   "Chili's on at the Saddle. (It's always on.)",
   "Forecast by Madame Flurry. She'll confirm it tomorrow.",
   'Tom at the Ski Bowl says hi. (Pip says Tom says hi.)',

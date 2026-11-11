@@ -2,8 +2,9 @@ import { describeSummary, summarize, type FrameSummary } from './perf';
 
 /**
  * One-tap benchmark. It reloads the game through a fixed list of settings, measures each for a
- * few seconds while the camera turns a full circle at the Saddle Lodge, and ends with a single
- * block of text to paste back into a Claude session.
+ * few seconds while the camera turns a full circle on the spot (or, for a step that travels,
+ * while the player is carried down a trail), and ends with a single block of text to paste back
+ * into a Claude session.
  *
  * Progress lives in sessionStorage so it survives the reloads; the step being run is in the URL
  * (`?bench=3`) like every other state.
@@ -14,21 +15,41 @@ export interface BenchStep {
   params: Record<string, string>;
   /** Keep the on-screen readout updating during the step. */
   hudLive?: boolean;
+  /**
+   * A trail to be carried down, by name, in place of turning on the spot: the ground and the
+   * forest are built ahead and dropped behind all the way, which turning never asks for.
+   */
+  travel?: string;
+  /** Measure for this many times as long as the other steps. */
+  long?: number;
 }
 
+/** How fast a travelling step goes, in metres a second: as fast as anything in the game moves, so nothing the player does asks more. */
+export const TRAVEL_SPEED = 30;
+
+/**
+ * The steps. The first few are at the Saddle Lodge, where the owner's earlier runs were made,
+ * so they can be set beside those. The rest ask what has not been measured on the phone: the
+ * lodge and the town with everything since built there, what the other people on the mountain
+ * cost, a busy evening, another season's trees, and travelling.
+ */
 export const BENCH_STEPS: readonly BenchStep[] = [
-  { label: 'WebGPU, normal forest', params: {} },
-  { label: 'WebGL 2, normal forest', params: { renderer: 'webgl' } },
-  { label: 'WebGPU, thin forest', params: { trees: '110000' } },
-  { label: 'WebGPU, thick forest', params: { trees: '330000' } },
-  { label: 'WebGPU, half terrain detail', params: { stride: '2' } },
-  { label: 'WebGPU, no shadows', params: { shadows: '0' } },
-  { label: 'WebGPU, pixel ratio 3', params: { dpr: '3' } },
-  { label: 'WebGPU, snowing', params: { weather: 'snow' } },
-  { label: 'WebGPU, from the summit', params: { at: 'summit' } },
+  { label: 'Saddle Lodge', params: {} },
+  { label: 'Saddle Lodge, WebGL 2', params: { renderer: 'webgl' } },
+  { label: 'Saddle Lodge, nobody about', params: { crowd: '0' } },
+  { label: 'Saddle Lodge, thin forest', params: { trees: '110000' } },
+  { label: 'Saddle Lodge, thick forest', params: { trees: '330000' } },
+  { label: 'Base Lodge', params: { at: 'base-lodge' } },
+  { label: 'Main Street', params: { at: 'cafe' } },
+  { label: 'Main Street, nobody about', params: { at: 'cafe', crowd: '0' } },
+  { label: 'Main Street, no shadows', params: { at: 'cafe', shadows: '0' } },
+  { label: 'Main Street at dusk, snowing', params: { at: 'cafe', time: 'dusk', weather: 'snow' } },
+  { label: 'Base Lodge in fall', params: { at: 'base-lodge', season: 'fall' } },
+  { label: 'Down Sunway at lift speed', params: {}, travel: 'Sunway', long: 3 },
 ];
 
 const BENCH_BASELINE: Record<string, string> = {
+  season: 'winter',
   time: 'midday',
   weather: 'clear',
   at: 'saddle-lodge',
@@ -38,6 +59,7 @@ const BENCH_BASELINE: Record<string, string> = {
   stride: '1',
   dpr: '2',
   view: '6500',
+  crowd: '1',
 };
 
 export const DEFAULT_BENCH_SECONDS = 5;
@@ -122,16 +144,19 @@ export class BenchRun {
   private readonly cpuMs: number[] = [];
   private drawCalls = 0;
   private triangles = 0;
+  /** Seconds this step is measured for. */
+  private readonly seconds: number;
 
   constructor(
     private readonly index: number,
-    private readonly seconds: number,
+    private readonly stepSeconds: number,
     private readonly baseYaw: number,
     private readonly env: { backend: string; trees: () => number; resolution: () => string },
   ) {
     const step = BENCH_STEPS[index];
     if (!step) throw new Error(`no benchmark step ${index}`);
     this.step = step;
+    this.seconds = stepSeconds * (step.long ?? 1);
     const banner = document.createElement('div');
     banner.id = 'bench-banner';
     banner.textContent = `Benchmark ${index + 1} of ${BENCH_STEPS.length}: ${step.label}. Hands off the screen.`;
@@ -146,6 +171,11 @@ export class BenchRun {
   yawAt(now: number): number {
     if (this.startedAt < 0) return this.baseYaw;
     return this.baseYaw + ((now - this.startedAt) / (this.seconds * 1000)) * Math.PI * 2;
+  }
+
+  /** For a step that travels: how far down its trail the player has been carried by this moment, in metres. */
+  travelled(now: number): number {
+    return this.startedAt < 0 ? 0 : ((now - this.startedAt) / 1000) * TRAVEL_SPEED;
   }
 
   /** Call once per frame, after rendering. */
@@ -181,7 +211,7 @@ export class BenchRun {
     save(stored);
     const next = this.index + 1;
     if (next < BENCH_STEPS.length) {
-      location.replace(benchSearch(next, this.seconds));
+      location.replace(benchSearch(next, this.stepSeconds));
       return;
     }
     const q = new URLSearchParams(stored.returnTo);

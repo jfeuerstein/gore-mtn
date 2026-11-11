@@ -16,6 +16,14 @@ describe('benchmark steps', () => {
     expect(Math.max(...counts)).toBeGreaterThan(DEFAULTS.trees);
   });
 
+  it('measures the town and the lodge, with and without the other people, and one step that travels', () => {
+    const at = (place: string, crowd: boolean) => BENCH_STEPS.some((s) => (s.params.at ?? 'saddle-lodge') === place && (s.params.crowd !== '0') === crowd && Object.keys(s.params).every((k) => k === 'at' || k === 'crowd'));
+    expect(at('cafe', true) && at('cafe', false)).toBe(true);
+    expect(at('saddle-lodge', true) && at('saddle-lodge', false)).toBe(true);
+    expect(at('base-lodge', true)).toBe(true);
+    expect(BENCH_STEPS.filter((s) => s.travel).length).toBe(1);
+  });
+
   it('gives every step a distinct label', () => {
     expect(new Set(BENCH_STEPS.map((s) => s.label)).size).toBe(BENCH_STEPS.length);
   });
@@ -31,6 +39,10 @@ describe('benchmark steps', () => {
       expect(cfg.shadows).toBe(step.params.shadows !== '0');
       expect(cfg.stride).toBe(Number(step.params.stride ?? 1));
       expect(cfg.viewDist).toBe(Number(step.params.view ?? DEFAULTS.viewDist));
+      expect(cfg.crowd).toBe(step.params.crowd !== '0');
+      // Pinned, so that a run in July can be set beside a run in January.
+      expect(cfg.season).toBe(step.params.season ?? 'winter');
+      expect(cfg.time).toBe(step.params.time ?? 'midday');
     });
     expect(parseConfig(benchSearch(0, 0.5)).benchSeconds).toBe(0.5);
     expect(() => benchSearch(BENCH_STEPS.length, 5)).toThrow();

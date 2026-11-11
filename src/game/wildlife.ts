@@ -51,7 +51,7 @@ export const SPECIES: readonly Species[] = [
     watches: ['dawn', 'dusk', 'day'],
     band: 'low',
     shy: true,
-    about: 'Lifts its tail like a white flag and is gone.',
+    about: "Flips its tail up like a white flag, and then it's just gone.",
     hint: 'At the edge of the woods on the lower mountain. Go gently.',
   },
   {
@@ -61,7 +61,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 3, trail: 1.5, town: 1 },
     watches: ['dawn', 'dusk', 'night'],
     shy: true,
-    about: 'Trots the trail edges at first and last light, listening for mice under the snow.',
+    about: 'Trots the trail edges early and late, listening for mice under the snow.',
     hint: 'Along the trails at dawn and dusk. Go gently.',
   },
   {
@@ -71,7 +71,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 3, edge: 2 },
     watches: ['dawn', 'day', 'dusk'],
     band: 'high',
-    about: 'White in winter, brown in summer, and on feet like snowshoes all year.',
+    about: 'White in winter, brown in summer. Big snowshoe feet all year.',
     hint: 'Among the spruce and fir, high on the mountain.',
   },
   {
@@ -81,7 +81,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 2, edge: 1 },
     seasons: ALL_BUT_WINTER,
     watches: ['dawn', 'day', 'dusk'],
-    about: 'After berries and beechnuts, and not at all interested in you. Asleep all winter.',
+    about: 'After berries and beechnuts. Not interested in you at all. Sleeps the whole winter.',
     hint: 'In the woods, once the snow has gone.',
   },
   {
@@ -101,7 +101,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'animal',
     haunts: { shore: 3, water: 2 },
     watches: ['dawn', 'day', 'dusk'],
-    about: 'Slides down a snowbank on its belly for no reason but the fun of it.',
+    about: 'Slides down snowbanks on its belly. As far as anyone can tell, just for fun.',
     hint: 'By the ponds and brooks.',
   },
   {
@@ -111,7 +111,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { water: 3, shore: 2 },
     seasons: ALL_BUT_WINTER,
     watches: ['dusk', 'night', 'dawn'],
-    about: 'Slaps the water with its tail to tell the pond you are here.',
+    about: "Slaps its tail on the water so the whole pond knows you're here.",
     hint: 'On the ponds as the light goes.',
   },
   {
@@ -120,7 +120,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'animal',
     haunts: { woods: 2.5, rock: 1 },
     watches: ['dusk', 'night'],
-    about: 'In no hurry, and with thirty thousand reasons not to be.',
+    about: "Never in a hurry. With thirty thousand quills, it doesn't have to be.",
     hint: 'In the woods after dark.',
   },
   {
@@ -129,7 +129,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'animal',
     haunts: { edge: 4, woods: 3 },
     watches: ['dawn', 'day'],
-    about: 'Scolds everyone who passes from the safety of a spruce.',
+    about: 'Yells at everybody who walks by, from a safe spot up a spruce.',
     hint: 'Anywhere there are trees, by day.',
   },
   {
@@ -140,8 +140,8 @@ export const SPECIES: readonly Species[] = [
     seasons: ALL_BUT_WINTER,
     watches: ['day'],
     band: 'low',
-    about: 'Cheeks full, tail straight up, late for something.',
-    hint: 'Trail edges on the lower mountain, by day, when there is no snow.',
+    about: 'Cheeks full, tail straight up. Always looks late for something.',
+    hint: "Trail edges on the lower mountain, by day, when there's no snow.",
   },
   {
     id: 'marten',
@@ -152,7 +152,7 @@ export const SPECIES: readonly Species[] = [
     watches: ['dawn', 'day', 'dusk'],
     band: 'high',
     shy: true,
-    about: 'A cat-sized weasel of the high spruce, curious and quick.',
+    about: 'A weasel about the size of a cat, up in the high spruce. Curious, and really quick.',
     hint: 'Deep in the upper woods, in the snow months. Rare.',
   },
   {
@@ -162,7 +162,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { rock: 0.45, woods: 0.08 },
     watches: ['dusk', 'night', 'dawn'],
     shy: true,
-    about: 'Watches from the ledges and is seen only when it chooses.',
+    about: 'Watches from the ledges. You only see one when it lets you.',
     hint: 'On steep rocky ground in poor light. Rare.',
   },
   {
@@ -172,7 +172,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { town: 4, shore: 1 },
     seasons: ALL_BUT_WINTER,
     watches: ['night', 'dusk'],
-    about: 'Knows which night the bins go out in North Creek.',
+    about: 'Knows which night the trash goes out in North Creek.',
     hint: 'Around town after dark.',
   },
   {
@@ -183,7 +183,7 @@ export const SPECIES: readonly Species[] = [
     seasons: ['winter', 'fall'],
     watches: ['night'],
     shy: true,
-    about: 'Heard far more often than seen, singing across the valley.',
+    about: "You'll hear them a lot more than you see them, singing across the valley.",
     hint: 'Out on the trails at night, in the cold months.',
   },
 
@@ -194,7 +194,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'bird',
     haunts: { edge: 5, woods: 2, town: 2 },
     watches: ['dawn', 'day'],
-    about: 'Says its own name, and will land on a ski pole if you stand still long enough.',
+    about: 'Says its own name. Stand still long enough and one might land on your ski pole.',
     hint: 'In the trees beside any trail, by day.',
   },
   {
@@ -203,7 +203,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'bird',
     haunts: { rock: 3, trail: 1.5 },
     watches: ['dawn', 'day', 'dusk'],
-    about: 'Rides the wind over the summit and has an opinion about your lunch.',
+    about: 'Rides the wind over the summit. Has opinions about your lunch.',
     hint: 'Around the ledges and the high trails.',
   },
   {
@@ -213,7 +213,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 2, town: 2, trail: 1 },
     watches: ['dawn', 'day'],
     band: 'low',
-    about: 'Crosses the road in single file and will not be hurried.',
+    about: "They cross the road single file, and they don't hurry for anybody.",
     hint: 'Low on the mountain and around town, by day.',
   },
   {
@@ -222,7 +222,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'bird',
     haunts: { woods: 3, edge: 1.5 },
     watches: ['dusk', 'night'],
-    about: 'Asks the dark woods, "Who cooks for you?"',
+    about: "Its call sounds like \"Who cooks for you?\" Once you hear it, that's all you hear.",
     hint: 'In the woods at dusk and after dark.',
   },
   {
@@ -232,7 +232,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { water: 4 },
     seasons: ['summer', 'fall'],
     watches: ['dawn', 'day', 'dusk'],
-    about: 'Its call across a pond at dusk is the sound of the Adirondacks.',
+    about: "That call across a pond at dusk. If the Adirondacks have a sound, it's this.",
     hint: 'Out on the ponds, in summer and fall.',
   },
   {
@@ -243,7 +243,7 @@ export const SPECIES: readonly Species[] = [
     seasons: ALL_BUT_WINTER,
     watches: ['dawn', 'day'],
     shy: true,
-    about: 'Stands in the shallows like a garden ornament until a fish comes by.',
+    about: 'Stands in the shallows like a lawn ornament until a fish swims by.',
     hint: 'At the water\'s edge. Go gently.',
   },
   {
@@ -263,7 +263,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 3, town: 3 },
     watches: ['dawn', 'day'],
     band: 'low',
-    about: 'Loud, handsome, and the first to tell the woods about an owl.',
+    about: "Loud and good-looking. Always the first to tell the woods there's an owl around.",
     hint: 'Low on the mountain and around town.',
   },
   {
@@ -273,7 +273,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 3, edge: 1.5 },
     seasons: ['fall', 'winter'],
     watches: ['day', 'dusk'],
-    about: 'Bursts out of the snow at your feet and takes a year off your life.',
+    about: 'Bursts out of the snow right at your feet. It gets me every single time.',
     hint: 'In the woods, in fall and winter.',
   },
   {
@@ -285,7 +285,7 @@ export const SPECIES: readonly Species[] = [
     watches: ['day'],
     band: 'high',
     near: { name: 'summit', within: 900 },
-    about: 'The camp robber of the high spruce. It has already seen your sandwich.',
+    about: "The camp robber of the high spruce. It's already spotted your sandwich.",
     hint: 'Near the summit, in the snow months.',
   },
   {
@@ -296,7 +296,7 @@ export const SPECIES: readonly Species[] = [
     seasons: ['summer'],
     watches: ['day'],
     band: 'low',
-    about: 'A garnet with wings, working the meadow flowers.',
+    about: 'Like a garnet with wings, working its way through the meadow flowers.',
     hint: 'Over the summer meadows, low on the mountain.',
   },
 
@@ -308,7 +308,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 3, edge: 2 },
     seasons: ['spring'],
     band: 'low',
-    about: 'Three leaves, three petals, and a smell only a fly could love.',
+    about: "Three leaves, three petals. It smells pretty bad - it's trying to attract flies.",
     hint: 'On the floor of the lower woods in spring.',
   },
   {
@@ -317,7 +317,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { edge: 3, shore: 2 },
     seasons: ['spring'],
-    about: 'Up through the last of the snow, with leaves speckled like a brook trout.',
+    about: 'Comes up through the last of the snow. The leaves are speckled like a brook trout.',
     hint: 'Trail edges and stream banks in spring.',
   },
   {
@@ -326,7 +326,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { shore: 3, woods: 1.5 },
     seasons: ['spring'],
-    about: 'Ferns before they unroll, curled like the head of a fiddle.',
+    about: 'Ferns before they unroll, curled up like the top of a fiddle.',
     hint: 'Damp ground in spring.',
   },
   {
@@ -336,7 +336,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 0.8 },
     seasons: ['spring', 'summer'],
     band: 'high',
-    about: 'An orchid of the spruce woods that takes ten years to flower. Look, and leave it.',
+    about: 'An orchid of the spruce woods. It can take ten years to flower, so look and leave it be.',
     hint: 'Deep in the upper woods, late spring into summer. Rare.',
   },
   {
@@ -345,7 +345,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { trail: 4, town: 1 },
     seasons: ['summer'],
-    about: 'What a ski trail grows when nobody is looking.',
+    about: "What a ski trail grows when nobody's looking.",
     hint: 'All over the summer trails.',
   },
   {
@@ -354,7 +354,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { rock: 4, edge: 0.6 },
     seasons: ['summer'],
-    about: 'Small, sharp and sweet, on the sunny ledges. The bears know every patch.',
+    about: 'Small and sweet, out on the sunny ledges. The bears know every patch.',
     hint: 'On rocky ground in summer.',
   },
   {
@@ -372,7 +372,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { trail: 3, edge: 2, town: 1 },
     seasons: ['fall', 'summer'],
-    about: 'Turns the meadows yellow just as the maples turn red.',
+    about: 'Turns the meadows yellow right when the maples turn red.',
     hint: 'On the trails late in the year.',
   },
   {
@@ -382,7 +382,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 2.5 },
     seasons: ['summer', 'fall'],
     band: 'low',
-    about: 'Egg-yolk yellow and smelling faintly of apricots.',
+    about: 'Egg-yolk yellow. They smell a little like apricots.',
     hint: 'Under the hardwoods after rain.',
   },
   {
@@ -392,7 +392,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { woods: 2, edge: 1 },
     seasons: ['fall'],
     band: 'high',
-    about: 'The red toadstool with white spots from every storybook. For looking at only.',
+    about: 'The red toadstool with white spots, from every storybook. Just for looking at.',
     hint: 'Under the spruce in fall.',
   },
   {
@@ -402,7 +402,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 3, trail: 1, town: 1 },
     seasons: ['fall'],
     band: 'low',
-    about: 'Every fall there is one with no spots and no holes. This is it.',
+    about: "Every fall there's one leaf with no spots and no holes. This is it.",
     hint: 'Under the maples in fall.',
   },
   {
@@ -412,7 +412,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 3, woods: 2 },
     seasons: ['winter', 'fall'],
     band: 'high',
-    about: 'They stand upright on the bough like candles, and smell of Christmas.',
+    about: 'They stand straight up on the branch like candles. They smell like Christmas.',
     hint: 'Under the firs of the upper mountain.',
   },
   {
@@ -421,8 +421,8 @@ export const SPECIES: readonly Species[] = [
     kin: 'plant',
     haunts: { rock: 4 },
     seasons: ['winter', 'spring'],
-    about: 'A seep in the ledge, frozen into a curtain of blue ice.',
-    hint: 'On the ledges while it is cold.',
+    about: 'Water seeping out of the ledge, frozen into a curtain of blue ice.',
+    hint: "On the ledges while it's cold.",
   },
   {
     id: 'birchbark',
@@ -431,7 +431,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 2.5, woods: 1.5 },
     seasons: ['winter'],
     band: 'low',
-    about: 'A scroll of white bark, shed by the tree and good for lighting a fire in the rain.',
+    about: "A curl of white bark the tree let go of. It'll light a fire even in the rain.",
     hint: 'Under the birches of the lower mountain in winter.',
   },
 
@@ -443,7 +443,7 @@ export const SPECIES: readonly Species[] = [
     haunts: { edge: 0.6, town: 2.5, trail: 0.5 },
     seasons: ['winter'],
     watches: ['dawn', 'day', 'dusk'],
-    about: 'Carrot nose, stick arms, borrowed scarf. Nobody ever sees who builds them.',
+    about: "Carrot nose, stick arms, somebody's scarf. Nobody ever sees who builds them.",
     hint: 'Beside the trails and around town in winter.',
   },
   {
@@ -452,7 +452,7 @@ export const SPECIES: readonly Species[] = [
     kin: 'curio',
     haunts: { rock: 2.5 },
     seasons: ALL_BUT_WINTER,
-    about: 'Stones stacked by people passing, one at a time, for years.',
+    about: 'Stones stacked by people walking past, one at a time, for years.',
     hint: 'On rocky ground when the snow has gone.',
   },
   {
@@ -463,7 +463,7 @@ export const SPECIES: readonly Species[] = [
     watches: ['dusk', 'night'],
     shy: true,
     near: { name: 'The Rumor', within: 420 },
-    about: 'Tall, shaggy, and gone before you can be sure. Some people say it is all Lies.',
+    about: "Tall, shaggy, and gone before you're sure. Some people say it's all Lies.",
     hint: 'They say something walks the woods near The Rumor when the light goes. Go very gently.',
   },
 ];

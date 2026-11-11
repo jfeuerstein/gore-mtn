@@ -487,6 +487,10 @@ try {
     );
   const everyone = (await townState()).people;
   check('people stand about the mountain and the town', everyone.length >= 8 && everyone.every((p) => Number.isFinite(p.x)), everyone.map((p) => p.id).join(', '));
+  // The player is not alone: others are skiing, riding the chairs, and walking Main Street.
+  const others = (await townState()).crowd;
+  check('by day there are other skiers on the trails and people on the chairs', others !== null && others.skiers > 0 && others.riders > 0 && others.nearest !== null, JSON.stringify(others && { skiers: others.skiers, riders: others.riders }));
+  check('and the town is out walking Main Street', others !== null && others.strollers.length >= 3 && others.strollers.every((w) => Number.isFinite(w.x)));
   const person = (id) => everyone.find((p) => p.id === id);
   check('those with something to ask are marked', person('hazel').business && person('june').business && !person('otto').business);
   /** Read whatever the person says to the end, and return the last screen's buttons. */

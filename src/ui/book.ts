@@ -160,7 +160,7 @@ export class Book {
     const out: HTMLElement[] = [];
 
     out.push(this.heading('Patches', s.patches, s.patchesTotal));
-    out.push(el('p', 'note', 'For the long hauls: finishing a whole kind of thing.'));
+    out.push(el('p', 'note', 'For the long hauls - finishing a whole kind of thing.'));
     out.push(this.stamps('patch', PATCHES.map((p) => ({ name: p.name, day: save.patches[p.id], how: p.how }))));
     out.push(this.heading('Seasons', s.seasons, SEASONS.length));
     out.push(this.stamps('season', SEASONS.map((season) => ({ name: SEASON_NAME[season], day: save.seasons[season], how: 'Visit the mountain.' }))));
@@ -179,11 +179,11 @@ export class Book {
     );
     if (s.benchesTotal > 0) {
       out.push(this.heading('Benches', s.benches, s.benchesTotal));
-      out.push(el('p', 'note', 'Sat on, for no reason but the view. Look for them by the doors in town and at the lookouts.'));
+      out.push(el('p', 'note', "Benches you've sat on, just for the view. They're by the doors in town and at the lookouts."));
       out.push(this.stamps('bench', (game.benches ?? []).map((b) => ({ name: b.name, day: save.benches[b.id], how: 'Sit a while.' }))));
     }
     out.push(this.heading('Landmarks', s.landmarks, s.landmarksTotal));
-    out.push(el('p', 'note', 'A postcard from everywhere you have stood.'));
+    out.push(el('p', 'note', "A postcard from everywhere you've stood."));
     // Each landmark is a postcard: blank until visited, then its picture and the day.
     const cards = el('div', 'stamps postcards');
     for (const place of game.landmarks) {
@@ -202,7 +202,7 @@ export class Book {
     out.push(this.stamps('lift', game.liftNames.map((name) => ({ name, day: save.lifts[name], how: 'Ride to the top.' }))));
 
     out.push(this.heading('Trails', s.trails, s.trailsTotal));
-    out.push(el('p', 'note', 'Ski a trail from top to bottom to stamp it, or ride it when the snow has gone. It need not be in one run.'));
+    out.push(el('p', 'note', "Ski a trail top to bottom to stamp it, or ride it once the snow's gone. It doesn't have to be in one run."));
     for (const group of TRAIL_GROUPS) {
       const trails = game.trails.filter(group.has);
       if (trails.length === 0) continue;
@@ -232,7 +232,7 @@ export class Book {
     }
 
     out.push(this.heading('Paths', s.paths, s.pathsTotal));
-    out.push(el('p', 'note', 'The hiking, biking and cross-country trails through the woods. Follow one from end to end, on foot or however you like. They are on the map as dotted lines.'));
+    out.push(el('p', 'note', "The hiking, biking and cross-country trails through the woods. Follow one end to end, on foot or however you like. They're the dotted lines on the map."));
     const paths = el('div', 'trails');
     for (const path of game.paths) {
       const progress = save.paths[path.name];
@@ -261,7 +261,7 @@ export class Book {
     const out: HTMLElement[] = [this.heading('Errands', s.errands, s.errandsTotal)];
     const active = game.activeErrands();
     if (active.length === 0 && s.errands === 0) {
-      out.push(el('p', 'note', 'People around the mountain and in town have things to ask. Anyone with a gold mark over their head has something for you. Nothing is timed, and nothing can be failed.'));
+      out.push(el('p', 'note', "People around the mountain and in town have things to ask. A gold mark over someone's head means they've got something for you. Nothing's timed, and you can't fail anything."));
     }
     const list = el('div', 'minerals');
     for (const e of active) {
@@ -270,7 +270,7 @@ export class Book {
       const text = el('div');
       const who = personById(e.to ?? e.from);
       text.appendChild(el('b', '', e.title));
-      text.appendChild(el('small', 'tally', game.needMet(e.need) ? `Done. Go and see ${who?.name ?? 'them'}.` : `For ${who?.name ?? 'someone'} · ${who?.role ?? ''}`));
+      text.appendChild(el('small', 'tally', game.needMet(e.need) ? `Done! Go see ${who?.name ?? 'them'}.` : `For ${who?.name ?? 'someone'} · ${who?.role ?? ''}`));
       text.appendChild(el('small', '', e.nudge));
       card.appendChild(text);
       list.appendChild(card);
@@ -297,7 +297,7 @@ export class Book {
 
     const owned = GEAR.filter((g) => game.save.gear.owned.includes(g.id));
     out.push(this.heading('Wardrobe', owned.length, GEAR.length));
-    out.push(el('p', 'note', 'Hats and jackets, given in thanks. Tap one to put it on.'));
+    out.push(el('p', 'note', "Hats and jackets people have given you. Tap one to put it on."));
     for (const slot of ['hat', 'jacket'] as const) {
       const row = el('div', 'wardrobe');
       for (const g of GEAR.filter((q) => q.slot === slot)) {
@@ -322,7 +322,7 @@ export class Book {
     const today = game.save.round.who;
     const round = el('div', `stamp round ${TOWN_ROUND.every((r) => today.includes(r.who)) ? 'earned' : 'todo'}`);
     round.appendChild(el('b', '', 'The town round'));
-    round.appendChild(el('small', '', game.save.rounds.length === 0 ? 'Call at every door in North Creek in one day.' : `Done on ${game.save.rounds.length} day${game.save.rounds.length === 1 ? '' : 's'}. Today:`));
+    round.appendChild(el('small', '', game.save.rounds.length === 0 ? 'Stop by every door in North Creek in one day.' : `Done on ${game.save.rounds.length} day${game.save.rounds.length === 1 ? '' : 's'}. Today:`));
     const punches = el('span', 'pips');
     for (const r of TOWN_ROUND) punches.appendChild(el('i', game.save.round.day === this.today() && today.includes(r.who) ? 'on' : '', r.door));
     round.appendChild(punches);
@@ -331,7 +331,7 @@ export class Book {
     // What the town has handed over: a menu ticked off, and a library card stamped.
     for (const [title, kinds, hint] of [
       ['Tasted', ['bake', 'sandwich'], "June's bakery and Walt's deli on Main Street each have something new every day."],
-      ['Library card', ['book'], 'Fenn at the Town Hall library lends one book a day, and has never once asked for it back.'],
+      ['Library card', ['book'], "Fenn at the Town Hall library lends one book a day. He's never asked for one back."],
     ] as const) {
       const all = OFFERINGS.filter((o) => (kinds as readonly string[]).includes(o.kind));
       const had = all.filter((o) => o.id in game.save.tried);
@@ -349,7 +349,7 @@ export class Book {
     // Letters collected from the post office, newest first, to read again.
     const letters = LETTERS.filter((l) => l.id in game.save.letters).sort((a, b) => (game.save.letters[b.id] ?? '').localeCompare(game.save.letters[a.id] ?? ''));
     out.push(this.heading('Letters', letters.length, LETTERS.length));
-    if (letters.length === 0) out.push(el('p', 'note', 'Dot at the North Creek Post Office keeps your mail. There is one letter a day.'));
+    if (letters.length === 0) out.push(el('p', 'note', "Dot at the North Creek Post Office keeps your mail. There's one letter a day."));
     for (const letter of letters) {
       const page = el('div', 'letter');
       page.appendChild(el('p', '', letter.text));
@@ -358,7 +358,7 @@ export class Book {
     }
     if (game.save.pass) {
       out.push(el('h3', '', 'Snow Train pass'));
-      out.push(el('p', 'note', game.save.away ? `You are visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));
+      out.push(el('p', 'note', game.save.away ? `You're visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));
     }
     return out;
   }
@@ -367,7 +367,7 @@ export class Book {
     const { game } = this;
     const s = game.summary();
     const out: HTMLElement[] = [this.heading('Field guide', s.species, s.speciesTotal)];
-    out.push(el('p', 'note', 'Come close to an animal, a bird or a plant to enter it in the guide. Anything not yet in it carries a pale blue mark. What is about changes with the season and the hour.'));
+    out.push(el('p', 'note', "Get close to an animal, a bird or a plant to put it in the guide. Anything you haven't seen yet has a pale blue mark. What's out and about changes with the season and the hour."));
     for (const kin of ['animal', 'bird', 'plant', 'curio'] as Kin[]) {
       const entries = SPECIES.filter((sp) => sp.kin === kin);
       const seen = entries.filter((sp) => game.save.sightings[sp.id]).length;
@@ -402,7 +402,7 @@ export class Book {
     const s = game.summary();
     const out: HTMLElement[] = [this.heading('Minerals', s.minerals, s.mineralsTotal)];
     out.push(
-      el('p', 'note', s.specimens === 0 ? 'Stones glint on the snow beside the trails, in bare rock and deep in the woods. A new scatter lies out every day.' : `${s.specimens} ${s.specimens === 1 ? 'stone' : 'stones'} picked up so far. A new scatter lies out every day.`),
+      el('p', 'note', s.specimens === 0 ? 'Stones glint on the snow by the trails, in bare rock and deep in the woods. New ones turn up every day.' : `${s.specimens} ${s.specimens === 1 ? 'stone' : 'stones'} picked up so far. New ones turn up every day.`),
     );
     const list = el('div', 'minerals');
     for (const mineral of MINERALS) {

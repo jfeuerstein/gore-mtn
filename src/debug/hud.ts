@@ -115,6 +115,15 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
+    title: 'Other people on the mountain',
+    param: 'crowd',
+    current: (c) => (c.crowd ? '1' : '0'),
+    options: [
+      { label: 'Nobody', value: '0' },
+      { label: 'On', value: '1' },
+    ],
+  },
+  {
     title: 'Terrain detail',
     param: 'stride',
     current: (c) => String(c.stride),

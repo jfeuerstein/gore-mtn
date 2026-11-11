@@ -2,7 +2,8 @@ import * as THREE from 'three/webgpu';
 import type { Person } from '../game/people';
 import type { Season } from '../look/season';
 import { STANDING } from '../player/pose';
-import { Skier, type Outfit } from '../player/skier';
+import type { Outfit } from '../player/skier';
+import { figureGeometry } from './figure';
 import { blocks, type Block } from './shapes';
 
 /** People further than this from the player are not drawn, in metres. */
@@ -21,44 +22,8 @@ export interface Standing {
   prop?: { x: number; y: number; z: number; turn: number };
 }
 
-/**
- * A standing figure in an outfit, as one geometry. The player's figure is a couple of dozen
- * jointed parts, each drawn separately; someone who only stands and turns can be all of those
- * parts fixed in place and joined, which draws in a single call.
- */
-function standingFigure(outfit: Outfit): THREE.BufferGeometry {
-  const skier = new Skier(false, outfit);
-  // Hands a little forward and apart, as someone waiting does.
-  skier.pose({ ...STANDING, shoulderL: 0.18, shoulderR: 0.1, armsOut: 0.12, elbow: 0.5 }, false);
-  skier.root.updateMatrixWorld(true);
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const colours: number[] = [];
-  skier.root.traverse((o) => {
-    if (!(o instanceof THREE.Mesh) || !o.visible) return;
-    // Skis, poles and the bike are there but hidden; a hidden parent hides its parts.
-    for (let up: THREE.Object3D | null = o; up; up = up.parent) if (!up.visible) return;
-    const geo = (o.geometry as THREE.BufferGeometry).index ? (o.geometry as THREE.BufferGeometry).toNonIndexed() : (o.geometry as THREE.BufferGeometry).clone();
-    geo.applyMatrix4(o.matrixWorld);
-    const colour = (o.material as THREE.MeshLambertMaterial).color;
-    // A part of the figure that has been joined up wears its colours on its vertices.
-    const own = geo.getAttribute('color');
-    const p = geo.getAttribute('position');
-    const n = geo.getAttribute('normal');
-    for (let i = 0; i < p.count; i++) {
-      positions.push(p.getX(i), p.getY(i), p.getZ(i));
-      normals.push(n.getX(i), n.getY(i), n.getZ(i));
-      if (own) colours.push(own.getX(i), own.getY(i), own.getZ(i));
-      else colours.push(colour.r, colour.g, colour.b);
-    }
-  });
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  out.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  out.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
-  out.computeBoundingSphere();
-  return out;
-}
+/** Someone who only stands and turns: hands a little forward and apart, as someone waiting does. */
+const standingFigure = (outfit: Outfit): THREE.BufferGeometry => figureGeometry(outfit, { ...STANDING, shoulderL: 0.18, shoulderR: 0.1, armsOut: 0.12, elbow: 0.5 });
 
 /** A noticeboard: two posts, a board under a little roof, and papers pinned to it. */
 function noticeboard(): THREE.BufferGeometry {

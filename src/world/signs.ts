@@ -42,45 +42,63 @@ export async function buildSigns(specs: readonly SignSpec[]): Promise<THREE.Mesh
   canvas.height = ATLAS;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  ctx.font = `46px ${face}`;
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
 
-  // Lay the strips out in rows, one strip for each different sign.
+  // Lay the strips out in rows, one strip for each different sign. If they do not all fit on
+  // the sheet at full size, everything is drawn a little smaller until they do, so that no
+  // board is ever left bare.
   const keyOf = (s: SignSpec): string => `${s.text}|${s.board}|${s.ink}|${s.width ? (s.width / s.height).toFixed(2) : ''}`;
-  const strips = new Map<string, { u: number; v: number; w: number }>();
-  let cx = 0;
-  let cy = 0;
+  const layOut = (scale: number): { strips: Map<string, { u: number; v: number; w: number; words: number }>; cell: number } | null => {
+    const cell = Math.floor(CELL * scale);
+    ctx.font = `${Math.round(46 * scale)}px ${face}`;
+    const strips = new Map<string, { u: number; v: number; w: number; words: number }>();
+    let cx = 0;
+    let cy = 0;
+    for (const s of specs) {
+      const key = keyOf(s);
+      if (strips.has(key)) continue;
+      const words = ctx.measureText(s.text).width;
+      const w = Math.min(ATLAS, Math.ceil(s.width ? (cell * s.width) / s.height : words + 44 * scale));
+      if (cx + w > ATLAS) {
+        cx = 0;
+        cy += cell;
+      }
+      if (cy + cell > ATLAS) return null;
+      strips.set(key, { u: cx, v: cy, w, words });
+      cx += w;
+    }
+    return { strips, cell };
+  };
+  let scale = 1;
+  let laid = layOut(scale);
+  while (!laid && scale > 0.5) laid = layOut((scale *= 0.92));
+  if (!laid) {
+    console.warn('signs: too many for the sheet, even drawn small; none are painted');
+    return null;
+  }
+  const { strips, cell } = laid;
+  const painted = new Set<string>();
   for (const s of specs) {
     const key = keyOf(s);
-    if (strips.has(key)) continue;
-    const words = ctx.measureText(s.text).width;
-    const w = Math.min(ATLAS, Math.ceil(s.width ? (CELL * s.width) / s.height : words + 44));
-    if (cx + w > ATLAS) {
-      cx = 0;
-      cy += CELL;
-    }
-    if (cy + CELL > ATLAS) {
-      // Out of room on the sheet. The signs left over will be bare boards: say so, where a developer will see it.
-      console.warn(`signs: the sheet is full; "${s.text}" and any after it are not painted`);
-      break;
-    }
+    const strip = strips.get(key);
+    if (!strip || painted.has(key)) continue;
+    painted.add(key);
+    const { u: cx, v: cy, w, words } = strip;
     ctx.fillStyle = s.board;
-    ctx.fillRect(cx, cy, w, CELL);
+    ctx.fillRect(cx, cy, w, cell);
     // A painted border, set in from the edge.
     ctx.strokeStyle = s.ink;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(cx + 5.5, cy + 5.5, w - 11, CELL - 11);
+    ctx.lineWidth = 3 * scale;
+    ctx.strokeRect(cx + 5.5 * scale, cy + 5.5 * scale, w - 11 * scale, cell - 11 * scale);
     ctx.fillStyle = s.ink;
     // Words too long for a board of a set width are squeezed to fit it.
-    const squeeze = Math.min(1, (w - 30) / words);
+    const squeeze = Math.min(1, (w - 30 * scale) / words);
     ctx.save();
-    ctx.translate(cx + w / 2, cy + CELL / 2 + 3);
+    ctx.translate(cx + w / 2, cy + cell / 2 + 3 * scale);
     ctx.scale(squeeze, 1);
     ctx.fillText(s.text, 0, 0);
     ctx.restore();
-    strips.set(key, { u: cx, v: cy, w });
-    cx += w;
   }
 
   const positions: number[] = [];
@@ -90,7 +108,7 @@ export async function buildSigns(specs: readonly SignSpec[]): Promise<THREE.Mesh
     const strip = strips.get(keyOf(s));
     if (!strip) continue;
     let height = s.height;
-    let width = (height * strip.w) / CELL;
+    let width = (height * strip.w) / cell;
     if (width > s.maxWidth) {
       height *= s.maxWidth / width;
       width = s.maxWidth;
@@ -98,7 +116,7 @@ export async function buildSigns(specs: readonly SignSpec[]): Promise<THREE.Mesh
     const u0 = strip.u / ATLAS;
     const u1 = (strip.u + strip.w) / ATLAS;
     const v0 = 1 - strip.v / ATLAS;
-    const v1 = 1 - (strip.v + CELL) / ATLAS;
+    const v1 = 1 - (strip.v + cell) / ATLAS;
     for (const turn of s.twoSided ? [s.turn, s.turn + Math.PI] : [s.turn]) {
       const cos = Math.cos(turn);
       const sin = Math.sin(turn);
