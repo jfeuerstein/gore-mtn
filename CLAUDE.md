@@ -441,11 +441,10 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
 
-Since that was measured, a great deal has been added (seasons, the town, wildlife, people, signs,
-the train, and now other skiers), none of it yet measured on the phone. In headless runs a view
-from the Base Lodge now draws about 169 calls and the view of the bakery from across Main
-Street about 188, of which the other people are 7 and 5: over the target above. The owner's
-next benchmark will say whether that matters. Three things keep it there:
+That target was set before the game had seasons, a town, wildlife, people, signs, a train or
+other skiers, and the game is now over it: about 150 to 165 draw calls and 700k to 860k
+triangles on the mountain. The phone holds 60 fps there all the same (see the measurements
+below), so the numbers are a caution, not a wall. Three things keep the calls where they are:
 
 - Far terrain is drawn in blocks. While every tile in a three-by-three block is at its coarsest
   detail and in the same texture, the block is one mesh (`Terrain.cull`); otherwise its tiles
@@ -456,14 +455,23 @@ next benchmark will say whether that matters. Three things keep it there:
 
 `node tools/census.mjs` lists what is switched on by part of the scene, and
 `window.__gore.show(part, false)` hides a part, to see what it costs in `state().drawCalls`.
-At the benchmark's own spot and settings a headless run now reports 104 to 153 draw calls
-across its steps (118 to 171 before the first two of those reductions; 104 on the phone when
-the owner last measured, before any of this was built) and about 5 ms of our own code per frame.
 
-Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
-life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,
-104 draw calls), shadows, and pixel ratio 3, using about 4.4 ms of CPU per frame. WebGPU and
-WebGL 2 performed the same. The benchmark turns the camera on the spot, so it does not measure
-the cost of building terrain and forest while travelling. The budget above is kept as a
-deliberately cautious target so there is room for effects, and for heat and battery over a long
-session, which a five-second measurement does not show.
+Measured on the owner's iPhone 17 Pro (2026-11-11, Home Screen app, WebGPU), with everything
+above built: a steady 60 fps at all twelve benchmark steps, 98 to 100% of frames on time and
+none slower than 29 ms, using 4.5 to 6.3 ms of CPU per frame.
+
+- Saddle Lodge: 157 calls, 858k triangles. Without the other people, 150 calls: they cost 7
+  calls and no measurable CPU. Thick forest: 1,014k triangles, still 60 fps.
+- Base Lodge: 147 calls, 721k triangles; in fall, with every tree dressed, 144 and 676k.
+- Main Street: 118 calls with the other people, 113 without, 84 with no shadows; on a snowy
+  dusk, 93.
+- Carried down Sunway at lift speed, building ground and forest all the way: 60 fps, 163 calls,
+  6.3 ms of CPU, fewer than 1% of frames late. Travelling costs about 1 ms a frame.
+- WebGL 2 gave the same picture: 60 fps, with 1% of frames one refresh late.
+
+The day before (2026-11-10), with only the mountain, lifts and forest built: 60 fps at every
+step, 104 draw calls and 623k triangles in the thick forest, about 4.4 ms of CPU. So everything
+added since has cost about 50 draw calls and 1 ms.
+
+What the benchmark still does not show is heat and battery over a long session: each step
+measures five seconds (fifteen for the trail). The owner should say if the phone runs warm.
