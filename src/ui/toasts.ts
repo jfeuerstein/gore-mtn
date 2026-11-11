@@ -51,7 +51,7 @@ export class Toasts {
       const event = this.waiting.shift() as GameEvent;
       const toast = document.createElement('div');
       toast.className = `toast toast-${event.kind}`;
-      let mark = document.createElement('span');
+      let mark: HTMLElement = document.createElement('span');
       mark.className = 'mark';
       if (event.kind === 'mineral') {
         mark.style.backgroundColor = `#${(event.colour ?? 0x888888).toString(16).padStart(6, '0')}`;
@@ -61,6 +61,18 @@ export class Toasts {
         mark = wrap;
       } else {
         mark.textContent = KIND_MARK[event.kind];
+      }
+      // What was just had, where there is a picture of it: shown big, the way a found thing is held up.
+      if (event.art) {
+        const pic = document.createElement('img');
+        pic.className = 'pic';
+        pic.alt = '';
+        pic.src = `${import.meta.env.BASE_URL}art/${event.art}.webp`;
+        // No picture after all: fall back to the mark.
+        const plain = mark;
+        pic.addEventListener('error', () => pic.replaceWith(plain));
+        toast.classList.add('toast-pic');
+        mark = pic;
       }
       const text = document.createElement('span');
       const title = document.createElement('b');

@@ -1,6 +1,8 @@
 import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
 import { blocks, placed, roof, siding, type Block } from './shapes';
+import { hanging, type Kit as HouseKit } from './houses';
+import { hasShopPicture, type Hanging } from './shopSigns';
 import type { SignSpec } from './signs';
 import type { Flue } from './smoke';
 import type { TownPlace, TownStyle } from './townPlaces';
@@ -373,8 +375,9 @@ export function buildTownPlaces(
   places: readonly TownPlace[],
   roofColour: number,
   season: Season = 'winter',
-): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[]; flues: Flue[] } {
+): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[]; flues: Flue[]; hangs: Hanging[] } {
   const flues: Flue[] = [];
+  const hangs: Hanging[] = [];
   const wallParts: THREE.BufferGeometry[] = [];
   const paneParts: THREE.BufferGeometry[] = [];
   const signs: SignSpec[] = [];
@@ -395,6 +398,15 @@ export function buildTownPlaces(
       const sin = Math.sin(p.turn);
       for (const [lx, ly, lz] of kit.flues ?? []) flues.push({ x: p.x + lx * cos + lz * sin, y: p.y - 0.5 + ly, z: p.z - lx * sin + lz * cos, size: 1 });
     }
+    // A shop with a picture for its trade has it hung out over the door, as its neighbours have.
+    if (p.sign && hasShopPicture(p.sign)) {
+      const porch = PORCH_DEPTH[p.style] ?? (p.style === 'cafe' || p.style === 'deli' ? 1.7 : 0);
+      const kitWith: HouseKit = { list: [], extra: [], panes: [] };
+      hanging(kitWith, Math.min(p.w / 2 - 0.5, 4.5), 3.05, p.d / 2 + porch + 0.1);
+      wallParts.push(set(blocks(kitWith.list)));
+      const [lx, ly, lz] = kitWith.hang as [number, number, number];
+      hangs.push({ text: p.sign, x: p.x + lx * Math.cos(p.turn) + lz * Math.sin(p.turn), y: p.y - 0.5 + ly, z: p.z - lx * Math.sin(p.turn) + lz * Math.cos(p.turn), turn: p.turn });
+    }
     if (p.sign) {
       const out = p.d / 2 + (p.style === 'hall' ? 2.35 : 0.2);
       signs.push({
@@ -410,7 +422,7 @@ export function buildTownPlaces(
       });
     }
   }
-  return { walls: blocks([], wallParts), panes: blocks([], paneParts), signs, flues };
+  return { walls: blocks([], wallParts), panes: blocks([], paneParts), signs, flues, hangs };
 }
 
 /**
@@ -427,6 +439,8 @@ export class TownPlaces {
   readonly signs: SignSpec[];
   /** The tops of the chimneys that are smoking this season. */
   readonly flues: Flue[];
+  /** The picture signs hung out over the doors of those that are shops. */
+  readonly hangs: Hanging[];
 
   /**
    * @param season the doors are dressed for it
@@ -438,6 +452,7 @@ export class TownPlaces {
     const built = buildTownPlaces(places, roofColour, season);
     this.signs = [...built.signs, ...also.signs];
     this.flues = built.flues;
+    this.hangs = built.hangs;
     if (places.length === 0 && also.walls.length === 0) return;
     const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
     walls.castShadow = castShadow;

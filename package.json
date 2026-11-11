@@ -13,6 +13,7 @@
     "world": "python3 tools/terrain/build_world.py"
   },
   "dependencies": {
+    "@fontsource-variable/fredoka": "^5.3.0",
     "three": "^0.187.0"
   },
   "devDependencies": {

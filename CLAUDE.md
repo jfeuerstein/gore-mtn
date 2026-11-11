@@ -1,12 +1,18 @@
 # Gore
 
-A cozy 3D collectathon on the real Gore Mountain and North Creek, NY. Web app for iPhone Safari,
+A cozy 3D collectathon on Gore Mountain and North Creek, NY. Web app for iPhone Safari,
 installed to the Home Screen and played upright with one thumb. The full design is in `docs/game-plan.md`; read it before design work.
+
+The owner wants the feel of a cozy collecting game in the manner of Animal Crossing: soft,
+friendly, a pleasure to fill shelves in. The mountain's general geography and its trail map
+are kept true; beyond that, charm comes before accuracy. Buildings, shops and the town's
+details may be invented.
 
 ## Pillars
 
 1. Unhurried: no timers, fail states, or grind.
-2. A real place, lovingly compressed: real terrain, real trail names, in the right places.
+2. A real mountain, a storybook town: real terrain, real trail and lift names in the right
+   places; the buildings, shops and everything small are made to be charming, not accurate.
 3. Movement is the joy: skiing and hiking must feel good with nothing to collect.
 4. Every outing fills the book: a 3 to 10 minute session ends with a new stamp or stone.
 5. The mountain follows the calendar.
@@ -395,12 +401,31 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   and the one look they share; `make-art.mjs` asks for whatever is missing, trims it and saves
   a small WebP under `public/art/`. A test checks that everyone and everything has a picture.
   `--redo id,id --bump 1` paints one again with another seed.
-- The prompts never name the game, the mountain's owner or the player. The key is never in the
+- There are two looks. Things that are seen (portraits, minerals, the field guide, postcards)
+  are gouache plates in the manner of an old field guide (`LOOK`). Things that are had (patches,
+  hats and jackets, bakes, sandwiches and books, conditions pins, summit patches, lift pins) are
+  soft chunky toys on cream (`ITEM_LOOK`), each balanced by the tool so its background is the
+  paper's. The same tool paints the pictures for the shop signs onto one sheet
+  (`public/art/shop-signs.webp`, with `src/world/shopSignArt.ts` saying which is which) and a
+  tall title picture for each season, shown behind the title while the game loads.
+- The Book is a catalogue: `pic()` in `book.ts` shows a thing's picture when it has been had and
+  a pale ghost of it when it has not, so every shelf shows what there is to look for. A
+  `GameEvent` may carry `art` (as `patches/first-tracks`), and the announcement then holds the
+  picture up. Add a collectible by adding its data, a prompt in the manifest, and running the
+  tool; `art.test.ts` fails until the picture exists. Names are filed by `artSlug`.
+- Picture signs hang over shop doors (`src/world/shopSigns.ts`): one mesh, one texture. A shop
+  kit calls `hanging()` to put up the bracket and say where the picture goes.
+- The prompts never name the game, the mountain's owner or the player, nor any other game. The key is never in the
   repo: here it is a network secret on the environment, sent by the session's proxy.
 - The interface has a look of its own, set out at the top of `src/style.css`: paper, ink and
-  enamel colours as variables, Bebas Neue for headings and buttons, Caveat for anything
-  handwritten, both bundled from `@fontsource`. Use the variables; do not add new colours or
+  enamel colours as variables, a display face for headings and buttons, Caveat for anything
+  handwritten, all bundled from `@fontsource`. Use the variables; do not add new colours or
   faces without the owner's say.
+- There are two letterings, switched in Settings (`src/ui/lettering.ts`, kept in the browser as
+  `gore.type`): Rounded, the default, is Fredoka in upper and lower case with pill buttons;
+  Poster is the Bebas Neue capitals the game had first. The style sheet reads `--display`,
+  `--display-weight` and `--display-case`, so a rule that names those follows whichever is on.
+  The owner has yet to say which stays.
 
 ## Trail map
 

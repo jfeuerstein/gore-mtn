@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
 import { planHeight, type HouseKind, type HousePlan } from './houseKinds';
 import { blocks, placed, roof, siding, type Block } from './shapes';
+import type { Hanging } from './shopSigns';
 import type { SignSpec } from './signs';
 
 /**
@@ -32,6 +33,8 @@ export interface Kit {
   panes: Pane[];
   /** Where its sign hangs, if it has one: height, how far out from the middle, how tall and how wide. */
   sign?: { y: number; out: number; h: number; w: number; board: string; ink: string };
+  /** The middle of the picture sign that hangs out over its door, if it has one, in its own frame. */
+  hang?: [number, number, number];
 }
 
 /** The floor is this far above the ground at the front wall, and the stone under it goes down this far, so no plot is too steep. */
@@ -48,7 +51,7 @@ const TIMBER_DARK = 0x5f4230;
 const IRON = 0x3a3f48;
 
 /** House paint, as an Adirondack village wears it. */
-const PAINTS = [0xf5f2ea, 0xece5d3, 0xe8d9ae, 0xcfd8df, 0xbcc8ae, 0xb9a996, 0xa9483a, 0x8f9a8a, 0x7d8ea0, 0xd8c3a5, 0x9a8a78, 0x5f6f7a];
+const PAINTS = [0xf7f3ea, 0xf3e6c0, 0xf2d98c, 0xc3dcea, 0xc4dfc6, 0xf1c8b0, 0xb5543f, 0xd9c8e4, 0x9cc0c6, 0xe9b9a8, 0xcbd8a6, 0x8fa9c4];
 /** Front doors. */
 const DOORS = [0x7a2e26, 0x2f4a3f, 0x2b4a7a, 0x4a3326, 0x22262d, 0xc79a3a];
 /** Roofs, when they are not under snow. */
@@ -56,7 +59,7 @@ const ROOFS = [0x5c6672, 0x4a4f58, 0x6b5a4a, 0x3f5a4a, 0x7a3a30, 0x3a3f48];
 /** Sheds and barns: weathered boards, red lead, grey. */
 const ROUGH = [0x8a7a68, 0x9a3a2c, 0x6f6a62, 0x7a5a42, 0xa8a094];
 /** Shopfronts on Main Street. */
-const SHOP_PAINTS = [0xece5d3, 0xcfd8df, 0xbcc8ae, 0xe8d9ae, 0x8f9a8a, 0x7d8ea0, 0xd9b9a0, 0xf5f2ea, 0xa9483a, 0x6f7f8a];
+const SHOP_PAINTS = [0xf3e6c0, 0xbfd9ea, 0xbfdcc4, 0xf2d98c, 0xf1c4ae, 0xd7c6e6, 0xf7f3ea, 0xe9a79a, 0x9fc6c9, 0xc9d8a8];
 const BRICKS = [0x9f5340, 0x8a4a3c, 0xb5654a, 0xcdb99a, 0x7a4636];
 const AWNINGS = [0x2f6a4c, 0xb53a2a, 0x2b4a7a, 0xe2a52e, 0x5a3a6a, 0x22262d];
 const BOARDS: readonly [string, string][] = [
@@ -182,6 +185,25 @@ function shopfront(kit: Kit, w: number, front: number, trim: number, doorColour:
 /** An awning over a shopfront: a sloping sheet of one colour with a pale edge. */
 function awning(kit: Kit, w: number, front: number, colour: number, y = FLOOR + 2.55): void {
   kit.list.push({ size: [w, 0.08, 1.5], at: [0, y - 0.05, front + 0.7], colour, tip: 0.36 }, { size: [w, 0.26, 0.05], at: [0, y - 0.42, front + 1.4], colour: 0xf4ead8 });
+}
+
+/**
+ * A picture sign hung out over the sidewalk: an iron arm from the wall and a little board under
+ * it, end-on to the street. The picture itself is drawn by `shopSigns.ts`.
+ * @param wall where the wall (or the edge of the porch) is, out from the middle of the building
+ */
+export function hanging(kit: Kit, x: number, y: number, wall: number): void {
+  kit.list.push(
+    { size: [0.07, 0.07, 1.3], at: [x, y + 0.62, wall + 0.65], colour: IRON },
+    { size: [0.06, 0.16, 0.06], at: [x, y + 0.56, wall + 0.35], colour: IRON },
+    { size: [0.06, 0.16, 0.06], at: [x, y + 0.56, wall + 1.05], colour: IRON },
+    { size: [0.07, 1, 1], at: [x, y, wall + 0.7], colour: 0xfffdf7 },
+    { size: [0.09, 1.08, 0.07], at: [x, y, wall + 0.19], colour: TIMBER_DARK },
+    { size: [0.09, 1.08, 0.07], at: [x, y, wall + 1.21], colour: TIMBER_DARK },
+    { size: [0.09, 0.07, 1.08], at: [x, y + 0.52, wall + 0.7], colour: TIMBER_DARK },
+    { size: [0.09, 0.07, 1.08], at: [x, y - 0.52, wall + 0.7], colour: TIMBER_DARK },
+  );
+  kit.hang = [x, y, wall + 0.7];
 }
 
 /** A string of lights along a front, for the dark months: they go with the windows, so they come on at dusk. */
@@ -510,6 +532,7 @@ const KITS: Record<HouseKind, (p: HousePlan, look: Look) => Kit> = {
     if (look.season === 'winter') lights(kit, p.w * 0.86, face + 0.2, FLOOR + 2.72);
     const [board, ink] = pick(BOARDS, r1);
     kit.sign = { y: FLOOR + 3.1, out: face + 0.14, h: 0.66, w: p.w * 0.82, board, ink };
+    hanging(kit, p.w / 2 - 0.5, FLOOR + (tall ? 4.2 : 2.9), face + 0.2);
     return kit;
   },
 
@@ -552,6 +575,7 @@ const KITS: Record<HouseKind, (p: HousePlan, look: Look) => Kit> = {
     if (look.season === 'winter') lights(kit, p.w - 1.4, front + 0.3, FLOOR + 2.72);
     const [board, ink] = pick(BOARDS, r2);
     kit.sign = { y: FLOOR + 3.1, out: front + 0.16, h: 0.66, w: (p.w - 1.1) * 0.82, board, ink };
+    hanging(kit, -p.w / 2 + 0.5, FLOOR + 4.4, front + 0.3);
     return kit;
   },
 
@@ -593,6 +617,7 @@ const KITS: Record<HouseKind, (p: HousePlan, look: Look) => Kit> = {
     const [board, ink] = pick(BOARDS, r3);
     // The name is on the edge of the upper porch, where the street can read it.
     kit.sign = { y: upper + 0.62, out: out + 0.08, h: 0.6, w: Math.min(p.w * 0.7, 9), board, ink };
+    hanging(kit, p.w / 2 - 0.4, upper - 0.85, out + 0.1);
     return kit;
   },
 
@@ -618,6 +643,7 @@ const KITS: Record<HouseKind, (p: HousePlan, look: Look) => Kit> = {
     if (look.season === 'winter') lights(kit, p.w * 0.9, face + 1.45, FLOOR + 2.02);
     const [board, ink] = pick(BOARDS, r2);
     kit.sign = { y: eaves + 0.42, out: face + 0.03, h: 0.7, w: p.w * 0.8, board, ink };
+    hanging(kit, -p.w / 2 + 0.4, FLOOR + 3.3, face + 1.5);
     return kit;
   },
 
@@ -722,6 +748,8 @@ export class Houses {
   readonly group = new THREE.Group();
   /** The boards over the shop doors, to be painted. */
   readonly signs: SignSpec[] = [];
+  /** The picture signs that hang out over shop doors. */
+  readonly hangs: Hanging[] = [];
   private readonly glass = new THREE.MeshBasicMaterial({ color: GLASS_DARK });
   private readonly dark = new THREE.Color(GLASS_DARK);
   private readonly lit = new THREE.Color(GLASS_LIT);
@@ -748,6 +776,10 @@ export class Houses {
       for (const b of kit.list) chunk.list.push({ size: b.size, at: out(...b.at), colour: b.colour, turn: (b.turn ?? 0) + p.turn, ...(b.tip !== undefined ? { tip: b.tip } : {}) });
       for (const geo of kit.extra) chunk.extra.push(placed(geo, p.x, p.y, p.z, p.turn));
       paneCorners(kit.panes, out, chunk.panes);
+      if (p.sign && kit.hang) {
+        const [hx, hy, hz] = out(...kit.hang);
+        this.hangs.push({ text: p.sign, x: hx, y: hy, z: hz, turn: p.turn });
+      }
       if (p.sign && kit.sign) {
         this.signs.push({ text: p.sign, x: p.x + sin * kit.sign.out, y: p.y + kit.sign.y, z: p.z + cos * kit.sign.out, turn: p.turn, height: kit.sign.h, maxWidth: kit.sign.w, board: kit.sign.board, ink: kit.sign.ink });
       }

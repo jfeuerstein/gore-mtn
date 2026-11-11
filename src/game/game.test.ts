@@ -65,7 +65,7 @@ describe('Game', () => {
 
   it('pins a lift once, and ignores one with no name', () => {
     const game = new Game(gameWorld, memory());
-    expect(game.rode('Adirondack Express', DAY)).toEqual([{ kind: 'lift', title: 'Adirondack Express', detail: 'Lift pin' }]);
+    expect(game.rode('Adirondack Express', DAY)).toEqual([{ kind: 'lift', title: 'Adirondack Express', detail: 'Lift pin', art: 'pins/chair-lift' }]);
     expect(game.rode('Adirondack Express', DAY)).toEqual([]);
     expect(game.rode(null, DAY)).toEqual([]);
     expect(game.summary().lifts).toBe(1);
@@ -85,7 +85,7 @@ describe('Game', () => {
     const top = place('summit');
     expect(game.reachedAt(top.x + 10, top.z + 10, DAY, 'winter').map((e) => e.detail).sort()).toEqual(['Landmark stamped', 'Summit patch']);
     expect(game.reachedAt(top.x, top.z, DAY, 'winter')).toEqual([]);
-    expect(game.reachedAt(top.x, top.z, '2027-07-04', 'summer')).toEqual([{ kind: 'peak', title: 'Gore Mountain', detail: 'Summer summit patch' }]);
+    expect(game.reachedAt(top.x, top.z, '2027-07-04', 'summer')).toEqual([{ kind: 'peak', title: 'Gore Mountain', detail: 'Summer summit patch', art: 'peaks/gore' }]);
     expect(game.reachedAt(top.x, top.z, '2027-07-05', 'summer')).toEqual([]);
     expect(game.summary()).toMatchObject({ peaks: 1, peaksTotal: 4, seasonPeaks: 2, seasonPeaksTotal: 16 });
     // The first patch keeps the day it was first earned.
@@ -150,7 +150,7 @@ describe('Game', () => {
       if (!target) throw new Error('nothing about');
       const first = game.lookAbout(target.x + 2, target.z, 1, DAY, 'winter', 'day');
       expect(first.seen.map((s) => s.sighting.id)).toContain(target.id);
-      expect(first.seen.find((s) => s.sighting.id === target.id)?.event).toEqual({ kind: 'sighting', title: target.species.name, detail: 'New in the field guide' });
+      expect(first.seen.find((s) => s.sighting.id === target.id)?.event).toEqual({ kind: 'sighting', title: target.species.name, detail: 'New in the field guide', art: `species/${target.species.id}` });
       expect(game.lookAbout(target.x + 2, target.z, 1, DAY, 'winter', 'day').seen.some((s) => s.sighting.id === target.id)).toBe(false);
       expect(game.sightingsNear(base.x, base.z, DAY, 'winter', 'day').some((s) => s.id === target.id)).toBe(false);
       expect(game.summary().species).toBeGreaterThanOrEqual(1);

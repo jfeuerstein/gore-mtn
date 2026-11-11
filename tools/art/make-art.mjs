@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Make the game's generated art from tools/art/manifest.mjs.
 //
-//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|minerals|species] [--redo id,id] [--bump n]
+//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|minerals|species|places|patches|gear|offerings|conditions|peaks|pins|shops|title] [--redo id,id] [--bump n]
 //
 // Each picture is asked of fal once and kept at full size in tools/art/cache/ (not in the
 // repository); the small copy the game loads goes to public/art/. Pictures already made are
@@ -17,7 +17,20 @@ const SETS = {
   minerals: { art: manifest.MINERAL_ART, size: 384 },
   species: { art: manifest.SPECIES_ART ?? {}, size: 384 },
   places: { art: manifest.PLACE_ART ?? {}, size: 384 },
+  // Things that are had, not seen: in the second look, and balanced to the paper they sit on.
+  patches: { art: manifest.PATCH_ART, size: 192, item: true },
+  gear: { art: manifest.GEAR_ART, size: 192, item: true },
+  offerings: { art: manifest.OFFERING_ART, size: 192, item: true },
+  conditions: { art: manifest.CONDITION_ART, size: 160, item: true },
+  peaks: { art: manifest.PEAK_ART, size: 192, item: true },
+  pins: { art: manifest.PIN_ART, size: 160, item: true },
+  // The pictures for the shop signs go onto one sheet (see the end of this file), not into public/art one by one.
+  shops: { art: manifest.SHOP_ART, size: 128, item: true, sheet: true },
+  // The picture on the way in: tall, and left as it was painted.
+  title: { art: manifest.TITLE_ART, size: 0, tall: true },
 };
+/** A file name for something whose name has spaces and marks in it. */
+const slug = (id) => id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const args = process.argv.slice(2);
 const redo = new Set((args.find((a, i) => args[i - 1] === '--redo') ?? '').split(',').filter(Boolean));
 const wanted = args.filter((a) => a in SETS);
@@ -26,19 +39,56 @@ const bump = args.find((a, i) => args[i - 1] === '--bump') ?? '1';
 let made = 0;
 
 async function make(set, id, prompt, size) {
-  const raw = `${ROOT}tools/art/cache/${set}/${id}.webp`;
-  const out = `${ROOT}public/art/${set}/${id}.webp`;
+  const { item, sheet, tall } = SETS[set];
+  const raw = `${ROOT}tools/art/cache/${set}/${slug(id)}.webp`;
+  // A picture bound for a sheet is kept small in the cache, beside the big one.
+  const out = sheet ? `${ROOT}tools/art/cache/${set}/small/${slug(id)}.png` : `${ROOT}public/art/${set}/${slug(id)}.webp`;
   if (redo.has(id) || !existsSync(raw)) {
     // The same seed for a subject every time, so a picture can be made again as it was.
     const seed = [...`${set}/${id}`].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7) % 1000000;
-    const result = await run(manifest.MODEL, { prompt: `${prompt}. ${manifest.LOOK}`, image_size: 'square', num_inference_steps: 4, seed: seed + (redo.has(id) ? Number(bump) : 0) });
+    const result = await run(manifest.MODEL, {
+      prompt: tall ? prompt : `${prompt}. ${item ? manifest.ITEM_LOOK : manifest.LOOK}`,
+      image_size: tall ? 'portrait_16_9' : 'square',
+      num_inference_steps: 4,
+      seed: seed + (redo.has(id) ? Number(bump) : 0),
+    });
     await save(result.images[0].url, raw);
     made++;
     console.log(`made ${set}/${id}`);
   } else if (existsSync(out)) {
     return;
   }
-  mkdirSync(`${ROOT}public/art/${set}`, { recursive: true });
+  mkdirSync(out.slice(0, out.lastIndexOf('/')), { recursive: true });
+  if (tall) {
+    execFileSync('python3', ['-c', `from PIL import Image; im = Image.open(${JSON.stringify(raw)}).convert('RGB'); im.resize((540, 960), Image.LANCZOS).save(${JSON.stringify(out)}, 'WEBP', quality=80, method=6)`]);
+    return;
+  }
+  if (item) {
+    // The model's idea of a plain cream background differs from one picture to the next. Each is
+    // balanced so that its own background, read from round its edge, comes out as the paper's.
+    execFileSync('python3', [
+      '-c',
+      `
+from PIL import Image
+import statistics
+im = Image.open(${JSON.stringify(raw)}).convert('RGB')
+w, h = im.size
+px = im.load()
+ring = [px[x, y] for x in range(0, w, 7) for y in (3, h - 4)] + [px[x, y] for y in range(0, h, 7) for x in (3, w - 4)]
+bg = [statistics.median(c[i] for c in ring) for i in range(3)]
+paper = (255, 253, 247)
+luts = []
+for i in range(3):
+    g = paper[i] / max(bg[i], 1)
+    luts += [min(255, round(v * g)) for v in range(256)]
+im = im.point(luts)
+m = 0.07
+im = im.crop((int(w * m), int(h * m), int(w * (1 - m)), int(h * (1 - m)))).resize((${size}, ${size}), Image.LANCZOS)
+im.save(${JSON.stringify(out)}${sheet ? '' : ", 'WEBP', quality=84, method=6"})
+`,
+    ]);
+    return;
+  }
   // Trim the margins, where the model likes to add a caption or a signature, and shrink to the
   // size the game shows it at. Pillow is already needed by the terrain pipeline.
   const trim = set === 'people' ? 0.04 : 0.08;
@@ -55,5 +105,35 @@ for (const set of wanted.length ? wanted : Object.keys(SETS)) {
   for (let i = 0; i < jobs.length; i += 4) {
     await Promise.all(jobs.slice(i, i + 4).map(([id, prompt]) => make(set, id, prompt, size).catch((e) => console.error(`FAILED ${set}/${id}: ${e.message}`))));
   }
+}
+// The shop signs' sheet: every picture in a grid, in the order the manifest lists them, and
+// beside it the list of which sign each cell is for, for the game to read.
+if (!wanted.length || wanted.includes('shops')) {
+  const names = Object.keys(manifest.SHOP_ART);
+  const cols = 8;
+  const cell = SETS.shops.size;
+  const files = names.map((n) => `${ROOT}tools/art/cache/shops/small/${slug(n)}.png`);
+  if (files.every((f) => existsSync(f))) {
+    execFileSync('python3', [
+      '-c',
+      `
+from PIL import Image
+import json, math
+files = json.loads(${JSON.stringify(JSON.stringify(files))})
+cols, cell = ${cols}, ${cell}
+rows = math.ceil(len(files) / cols)
+sheet = Image.new('RGB', (cols * cell, rows * cell), (255, 253, 247))
+for i, f in enumerate(files):
+    sheet.paste(Image.open(f).convert('RGB'), ((i % cols) * cell, (i // cols) * cell))
+sheet.save(${JSON.stringify(`${ROOT}public/art/shop-signs.webp`)}, 'WEBP', quality=84, method=6)
+`,
+    ]);
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(
+      `${ROOT}src/world/shopSignArt.ts`,
+      `// Written by tools/art/make-art.mjs: which picture on the shop signs' sheet is for which sign. Not edited by hand.\nexport const SHOP_SIGN_COLS = ${cols};\nexport const SHOP_SIGN_ART: readonly string[] = ${JSON.stringify(names, null, 2)};\n`,
+    );
+    console.log(`shop signs' sheet: ${names.length} pictures`);
+  } else console.error('some shop sign pictures are missing; the sheet was not made');
 }
 console.log(`${made} new picture(s) asked of fal`);

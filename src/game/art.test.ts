@@ -2,9 +2,16 @@ import { existsSync, statSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import { namedSpots } from '../world/whereabouts';
+import { SEASONS } from '../look/season';
+import { SHOP_SIGNS } from '../world/houseKinds';
+import { SHOP_SIGN_ART } from '../world/shopSignArt';
+import { TOWN_LISTINGS } from '../world/townPlaces';
+import { artSlug } from './artNames';
 import { MINERALS } from './minerals';
-import { buildLandmarks } from './passport';
-import { PEOPLE } from './people';
+import { OFFERINGS } from './offerings';
+import { buildLandmarks, buildPeaks, CONDITIONS } from './passport';
+import { PATCHES } from './patches';
+import { GEAR, PEOPLE } from './people';
 import { SPECIES } from './wildlife';
 
 const art = (set: string, id: string): URL => new URL(`../../public/art/${set}/${id}.webp`, import.meta.url);
@@ -28,6 +35,33 @@ describe('generated art', () => {
     expect(landmarks.length).toBeGreaterThanOrEqual(20);
     expect(landmarks.filter((l) => !existsSync(art('places', l.id))).map((l) => l.id)).toEqual([]);
     for (const l of landmarks) expect(statSync(art('places', l.id)).size, l.id).toBeLessThan(60000);
+  });
+
+  it('has a picture for everything that can be had: patches, hats and jackets, bakes, sandwiches and books, conditions, summits and lift pins', () => {
+    const world = loadTestWorld();
+    const sets: [string, string[]][] = [
+      ['patches', PATCHES.map((p) => p.id)],
+      ['gear', GEAR.map((g) => g.id)],
+      ['offerings', OFFERINGS.map((o) => o.id)],
+      ['conditions', CONDITIONS.map((c) => c.id)],
+      ['peaks', buildPeaks(world.places, world.lifts).map((p) => p.id)],
+      ['pins', [...new Set(world.lifts.map((l) => l.kind))]],
+      ['title', [...SEASONS]],
+    ];
+    for (const [set, ids] of sets) {
+      expect(ids.filter((id) => !existsSync(art(set, artSlug(id)))), set).toEqual([]);
+      for (const id of ids) expect(statSync(art(set, artSlug(id))).size, `${set}/${id}`).toBeLessThan(set === 'title' ? 140000 : 30000);
+    }
+  });
+
+  it('has a picture on the sheet for every shop sign in town', () => {
+    expect(existsSync(new URL('../../public/art/shop-signs.webp', import.meta.url))).toBe(true);
+    expect(SHOP_SIGNS.filter((s) => !SHOP_SIGN_ART.includes(s))).toEqual([]);
+    // And for the named places that are shops.
+    for (const sign of ["JUNE'S BAKERY", "WALT'S DELI", 'POST OFFICE']) {
+      expect(TOWN_LISTINGS.some((l) => l.sign === sign), sign).toBe(true);
+      expect(SHOP_SIGN_ART, sign).toContain(sign);
+    }
   });
 
   it('keeps each picture small enough for a phone on a chairlift', () => {

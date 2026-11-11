@@ -44,7 +44,7 @@ describe('patches', () => {
   it('are awarded once, when earned', () => {
     const game = new Game(gameWorld, memory());
     game.save.trails.Sunway = { seen: '1', stamped: DAY };
-    expect(game.checkPatches(DAY)).toEqual([{ kind: 'patch', title: 'First Tracks', detail: 'A patch for your passport' }]);
+    expect(game.checkPatches(DAY)).toEqual([{ kind: 'patch', title: 'First Tracks', detail: 'A patch for your passport', art: 'patches/first-tracks' }]);
     expect(game.checkPatches(DAY)).toEqual([]);
     expect(game.summary().patches).toBe(1);
     // Every easier trail earns the green circle.

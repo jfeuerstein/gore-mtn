@@ -19,6 +19,9 @@
   --accent: var(--red);
   /* Poster capitals for names and buttons; handwriting for dates and labels; a soft sans for reading. */
   --display: 'Bebas Neue', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
+  /* How the display face is set: its weight, and whether words are put in capitals. The poster face is capitals by nature. */
+  --display-weight: 400;
+  --display-case: uppercase;
   --hand: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
   --body: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
   /* Print slightly out of register: a hard shadow straight down, as on an enamel sign. */
@@ -27,6 +30,32 @@
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .13 0 0 0 0 .19 0 0 0 0 .29 0 0 0 .07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   font-family: var(--body);
   color: var(--ink);
+}
+
+/*
+ * The other lettering: a soft rounded face in upper and lower case, for a cosier book. The owner
+ * can turn between the two in Settings and compare them on the phone. Everything that names the
+ * display face follows; nothing else changes.
+ */
+:root[data-type='rounded'] {
+  --display: 'Fredoka Variable', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --display-weight: 600;
+  --display-case: none;
+}
+:root[data-type='rounded'] #app {
+  /* The narrow cut of the face, so that names fit where the poster capitals did. */
+  font-stretch: 78%;
+}
+:root[data-type='rounded'] #app * {
+  letter-spacing: 0 !important;
+}
+/* Softer corners to go with it: buttons are pills, cards are rounder. */
+:root[data-type='rounded'] #app button {
+  border-radius: 999px;
+}
+:root[data-type='rounded'] #where,
+:root[data-type='rounded'] .toast {
+  border-radius: 18px;
 }
 
 /*
@@ -108,7 +137,7 @@ body {
   font-size: 19px;
   line-height: 1;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   color: var(--ink);
   background: var(--paper);
   border: 2px solid var(--ink);
@@ -167,7 +196,7 @@ body {
   font-size: 20px;
   line-height: 1;
   letter-spacing: 0.07em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   color: var(--ink);
   background: var(--paper);
   border: 2px solid var(--ink);
@@ -294,7 +323,7 @@ body {
   font-size: 17px;
   line-height: 1;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   text-decoration: none;
   text-align: center;
   color: var(--ink);
@@ -325,9 +354,9 @@ body {
 #menu h2 {
   font-family: var(--display);
   font-size: 17px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   margin: 16px 0 7px;
   color: var(--ink-soft);
 }
@@ -492,10 +521,10 @@ body {
 .toast b {
   font-family: var(--display);
   font-size: 19px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 1.05;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 .toast small {
   font-family: var(--hand);
@@ -548,9 +577,9 @@ body {
   margin: 0;
   font-family: var(--display);
   font-size: 28px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #map-sheet canvas {
   display: block;
@@ -564,7 +593,7 @@ body {
   font-family: var(--display);
   font-size: 21px;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   min-height: 24px;
 }
 #map-sheet .legend {
@@ -623,10 +652,10 @@ body {
   border-bottom: 2px solid var(--ink);
   font-family: var(--display);
   font-size: 27px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 1;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #book-sheet h3:first-child {
   margin-top: 4px;
@@ -638,9 +667,9 @@ body {
   margin: 16px 0 5px;
   font-family: var(--display);
   font-size: 18px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   color: var(--ink-soft);
 }
 #book-sheet h3 span,
@@ -677,10 +706,10 @@ body {
 #book-sheet .stamp b {
   font-family: var(--display);
   font-size: 17px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 1.05;
   letter-spacing: 0.05em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #book-sheet .stamp small {
   font-size: 11px;
@@ -952,7 +981,7 @@ body {
 #book-sheet .ticket b {
   display: block;
   font-family: var(--display);
-  font-weight: 400;
+  font-weight: var(--display-weight);
   font-size: 17px;
   letter-spacing: 0.04em;
 }
@@ -973,10 +1002,10 @@ body {
   gap: 3px 8px;
   font-family: var(--display);
   font-size: 20px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 1.05;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #book-sheet .mineral.todo b {
   opacity: 0.5;
@@ -1001,7 +1030,7 @@ body {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
   color: var(--ink-soft);
 }
 #book-sheet .species .when {
@@ -1077,10 +1106,10 @@ body {
   display: block;
   font-family: var(--display);
   font-size: 30px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 1;
   letter-spacing: 0.04em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #talk-sheet .names small {
   font-family: var(--hand);
@@ -1252,12 +1281,31 @@ body {
 #loading em {
   font-style: normal;
 }
+/* With the season's picture behind it, the title sits on a card near the foot of the screen. */
+#loading.pictured {
+  background-size: cover;
+  background-position: 50% 40%;
+  align-items: flex-end;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+#loading.pictured > span {
+  display: block;
+  padding: 16px 26px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 22px;
+  background-color: var(--paper);
+  background-image: var(--grain);
+  box-shadow: var(--press);
+}
+#loading.pictured b {
+  font-size: 72px;
+}
 /* The loading screen is the cover of the passport. */
 #loading b {
   display: block;
   font-family: var(--display);
   font-size: 96px;
-  font-weight: 400;
+  font-weight: var(--display-weight);
   line-height: 0.9;
   letter-spacing: 0.06em;
   color: var(--red);
@@ -1277,7 +1325,7 @@ body {
   font-family: var(--display);
   font-size: 30px;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
+  text-transform: var(--display-case);
 }
 #fatal {
   font: 13px/1.5 ui-monospace, Menlo, monospace;
@@ -1297,4 +1345,145 @@ body {
 }
 [hidden] {
   display: none !important;
+}
+
+/*
+ * Pictures of things that can be had. Each is painted on cream; multiplied onto the page, the
+ * cream goes and the thing sits on the paper. What has not been had yet is a pale ghost.
+ */
+#book-sheet .pic,
+.toast .pic {
+  display: block;
+  mix-blend-mode: multiply;
+}
+#book-sheet .ghost {
+  filter: grayscale(1) contrast(0.45) brightness(1.25) blur(1.2px);
+  opacity: 0.4;
+}
+/* A shelf: three to a row, each thing under its picture. */
+#book-sheet .shelf {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+#book-sheet .shelf .tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 7px 6px 9px;
+  margin: 0;
+  min-width: 0;
+  border-radius: 16px;
+  transform: none;
+}
+#book-sheet .shelf .tile .pic {
+  width: 78%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 3px;
+}
+/* A season's tile shows the top of its tall picture. */
+#book-sheet .shelf .season .pic {
+  width: 100%;
+  aspect-ratio: 1.25;
+  object-position: 50% 62%;
+  mix-blend-mode: normal;
+}
+#book-sheet .shelf .tile b,
+#book-sheet .shelf .tile small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#book-sheet .shelf .tile b {
+  font-size: 15px;
+  line-height: 1.08;
+}
+#book-sheet .shelf .tile small {
+  font-size: 11.5px;
+  line-height: 1.15;
+}
+#book-sheet .tried.shelf .tile {
+  border: 1.5px solid var(--line);
+  background: var(--card);
+}
+#book-sheet .tried.shelf .tile.todo {
+  border-style: dashed;
+  background: transparent;
+}
+#book-sheet .tried.shelf .tile.todo b {
+  color: var(--ink-soft);
+}
+/* The wardrobe: a hat or a jacket on every button. */
+#book-sheet .wardrobe {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+#book-sheet .wardrobe button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  height: auto;
+  padding: 6px 4px 7px;
+  border-radius: 16px;
+  white-space: normal;
+  line-height: 1.05;
+  font-size: 13px;
+}
+#book-sheet .wardrobe button .pic {
+  width: 86%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+}
+#book-sheet .wardrobe button.on .pic {
+  mix-blend-mode: normal;
+}
+/* An announcement of something with a picture holds it up, bigger than a mark. */
+.toast .pic {
+  flex: none;
+  width: 54px;
+  height: 54px;
+  margin: -4px 0 -4px -2px;
+  border-radius: 12px;
+  animation: pic-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) 0.1s backwards;
+}
+.toast-pic {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+@keyframes pic-pop {
+  from {
+    transform: scale(0.3) rotate(-14deg);
+  }
+}
+/* On a shelf, a thing that has been had is a clean card in its kind's colour, not a slanted stamp. */
+#book-sheet .shelf .tile.earned {
+  transform: none;
+  background: var(--card);
+  border: 2px solid currentColor;
+  box-shadow: 0 3px 0 currentColor;
+  outline: none;
+  padding: 7px 6px 9px;
+  border-radius: 16px;
+}
+#book-sheet .shelf .stamp.patch.earned {
+  color: var(--kraft);
+}
+#book-sheet .shelf .tile.earned b {
+  color: var(--ink);
+}
+#book-sheet .shelf .tile.earned small,
+#book-sheet .shelf .stamp.patch.earned small {
+  color: var(--ink-soft);
+}
+#book-sheet .shelf .tile.todo {
+  border-radius: 16px;
+}
+/* In the rounded lettering, buttons are pills; but a tall tile with a picture on it stays a tile. */
+:root[data-type='rounded'] #app #book-sheet .wardrobe button {
+  border-radius: 18px;
 }

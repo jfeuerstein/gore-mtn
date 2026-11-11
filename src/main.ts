@@ -1,5 +1,6 @@
 import '@fontsource/bebas-neue/latin-400.css';
 import '@fontsource/caveat/latin-600.css';
+import '@fontsource-variable/fredoka/wdth.css';
 import * as THREE from 'three/webgpu';
 import { Sound } from './audio/sound';
 import { parseConfig, withParams } from './config';
@@ -33,6 +34,7 @@ import { countryOf } from './world/country';
 import { critterGeometry } from './world/critterModels';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
+import { lettering } from './ui/lettering';
 import { buildRoute, busyness, routePoint } from './world/crowd';
 import { Crowd } from './world/crowdMesh';
 import { LiftCars } from './world/liftCars';
@@ -112,8 +114,18 @@ const LOADING_LINES = [
   'Getting up steam…',
 ];
 {
+  // The lettering the player has chosen: the rounded face unless they have gone back to the poster one.
+  document.documentElement.dataset.type = lettering();
   const line = document.getElementById('loading-line');
   if (line) line.textContent = LOADING_LINES[new Date().getMinutes() % LOADING_LINES.length] as string;
+  // The season's picture behind the title, while the mountain loads.
+  const loading = document.getElementById('loading');
+  const asked = new URLSearchParams(location.search).get('season');
+  const season = (SEASONS as readonly string[]).includes(asked ?? '') ? asked : seasonFor(new Date());
+  if (loading) {
+    loading.style.backgroundImage = `url(${import.meta.env.BASE_URL}art/title/${season}.webp)`;
+    loading.classList.add('pictured');
+  }
 }
 
 function showFatal(message: string): void {

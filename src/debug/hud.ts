@@ -1,4 +1,5 @@
 import { DEFAULTS, withParams, type Config } from '../config';
+import { lettering, setLettering } from '../ui/lettering';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
 import { startBench } from './bench';
 import { describeSummary, type FrameSummary } from './perf';
@@ -279,6 +280,28 @@ export class Hud {
           field.value = '';
         }
       });
+    }
+
+    {
+      // The lettering: the soft rounded face, or the poster capitals. Changed on the spot.
+      add(this.menuEl, 'h2', 'Lettering');
+      const row = add(this.menuEl, 'div');
+      row.className = 'row';
+      const choices = [['rounded', 'Rounded'], ['poster', 'Poster']] as const;
+      const buttons = choices.map(([id, label]) => {
+        const b = add(row, 'button', label);
+        b.type = 'button';
+        b.id = `lettering-${id}`;
+        return b;
+      });
+      const show = (): void => buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(lettering() === (choices[i] as (typeof choices)[number])[0])));
+      buttons.forEach((b, i) =>
+        b.addEventListener('click', () => {
+          setLettering((choices[i] as (typeof choices)[number])[0]);
+          show();
+        }),
+      );
+      show();
     }
 
     if (this.sound) {

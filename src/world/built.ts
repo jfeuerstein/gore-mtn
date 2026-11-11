@@ -7,6 +7,7 @@ import { depotSetting, TRACK_OUT, TRAIN_LENGTH, trainCars, type DepotSetting } f
 import { buildResort } from './resort';
 import { buildSnowGuns } from './scenery';
 import { buildSignPosts } from './signPosts';
+import { buildHangingSigns } from './shopSigns';
 import { buildSigns } from './signs';
 import { Smoke } from './smoke';
 import { snowGuns } from './snowGuns';
@@ -146,6 +147,10 @@ export class Built {
     // lettering has loaded.
     const signPosts = buildSignPosts(trailSignPosts(world.trails, world.lifts, heightAt, (x, z) => world.onTrail(x, z)), heightAt, shadows);
     this.group.add(signPosts.mesh);
+    // The picture signs over the shop doors: one more mesh, on a sheet of pictures of its own.
+    void buildHangingSigns([...this.named.hangs, ...this.town.hangs]).then((mesh) => {
+      if (mesh) this.group.add(mesh);
+    });
     void buildSigns([...this.named.signs, ...this.buildings.signs, ...this.town.signs, ...signPosts.signs]).then((mesh) => {
       if (mesh) this.group.add(mesh);
     });

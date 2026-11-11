@@ -1,5 +1,6 @@
 import { SEASON_NAME, type Season } from '../look/season';
 import { DIFFICULTY_MARK, type Lift, type Path, type Place, type Trail } from '../world/trails';
+import { artSlug } from './artNames';
 import { daySeed, FIND_PATCH, findsInPatch, mineralById, MINERALS, specimenSize, type Find, type Ground } from './minerals';
 import {
   buildLandmarks,
@@ -27,6 +28,8 @@ export interface GameEvent {
   detail: string;
   /** For a mineral, its colour. */
   colour?: number;
+  /** The picture of what was earned, where there is one: its set and name under public/art, as "patches/first-tracks". */
+  art?: string;
 }
 
 /** What a person has to say, and what comes of it. */
@@ -147,6 +150,8 @@ export class Game {
   }
   /** Every lift with a name, in alphabetical order. */
   readonly liftNames: string[];
+  /** What kind of lift each is, by name: a chair, a gondola, a carpet. */
+  private readonly liftKinds = new Map<string, string>();
   private readonly index: TrailIndex;
   private readonly pathIndex: TrailIndex;
   private readonly patches = new Map<string, Find[]>();
@@ -187,6 +192,7 @@ export class Game {
     if (!gearById(this.save.gear.hat)) this.save.gear.hat = DEFAULT_GEAR.hat;
     if (!gearById(this.save.gear.jacket)) this.save.gear.jacket = DEFAULT_GEAR.jacket;
     this.liftNames = [...new Set(world.lifts.map((l) => l.name).filter((n): n is string => Boolean(n)))].sort();
+    for (const l of world.lifts) if (l.name) this.liftKinds.set(l.name, l.kind);
   }
 
   /** The player is skiing, or riding, down the mountain at a position. */
@@ -224,18 +230,23 @@ export class Game {
       if (key in this.save.seasonPeaks || Math.hypot(peak.x - x, peak.z - z) > peak.reach) continue;
       this.save.seasonPeaks[key] = day;
       if (peak.id in this.save.peaks) {
-        events.push({ kind: 'peak', title: peak.name, detail: `${SEASON_NAME[season]} summit patch` });
+        events.push({ kind: 'peak', title: peak.name, detail: `${SEASON_NAME[season]} summit patch`, art: `peaks/${artSlug(peak.id)}` });
       } else {
         this.save.peaks[peak.id] = day;
-        events.push({ kind: 'peak', title: peak.name, detail: 'Summit patch' });
+        events.push({ kind: 'peak', title: peak.name, detail: 'Summit patch', art: `peaks/${artSlug(peak.id)}` });
       }
     }
     for (const mark of reached(this.landmarks, this.save.landmarks, x, z)) {
       this.save.landmarks[mark.id] = day;
-      events.push({ kind: 'landmark', title: mark.name, detail: 'Landmark stamped' });
+      events.push({ kind: 'landmark', title: mark.name, detail: 'Landmark stamped', art: `places/${mark.id}` });
     }
     if (events.length > 0) this.dirty = true;
     return events;
+  }
+
+  /** What kind of lift one is, by its name: for the pin it earns. */
+  liftKind(name: string): string {
+    return this.liftKinds.get(name) ?? 'chair_lift';
   }
 
   /** The player has ridden a lift to the top. */
@@ -243,7 +254,7 @@ export class Game {
     if (!liftName || liftName in this.save.lifts) return [];
     this.save.lifts[liftName] = day;
     this.dirty = true;
-    return [{ kind: 'lift', title: liftName, detail: 'Lift pin' }];
+    return [{ kind: 'lift', title: liftName, detail: 'Lift pin', art: `pins/${artSlug(this.liftKind(liftName))}` }];
   }
 
   /** The player is skiing in these conditions (ids from conditionsNow). */
@@ -253,7 +264,7 @@ export class Game {
       const condition = CONDITIONS.find((c) => c.id === id);
       if (!condition || id in this.save.conditions) continue;
       this.save.conditions[id] = day;
-      events.push({ kind: 'condition', title: condition.name, detail: 'Conditions stamp' });
+      events.push({ kind: 'condition', title: condition.name, detail: 'Conditions stamp', art: `conditions/${artSlug(id)}` });
     }
     if (events.length > 0) this.dirty = true;
     return events;
@@ -327,7 +338,7 @@ export class Game {
     this.save.minerals[find.mineral.id] = record;
     this.dirty = true;
     const note = !had ? 'New mineral' : isBest ? 'Your largest yet' : `${record.count} found`;
-    return { kind: 'mineral', title: find.mineral.name, detail: `${find.size.toFixed(1)} cm · ${note}`, colour: find.mineral.colour };
+    return { kind: 'mineral', title: find.mineral.name, detail: `${find.size.toFixed(1)} cm · ${note}`, colour: find.mineral.colour, art: `minerals/${find.mineral.id}` };
   }
 
   /**
@@ -397,7 +408,7 @@ export class Game {
     const entry = had ?? { count: 0, first: day };
     entry.count++;
     this.save.sightings[sighting.species.id] = entry;
-    return { kind: 'sighting', title: sighting.species.name, detail: had ? `Seen ${entry.count} times` : 'New in the field guide' };
+    return { kind: 'sighting', title: sighting.species.name, detail: had ? `Seen ${entry.count} times` : 'New in the field guide', art: `species/${sighting.species.id}` };
   }
 
   /** True inside a building's footprint, where nothing is to be seen. */
@@ -423,7 +434,7 @@ export class Game {
       if (id in this.save.patches) continue;
       this.save.patches[id] = day;
       const patch = PATCHES.find((p) => p.id === id);
-      events.push({ kind: 'patch', title: patch?.name ?? id, detail: 'A patch for your passport' });
+      events.push({ kind: 'patch', title: patch?.name ?? id, detail: 'A patch for your passport', art: `patches/${artSlug(id)}` });
     }
     if (events.length > 0) this.dirty = true;
     return events;
@@ -548,7 +559,7 @@ export class Game {
       const gear = e.reward?.gear ? gearById(e.reward.gear) : undefined;
       if (gear && !save.gear.owned.includes(gear.id)) {
         save.gear.owned.push(gear.id);
-        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat, in your pack' : 'A new jacket, in your pack', colour: gear.colour });
+        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat, in your pack' : 'A new jacket, in your pack', colour: gear.colour, art: `gear/${artSlug(gear.id)}` });
       }
       if (e.reward?.pass && !save.pass) {
         save.pass = true;
@@ -598,7 +609,7 @@ export class Game {
         talk.lines.push(offering.hand);
         if (fresh) {
           save.tried[offering.id] = day;
-          talk.events.push({ kind: 'item', title: offering.name, detail: `${OFFERING_KIND[offering.kind]} · noted in your book` });
+          talk.events.push({ kind: 'item', title: offering.name, detail: `${OFFERING_KIND[offering.kind]} · noted in your book`, art: `offerings/${artSlug(offering.id)}` });
         }
       } else if (talk.lines.length === 0 && this.noticed.get(personId) !== day && (person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket])) {
         // They have something to say about what the player has on. Once a day is enough.

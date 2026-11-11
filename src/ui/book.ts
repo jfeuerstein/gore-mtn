@@ -1,3 +1,4 @@
+import { artSlug } from '../game/artNames';
 import type { Game } from '../game/game';
 import { MINERALS } from '../game/minerals';
 import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
@@ -42,6 +43,29 @@ function plate(set: 'minerals' | 'species' | 'places', id: string): HTMLImageEle
   img.decoding = 'async';
   img.src = `${import.meta.env.BASE_URL}art/${set}/${id}.webp`;
   img.addEventListener('error', () => (img.style.visibility = 'hidden'));
+  return img;
+}
+
+/**
+ * A picture of something that can be had: a patch, a hat, a bun. Whatever has not been had yet
+ * is shown as a pale ghost of itself, so that the shelf says what there is to look for.
+ * @param art its set and name under public/art, as "patches/first-tracks"
+ */
+function pic(art: string, have: boolean): HTMLImageElement {
+  const img = document.createElement('img');
+  img.className = have ? 'pic' : 'pic ghost';
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.src = `${import.meta.env.BASE_URL}art/${art}.webp`;
+  img.addEventListener('error', () => (img.style.visibility = 'hidden'));
+  return img;
+}
+
+/** A plate not yet earned: a pale ghost of it, to say there is something there to find. */
+function ghost(set: 'minerals' | 'species', id: string): HTMLImageElement {
+  const img = plate(set, id);
+  img.className = 'plate ghost';
   return img;
 }
 
@@ -137,10 +161,12 @@ export class Book {
    * A row of stamps: inked when earned, a dotted outline when not.
    * `pips` are smaller marks on a stamp, one for each season it can be earned in.
    */
-  private stamps(kind: string, items: { name: string; day: string | undefined; how?: string; pips?: { label: string; on: boolean }[] }[]): HTMLElement {
-    const row = el('div', 'stamps');
+  private stamps(kind: string, items: { name: string; day: string | undefined; how?: string; pips?: { label: string; on: boolean }[]; art?: string }[]): HTMLElement {
+    // With pictures, the stamps are a shelf of things: three to a row, each under its picture.
+    const row = el('div', items.some((i) => i.art) ? 'stamps shelf' : 'stamps');
     for (const item of items) {
-      const stamp = el('div', `stamp ${kind} ${item.day ? 'earned' : 'todo'}`);
+      const stamp = el('div', `stamp ${kind} ${item.day ? 'earned' : 'todo'}${item.art ? ' tile' : ''}`);
+      if (item.art) stamp.appendChild(pic(item.art, Boolean(item.day)));
       stamp.appendChild(el('b', '', item.name));
       stamp.appendChild(el('small', '', item.day ? shortDay(item.day) : (item.how ?? '')));
       if (item.pips) {
@@ -161,9 +187,9 @@ export class Book {
 
     out.push(this.heading('Patches', s.patches, s.patchesTotal));
     out.push(el('p', 'note', 'For the long hauls - finishing a whole kind of thing.'));
-    out.push(this.stamps('patch', PATCHES.map((p) => ({ name: p.name, day: save.patches[p.id], how: p.how }))));
+    out.push(this.stamps('patch', PATCHES.map((p) => ({ name: p.name, day: save.patches[p.id], how: p.how, art: `patches/${artSlug(p.id)}` }))));
     out.push(this.heading('Seasons', s.seasons, SEASONS.length));
-    out.push(this.stamps('season', SEASONS.map((season) => ({ name: SEASON_NAME[season], day: save.seasons[season], how: 'Visit the mountain.' }))));
+    out.push(this.stamps('season', SEASONS.map((season) => ({ name: SEASON_NAME[season], day: save.seasons[season], how: 'Visit the mountain.', art: `title/${season}` }))));
     out.push(this.heading('Summits', s.seasonPeaks, s.seasonPeaksTotal));
     out.push(el('p', 'note', 'Each summit has a patch for every season.'));
     out.push(
@@ -173,6 +199,7 @@ export class Book {
           name: p.name,
           day: save.peaks[p.id],
           how: 'Stand on top.',
+          art: `peaks/${artSlug(p.id)}`,
           pips: SEASONS.map((season) => ({ label: SEASON_NAME[season].slice(0, 2), on: `${p.id}:${season}` in save.seasonPeaks })),
         })),
       ),
@@ -197,9 +224,9 @@ export class Book {
     }
     out.push(cards);
     out.push(this.heading('Conditions', s.conditions, s.conditionsTotal));
-    out.push(this.stamps('condition', CONDITIONS.map((c) => ({ name: c.name, day: save.conditions[c.id], how: c.how }))));
+    out.push(this.stamps('condition', CONDITIONS.map((c) => ({ name: c.name, day: save.conditions[c.id], how: c.how, art: `conditions/${artSlug(c.id)}` }))));
     out.push(this.heading('Lifts', s.lifts, s.liftsTotal));
-    out.push(this.stamps('lift', game.liftNames.map((name) => ({ name, day: save.lifts[name], how: 'Ride to the top.' }))));
+    out.push(this.stamps('lift', game.liftNames.map((name) => ({ name, day: save.lifts[name], how: 'Ride to the top.', art: `pins/${artSlug(game.liftKind(name))}` }))));
 
     out.push(this.heading('Trails', s.trails, s.trailsTotal));
     out.push(el('p', 'note', "Ski a trail top to bottom to stamp it, or ride it once the snow's gone. It doesn't have to be in one run."));
@@ -305,9 +332,7 @@ export class Book {
         const b = el('button', have ? (game.save.gear[slot] === g.id ? 'on' : '') : 'locked');
         b.type = 'button';
         b.disabled = !have;
-        const swatch = el('span', 'swatch');
-        if (have) swatch.style.backgroundColor = `#${g.colour.toString(16).padStart(6, '0')}`;
-        b.append(swatch, el('span', '', have ? g.name : '?'));
+        b.append(pic(`gear/${artSlug(g.id)}`, have), el('span', '', have ? g.name : '?'));
         b.addEventListener('click', () => {
           if (game.wear(g.id)) {
             this.onWear?.();
@@ -337,14 +362,17 @@ export class Book {
       const had = all.filter((o) => o.id in game.save.tried);
       out.push(this.heading(title, had.length, all.length));
       if (had.length === 0) out.push(el('p', 'note', hint));
-      const list = el('div', 'tried');
-      for (const o of had) {
-        const row = el('div', `ticket ticket-${o.kind}`);
-        row.appendChild(el('b', '', o.name));
-        row.appendChild(el('small', '', o.note));
+      // Everything on the menu, or on the shelves: what has been had, with a note; the rest as ghosts.
+      const list = el('div', 'tried shelf');
+      for (const o of all) {
+        const have = o.id in game.save.tried;
+        const row = el('div', have ? `ticket ticket-${o.kind} tile` : 'tile todo');
+        row.appendChild(pic(`offerings/${artSlug(o.id)}`, have));
+        row.appendChild(el('b', '', have ? o.name : '?'));
+        if (have) row.appendChild(el('small', '', o.note));
         list.appendChild(row);
       }
-      if (had.length > 0) out.push(list);
+      out.push(list);
     }
     // Letters collected from the post office, newest first, to read again.
     const letters = LETTERS.filter((l) => l.id in game.save.letters).sort((a, b) => (game.save.letters[b.id] ?? '').localeCompare(game.save.letters[a.id] ?? ''));
@@ -378,7 +406,7 @@ export class Book {
       for (const sp of entries) {
         const record = game.save.sightings[sp.id];
         const card = el('div', `mineral species ${record ? 'earned' : 'todo'}`);
-        card.appendChild(record ? plate('species', sp.id) : el('span', `badge badge-${kin}`, '?'));
+        card.appendChild(record ? plate('species', sp.id) : ghost('species', sp.id));
         const text = el('div');
         text.appendChild(el('b', '', sp.name));
         if (record) {
@@ -408,7 +436,7 @@ export class Book {
     for (const mineral of MINERALS) {
       const record = game.save.minerals[mineral.id];
       const card = el('div', `mineral ${record ? 'earned' : 'todo'}`);
-      const gem = record ? plate('minerals', mineral.id) : el('span', 'badge', '?');
+      const gem = record ? plate('minerals', mineral.id) : ghost('minerals', mineral.id);
       const text = el('div');
       const name = el('b', '', mineral.name);
       name.appendChild(el('span', `rarity ${mineral.rarity}`, mineral.rarity));

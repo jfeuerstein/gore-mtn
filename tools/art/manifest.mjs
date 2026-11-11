@@ -128,3 +128,206 @@ export const PLACE_ART = {
   'gore-mt-mineral-shop': card('a log cabin rock shop with a giant dark red garnet crystal on a stone plinth outside'),
   'old-gondola-mid-station': card('an abandoned concrete ski gondola station overgrown in a fir forest, with one old red gondola cabin left beside it'),
 };
+
+/**
+ * A second look, for things that are had rather than seen: what is eaten, worn, pinned on or
+ * sewn on. Soft and chunky, like a toy on a shelf, so that the Book's shelves are a pleasure to
+ * fill. The field guide's plates and the portraits keep the look above.
+ */
+export const ITEM_LOOK =
+  'cute cosy collectible item icon, soft rounded chunky shapes, matte clay toy look, warm cheerful pastel colours, gentle soft shading, thick friendly proportions, centered on a plain cream background, nothing else in the picture, no text, no letters';
+
+const patch = (what) => `a round embroidered cloth patch with a thick stitched border, showing ${what}`;
+const pin = (what) => `a round shiny enamel pin badge showing ${what}`;
+const food = (what) => `${what}, one single item of food`;
+const book = (what, colour) => `a small chunky ${colour} hardback book standing up, with a picture of ${what} on its front cover, no title`;
+const wear = (what) => `${what}, a single piece of clothing with nobody wearing it`;
+
+/** Patches, for finishing a whole kind of thing: by patch id. */
+export const PATCH_ART = {
+  'first-tracks': patch('two ski tracks curving down a slope of fresh snow'),
+  'green-circle': patch('one big green circle on white snow'),
+  'blue-square': patch('one big blue square on white snow'),
+  'black-diamond': patch('one black diamond shape on white snow'),
+  'double-diamond': patch('two black diamond shapes side by side on white snow'),
+  'in-the-trees': patch('three snowy fir trees close together'),
+  'half-the-mountain': patch('a mountain whose lower half is striped with ski trails'),
+  'every-trail': patch('a whole snowy mountain covered in winding ski trails'),
+  pathfinder: patch('a compass and a dotted footpath through green woods'),
+  chairman: patch('an empty chairlift chair hanging from a cable against blue sky'),
+  'four-peaks': patch('four snowy mountain peaks in a row'),
+  'sixteen-summits': patch('a mountain peak with a snowflake, a flower, a sun and a red maple leaf around it'),
+  sightseer: patch('a pair of binoculars'),
+  'four-seasons': patch('a circle in four quarters: a snowflake, a pink flower, a yellow sun and a red maple leaf'),
+  weatherproof: patch('a cloud with a sun peeking out, rain drops and snowflakes'),
+  rockhound: patch('a rock hammer and a white crystal'),
+  'garnet-fever': patch('one big deep red garnet gemstone'),
+  whopper: patch('an enormous deep red garnet crystal beside a tiny measuring ruler'),
+  naturalist: patch('a magnifying glass over a green leaf with a ladybird on it'),
+  'full-guide': patch('an open nature book with a small bird perched on it'),
+  believer: patch('one very large hairy footprint in the snow'),
+  'good-neighbour': patch('a little house with a red heart above it'),
+  'pen-pal': patch('a cream envelope sealed with a red heart'),
+  'bench-warmer': patch('a wooden park bench under a tree'),
+  'around-town': patch('a row of three little shop fronts with striped awnings'),
+  regular: patch('a steaming coffee cup beside a donut'),
+  bookworm: patch('a stack of three books with a bookworm peeking out'),
+  'good-dog': patch('the happy face of a Saint Bernard dog with its tongue out'),
+};
+
+/** Hats and jackets, by gear id. */
+export const GEAR_ART = {
+  'jacket-red': wear('a bright red puffy ski jacket'),
+  'jacket-patrol': wear('a red ski patrol jacket with a big white cross on the chest'),
+  'jacket-liftie': wear('a royal blue quilted work jacket'),
+  'jacket-garnet': wear('a deep wine-red ski jacket'),
+  'jacket-forest': wear('a forest green ranger jacket with chest pockets'),
+  'jacket-groomer': wear('a bright orange high-visibility work jacket'),
+  'jacket-postal': wear('a grey-blue mail carrier uniform jacket with brass buttons'),
+  'jacket-innkeeper': wear('an elegant plum-coloured wool coat'),
+  'jacket-instructor': wear('a bright green ski instructor jacket'),
+  'hat-blue': wear('a teal blue knitted beanie with a pompom'),
+  'hat-trapper': wear('a mustard yellow fur trapper hat with ear flaps'),
+  'hat-toque': wear("a tall pleated chef's hat in pale grey-white with soft blue-grey shadows in its folds"),
+  'hat-ranger': wear('a tan flat-brimmed ranger hat with a leather band'),
+  'hat-garnet': wear('a deep wine-red knitted beanie'),
+  'hat-cap': wear("a navy blue train conductor's peaked cap with a gold badge"),
+  'hat-rainbow': wear('a bright yellow knitted hat with a huge pompom'),
+  'hat-lamp': wear("a yellow miner's hard hat with a lamp on the front"),
+  'hat-fenn': wear('a brown tweed brimmed hat'),
+  'hat-tophat': wear('a black top hat with a cream band'),
+  'hat-propeller': wear('a purple beanie cap with a little propeller on top'),
+  'hat-helmet': wear('a red ski helmet with goggles on it'),
+  'hat-antlers': wear('a headband with a pair of soft brown felt reindeer antlers'),
+};
+
+/** What the bakery, the deli and the library hand over, by offering id. */
+export const OFFERING_ART = {
+  'cider-doughnut': food('a cider donut dusted with sugar'),
+  'garnet-thumbprint': food('a round thumbprint cookie with shiny red raspberry jam in the middle'),
+  'first-tracks-scone': food('a triangular oat scone with a drizzle of maple icing'),
+  'black-diamond-brownie': food('a thick square of dark chocolate brownie with a crackly top, on a small napkin'),
+  'bear-claw': food('a bear claw pastry with sliced almonds on top'),
+  'powder-popover': food('a tall puffy golden popover'),
+  'maple-cruller': food('a twisted cruller donut with shiny maple glaze'),
+  'mud-season-muffin': food('a double chocolate muffin in a paper case'),
+  'summit-sticky-bun': food('a very tall sticky cinnamon bun with pecans and caramel'),
+  'blueberry-buckle': food('a square slice of blueberry cake with a crumb topping'),
+  rumor: food('a sandwich wrapped up in brown paper and tied with string, with a tag bearing a question mark'),
+  hullabaloo: food('an overstuffed sub sandwich on a long roll with everything in it'),
+  twister: food('a sandwich on a pretzel roll with a spiral of yellow mustard on top'),
+  potluck: food('a sandwich with a little red flag on a toothpick stuck in it'),
+  lies: food('a big meaty sandwich with one small lettuce leaf laid on top of it'),
+  'sleeping-bear': food('a peanut butter, honey and banana sandwich on white bread'),
+  'open-pit': food('an open-faced barbecue pulled pork sandwich with a fork beside it'),
+  'half-n-half': food('a sandwich cut in two halves, one half turkey and one half ham'),
+  'wild-air': food('a sandwich overflowing with green lettuce'),
+  'peaceful-valley': food('a grilled cheese sandwich beside a small cup of tomato soup'),
+  quicksilver: food('smoked trout on dark rye bread, open-faced'),
+  'book-garnet': book('a sheet of sandpaper and a red garnet', 'dark red'),
+  'book-trains': book('a little steam train in the snow', 'navy blue'),
+  'book-roosevelt': book('a horse-drawn wagon on a mountain road at night', 'dark green'),
+  'book-gore': book('an old surveyor map with a wedge of land marked on it', 'tan'),
+  'book-gondola': book('a little red gondola cabin on a cable', 'sky blue'),
+  'book-tannery': book('a hemlock tree and a leather hide', 'brown'),
+  'book-thurman': book('a tiny colonial village of log houses', 'mustard yellow'),
+  'book-river': book('a canoe in white water rapids', 'teal'),
+  'book-gem': book('a big red gemstone', 'cream'),
+  'book-1964': book('a skier in old-fashioned clothes', 'orange'),
+  'book-signs': book('a green circle, a blue square and a black diamond', 'white'),
+  'book-tower': book('a fire lookout tower with a wisp of smoke on the horizon', 'forest green'),
+};
+
+/** Conditions stamps, by condition id. */
+export const CONDITION_ART = {
+  'first-light': pin('the sun rising behind a snowy mountain, pink sky'),
+  bluebird: pin('a small bluebird flying in a clear blue sky with a bright sun'),
+  alpenglow: pin('a snowy mountain peak glowing pink and orange at sunset'),
+  'night-owl': pin('an owl on a branch in front of a crescent moon'),
+  'powder-day': pin('big fluffy snowflakes falling from a snow cloud'),
+  'corn-snow': pin('a smiling sun over a patch of melting sparkling snow'),
+  'mud-season': pin('a muddy brown rubber boot in a puddle'),
+  'dog-days': pin('a blazing yellow sun wearing sunglasses'),
+  'firefly-night': pin('glowing yellow fireflies over dark grass at night'),
+  soaker: pin('a grey rain cloud with rain drops and a red umbrella'),
+  'peak-foliage': pin('red, orange and yellow autumn maple leaves'),
+  'harvest-moon': pin('a huge orange full moon behind dark fir trees'),
+  'first-coffee': pin('a steaming mug of coffee with a sunrise behind it'),
+  sundowner: pin('a wooden bench silhouetted against an orange sunset'),
+  stargazer: pin('a starry night sky with a shooting star over a mountain'),
+};
+
+/** Summit patches, by peak id, and lift pins, by the kind of lift. */
+export const PEAK_ART = {
+  gore: patch('a steel fire lookout tower on top of a snowy mountain'),
+  bear: patch('a friendly black bear standing on a mountain top'),
+  'burnt-ridge': patch('a long mountain ridge with one bare burnt tree on it'),
+  'little-gore': patch('a small rounded snowy hill with a little flag on top'),
+};
+export const PIN_ART = {
+  chair_lift: pin('a bright red ski chairlift chair hanging from a cable against a blue sky'),
+  gondola: pin('a little red gondola cabin hanging from a cable'),
+  magic_carpet: pin('a magic carpet conveyor belt going up a gentle snowy slope'),
+  'j-bar': pin('a ski tow bar shaped like the letter J'),
+};
+
+/**
+ * Pictures for the signs that hang over shop doors, by what the shop's board says. They are
+ * drawn onto one sheet for the game to hang (`public/art/shop-signs.webp`).
+ */
+const hang = (what) => `${what}, one single object`;
+export const SHOP_ART = {
+  HARDWARE: hang('a hammer crossed with a wrench'),
+  'BOOKS & MAPS': hang('an open book'),
+  'GENERAL STORE': hang('a glass jar of striped candy sticks'),
+  OUTFITTERS: hang('a brown leather hiking boot'),
+  DINER: hang('a slice of cherry pie on a plate with a cup of coffee'),
+  ANTIQUES: hang('an old wooden mantel clock'),
+  BARBER: hang("a barber's pole with red, white and blue stripes"),
+  'SKI & BIKE': hang('a pair of crossed wooden skis'),
+  PHARMACY: hang('a mortar and pestle'),
+  GALLERY: hang('a small painting of a mountain in a gold frame'),
+  'YARN & THREAD': hang('a ball of red yarn with two knitting needles'),
+  'ICE CREAM': hang('an ice cream cone with two scoops'),
+  'TRADING POST': hang('a pair of wooden snowshoes'),
+  FLORIST: hang('a bouquet of flowers in a pot'),
+  CHOCOLATES: hang('an open box of chocolates'),
+  RECORDS: hang('a black vinyl record'),
+  'FIVE & DIME': hang('a red gumball machine'),
+  'GUIDE SERVICE': hang('a brass compass'),
+  TOYS: hang('a teddy bear'),
+  LAUNDROMAT: hang('a washing machine full of bubbles'),
+  CANOES: hang('a red canoe with a paddle'),
+  PIZZA: hang('a slice of pepperoni pizza'),
+  'SHOE REPAIR': hang("a cobbler's shoe and a small hammer"),
+  POTTERY: hang('a blue glazed clay jug'),
+  'MAPLE SYRUP': hang('a glass bottle of maple syrup shaped like a maple leaf'),
+  'BAIT & TACKLE': hang('a trout leaping at a fishing fly'),
+  'GARNET GIFTS': hang('a deep red cut gemstone'),
+  'THRIFT SHOP': hang('a patched coat on a hanger'),
+  'CLOCK REPAIR': hang('a gold pocket watch'),
+  'FEED & SEED': hang('a burlap sack with a green sprout growing out of it'),
+  NEWSSTAND: hang('a folded newspaper'),
+  SUNDRIES: hang('a wicker basket of odds and ends'),
+  // The places with names of their own.
+  "JUNE'S BAKERY": hang('a crusty round loaf of bread'),
+  "WALT'S DELI": hang('a tall sandwich with an olive on a toothpick'),
+  'POST OFFICE': hang('a cream envelope with a red stamp'),
+  MARKET: hang('a shopping basket of apples and bread'),
+  'COPPERFIELD INN': hang('a big brass door key'),
+  "BECK'S TAVERN": hang('a wooden mug of root beer with foam'),
+  'SKI BOWL CAFE': hang('a steaming mug of hot chocolate with marshmallows'),
+};
+
+/**
+ * The picture on the way in, one for each season: tall, for an upright phone. A place like this
+ * one, not this one.
+ */
+const poster = (what) =>
+  `a cosy storybook illustration of ${what}, soft rounded shapes, warm cheerful pastel colours, gouache and coloured pencil, gentle light, plenty of open sky at the top, no people in the foreground, no text, no letters`;
+export const TITLE_ART = {
+  winter: poster('a little snowy mountain village at the foot of a ski hill, timber lodge with smoke from its chimney, a chairlift going up among snowy fir trees, lamps lit, early evening'),
+  spring: poster('a little mountain village in early spring, patches of melting snow, crocuses, a chairlift going up a hill with ribbons of snow, budding trees, morning'),
+  summer: poster('a little mountain village in summer, green hills, wildflowers, a chairlift carrying bicycles up a green mountain, blue sky with puffy clouds'),
+  fall: poster('a little mountain village in autumn, hills of red, orange and gold trees, pumpkins on porches, a chairlift going up a mountain, golden afternoon'),
+};
