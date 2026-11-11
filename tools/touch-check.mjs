@@ -17,7 +17,7 @@ const shot = process.argv[2];
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 // A fixed time and sky, so the checks do not depend on when they are run, and light settings,
 // because software rendering is slow and several checks wait on the game to cover ground.
-const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&stats=1&intro=0&season=winter&time=midday&weather=clear`;
+const url = `http://127.0.0.1:${server.httpServer.address().port}/?at=base-lodge&trees=2000&shadows=0&stride=2&view=1500&dpr=1&stats=1&intro=0&season=winter&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
@@ -157,6 +157,30 @@ try {
   const together = await pinchBy(200, 100);
   check('and a pinch together sends it back', together > apart * 1.8, `to ${together.toFixed(2)}`);
   check('the distance is remembered for next time', Math.abs(Number(await page.evaluate(() => localStorage.getItem('gore.zoom'))) - together) < 0.01);
+
+  // The cabin: the player's own, on its plot by the trail, with a sheet to set things out from.
+  const cabinAt = (await page.evaluate(() => window.__gore.state())).cabin;
+  check('the player has a cabin', cabinAt !== null && Number.isFinite(cabinAt.door.x));
+  if (cabinAt) {
+    await page.evaluate(() => window.__gore.teleport('home'));
+    const yard = await page.evaluate(() => window.__gore.state());
+    check('going home stands the player in its yard', Math.hypot(yard.x - cabinAt.door.x, yard.z - cabinAt.door.z) < 12, `${Math.hypot(yard.x - cabinAt.door.x, yard.z - cabinAt.door.z).toFixed(1)} m from the door`);
+    await page.evaluate(([x, z]) => window.__gore.place(x, z), [cabinAt.door.x, cabinAt.door.z]);
+    await page.waitForFunction(() => document.getElementById('action-button').textContent === 'Home', null, { timeout: 15000 }).catch(() => {});
+    check('at the door the action button reads Home', (await page.locator('#action-button').textContent()) === 'Home');
+    await page.tap('#action-button');
+    const homeBox = await page.locator('#cabin-sheet').boundingBox();
+    check("it opens the cabin's sheet, which fits the screen", homeBox !== null && homeBox.x >= 0 && homeBox.x + homeBox.width <= width && homeBox.y > 0 && homeBox.y + homeBox.height <= height + 4);
+    check('with five places on the shelf and three on the board', (await page.locator('#cabin-sheet .places').first().locator('.place').count()) === 5 && (await page.locator('#cabin-sheet .places').nth(1).locator('.place').count()) === 3);
+    await page.locator('#cabin-sheet .places .place').first().tap();
+    check('a bare shelf stays bare for someone with no stones yet, and says why', (await page.evaluate(() => window.__gore.state().cabin.shelf.join(''))) === '' && /go find one/.test(await page.locator('#cabin-sheet .note').first().textContent()));
+    await page.locator('#cabin-sheet .fill').tap();
+    const filled = await page.evaluate(() => window.__gore.state());
+    check('the feeder can be filled, once', filled.cabin.feeder === filled.day && !(await page.locator('#cabin-sheet .fill').isVisible()), filled.cabin.feeder);
+    await page.locator('#cabin-sheet button', { hasText: 'Close' }).tap();
+    check('and the sheet closes', !(await page.locator('#cabin-sheet').isVisible()));
+    await page.evaluate(() => window.__gore.teleport('base-lodge'));
+  }
 
   // Trees are solid: walk straight at the nearest one and never end up inside its trunk.
   const tree = (await page.evaluate(() => window.__gore.state())).nearestTree;
@@ -838,6 +862,47 @@ try {
   await bk.waitForTimeout(800);
   check('and is told once', !(await bk.locator('#talk-sheet').isVisible()) && (await bk.evaluate(() => window.__gore.state().book.lifts)) === 1);
   await back1.close();
+
+  // Coming home with stones in the book and a feeder filled the day before.
+  const homeCtx = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  await homeCtx.addInitScript(() => {
+    if (!localStorage.getItem('gore.book')) {
+      localStorage.setItem(
+        'gore.book',
+        JSON.stringify({ minerals: { quartz: { count: 1, best: 2, first: '2026-11-01' }, garnet: { count: 2, best: 3, first: '2026-11-01' } }, patches: { 'first-tracks': '2026-11-01' }, cabin: { shelf: ['', '', '', '', ''], wall: ['', '', ''], feeder: '2020-01-01' } }),
+      );
+    }
+  });
+  const hp = await homeCtx.newPage();
+  hp.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
+  await hp.goto(url.replace('at=base-lodge&', '').replace('season=winter', 'season=summer'));
+  await hp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  const began = await hp.evaluate(() => window.__gore.state());
+  check('the day begins at home', began.cabin !== null && Math.hypot(began.x - began.cabin.door.x, began.z - began.cabin.door.z) < 12);
+  await hp.evaluate(() => {
+    const c = window.__gore.state().cabin;
+    window.__gore.place(c.feederAt.x + 3, c.feederAt.z + 3);
+  });
+  await hp.waitForFunction(() => window.__gore.state().book.species > 0, null, { timeout: 20000 }).catch(() => {});
+  const visited = await hp.evaluate(() => window.__gore.state());
+  check('somebody is at the feeder the day after it is filled, and goes in the guide', visited.book.species === 1 && visited.cabin.guest === true && visited.cabin.feeder === '', `${visited.toast}`);
+  await hp.evaluate(() => {
+    const c = window.__gore.state().cabin;
+    window.__gore.place(c.door.x, c.door.z);
+  });
+  await hp.waitForFunction(() => document.getElementById('action-button').textContent === 'Home', null, { timeout: 15000 }).catch(() => {});
+  await hp.tap('#action-button');
+  await hp.locator('#cabin-sheet .places').first().locator('.place').first().tap();
+  await hp.locator('#cabin-sheet .places').first().locator('.place').nth(1).tap();
+  await hp.locator('#cabin-sheet .places').nth(1).locator('.place').first().tap();
+  const setOut = (await hp.evaluate(() => window.__gore.state())).cabin;
+  check('stones go on the shelf and a patch on the board, no stone twice', setOut.shelf[0] !== '' && setOut.shelf[1] !== '' && setOut.shelf[0] !== setOut.shelf[1] && setOut.wall[0] === 'first-tracks', `${setOut.shelf.join(',')} | ${setOut.wall.join(',')}`);
+  check('each shows as its patch, with its name', (await hp.locator('#cabin-sheet .place img').count()) === 3 && (await hp.locator('#cabin-sheet .place small').first().textContent()).length > 3);
+  await hp.waitForTimeout(1300);
+  await hp.reload();
+  await hp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  check('and are still there the next time', (await hp.evaluate(() => window.__gore.state().cabin.shelf.join())) === setOut.shelf.join());
+  await homeCtx.close();
 
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: the `shortpage` option tells the game the

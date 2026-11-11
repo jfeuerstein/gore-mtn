@@ -55,6 +55,46 @@ describe('Game', () => {
     expect(s.mineralsTotal).toBe(12);
   });
 
+  it('sets out on the cabin shelf only what has been found, and keeps it', () => {
+    const store = memory();
+    const game = new Game(gameWorld, store);
+    game.arrange('shelf', 0);
+    expect(game.save.cabin.shelf[0]).toBe('');
+    game.save.minerals.quartz = { count: 1, best: 2, first: DAY };
+    game.save.minerals.garnet = { count: 2, best: 3, first: DAY };
+    expect(game.shelfChoices().sort()).toEqual(['garnet', 'quartz']);
+    game.arrange('shelf', 0);
+    game.arrange('shelf', 1);
+    const [a, b] = game.save.cabin.shelf;
+    expect([a, b].sort()).toEqual(['garnet', 'quartz']);
+    // A third place has nothing left to take.
+    game.arrange('shelf', 2);
+    expect(game.save.cabin.shelf[2]).toBe('');
+    expect(new Game(gameWorld, store).save.cabin.shelf.slice(0, 2)).toEqual([a, b]);
+    // A place that is not there is left alone.
+    game.arrange('shelf', 99);
+    game.arrange('wall', 0);
+    expect(game.save.cabin.wall[0]).toBe('');
+  });
+
+  it('fills the feeder once, and whoever comes the next day goes in the guide', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.fillFeeder(DAY)).toBe(true);
+    expect(game.fillFeeder(DAY)).toBe(false);
+    expect(game.feederGuest(DAY, 'winter', 'day')).toBeNull();
+    expect(game.metGuest(DAY, 'winter', 'day')).toEqual([]);
+    const next = '2099-01-01';
+    const guest = game.feederGuest(next, 'winter', 'day');
+    expect(guest).not.toBeNull();
+    const events = game.metGuest(next, 'winter', 'day');
+    expect(events).toHaveLength(1);
+    expect(events[0]?.kind).toBe('sighting');
+    expect(game.save.sightings[guest as string]?.count).toBe(1);
+    // The feeder is empty again, and can be filled again.
+    expect(game.feederGuest(next, 'winter', 'day')).toBeNull();
+    expect(game.fillFeeder(next)).toBe(true);
+  });
+
   it('puts the flyer out once a day, with the same leads on it all day', () => {
     const store = memory();
     const game = new Game(gameWorld, store);

@@ -56,6 +56,19 @@ describe('save', () => {
   });
 });
 
+describe('the cabin', () => {
+  it('is kept with the book, and a book from before there was one has it bare', () => {
+    expect(parseSave('{}').cabin).toEqual({ shelf: ['', '', '', '', ''], wall: ['', '', ''], feeder: '' });
+    const save = emptySave();
+    save.cabin = { shelf: ['garnet', '', 'quartz', '', ''], wall: ['first-tracks', '', ''], feeder: '2026-11-10' };
+    expect(parseSave(serializeSave(save)).cabin).toEqual(save.cabin);
+  });
+
+  it('mends a damaged one', () => {
+    expect(parseSave('{"cabin":{"shelf":["garnet",7],"wall":"no","feeder":"soon"}}').cabin).toEqual({ shelf: ['garnet', '', '', '', ''], wall: ['', '', ''], feeder: '' });
+  });
+});
+
 describe('the flag', () => {
   it('is kept with the book, and a book from before there were flags has none', () => {
     expect(parseSave('{}').flag).toBeNull();

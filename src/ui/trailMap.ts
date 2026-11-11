@@ -20,7 +20,7 @@ const FLAG = '#c8402d';
 const DONE = 'rgba(247, 241, 227, 0.55)';
 
 /** The kinds of thing marked on the map with a sign of their own. */
-export type PointKind = 'lodge' | 'summit' | 'landmark' | 'bench' | 'place' | 'person';
+export type PointKind = 'home' | 'lodge' | 'summit' | 'landmark' | 'bench' | 'place' | 'person';
 
 /** Something marked on the map. */
 export interface MapPoint {
@@ -68,11 +68,11 @@ const LAYERS: readonly { id: Layer; label: string; marks: readonly (readonly [st
 ];
 
 /** Which kinds of point belong to which layer. */
-const LAYER_OF: Record<PointKind, Layer> = { lodge: 'places', summit: 'places', landmark: 'places', bench: 'places', place: 'places', person: 'people' };
+const LAYER_OF: Record<PointKind, Layer> = { home: 'places', lodge: 'places', summit: 'places', landmark: 'places', bench: 'places', place: 'places', person: 'people' };
 /** How far in the map must be before each kind of point is drawn, and before its name is written beside it. */
-const SHOWN_FROM: Record<PointKind, number> = { lodge: 1, summit: 1, landmark: 1.6, bench: 2.4, place: 1, person: 1 };
+const SHOWN_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 1, landmark: 1.6, bench: 2.4, place: 1, person: 1 };
 // A bench is never named on the map itself: there are many, and its name is a sentence. Tap it.
-const NAMED_FROM: Record<PointKind, number> = { lodge: 1, summit: 2, landmark: 3.4, bench: Infinity, place: 5, person: 3.4 };
+const NAMED_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 2, landmark: 3.4, bench: Infinity, place: 5, person: 3.4 };
 /** How far in before trails and lifts have their names written along them. */
 const LINES_NAMED_FROM = 2.6;
 /** How far in before the close picture of the ground takes over from the far one. */
@@ -500,7 +500,7 @@ export class TrailMap {
 
     // Points, the least of them first, so that a lodge sits over a bench and a person over both.
     const points = this.points().filter((p) => this.shows(p.kind));
-    const rank: PointKind[] = ['place', 'bench', 'landmark', 'summit', 'lodge', 'person'];
+    const rank: PointKind[] = ['place', 'bench', 'landmark', 'summit', 'lodge', 'home', 'person'];
     points.sort((a, b) => rank.indexOf(a.kind) - rank.indexOf(b.kind));
     for (const point of points) {
       const p = view.toMap(point.x, point.z);
@@ -629,6 +629,19 @@ export class TrailMap {
     ctx.lineWidth = 1.3;
     ctx.beginPath();
     switch (point.kind) {
+      case 'home': {
+        // The player's own: the lodges' little house, in red.
+        const s = 5.5 * big;
+        ctx.moveTo(u, v - s * 1.25);
+        ctx.lineTo(u + s, v - s * 0.2);
+        ctx.lineTo(u + s, v + s * 0.85);
+        ctx.lineTo(u - s, v + s * 0.85);
+        ctx.lineTo(u - s, v - s * 0.2);
+        ctx.closePath();
+        ctx.fillStyle = FLAG;
+        ctx.strokeStyle = '#fff';
+        break;
+      }
       case 'lodge': {
         // A little house.
         const s = 5 * big;

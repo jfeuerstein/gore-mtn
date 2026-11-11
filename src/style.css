@@ -845,6 +845,142 @@ body {
   box-shadow: 0 2px 0 rgba(34, 48, 74, 0.5);
 }
 
+/* The cabin's sheet: paper like the others, with what is set out shown as it sits on the shelf and the board. */
+#cabin-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto;
+  background-color: var(--paper);
+  background-image: var(--grain);
+  border-top: 2px solid var(--ink);
+  border-radius: 20px 20px 0 0;
+  border-bottom: var(--app-extra, 0px) solid var(--paper);
+  box-sizing: border-box;
+  box-shadow: 0 -6px 26px rgba(20, 28, 44, 0.28);
+  padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
+  --map: #4d6168;
+}
+#cabin-sheet .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+#cabin-sheet h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: var(--display-weight);
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+}
+/* Headings are a map legend's bands, as in the Book. */
+#cabin-sheet h3 {
+  margin: 12px 0 8px;
+  padding: 7px 12px 4px;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: var(--display-weight);
+  letter-spacing: 0.08em;
+  text-transform: var(--display-case);
+  color: var(--paper);
+  background: var(--map);
+  border-radius: 6px;
+}
+#cabin-sheet button {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 12px 13px 9px;
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 0 var(--ink);
+}
+#cabin-sheet button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+#cabin-sheet .places {
+  display: flex;
+  gap: 8px;
+}
+/* A place on the shelf or the board: the patch itself, with its name under it, or a dashed ring to tap. */
+#cabin-sheet .place {
+  flex: 1;
+  min-width: 0;
+  min-height: 84px;
+  padding: 4px 2px 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+#cabin-sheet .place img {
+  width: 100%;
+  max-width: 64px;
+  aspect-ratio: 1;
+  filter: drop-shadow(0 2px 1.5px rgba(34, 48, 74, 0.35));
+}
+#cabin-sheet .place small {
+  font-family: var(--hand);
+  font-size: 15px;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+#cabin-sheet .place.bare {
+  font-size: 26px;
+  color: var(--ink-soft);
+  border: 2px dashed var(--kraft);
+  border-radius: 50%;
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+  min-height: 60px;
+  margin: 8px auto 16px;
+}
+#cabin-sheet .note {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+#cabin-sheet .feeder {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#cabin-sheet .feeder .note {
+  flex: 1;
+  margin: 0;
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 1.1;
+  color: var(--ink);
+}
+#cabin-sheet .fill {
+  flex: none;
+  background: var(--red);
+  color: #fff;
+}
+
 /* The way to the player's flag: under the place name, out of the way of Settings. */
 #flag-pointer {
   position: absolute;

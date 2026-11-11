@@ -20,6 +20,12 @@ import { letterWaiting } from './game/letters';
 import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
 import { flyerDate, personLead, pickLeads, placeLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
+import { CabinSheet } from './ui/cabinSheet';
+import { artSlug } from './game/artNames';
+import { MINERALS } from './game/minerals';
+import { PATCHES } from './game/patches';
+import { cabinSpots } from './world/cabin';
+import { Cabin } from './world/cabinMesh';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
 import { Input } from './input/input';
@@ -278,6 +284,9 @@ async function boot(): Promise<void> {
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
   const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows, cfg.siding);
   const { townPlaces, depot: depotAt } = built;
+  // The player's own cabin, on the plot the map gives it: its door, its yard and its feeder.
+  const cabin = built.cabin ? new Cabin(built.cabin, (x, z) => ground.heightAt(x, z), look.roof, shadows, cfg.siding) : null;
+  const home = built.cabin ? cabinSpots(built.cabin) : null;
   // Trees keep out of lift corridors and stand back from buildings...
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
@@ -296,6 +305,7 @@ async function boot(): Promise<void> {
     ? new Crowd(world, liftPaths, (x, z) => ground.heightAt(x, z), season, look.ride, shadows, townMiddle ? { x: townMiddle.x, z: townMiddle.z, reach: 520 } : null)
     : null;
   scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, built.group);
+  if (cabin) scene.add(cabin.group);
   if (crowd) scene.add(crowd.group);
   const walls = new Walls(built.walls);
   /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
@@ -476,6 +486,16 @@ async function boot(): Promise<void> {
     player.face(follow.yaw);
     fillScene = true;
   }
+  // The day begins at home: in the yard, looking at the cabin.
+  const goHome = (): boolean => {
+    if (!home || !built.cabin) return false;
+    player.place(home.yard.x, home.yard.z, ground);
+    follow.faceToward(player.position.x, player.position.z, built.cabin.x, built.cabin.z);
+    player.face(follow.yaw);
+    fillScene = true;
+    return true;
+  };
+  if (cfg.at === 'home') goHome();
   if (cfg.pos) player.place(cfg.pos.x, cfg.pos.z, ground);
   if (cfg.yaw !== null) {
     follow.yaw = cfg.yaw;
@@ -497,22 +517,60 @@ async function boot(): Promise<void> {
     book.close();
     talkSheet.close();
     flyer.close();
+    cabinSheet.close();
   };
   book.onOpen = () => {
     trailMap.close();
     talkSheet.close();
     flyer.close();
+    cabinSheet.close();
   };
   talkSheet.onOpen = () => {
     trailMap.close();
     book.close();
     flyer.close();
+    cabinSheet.close();
   };
   flyer.onOpen = () => {
     trailMap.close();
     book.close();
     talkSheet.close();
+    cabinSheet.close();
   };
+  // The cabin: what is on its shelf and its board is set out from the save, and changed from its sheet.
+  const cabinSheet = new CabinSheet();
+  const art = (set: string, id: string): string => `${import.meta.env.BASE_URL}art/${set}/${artSlug(id)}.webp`;
+  const setOut = (): void => cabin?.show(game.save.cabin, (id) => MINERALS.find((m) => m.id === id)?.colour ?? 0xb0a090, (id) => art('patches', id));
+  setOut();
+  cabinSheet.onOpen = () => {
+    trailMap.close();
+    book.close();
+    talkSheet.close();
+    flyer.close();
+  };
+  cabinSheet.onArrange = (where, slot) => {
+    game.arrange(where, slot);
+    setOut();
+  };
+  cabinSheet.onFill = () => {
+    if (game.fillFeeder(today)) toasts.show({ kind: 'hint', title: 'Feeder filled', detail: 'Somebody might come by tomorrow.' });
+  };
+  const openCabin = (): void =>
+    cabinSheet.open(() => {
+      const guest = game.feederGuest(today, season, watch);
+      return {
+        cabin: game.save.cabin,
+        stoneArt: (id) => art('minerals', id),
+        patchArt: (id) => art('patches', id),
+        stoneName: (id) => MINERALS.find((m) => m.id === id)?.name ?? id,
+        patchName: (id) => PATCHES.find((p) => p.id === id)?.name ?? id,
+        stones: game.shelfChoices().length,
+        patches: game.wallChoices().length,
+        guest: guest ? (SPECIES.find((sp) => sp.id === guest)?.name ?? null) : null,
+      };
+    });
+  /** True while whoever was at the feeder is still there for the player to look at, though the feeder is empty again. */
+  let guestStays = false;
 
   // --- People, lost property and the shuttle --------------------------------------------------
   /** A spot near a described place where someone can stand: clear of walls, on the ground. */
@@ -556,6 +614,7 @@ async function boot(): Promise<void> {
   const MAP_LODGES: Record<string, string> = { 'base-lodge': 'Base Lodge', 'saddle-lodge': 'Saddle Lodge', 'ski-bowl-lodge': 'Ski Bowl', depot: 'North Creek' };
   const kept = (day: string | undefined, did: string, yet: string): string => (day ? `${did} ${shortDay(day)}` : yet);
   const fixedPoints: MapPoint[] = [
+    ...(built.cabin ? [{ kind: 'home', x: built.cabin.x, z: built.cabin.z, label: 'Home', note: 'your cabin' } satisfies MapPoint] : []),
     ...world.places.filter((p) => p.id in MAP_LODGES).map((p): MapPoint => ({ kind: 'lodge', x: p.x, z: p.z, label: MAP_LODGES[p.id] as string })),
     ...townPlaces.filter((p) => p.sign).map((p): MapPoint => ({ kind: 'place', x: p.x, z: p.z, label: signName(p.sign) })),
   ];
@@ -774,6 +833,7 @@ async function boot(): Promise<void> {
           player.setOutfit(game.outfit());
           layKeepsakes();
           showFlag();
+          setOut();
         }
         return Boolean(save);
       },
@@ -853,6 +913,7 @@ async function boot(): Promise<void> {
     snowfall.setKind(air.kind);
     snowfall.setAmount(air.amount);
     built.setLamps(palette.lamps);
+    cabin?.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -894,7 +955,8 @@ async function boot(): Promise<void> {
         const found = all.find((l) => l.lead.id === id);
         return found ? [{ ...found.lead, done: !found.open }] : [];
       }),
-      note: letter ? "P.S. There's a letter for you at the post office." : null,
+      // One line in pencil: whoever is at the feeder comes before the mail.
+      note: game.feederGuest(today, season, watch) ? "P.S. Somebody's at your feeder." : letter ? "P.S. There's a letter for you at the post office." : null,
       flagged: game.save.flag,
     };
   };
@@ -949,6 +1011,7 @@ async function boot(): Promise<void> {
     // How many others are in the picture just now.
     flag: game.save.flag,
     flyer: flyer.isOpen,
+    cabin: home ? { ...game.save.cabin, door: home.door, feederAt: home.feeder, guest: cabin?.hasGuest ?? false, sheet: cabinSheet.isOpen } : null,
     zoom: follow.zoomNow,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
@@ -977,6 +1040,7 @@ async function boot(): Promise<void> {
   });
   window.__gore.map = () => trailMap.looking;
   window.__gore.teleport = (id) => {
+    if (id === 'home') return goHome();
     const place = world.places.find((p) => p.id === id);
     if (place) teleport(place);
     return Boolean(place);
@@ -1172,7 +1236,23 @@ async function boot(): Promise<void> {
         sittingOn = seat;
         announce(game.sat(seat.id, today));
       });
+    } else if (home && player.mode === 'walk' && Math.hypot(home.door.x - px, home.door.z - pz) < 3.6) {
+      hud.setAction('Home', openCabin);
     } else hud.setAction(null);
+    if (cabinSheet.isOpen && home && Math.hypot(home.door.x - px, home.door.z - pz) > 9) cabinSheet.close();
+    // Whoever is at the feeder is there to be seen from the trail; coming home is what puts them in the guide.
+    if (cabin && home) {
+      const guest = game.feederGuest(today, season, watch);
+      const away = Math.hypot(home.feeder.x - px, home.feeder.z - pz);
+      if (guest && !cabin.hasGuest) cabin.setGuest(critterGeometry(guest, season));
+      if (guest && away < 13 && player.mode !== 'lift') {
+        announce(game.metGuest(today, season, watch));
+        guestStays = true;
+      }
+      if (guestStays && away > 70) guestStays = false;
+      if (!guest && !guestStays && cabin.hasGuest) cabin.setGuest(null);
+      if (away < 30) hint('home', 'Your cabin', 'Tap Home at the door to set out what you find.');
+    }
     if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
     if (seat && !player.seated) hint('bench', 'A bench', "Tap Sit. There's no hurry.");
     if (someone) hint('talk', 'Someone to talk to', 'A gold mark means they have something for you.');

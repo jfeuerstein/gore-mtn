@@ -55,7 +55,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -533,9 +533,31 @@ Everything else is built in code from simple shapes.
   nothing is lost by ignoring it, there is no reward for doing all three, and tomorrow there
   are three more. Add a kind of lead by adding a builder beside `trailLead` and a place for it
   in `pickLeads`; its wording follows the rules for how people talk.
-- Not built yet, and the owner's to decide: somewhere of the player's own that shows what
-  they have found (a cabin), things that answer overnight (a feeder, a planting), and town
-  projects that add a place to the map.
+- Not built yet, and the owner's to decide: town projects that add a place to the map.
+
+## The cabin
+
+- The player has a cabin: the second step of the daily loop, somewhere that shows what they
+  have found and changes because of it. The day begins in its yard (`at` defaults to `home`).
+- `src/world/cabin.ts` (pure, tested) finds its plot: a small real building standing by
+  itself in the woods a short way from the Base Lodge, beside a trail (on this map, 320 m off
+  by Cedars Traverse), turned to face that trail. `Built` keeps the plot out of the houses,
+  makes it solid, clears the trees round it and lights its fire. `src/world/cabinMesh.ts`
+  builds it from blocks: log walls, an open porch (no porch roof: the camera looks down from
+  behind and a roof would hide what is set out), a stone chimney, a woodpile, a feeder.
+- `src/game/cabin.ts` (pure, tested) is the rules. A shelf by the door holds five stones and
+  a board beside it three patches. Tapping a place on the cabin's sheet (`src/ui/cabinSheet.ts`,
+  opened by the `Home` action at the door) steps it through what the player has found or
+  earned and has not set out elsewhere, and then to bare. What is set out is in the save
+  (`cabin`) and shows on the cabin itself: stones as one instanced mesh, each patch as a
+  disc wearing its picture.
+- The feeder answers overnight. Filled from the sheet, it has somebody at it on any later
+  day, by day (`FEEDER_GUESTS`, by season). They can be seen from the trail; coming within a
+  few steps puts them in the field guide and empties the feeder. The flyer's P.S. says when
+  somebody is there.
+- Nothing about the cabin is a chore: a bare shelf is only bare, and an empty feeder only
+  stays empty. The map marks it with a red house, and `window.__gore.teleport('home')` goes
+  there.
 
 ## Trail map
 

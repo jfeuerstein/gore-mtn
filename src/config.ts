@@ -80,7 +80,8 @@ export const DEFAULTS: Config = {
   zoo: 0,
   stride: 1,
   viewDist: 6500,
-  at: 'base-lodge',
+  // The day begins at the player's cabin.
+  at: 'home',
   pos: null,
   yaw: null,
   pitch: null,

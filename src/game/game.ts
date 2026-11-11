@@ -20,6 +20,7 @@ import { PATCHES, patchesEarned, type Tally } from './patches';
 import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
+import { feederGuest, nextChoice } from './cabin';
 
 /** Something the player has just earned, to announce. */
 export interface GameEvent {
@@ -712,6 +713,49 @@ export class Game {
     this.dirty = true;
     this.persist();
     return true;
+  }
+
+  /** The minerals the player has found, by id: what could go on the cabin's shelf. */
+  shelfChoices(): string[] {
+    return MINERALS.filter((m) => m.id in this.save.minerals).map((m) => m.id);
+  }
+
+  /** The patches the player has earned, by id: what could go on the cabin's board. */
+  wallChoices(): string[] {
+    return PATCHES.filter((p) => p.id in this.save.patches).map((p) => p.id);
+  }
+
+  /** A place on the cabin's shelf (or its board) has been tapped: it takes the next thing the player has, or goes bare. */
+  arrange(where: 'shelf' | 'wall', slot: number): void {
+    const placed = this.save.cabin[where];
+    if (slot < 0 || slot >= placed.length) return;
+    placed[slot] = nextChoice(where === 'shelf' ? this.shelfChoices() : this.wallChoices(), placed, slot);
+    this.dirty = true;
+    this.persist();
+  }
+
+  /** Fill the cabin's feeder. False if it is full already. */
+  fillFeeder(day: string): boolean {
+    if (this.save.cabin.feeder !== '') return false;
+    this.save.cabin.feeder = day;
+    this.dirty = true;
+    this.persist();
+    return true;
+  }
+
+  /** Who is at the cabin's feeder now, by species id, if anyone. */
+  feederGuest(day: string, season: Season, watch: Watch): string | null {
+    return feederGuest(this.save.cabin, day, season, watch);
+  }
+
+  /** The player has come home to find somebody at the feeder: they go in the guide, and the feeder is empty again. */
+  metGuest(day: string, season: Season, watch: Watch): GameEvent[] {
+    const guest = this.feederGuest(day, season, watch);
+    if (!guest) return [];
+    this.save.cabin.feeder = '';
+    const events = this.visitedBy(guest, day);
+    this.persist();
+    return events;
   }
 
   /** True once a day, the first time it is asked: the flyer is due. */

@@ -24,6 +24,7 @@ import { trailSignPosts } from './trailSigns';
 import { insideBox, type WallBox } from './walls';
 import type { World } from './world';
 import { buildYards } from './yards';
+import { CABIN, CHIMNEY, cabinSite, type CabinSite } from './cabin';
 
 /**
  * Everything people have built, apart from the lifts: the lodges and huts, North Creek's houses
@@ -39,6 +40,8 @@ export class Built {
   readonly depot: DepotSetting | null;
   /** Every bench that can be sat on: by the town's doors, and at the lookouts. */
   readonly benches: Bench[];
+  /** Where the player's cabin stands, if the map has a plot for it. */
+  readonly cabin: CabinSite | null;
   /** Everything solid, as boxes: the lodges and huts by their models' footprints, the town by its plots, and the train. */
   readonly walls: WallBox[];
   private readonly buildings: Buildings;
@@ -67,7 +70,9 @@ export class Built {
     this.group.name = 'built';
     const townPlaces = (this.townPlaces = resolveTownPlaces(world));
     const depot = (this.depot = depotSetting(world));
-    const styled = new Set([...townPlaces.map((p) => p.building), depot?.building ?? -1]);
+    // The player's cabin takes the plot of one of the map's buildings, and is built by itself.
+    this.cabin = cabinSite(world.buildings, world.places, world.trails);
+    const styled = new Set([...townPlaces.map((p) => p.building), depot?.building ?? -1, this.cabin?.building ?? -1]);
 
     const placeSettings: Record<string, { x: number; y: number; z: number; turn: number }> = depot ? { depot: { ...depot, y: heightAt(depot.x, depot.z) } } : {};
     this.buildings = new Buildings(world.places, shadows, roof, placeSettings, textured);
@@ -139,7 +144,9 @@ export class Built {
       this.group.add(buildSnowGuns(snowGuns(world.trails, (x, z) => world.onTrail(x, z)), heightAt, shadows));
     }
     // Smoke from the chimneys that are lit, and steam from the engine.
-    this.smoke = new Smoke([...this.named.flues, ...(season === 'summer' ? [] : this.buildings.flues), ...resort.fires.map((f) => ({ ...f, size: 0.8 })), ...train.flues]);
+    // The cabin's fire is lit whenever anyone's is.
+    const hearth = this.cabin && season !== 'summer' ? [{ ...fromLocal(this.cabin, CHIMNEY.x, CHIMNEY.z), y: heightAt(this.cabin.x, this.cabin.z) + CHIMNEY.top, size: 0.9 }] : [];
+    this.smoke = new Smoke([...hearth, ...this.named.flues, ...(season === 'summer' ? [] : this.buildings.flues), ...resort.fires.map((f) => ({ ...f, size: 0.8 })), ...train.flues]);
     this.group.add(this.smoke.mesh);
 
     // Signs: the town's shopfronts, a board at the top of every trail and a name at the foot of
@@ -166,6 +173,8 @@ export class Built {
       // The train is as solid as a house.
       ...(depot?.rails ? [{ ...fromLocal(depot, 0, TRACK_OUT), w: TRAIN_LENGTH + 0.6, d: 3.1, turn: depot.turn, top: heightAt(depot.x, depot.z) + 5 } satisfies WallBox] : []),
       ...plain.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + planHeight(b) })),
+      // The cabin is as solid as any house; its porch is not, so that the door can be walked up to.
+      ...(this.cabin ? [{ x: this.cabin.x, z: this.cabin.z, w: CABIN.w, d: CABIN.d, turn: this.cabin.turn, top: heightAt(this.cabin.x, this.cabin.z) + CABIN.walls + CABIN.roof } satisfies WallBox] : []),
       // A parked car is in the way, like anything else.
       ...this.cars.map((c): WallBox => ({ x: c.x, z: c.z, w: 1.9, d: 4.4, turn: c.turn })),
       ...townPlaces.map((p): WallBox => ({ x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn, top: p.y + townPlaceHeight(p.style, p.w, p.d) })),
@@ -174,6 +183,8 @@ export class Built {
 
   /** True close to a lodge or a named place, or in front of its door: where trees should stand back. */
   near(x: number, z: number): boolean {
+    // The cabin stands in a clearing of its own, with room for its yard.
+    if (this.cabin && Math.hypot(x - this.cabin.x, z - this.cabin.z) < 15) return true;
     // Nothing grows in front of a bench that was put there for the view.
     for (const b of this.benches) {
       if (!b.view) continue;

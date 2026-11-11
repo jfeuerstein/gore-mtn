@@ -4,6 +4,8 @@
  * The save is small and plain: it is kept in the browser's storage, and can be copied out as a
  * code and pasted back in, which is the only backup a web game on a phone has.
  */
+import { emptyCabin, SHELF_SLOTS, WALL_SLOTS, type CabinSave } from './cabin';
+
 export const SAVE_VERSION = 1;
 
 export interface TrailProgress {
@@ -71,6 +73,8 @@ export interface SaveData {
   rounds: string[];
   /** The flag the player has planted on the map, to find their way to; null when there is none. */
   flag: { x: number; z: number; label: string } | null;
+  /** The player's cabin: what is on its shelf and its board, and when its feeder was filled. */
+  cabin: CabinSave;
   /** The last day the flyer was put in front of the player: it is shown once, on the day's first opening. */
   flyer: string;
   /** The leads on today's flyer, by id, chosen once so that they are the same all day. */
@@ -109,6 +113,7 @@ export function emptySave(): SaveData {
     flag: null,
     flyer: '',
     leads: { day: '', ids: [] },
+    cabin: emptyCabin(),
   };
 }
 
@@ -201,6 +206,11 @@ export function parseSave(text: string | null | undefined): SaveData {
   if (isRecord(raw.round) && isDay(raw.round.day)) save.round = { day: raw.round.day, who: strings(raw.round.who) };
   save.rounds = strings(raw.rounds).filter(isDay);
   save.benches = days(raw.benches);
+  if (isRecord(raw.cabin)) {
+    // Each place on the shelf and the board is kept as it was; what is missing is bare.
+    const places = (v: unknown, n: number): string[] => Array.from({ length: n }, (_, i) => (Array.isArray(v) && typeof v[i] === 'string' ? (v[i] as string) : ''));
+    save.cabin = { shelf: places(raw.cabin.shelf, SHELF_SLOTS), wall: places(raw.cabin.wall, WALL_SLOTS), feeder: isDay(raw.cabin.feeder) ? raw.cabin.feeder : '' };
+  }
   if (isDay(raw.flyer)) save.flyer = raw.flyer;
   if (isRecord(raw.leads) && isDay(raw.leads.day)) save.leads = { day: raw.leads.day, ids: strings(raw.leads.ids).slice(0, 6) };
   if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {
