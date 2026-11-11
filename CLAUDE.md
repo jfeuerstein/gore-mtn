@@ -414,9 +414,9 @@ above. The owner's next benchmark will say whether that matters. Three things ke
 
 `node tools/census.mjs` lists what is switched on by part of the scene, and
 `window.__gore.show(part, false)` hides a part, to see what it costs in `state().drawCalls`.
-At the benchmark's own spot and settings, before the last two of those reductions, a headless
-run reported 118 to 171 draw calls across its steps (it was 104 on the phone when the owner
-last measured) and about 4 ms of our own code per frame.
+At the benchmark's own spot and settings a headless run now reports 104 to 153 draw calls
+across its steps (118 to 171 before the first two of those reductions; 104 on the phone when
+the owner last measured, before any of this was built) and about 5 ms of our own code per frame.
 
 Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
 life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,
