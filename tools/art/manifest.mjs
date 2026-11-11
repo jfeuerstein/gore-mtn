@@ -105,7 +105,7 @@ export const SPECIES_ART = {
  * Postcards for the passport's landmarks, by landmark id: a small scene each, in the same hand.
  * They describe a kind of place, not the place itself.
  */
-const card = (what) => `a small vignette scene of ${what}, like a tiny vintage travel postcard illustration`;
+const card = (what) => `a flat screen-printed landscape illustration of ${what}, in the manner of 1930s park service prints, a limited palette of five flat colours, bold simple shapes, strong silhouettes, the picture fills the whole frame edge to edge, there is no title, no caption and no lettering anywhere`;
 export const PLACE_ART = {
   'fire-tower': card('a steel fire lookout tower with a little red-roofed cabin on top, on a snowy forested mountain summit'),
   'saddle-lodge': card('a cosy timber ski lodge with a snow-covered roof and a smoking stone chimney, high on a mountain among fir trees'),
@@ -130,18 +130,18 @@ export const PLACE_ART = {
 };
 
 /**
- * A second look, for things that are had rather than seen: what is eaten, worn, pinned on or
- * sewn on. Soft and chunky, like a toy on a shelf, so that the Book's shelves are a pleasure to
- * fill. The field guide's plates and the portraits keep the look above.
+ * The Book's look: everything in it is an embroidered patch, as a park's gift shop sells them
+ * and a ranger's sash wears them. The owner chose this, with the trail map, as the look of the
+ * whole Book. Only the portraits, which are not in the Book, keep the look above.
  */
 export const ITEM_LOOK =
   'cute cosy collectible item icon, soft rounded chunky shapes, matte clay toy look, warm cheerful pastel colours, gentle soft shading, thick friendly proportions, centered on a plain cream background, nothing else in the picture, no text, no letters';
 
 const patch = (what) => `a round embroidered cloth patch with a thick stitched border, showing ${what}`;
-const pin = (what) => `a round shiny enamel pin badge showing ${what}`;
-const food = (what) => `${what}, one single item of food`;
-const book = (what, colour) => `a small chunky ${colour} hardback book standing up, with a picture of ${what} on its front cover, no title`;
-const wear = (what) => `${what}, a single piece of clothing with nobody wearing it`;
+const pin = patch;
+const food = patch;
+const book = (what, colour) => patch(`a closed ${colour} storybook lying flat, its plain cover decorated only with a small picture of ${what}, the cover has no writing on it at all`);
+const wear = patch;
 
 /** Patches, for finishing a whole kind of thing: by patch id. */
 export const PATCH_ART = {
@@ -208,7 +208,7 @@ export const OFFERING_ART = {
   'first-tracks-scone': food('a triangular oat scone with a drizzle of maple icing'),
   'black-diamond-brownie': food('a thick square of dark chocolate brownie with a crackly top, on a small napkin'),
   'bear-claw': food('a bear claw pastry with sliced almonds on top'),
-  'powder-popover': food('a tall puffy golden popover'),
+  'powder-popover': food('one tall golden-brown popover pastry, puffed up like a mushroom cloud, in a muffin tin cup'),
   'maple-cruller': food('a twisted cruller donut with shiny maple glaze'),
   'mud-season-muffin': food('a double chocolate muffin in a paper case'),
   'summit-sticky-bun': food('a very tall sticky cinnamon bun with pecans and caramel'),
@@ -330,4 +330,69 @@ export const TITLE_ART = {
   spring: poster('a little mountain village in early spring, patches of melting snow, crocuses, a chairlift going up a hill with ribbons of snow, budding trees, morning'),
   summer: poster('a little mountain village in summer, green hills, wildflowers, a chairlift carrying bicycles up a green mountain, blue sky with puffy clouds'),
   fall: poster('a little mountain village in autumn, hills of red, orange and gold trees, pumpkins on porches, a chairlift going up a mountain, golden afternoon'),
+};
+
+/**
+ * The Book's patches, as they are made now: in sheets of up to sixteen, by an image model that
+ * keeps to a brief (tools/art/make-patches.mjs). One brief for every sheet, so that every patch
+ * is the same patch with a different thing sewn on it; each kind of thing has its own colour of
+ * border, as a trail map has a colour for each kind of trail.
+ */
+export const PATCH_BRIEF = (count, cols, rows, border, subjects) => `Sprite sheet of ${count} embroidered patches for a mobile game's collection book: a strict grid of ${cols} columns and ${rows} rows, even gaps, fully transparent background.
+Every patch is identical in construction: a perfect circle of the same size, cream twill ground, a thick merrowed border in ${border}, the subject in flat satin stitch, bold simple shapes, thin navy outline. Straight on, flat, no shadow, no text or numbers.
+Palette: cream #f7f1e3, navy #22304a, brick red #c8402d, pine #2f6b4f, blue #2b62c9, gold #c98f1f, tan #a9763f, white; brown, orange, grey or black only where needed.
+Shown 100 pixels wide: each subject one clear centred shape that fills its patch.
+Subjects, left to right, top row first:
+${subjects.map((s, i) => `${i + 1} ${s}.`).join('\n')}`;
+
+/** The first clause or two of a longer description: enough to sew. */
+const brief = (text) => {
+  const plain = text
+    .replace(/^a round embroidered cloth patch with a thick stitched border, showing /, '')
+    .replace(/^a single mineral specimen: /, '')
+    .replace(/, whole body in view, side view$/, '')
+    .replace(/, botanical study$/, '');
+  // Short enough that sixteen of them fit in one brief: the model's limit is 1800 characters.
+  const words = plain.split(', ')[0].split(' ');
+  return words.slice(0, 10).join(' ');
+};
+/** Where the first clause alone would not say what the thing is. */
+const SEWN = {
+  'sixteen-summits': 'a snowy mountain peak under four small stars',
+  'four-seasons': 'a circle in quarters: snowflake, pink flower, sun, red maple leaf',
+  weatherproof: 'a cloud with the sun behind it and rain falling',
+  'sleeping-bear': 'a peanut butter and banana sandwich on white bread',
+};
+const briefs = (art) => Object.fromEntries(Object.entries(art).map(([id, what]) => [id, SEWN[id] ?? brief(what)]));
+const only = (art, keep) => Object.fromEntries(Object.entries(art).filter(([id]) => keep(id)));
+
+/** Each set of patches: where its pictures go, the colour of its border, and what is sewn on each. */
+export const PATCH_SETS = {
+  patches: { border: 'brick red (#c8402d)', subjects: briefs(PATCH_ART) },
+  peaks: { border: 'pine green (#2f6b4f)', subjects: briefs(PEAK_ART) },
+  conditions: { border: 'gold (#c98f1f)', subjects: briefs(CONDITION_ART) },
+  pins: { border: 'blue (#2b62c9)', subjects: briefs(PIN_ART) },
+  gear: { border: 'navy (#22304a)', subjects: briefs(GEAR_ART) },
+  // What is eaten and what is read are both in public/art/offerings, in different borders.
+  offerings: { border: 'tan (#a9763f)', subjects: briefs(only(OFFERING_ART, (id) => !id.startsWith('book-'))) },
+  'offerings:books': {
+    border: 'plum purple (#7a4fa3)',
+    into: 'offerings',
+    subjects: {
+      'book-garnet': 'a closed dark red book with a garnet on its cover',
+      'book-trains': 'a closed navy book with a little steam train on its cover',
+      'book-roosevelt': 'a closed dark green book with a horse-drawn wagon under a moon on its cover',
+      'book-gore': 'a closed tan book with a folded map on its cover',
+      'book-gondola': 'a closed sky blue book with a red gondola cabin on its cover',
+      'book-tannery': 'a closed brown book with a hemlock tree on its cover',
+      'book-thurman': 'a closed mustard yellow book with a log cabin on its cover',
+      'book-river': 'a closed teal book with a canoe on its cover',
+      'book-gem': 'a closed cream book with a big red gemstone on its cover',
+      'book-1964': 'a closed orange book with a skier on its cover',
+      'book-signs': 'a closed white book with a green circle, a blue square and a black diamond on its cover',
+      'book-tower': 'a closed forest green book with a fire lookout tower on its cover',
+    },
+  },
+  minerals: { border: 'slate grey-blue (#4d6168)', subjects: briefs(MINERAL_ART) },
+  species: { border: 'leaf green (#4f8a3f)', subjects: briefs(SPECIES_ART) },
 };

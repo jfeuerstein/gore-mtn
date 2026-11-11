@@ -6,3 +6,4 @@ tools/terrain/cache/
 *.local
 .DS_Store
 tools/art/cache/
+tools/models/cache/

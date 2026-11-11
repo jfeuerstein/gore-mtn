@@ -1,6 +1,5 @@
 import '@fontsource/bebas-neue/latin-400.css';
 import '@fontsource/caveat/latin-600.css';
-import '@fontsource-variable/fredoka/wdth.css';
 import * as THREE from 'three/webgpu';
 import { Sound } from './audio/sound';
 import { parseConfig, withParams } from './config';
@@ -8,6 +7,8 @@ import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
+import { restyle, type WorldLook } from './look/worldLook';
+import type { Heightfield } from './world/heightfield';
 import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
@@ -31,13 +32,13 @@ import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/
 import { Built } from './world/built';
 import { signName } from './world/streets';
 import { countryOf } from './world/country';
-import { critterGeometry } from './world/critterModels';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
-import { lettering } from './ui/lettering';
 import { buildRoute, busyness, routePoint } from './world/crowd';
 import { Crowd } from './world/crowdMesh';
+import { critterGeometry, useMadeModels } from './world/critterModels';
 import { LiftCars } from './world/liftCars';
+import { loadModels } from './world/modelFiles';
 import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
@@ -50,6 +51,23 @@ import { Forest, TREE_RANGE } from './world/trees';
 import { Walls } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
+
+/** A picture of the land in one of the looks being tried: the same picture, repainted on a canvas. */
+function repaint(texture: THREE.Texture, look: WorldLook, season: Season, ground: Heightfield, every: number): THREE.Texture {
+  if (look === 'plain') return texture;
+  const image = texture.image as HTMLImageElement;
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return texture;
+  ctx.drawImage(image, 0, 0);
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  restyle(pixels.data, canvas.width, canvas.height, look, season, ground, every);
+  ctx.putImageData(pixels, 0, 0);
+  texture.dispose();
+  return new THREE.CanvasTexture(canvas);
+}
 
 const M_TO_FT = 3.28084;
 const MS_TO_MPH = 2.23694;
@@ -114,8 +132,6 @@ const LOADING_LINES = [
   'Getting up steam…',
 ];
 {
-  // The lettering the player has chosen: the rounded face unless they have gone back to the poster one.
-  document.documentElement.dataset.type = lettering();
   const line = document.getElementById('loading-line');
   if (line) line.textContent = LOADING_LINES[new Date().getMinutes() % LOADING_LINES.length] as string;
   // The season's picture behind the title, while the mountain loads.
@@ -241,7 +257,10 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/ground-${season}.png`),
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy-${season}.png`),
   ]);
-  const terrain = new Terrain(ground, snowTexture, canopyTexture);
+  // A look being tried repaints both pictures before anything is drawn with them.
+  const snowPicture = repaint(snowTexture, cfg.look, season, ground, 10);
+  const canopyPicture = repaint(canopyTexture, cfg.look, season, ground, 50);
+  const terrain = new Terrain(ground, snowPicture, canopyPicture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
   const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows, cfg.siding);
@@ -278,7 +297,37 @@ async function boot(): Promise<void> {
   // A bike's wheels run in one line; skis side by side.
   const tracks = new SkiTracks(undefined, look.ride === 'bike' ? 0 : undefined);
   const glints = new Glints(shadows);
+  // The animals may be the game's own blocks, or models made outside it, in a look being tried.
+  if (cfg.models !== 'blocks') useMadeModels(await loadModels(cfg.models, import.meta.env.BASE_URL));
   const critters = new Critters(season, shadows);
+  // For comparing looks: every animal that has a made model, in a row a few steps in front of the player.
+  const zoo = new THREE.Group();
+  zoo.name = 'zoo';
+  const lineUp = (x: number, z: number, yaw: number): void => {
+    zoo.clear();
+    const flat = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    const soft = new THREE.MeshLambertMaterial({ vertexColors: true });
+    const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
+    // Four rows of four across the way the player is looking, the small ones in front: an upright screen has no room for more.
+    const ids = ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
+    const ahead = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+    const across = { x: Math.cos(yaw), z: -Math.sin(yaw) };
+    ids.forEach((id, i) => {
+      const row = Math.floor(i / 4);
+      const along = ((i % 4) - 1.5) * (1.3 + row * 0.75);
+      const px = x + ahead.x * (3.5 + row * 3) + across.x * along;
+      const pz = z + ahead.z * (3.5 + row * 3) + across.z * along;
+      const geometry = critterGeometry(id, season);
+      const mesh = new THREE.Mesh(geometry, geometry.userData.smooth ? soft : flat);
+      if (geometry.userData.shell) mesh.add(new THREE.Mesh(geometry.userData.shell as THREE.BufferGeometry, ink));
+      mesh.position.set(px, ground.heightAt(px, pz), pz);
+      // Side on to the player, heads to the left.
+      mesh.rotation.y = yaw + Math.PI / 2;
+      mesh.castShadow = shadows;
+      zoo.add(mesh);
+    });
+  };
+  scene.add(zoo);
   scene.add(player.object, tracks.mesh, glints.group, critters.group);
   if (!cfg.me) player.object.visible = false;
 
@@ -399,8 +448,9 @@ async function boot(): Promise<void> {
     follow.yaw = cfg.yaw;
     player.face(cfg.yaw);
   }
+  if (cfg.zoo) lineUp(player.position.x, player.position.z, follow.yaw);
 
-  const trailMap = new TrailMap(world, liftPaths, canopyTexture.image as CanvasImageSource, () => ({
+  const trailMap = new TrailMap(world, liftPaths, canopyPicture.image as CanvasImageSource, () => ({
     x: player.position.x,
     z: player.position.z,
     yaw: player.travelHeading,

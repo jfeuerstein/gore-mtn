@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
+import { modelGeometry, type ModelFile } from './modelFiles';
 import { blocks, type Block } from './shapes';
 
 /**
@@ -239,6 +240,18 @@ const MODELS: Record<string, (season: Season) => Block[]> = {
 
 const cache = new Map<string, THREE.BufferGeometry>();
 
+/** Models made outside the game, by species id, in whichever look has been asked for; and how each is to be shaded. */
+let made: Record<string, ModelFile> = {};
+
+/**
+ * Use models made outside the game (see `modelFiles.ts`) for the species that have one, in
+ * place of the ones built here from blocks. Each stands as tall as the blocks did.
+ */
+export function useMadeModels(models: Record<string, ModelFile>): void {
+  made = models;
+  cache.clear();
+}
+
 /** The model for a species in a season. Built once and shared. */
 export function critterGeometry(id: string, season: Season): THREE.BufferGeometry {
   const key = id === 'hare' ? `${id}:${season === 'winter' ? 'white' : 'brown'}` : id;
@@ -247,6 +260,14 @@ export function critterGeometry(id: string, season: Season): THREE.BufferGeometr
     const make = MODELS[id];
     // Anything without a model of its own is a small stone marker, so it can at least be found.
     geo = blocks(make ? make(season) : [{ size: [0.4, 0.4, 0.4], at: [0, 0.2, 0], colour: 0xb0a090 }]);
+    const file = made[id];
+    if (file) {
+      // As tall as the one built from blocks, so that it is found and seen from as far.
+      geo.computeBoundingBox();
+      const { geometry, shell } = modelGeometry(file, geo.boundingBox?.max.y ?? 1);
+      geometry.userData = { shell, smooth: file.smooth };
+      geo = geometry;
+    }
     cache.set(key, geo);
   }
   return geo;

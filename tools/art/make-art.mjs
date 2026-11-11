@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Make the game's generated art from tools/art/manifest.mjs.
 //
-//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|minerals|species|places|patches|gear|offerings|conditions|peaks|pins|shops|title] [--redo id,id] [--bump n]
+//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|places|shops|title] [--redo id,id] [--bump n]
 //
 // Each picture is asked of fal once and kept at full size in tools/art/cache/ (not in the
 // repository); the small copy the game loads goes to public/art/. Pictures already made are
@@ -14,16 +14,9 @@ import * as manifest from './manifest.mjs';
 const ROOT = new URL('../../', import.meta.url).pathname;
 const SETS = {
   people: { art: manifest.PEOPLE_ART, size: 256 },
-  minerals: { art: manifest.MINERAL_ART, size: 384 },
-  species: { art: manifest.SPECIES_ART ?? {}, size: 384 },
-  places: { art: manifest.PLACE_ART ?? {}, size: 384 },
-  // Things that are had, not seen: in the second look, and balanced to the paper they sit on.
-  patches: { art: manifest.PATCH_ART, size: 192, item: true },
-  gear: { art: manifest.GEAR_ART, size: 192, item: true },
-  offerings: { art: manifest.OFFERING_ART, size: 192, item: true },
-  conditions: { art: manifest.CONDITION_ART, size: 160, item: true },
-  peaks: { art: manifest.PEAK_ART, size: 192, item: true },
-  pins: { art: manifest.PIN_ART, size: 160, item: true },
+  // Postcards are little park posters, painted to the edge: they have a look of their own, written into each.
+  places: { art: manifest.PLACE_ART ?? {}, size: 384, own: true },
+  // Everything in the Book that is a patch (stamps, pins, hats, bakes, minerals, the field guide) is made by make-patches.mjs.
   // The pictures for the shop signs go onto one sheet (see the end of this file), not into public/art one by one.
   shops: { art: manifest.SHOP_ART, size: 128, item: true, sheet: true },
   // The picture on the way in: tall, and left as it was painted.
@@ -39,7 +32,7 @@ const bump = args.find((a, i) => args[i - 1] === '--bump') ?? '1';
 let made = 0;
 
 async function make(set, id, prompt, size) {
-  const { item, sheet, tall } = SETS[set];
+  const { item, sheet, tall, own } = SETS[set];
   const raw = `${ROOT}tools/art/cache/${set}/${slug(id)}.webp`;
   // A picture bound for a sheet is kept small in the cache, beside the big one.
   const out = sheet ? `${ROOT}tools/art/cache/${set}/small/${slug(id)}.png` : `${ROOT}public/art/${set}/${slug(id)}.webp`;
@@ -47,7 +40,7 @@ async function make(set, id, prompt, size) {
     // The same seed for a subject every time, so a picture can be made again as it was.
     const seed = [...`${set}/${id}`].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7) % 1000000;
     const result = await run(manifest.MODEL, {
-      prompt: tall ? prompt : `${prompt}. ${item ? manifest.ITEM_LOOK : manifest.LOOK}`,
+      prompt: tall || own ? prompt : `${prompt}. ${item ? manifest.ITEM_LOOK : manifest.LOOK}`,
       image_size: tall ? 'portrait_16_9' : 'square',
       num_inference_steps: 4,
       seed: seed + (redo.has(id) ? Number(bump) : 0),

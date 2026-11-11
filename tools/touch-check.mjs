@@ -716,7 +716,7 @@ try {
   check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
   await np.tap('#ski-button');
   await np.tap('#menu-button');
-  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 5).join() === 'Your book,Lettering,Sound,Camera distance,For testing');
+  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 4).join() === 'Your book,Sound,Camera distance,For testing');
   await np.locator('#sound-off').tap();
   check('sound can be turned off', (await np.evaluate(() => window.__gore.state().sound)) === false && (await np.getAttribute('#sound-off', 'aria-pressed')) === 'true');
   await np.locator('#sound-on').tap();

@@ -33,32 +33,6 @@
 }
 
 /*
- * The other lettering: a soft rounded face in upper and lower case, for a cosier book. The owner
- * can turn between the two in Settings and compare them on the phone. Everything that names the
- * display face follows; nothing else changes.
- */
-:root[data-type='rounded'] {
-  --display: 'Fredoka Variable', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
-  --display-weight: 600;
-  --display-case: none;
-}
-:root[data-type='rounded'] #app {
-  /* The narrow cut of the face, so that names fit where the poster capitals did. */
-  font-stretch: 78%;
-}
-:root[data-type='rounded'] #app * {
-  letter-spacing: 0 !important;
-}
-/* Softer corners to go with it: buttons are pills, cards are rounder. */
-:root[data-type='rounded'] #app button {
-  border-radius: 999px;
-}
-:root[data-type='rounded'] #where,
-:root[data-type='rounded'] .toast {
-  border-radius: 18px;
-}
-
-/*
  * Launched from the Home Screen, iOS lays the page out shorter than the screen by the height of
  * the status bar, yet shows the whole screen. Anything pinned to the page's own edges (position:
  * fixed, height: 100%) then stops short and leaves a bar along the bottom.
@@ -1348,17 +1322,16 @@ body {
 }
 
 /*
- * Pictures of things that can be had. Each is painted on cream; multiplied onto the page, the
- * cream goes and the thing sits on the paper. What has not been had yet is a pale ghost.
+ * Pictures of things that can be had. Each is a patch with nothing behind it, so it sits on
+ * the page as cloth would. What has not been had yet is a pale ghost of its patch.
  */
 #book-sheet .pic,
 .toast .pic {
   display: block;
-  mix-blend-mode: multiply;
 }
 #book-sheet .ghost {
-  filter: grayscale(1) contrast(0.45) brightness(1.25) blur(1.2px);
-  opacity: 0.4;
+  filter: grayscale(1) contrast(0.5) brightness(1.2);
+  opacity: 0.3;
 }
 /* A shelf: three to a row, each thing under its picture. */
 #book-sheet .shelf {
@@ -1483,7 +1456,129 @@ body {
 #book-sheet .shelf .tile.todo {
   border-radius: 16px;
 }
-/* In the rounded lettering, buttons are pills; but a tall tile with a picture on it stays a tile. */
-:root[data-type='rounded'] #app #book-sheet .wardrobe button {
-  border-radius: 18px;
+
+/*
+ * The Book in the look the owner chose for it: patches and a trail map. Everything in it is an
+ * embroidered patch sewn straight onto the page, and its headings are a map's legend: a band in
+ * the map's own slate with the mark of a trail on it.
+ */
+#book-sheet {
+  --map: #4d6168;
+}
+#book-sheet h3 {
+  align-items: center;
+  padding: 7px 12px 5px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--map);
+  color: var(--paper);
+  box-shadow: 0 3px 0 var(--ink);
+}
+#book-sheet h3::before {
+  content: '●';
+  flex: none;
+  margin-right: 8px;
+  font-family: var(--body);
+  font-size: 15px;
+  color: #7fd39a;
+}
+/* The marks go by turns down the page, as down a trail map's key: easier, more difficult, most difficult. */
+#book-sheet h3:nth-of-type(3n + 2)::before {
+  content: '■';
+  color: #8fb6ff;
+}
+#book-sheet h3:nth-of-type(3n)::before {
+  content: '◆';
+  color: #f1ead8;
+}
+#book-sheet h3 span {
+  margin-left: auto;
+  color: rgba(247, 241, 227, 0.82);
+}
+/* Lesser headings are dotted, like a path through the woods. */
+#book-sheet h4 {
+  padding-bottom: 3px;
+  border-bottom: 2px dotted var(--kraft);
+}
+/* A patch, sewn on: no card under it, only the cloth and its name. */
+#book-sheet .shelf .tile,
+#book-sheet .shelf .tile.earned,
+#book-sheet .tried.shelf .tile,
+#book-sheet .tried.shelf .tile.todo {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  outline: none;
+  padding: 2px 2px 6px;
+}
+#book-sheet .shelf .tile .pic {
+  width: 92%;
+  border-radius: 50%;
+}
+#book-sheet .shelf .tile.earned .pic,
+#book-sheet .shelf .ticket .pic {
+  filter: drop-shadow(0 2px 1.5px rgba(34, 48, 74, 0.35));
+}
+#book-sheet .shelf .tile.earned small {
+  font-family: var(--hand);
+  font-size: 16px;
+  line-height: 1;
+}
+#book-sheet .shelf .ticket small {
+  font-family: var(--hand);
+  font-size: 15px;
+  line-height: 1.05;
+  color: var(--ink-soft);
+}
+/* A season's tile is a little print of the mountain in that season, not a patch. */
+#book-sheet .shelf .season .pic {
+  border-radius: 8px;
+  border: 1.5px solid var(--ink);
+  box-sizing: border-box;
+}
+/* The wardrobe: each hat and jacket is its patch, and the one that is on has a ring round it. */
+#book-sheet .wardrobe button {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+#book-sheet .wardrobe button .pic {
+  border-radius: 50%;
+}
+#book-sheet .wardrobe button.on {
+  background: none;
+  color: var(--ink);
+}
+#book-sheet .wardrobe button.on .pic {
+  outline: 3px solid var(--red);
+  outline-offset: 1px;
+}
+#book-sheet .wardrobe button.locked {
+  opacity: 1;
+}
+/* Minerals and the field guide: a patch beside each entry. */
+#book-sheet .plate {
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  transform: none;
+}
+#book-sheet .mineral:nth-child(even) .plate {
+  transform: none;
+}
+#book-sheet .mineral.earned .plate {
+  filter: drop-shadow(0 2px 1.5px rgba(34, 48, 74, 0.35));
+}
+/* A postcard is a little park print, painted to its edge. */
+#book-sheet .stamp.postcard .plate {
+  border-radius: 2px;
+  filter: none;
+}
+.toast .pic {
+  border-radius: 50%;
+}
+.toast-landmark .pic {
+  border-radius: 6px;
 }

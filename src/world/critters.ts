@@ -49,6 +49,9 @@ function markGeometry(): THREE.BufferGeometry {
 export class Critters {
   readonly group = new THREE.Group();
   private readonly material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+  private readonly soft = new THREE.MeshLambertMaterial({ vertexColors: true });
+  /** The line round a model in the print look: its own shape a little larger, in ink, seen only from behind. */
+  private readonly ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
   private readonly marks: THREE.InstancedMesh;
   private readonly live = new Map<string, Critter>();
   private shown: readonly Sighting[] | null = null;
@@ -95,7 +98,9 @@ export class Critters {
       }
       const geometry = critterGeometry(s.species.id, this.season);
       if (!geometry.boundingBox) geometry.computeBoundingBox();
-      const mesh = new THREE.Mesh(geometry, this.material);
+      // A model made outside the game may be shaded smooth, and may have a dark line round it.
+      const mesh = new THREE.Mesh(geometry, geometry.userData.smooth ? this.soft : this.material);
+      if (geometry.userData.shell) mesh.add(new THREE.Mesh(geometry.userData.shell as THREE.BufferGeometry, this.ink));
       const ground = heightAt(s.x, s.z);
       const yaw = s.roll * Math.PI * 2;
       mesh.position.set(s.x, ground, s.z);

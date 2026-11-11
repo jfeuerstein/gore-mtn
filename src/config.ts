@@ -1,6 +1,7 @@
 import { SEASONS, type Season } from './look/season';
 import { TIMES, type TimeName } from './look/sun';
 import { WEATHERS, type WeatherName } from './look/weather';
+import { WORLD_LOOKS, type WorldLook } from './look/worldLook';
 
 /** Debug and quality options, read from the URL so any state can be linked to and screenshotted. */
 export interface Config {
@@ -19,6 +20,12 @@ export interface Config {
   shadows: boolean;
   /** Whether walls and roofs wear their courses of boards and shingles, or are left plain. */
   siding: boolean;
+  /** How the land is painted: as the pipeline painted it, as a screen print, or as a map with contours. */
+  look: WorldLook;
+  /** Which models the animals are: the game's own blocks, or ones made outside it in one of the looks being tried. */
+  models: 'blocks' | 'facet' | 'park' | 'smooth';
+  /** Line every animal that has a made model up in a row in front of the player, to compare looks. */
+  zoo: boolean;
   /** Whether anyone else is about: skiers on the trails, people on the chairs, the town out walking. */
   crowd: boolean;
   /** Terrain mesh uses every Nth elevation sample. */
@@ -65,6 +72,9 @@ export const DEFAULTS: Config = {
   shadows: true,
   siding: true,
   crowd: true,
+  look: 'plain',
+  models: 'blocks',
+  zoo: false,
   stride: 1,
   viewDist: 6500,
   at: 'base-lodge',
@@ -122,6 +132,9 @@ export function parseConfig(search: string): Config {
     shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
     siding: q.has('siding') ? q.get('siding') === '1' : d.siding,
     crowd: q.has('crowd') ? q.get('crowd') === '1' : d.crowd,
+    zoo: q.get('zoo') === '1',
+    look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
+    models: oneOf(q.get('models'), ['blocks', 'facet', 'park', 'smooth'] as const) ?? d.models,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 12000),
     at: q.get('at') ?? d.at,

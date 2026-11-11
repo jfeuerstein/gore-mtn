@@ -30,7 +30,9 @@ node tools/shot.mjs out.png "" 402 874 1 "<script>" "$(cat save.json)"          
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
-NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits and plates (needs the fal key)
+NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and title pictures (needs the fal key)
+NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
+NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the animals being tried
 node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
 node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
 ```
@@ -53,7 +55,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -137,6 +139,25 @@ moves between those with the real time of day and the real weather at Gore.
 
 Everything in the game is built in code from simple shapes. There are no model or texture files
 beyond the pipeline's ground pictures, and nothing needs Blender yet.
+
+Two things are being tried beside that, both off unless asked for, for the owner to compare on
+the phone. Neither is settled.
+
+- **Made models** (`models=facet|park|smooth`, or Settings). `tools/models/make-models.mjs`
+  asks an image model for a picture of each animal in `tools/models/manifest.mjs`, an
+  image-to-3D model (Trellis, through fal) for its shape, and `convert.py` for a game-ready
+  model: stood up, cut down to about a thousand triangles, its texture baked into a colour per
+  face, the colours graded to the picture and cut to a small palette. Three looks come out of
+  the one shape (`LOOKS` in `convert.py`): faceted, a park print (six inks and a dark outline
+  hull) and smooth. They are small JSON files under `public/models/`, read by
+  `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
+  same height. No textures and no new materials: vertex colours on the plain material, as
+  everything else. `zoo=1` lines sixteen animals up in front of the player to compare.
+- **World looks** (`look=poster|topo`, or Settings). `src/look/worldLook.ts` (pure, tested)
+  repaints the pipeline's two pictures of the land when the game loads: `poster` prints them
+  in a handful of inks for the season, and `topo` thins those inks toward paper and draws a
+  contour line every 10 m of height (every 50 m on the far-off forest). The Map sheet is drawn
+  over the same picture, so it takes the look too. The trees, buildings and light are as ever.
 
 - `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
   call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),
@@ -396,36 +417,42 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 
 ## Pictures and lettering
 
-- The portraits on the talk sheet and the plates in the Book are painted by an image model
-  through fal (`tools/art/`): `manifest.mjs` holds one prompt per person, mineral and species
-  and the one look they share; `make-art.mjs` asks for whatever is missing, trims it and saves
-  a small WebP under `public/art/`. A test checks that everyone and everything has a picture.
-  `--redo id,id --bump 1` paints one again with another seed.
-- There are two looks. Things that are seen (portraits, minerals, the field guide, postcards)
-  are gouache plates in the manner of an old field guide (`LOOK`). Things that are had (patches,
-  hats and jackets, bakes, sandwiches and books, conditions pins, summit patches, lift pins) are
-  soft chunky toys on cream (`ITEM_LOOK`), each balanced by the tool so its background is the
-  paper's. The same tool paints the pictures for the shop signs onto one sheet
-  (`public/art/shop-signs.webp`, with `src/world/shopSignArt.ts` saying which is which) and a
-  tall title picture for each season, shown behind the title while the game loads.
+- The portraits on the talk sheet, the postcards, the shop-sign pictures and the title pictures
+  are painted by an image model through fal (`tools/art/`): `manifest.mjs` holds one prompt
+  each and the look a set shares; `make-art.mjs` asks for whatever is missing, trims it and
+  saves a small WebP under `public/art/`. `--redo id,id --bump 1` paints one again with another
+  seed. Portraits are gouache plates (`LOOK`); postcards are flat park-poster prints with no
+  lettering; the shop-sign pictures go onto one sheet (`public/art/shop-signs.webp`, with
+  `src/world/shopSignArt.ts` saying which is which).
+- Everything in the Book that is had or found is an embroidered patch: stamps for finishing
+  things, summit patches, conditions, lift pins, hats and jackets, bakes, sandwiches and books,
+  minerals and the field guide. The owner asked for the patch and trail-map look throughout,
+  and found patches painted one at a time inconsistent. So they are made a sheet at a time
+  (`tools/art/make-patches.mjs`, through Tripo's image model): up to sixteen to a sheet, to one
+  brief (`PATCH_BRIEF`) that fixes the cloth, the border, the stitch and the game's colours,
+  and says what each is for. Each set has its own colour of border (`PATCH_SETS`), as a trail
+  map has a colour for each kind of trail. `cut-sheet.py` cuts a sheet into its patches by
+  row and column, with nothing behind them; whatever a sheet left off is asked for once more.
+  `--redo set` makes a set again. A sheet costs about 10 Tripo credits.
+- The Book wears the same look (`#book-sheet` at the end of `src/style.css`): headings are a
+  map legend's bands, lesser headings dotted like a path, and a patch sits on the page with no
+  card under it.
 - The Book is a catalogue: `pic()` in `book.ts` shows a thing's picture when it has been had and
   a pale ghost of it when it has not, so every shelf shows what there is to look for. A
   `GameEvent` may carry `art` (as `patches/first-tracks`), and the announcement then holds the
-  picture up. Add a collectible by adding its data, a prompt in the manifest, and running the
-  tool; `art.test.ts` fails until the picture exists. Names are filed by `artSlug`.
+  picture up. Add a collectible by adding its data, what is sewn on its patch in the manifest,
+  and running `make-patches.mjs`; `art.test.ts` fails until the picture exists. Names are filed by `artSlug`.
 - Picture signs hang over shop doors (`src/world/shopSigns.ts`): one mesh, one texture. A shop
   kit calls `hanging()` to put up the bracket and say where the picture goes.
-- The prompts never name the game, the mountain's owner or the player, nor any other game. The key is never in the
-  repo: here it is a network secret on the environment, sent by the session's proxy.
+- The prompts never name the game, the mountain's owner or the player, nor any other game. No key is ever in the
+  repo: the fal key and the Tripo key are network secrets on the environment, sent by the
+  session's proxy (`queue.fal.run`, `openapi.tripo3d.ai`).
 - The interface has a look of its own, set out at the top of `src/style.css`: paper, ink and
   enamel colours as variables, a display face for headings and buttons, Caveat for anything
   handwritten, all bundled from `@fontsource`. Use the variables; do not add new colours or
   faces without the owner's say.
-- There are two letterings, switched in Settings (`src/ui/lettering.ts`, kept in the browser as
-  `gore.type`): Rounded, the default, is Fredoka in upper and lower case with pill buttons;
-  Poster is the Bebas Neue capitals the game had first. The style sheet reads `--display`,
-  `--display-weight` and `--display-case`, so a rule that names those follows whichever is on.
-  The owner has yet to say which stays.
+- The owner tried a rounded face and chose the poster capitals: Bebas Neue stays. The style
+  sheet reads `--display`, `--display-weight` and `--display-case`, should that ever be revisited.
 
 ## Trail map
 
