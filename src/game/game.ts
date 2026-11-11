@@ -1,6 +1,6 @@
 import { SEASON_NAME, type Season } from '../look/season';
 import { DIFFICULTY_MARK, type Lift, type Path, type Place, type Trail } from '../world/trails';
-import { daySeed, FIND_PATCH, findsInPatch, MINERALS, type Find, type Ground } from './minerals';
+import { daySeed, FIND_PATCH, findsInPatch, mineralById, MINERALS, specimenSize, type Find, type Ground } from './minerals';
 import {
   buildLandmarks,
   buildPathBook,
@@ -13,8 +13,10 @@ import {
   type Spot,
   type TrailEntry,
 } from './passport';
+import { letterWaiting, LETTERS, type Letter } from './letters';
+import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
 import { PATCHES, patchesEarned, type Tally } from './patches';
-import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, type Errand, type Need, type Person, type Whereabouts } from './people';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 
@@ -38,7 +40,18 @@ export interface Talk {
   events: GameEvent[];
   /** True when this person can put the player on the Snow Train. */
   train: boolean;
+  /** A letter they have handed over, to be read. */
+  letter?: Letter;
 }
+
+/** Today's rumour: a rare stone said to be lying at a named spot. */
+export interface Rumour {
+  place: string;
+  find: Find;
+}
+
+/** Minerals worth a rumour. */
+const RUMOURED = ['labradorite', 'tourmaline', 'wollastonite', 'gem-garnet', 'pyrite', 'calcite'];
 
 /** How close the player must come to a find to pick it up, in metres. */
 export const COLLECT_REACH = 3;
@@ -77,6 +90,13 @@ export interface BookSummary {
   errandsTotal: number;
   patches: number;
   patchesTotal: number;
+  letters: number;
+  lettersTotal: number;
+  /** Bakes and sandwiches tried, and library books read. */
+  tasted: number;
+  tastedTotal: number;
+  read: number;
+  readTotal: number;
 }
 
 /** Where the save is kept. */
@@ -96,6 +116,8 @@ export interface GameWorld extends Ground {
   spots?: readonly { id: string; x: number; z: number }[];
   /** Nonzero where the ground is a road, a lot or water, and no stone lies. */
   openAt?(x: number, z: number): number;
+  /** Named spots, each with ground to stand on, where the day's rumoured stone may lie. */
+  rumourSpots?: readonly { name: string; x: number; z: number }[];
   /** The world as wildlife sees it. Without it there is nothing to spot. */
   country?: Country;
   /** West and north edges, where the first patch of finds starts. */
@@ -124,6 +146,11 @@ export class Game {
   private near: readonly Find[] = [];
   private nearKey = '';
   private dirty = false;
+  private rumourOf: { day: string; rumour: Rumour } | null = null;
+  /** The day the inn last passed on its rumour, so it is told once a day. */
+  private rumourTold = '';
+  /** The day each person last handed over their offering, so a second visit the same day is small talk. */
+  private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
   private readonly chatted = new Map<string, number>();
   private readonly sightPatches = new Map<string, Sighting[]>();
@@ -250,6 +277,9 @@ export class Game {
         for (const f of finds) if (!taken.has(f.id)) out.push(f);
       }
     }
+    // The stone the inn is talking about today, if the player is anywhere near it.
+    const rumour = this.rumour(day);
+    if (rumour && !taken.has(rumour.find.id) && Math.hypot(rumour.find.x - x, rumour.find.z - z) < FIND_PATCH * 1.5) out.push(rumour.find);
     this.nearKey = nearKey;
     this.near = out;
     return out;
@@ -394,6 +424,34 @@ export class Game {
     return true;
   }
 
+  /**
+   * The day's rumour: one rare stone, larger than most, lying at one of the named spots. It is
+   * worked out from the date, so the inn tells everyone the same tale all day. Null if the world
+   * has no spots for it to lie at.
+   */
+  rumour(day: string): Rumour | null {
+    const spots = this.world.rumourSpots;
+    if (!spots || spots.length === 0) return null;
+    if (this.rumourOf?.day === day) return this.rumourOf.rumour;
+    const seed = daySeed(day) >>> 0;
+    const spot = spots[seed % spots.length] as { name: string; x: number; z: number };
+    const mineral = mineralById(RUMOURED[(seed >>> 8) % RUMOURED.length] as string) ?? (MINERALS[0] as (typeof MINERALS)[number]);
+    // A little way off the spot itself, so it is found by looking, not tripped over.
+    const a = ((seed >>> 16) % 360) * (Math.PI / 180);
+    const find: Find = { id: `rumour:${day}`, x: spot.x + Math.cos(a) * 9, z: spot.z + Math.sin(a) * 9, mineral, size: specimenSize(mineral, 0.9 + ((seed >>> 4) % 10) / 100) };
+    const rumour = { place: spot.name, find };
+    this.rumourOf = { day, rumour };
+    return rumour;
+  }
+
+  /** Pet the dog. Once a day counts toward being his friend. */
+  pet(day: string): boolean {
+    if (this.save.pets.includes(day)) return false;
+    this.save.pets.push(day);
+    this.dirty = true;
+    return true;
+  }
+
   /** Every stamp, pin and patch in the passport, of any kind. */
   stamps(): number {
     const s = this.summary();
@@ -454,8 +512,11 @@ export class Game {
     return this.nextErrand(personId, season) !== undefined;
   }
 
-  /** Talk to someone. They greet, thank, hand over, remind or ask, as the case may be. */
-  talk(personId: string, day: string, season: Season): Talk | null {
+  /**
+   * Talk to someone. They greet, thank, hand over, remind or ask, as the case may be.
+   * @param mood something about the moment they might remark on
+   */
+  talk(personId: string, day: string, season: Season, mood: Mood | null = null): Talk | null {
     const person = personById(personId);
     if (!person) return null;
     const save = this.save;
@@ -488,6 +549,24 @@ export class Game {
       talk.lines.push(e.fetch.handover);
       talk.events.push({ kind: 'item', title: e.fetch.name, detail: 'In your pack' });
     }
+    // The postmaster hands over the day's letter.
+    if (personId === 'dot') {
+      const letter = letterWaiting(save, save.letters, day);
+      if (letter) {
+        save.letters[letter.id] = day;
+        talk.letter = letter;
+        talk.lines.push(letter.from === 'dot' ? 'Here. First piece of mail in your box. I wrote it myself, to see that the box works.' : 'One for you today. I have not read it. I have read the envelope.');
+        talk.events.push({ kind: 'item', title: `A letter from ${letter.from ? (personById(letter.from)?.name ?? 'someone') : 'somebody'}`, detail: 'Kept in your pack' });
+      }
+    }
+    // The innkeeper passes on the day's rumour, once.
+    if (personId === 'marge' && this.rumourTold !== day && !(talk.lines.length === 1 && talk.lines[0] === person.hello && this.nextErrand(personId, season))) {
+      const rumour = this.rumour(day);
+      if (rumour && !save.found.spots.includes(rumour.find.id)) {
+        this.rumourTold = day;
+        talk.lines.push(`Today's talk at the bar: somebody saw ${rumour.find.mineral.name.toLowerCase()} lying out by ${rumour.place}. A good one. I would go myself, but, forty beds.`);
+      }
+    }
     const said = talk.lines.length - (talk.lines[0] === person.hello ? 1 : 0);
     if (said === 0) {
       const waiting = this.activeErrands().find((e) => e.from === personId);
@@ -497,10 +576,21 @@ export class Game {
       } else if (offer) {
         talk.lines.push(offer.ask);
         talk.offer = offer;
+      } else if (this.treated.get(personId) !== day && offeringFrom(personId, save.tried, day)) {
+        // With no errand to talk about, they hand over the day's bake, sandwich or book.
+        const { offering, fresh } = offeringFrom(personId, save.tried, day) as NonNullable<ReturnType<typeof offeringFrom>>;
+        this.treated.set(personId, day);
+        talk.lines.push(offering.hand);
+        if (fresh) {
+          save.tried[offering.id] = day;
+          talk.events.push({ kind: 'item', title: offering.name, detail: `${OFFERING_KIND[offering.kind]} · noted in your book` });
+        }
       } else if (talk.lines.length === 0) {
-        const lines = [...(person.seasonal?.[season] ?? []), ...person.chat];
         const n = this.chatted.get(personId) ?? 0;
         this.chatted.set(personId, n + 1);
+        // The weather or the hour comes up first, if they have something to say about it.
+        const remark = mood ? person.moods?.[mood] : undefined;
+        const lines = [...(n === 0 && remark ? remark : []), ...(person.seasonal?.[season] ?? []), ...person.chat, ...(n > 0 && remark ? remark : [])];
         talk.lines.push(lines[n % lines.length] as string);
       }
     }
@@ -611,6 +701,12 @@ export class Game {
       errandsTotal: ERRANDS.length,
       patches: PATCHES.filter((p) => p.id in this.save.patches).length,
       patchesTotal: PATCHES.length,
+      letters: LETTERS.filter((l) => l.id in this.save.letters).length,
+      lettersTotal: LETTERS.length,
+      tasted: OFFERINGS.filter((o) => o.kind !== 'book' && o.id in this.save.tried).length,
+      tastedTotal: OFFERINGS.filter((o) => o.kind !== 'book').length,
+      read: OFFERINGS.filter((o) => o.kind === 'book' && o.id in this.save.tried).length,
+      readTotal: OFFERINGS.filter((o) => o.kind === 'book').length,
     };
   }
 }

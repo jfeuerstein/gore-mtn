@@ -70,6 +70,8 @@ describe('locate', () => {
       expect(where.z, at.who).toBeGreaterThan(hf.minZ + 5);
       expect(where.z, at.who).toBeLessThan(hf.maxZ - 5);
       expect(world.openAt(where.x, where.z), at.who).not.toBe(OPEN_WATER);
+      // Nobody is left standing on a cliff or in a pit.
+      if ('spot' in at.at) expect(world.source.slopeDegAt(where.x, where.z), at.who).toBeLessThan(16);
     }
   });
 });

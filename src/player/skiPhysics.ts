@@ -125,10 +125,10 @@ export const SPRING_SKI: SkiParams = { ...SKI, friction: 0.05, powderFriction: 0
  */
 export const BIKE: SkiParams = {
   ...SKI,
-  friction: 0.055,
+  friction: 0.05,
   powderFriction: 0.16,
   staticFriction: 0.06,
-  drag: 0.0075,
+  drag: 0.0062,
   powderDrag: 1.5,
   tuckDrag: 0.7,
   carveRadius: 6.5,
@@ -136,8 +136,8 @@ export const BIKE: SkiParams = {
   edgeHold: 17,
   skidFriction: 4,
   brakeFriction: 11,
-  poleAccel: 5,
-  poleMaxSpeed: 10,
+  poleAccel: 5.5,
+  poleMaxSpeed: 11.5,
 };
 
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);

@@ -1,3 +1,9 @@
+/** Something written, to be read rather than heard: a letter, a notice. Shown as handwriting on its own paper. */
+export interface Written {
+  written: string;
+  signed?: string;
+}
+
 /** A choice offered at the end of what someone says. */
 export interface Choice {
   label: string;
@@ -15,11 +21,12 @@ export interface Choice {
  */
 export class TalkSheet {
   private readonly sheet: HTMLElement;
+  private readonly portrait: HTMLImageElement;
   private readonly title: HTMLElement;
   private readonly subtitle: HTMLElement;
   private readonly text: HTMLElement;
   private readonly buttons: HTMLElement;
-  private lines: string[] = [];
+  private lines: (string | Written)[] = [];
   private at = 0;
   private choices: Choice[] = [];
   /** Called when the sheet opens, so other sheets can get out of the way. */
@@ -35,6 +42,11 @@ export class TalkSheet {
     this.sheet.id = 'talk-sheet';
     this.sheet.hidden = true;
     const head = make('div', 'head');
+    this.portrait = make('img', 'portrait');
+    this.portrait.alt = '';
+    this.portrait.hidden = true;
+    // A picture that cannot be had (no signal, the first time) is simply left out.
+    this.portrait.addEventListener('error', () => (this.portrait.hidden = true));
     const names = make('div', 'names');
     this.title = make('b', '');
     this.subtitle = make('small', '');
@@ -43,7 +55,7 @@ export class TalkSheet {
     close.type = 'button';
     close.textContent = 'Close';
     close.addEventListener('click', () => this.close());
-    head.append(names, close);
+    head.append(this.portrait, names, close);
     this.text = make('p', 'line');
     this.buttons = make('div', 'choices');
     this.sheet.append(head, this.text, this.buttons);
@@ -57,9 +69,12 @@ export class TalkSheet {
   /**
    * @param lines what is said, shown one at a time
    * @param choices offered after the last line, besides leaving
+   * @param portrait the address of a picture of whoever is speaking, if there is one
    */
-  open(title: string, subtitle: string, lines: readonly string[], choices: readonly Choice[] = []): void {
+  open(title: string, subtitle: string, lines: readonly (string | Written)[], choices: readonly Choice[] = [], portrait: string | null = null): void {
     this.onOpen?.();
+    this.portrait.hidden = portrait === null;
+    if (portrait !== null && this.portrait.getAttribute('src') !== portrait) this.portrait.src = portrait;
     this.title.textContent = title;
     this.subtitle.textContent = subtitle;
     this.lines = [...lines];
@@ -74,7 +89,16 @@ export class TalkSheet {
   }
 
   private show(): void {
-    this.text.textContent = this.lines[this.at] ?? '';
+    const line = this.lines[this.at] ?? '';
+    const written = typeof line !== 'string';
+    this.text.className = written ? 'line written' : 'line';
+    this.text.textContent = written ? line.written : line;
+    if (written && line.signed) {
+      const signed = document.createElement('span');
+      signed.className = 'signed';
+      signed.textContent = line.signed;
+      this.text.appendChild(signed);
+    }
     this.buttons.replaceChildren();
     const add = (label: string, onTap: () => void, primary = false, disabled = false): void => {
       const b = document.createElement('button');

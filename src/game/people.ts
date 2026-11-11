@@ -27,7 +27,8 @@ export type Need =
 
 /** Where something is: by a place, a named spot, the foot of a lift, along a trail, or along a road from a place. */
 export type Whereabouts =
-  | { place: string }
+  /** `aside` is metres to the east of the door, for when someone else is already standing there. */
+  | { place: string; aside?: number }
   | { spot: string }
   /** `along` is how far up the lift line, 0..1; the foot of the lift if not given. */
   | { lift: string; along?: number }
@@ -57,6 +58,8 @@ export interface Errand {
 export interface Person {
   id: string;
   name: string;
+  /** Not everyone is a person: a noticeboard is read and a dog is petted. A person if not given. */
+  kind?: 'person' | 'board' | 'dog';
   /** A few words on who they are, shown under the name. */
   role: string;
   at: Whereabouts;
@@ -66,7 +69,12 @@ export interface Person {
   hello: string;
   chat: readonly string[];
   seasonal?: Partial<Record<Season, readonly string[]>>;
+  /** Said, in place of small talk, when the weather or the hour calls for it. */
+  moods?: Partial<Record<Mood, readonly string[]>>;
 }
+
+/** Something about the moment that people remark on. */
+export type Mood = 'snowing' | 'raining' | 'night' | 'dawn' | 'dusk';
 
 export const PEOPLE: readonly Person[] = [
   {
@@ -220,7 +228,136 @@ export const PEOPLE: readonly Person[] = [
       'Now and then you find one clear right through. Gem garnet. I found four in thirty years.',
     ],
   },
+  {
+    id: 'dot',
+    name: 'Dot',
+    role: 'Postmaster, North Creek Post Office',
+    at: { spot: 'north-creek-post-office' },
+    look: { jacket: 0x3f6fb5, trousers: 0x1f2a3a, hat: 0x1f2a3a, style: 'cap' },
+    hello: 'Neither snow nor rain nor gloom of night. Fog, though. Fog I take personally. I am Dot. Your mail comes here.',
+    chat: [
+      'One letter a day, that is the rule. Any more and people stop reading them.',
+      'Somebody on this mountain writes entirely in capital letters. I will not say who. She is nine.',
+      'A postcard from every landmark and you would have quite an album. I am just saying.',
+      'The dog at the Saddle Lodge gets more mail than the mayor.',
+    ],
+    moods: {
+      snowing: ['Snow day. The mail still goes. The mail always goes. I just go slower.'],
+      night: ['Post office is shut, technically. I am only standing here out of habit.'],
+    },
+  },
+  {
+    id: 'marge',
+    name: 'Marge',
+    role: 'Innkeeper, the Copperfield Inn',
+    at: { spot: 'copperfield-inn' },
+    look: { jacket: 0x9a4f6a, trousers: 0x3a3430, hat: 0xe8d9ae, style: 'beanie' },
+    hello: 'Forty beds, one of me. Sit anywhere. I hear everything in this town, usually before it happens.',
+    chat: [
+      'Half of what I hear is nonsense. The trick is that I never know which half.',
+      'President Roosevelt came through this depot in 1901, in the middle of the night. Did not stay here. I would have remembered.',
+      'A guest once asked for a room with a view of the summit. Every room has one. That is the trouble with mountains.',
+    ],
+  },
+  {
+    id: 'fenn',
+    name: 'Mr. Fennimore',
+    role: 'Librarian, Town of Johnsburg Library',
+    at: { spot: 'town-of-johnsburg-library' },
+    look: { jacket: 0x6b5a48, trousers: 0x3a3430, hat: 0x8a6a3c, style: 'ranger' },
+    hello: 'Shh. Oh, we are outside. Force of habit. Welcome. Ask me anything about this town. I have read all of it.',
+    chat: [
+      'The first ski train pulled into North Creek in March of 1934, from Schenectady, with hundreds aboard. Ride up, slide down.',
+      'Henry Barton started mining garnet on Gore in 1878. Not for jewels. For sandpaper. The hardest garnet in the world, and it sands furniture.',
+      'In September 1901, Theodore Roosevelt reached our depot before dawn and learned there that he was President.',
+      'Gore opened as a state ski centre in 1964, and put up the first gondola in New York State three years later.',
+      'In 1934 skiers rode up the mountain road in the backs of trucks and skied down to the village. The Ski Bowl got its rope tow the year after.',
+      'The steel fire tower on the summit went up in 1918. The observers who kept watch from it could see a campfire twenty miles off.',
+      'The Hudson is small here. A couple of hundred miles on, it is the harbour of New York. Hard to credit, looking at it.',
+      'Garnet is the state gem of New York, and the big ones came from this mountain. I keep one on the returns desk. People return it.',
+      'They ran log drives down the Hudson past here every spring until 1950. The whole river, bank to bank, nothing but logs.',
+      'The Adirondack Park is bigger than Yellowstone, Yosemite, Glacier, the Grand Canyon and the Great Smokies put together. I checked.',
+    ],
+  },
+  {
+    id: 'notices',
+    name: 'the noticeboard',
+    kind: 'board',
+    role: 'Outside the Town Hall',
+    at: { spot: 'johnsburg-town-hall' },
+    look: { jacket: 0x8a6a3c, trousers: 0x8a6a3c, hat: 0x8a6a3c, style: 'beanie' },
+    hello: 'NOTICE. Whoever is building snowmen on Main Street: the Town thanks you, and asks you to stop putting hats on the fire hydrants.',
+    chat: [
+      'LOST: one yellow mitten, child\'s. FOUND: one yellow mitten, child\'s. These notices were pinned up a week apart by the same child.',
+      'FOR SALE: skis, 210 cm, used once, 1974. Owner has reconsidered skiing.',
+      'TOWN MEETING, Tuesday. Agenda: the bridge; the other bridge; whether the turkeys may be asked to use the crossing.',
+      'REWARD for information about the large footprints behind the school. Reward is a pie. — Marge',
+      'GARNET SOCIETY meets Thursday. All welcome. Please, somebody, come. — Dr. M.',
+      'WANTED: lift attendant to cover Otto\'s day off. Position has been open since 1986.',
+      'CHILI COOK-OFF results: 1st, Gus. 2nd, Gus (second pot). 3rd, a pot nobody will admit to.',
+      'REMINDER: the Snow Train does not stop for photographs, cows, or second thoughts.',
+    ],
+  },
+  {
+    id: 'biscuit',
+    name: 'Biscuit',
+    kind: 'dog',
+    role: 'Mountain dog, Saddle Lodge',
+    at: { place: 'saddle-lodge', aside: 8 },
+    look: { jacket: 0xc98f4f, trousers: 0xf4ead8, hat: 0x6b4a33, style: 'beanie' },
+    hello: 'Biscuit looks at you, then at your pockets, then at you again. His tail goes round like a propeller.',
+    chat: [
+      'Biscuit leans his whole weight on your leg. This is now your afternoon.',
+      'Biscuit rolls over. It is not a request. It is a schedule.',
+      'Biscuit sneezes snow at you, delighted with himself.',
+      'Biscuit brings you a stick. It is, on inspection, a ski pole. It is not yours.',
+      'Biscuit sits on your boots so you cannot leave. He has thought this through.',
+    ],
+    moods: {
+      snowing: ['Biscuit is trying to catch snowflakes. He has caught four. He is counting.'],
+      night: ['Biscuit is asleep with one eye open, in case of sandwiches.'],
+    },
+  },
+  {
+    id: 'sven',
+    name: 'Sven',
+    role: 'Ski instructor, Bear Cub',
+    at: { lift: 'Bear Cub' },
+    look: { jacket: 0x2f8f55, trousers: 0x1f242e, hat: 0xf4f1ea, style: 'beanie' },
+    hello: 'Pizza! French fries! Pizza! That is the whole lesson. Everything after that is confidence. I am Sven.',
+    chat: [
+      'Bend the knees. No, more. No, less. Perfect. Do not ask me what you did.',
+      'The mountain does not care how you look. That is the best thing about it.',
+      'I have taught four thousand people to stop. A few of them are still stopping.',
+      'If you fall, you are learning. If you fall a lot, you are learning a lot. I tell the children this. Also the adults.',
+    ],
+    seasonal: {
+      summer: ['No snow, so I teach mountain biking. Same lesson. Pizza does not apply. I say it anyway.'],
+      spring: ['Spring snow! Like skiing on mashed potatoes. I mean that as praise.'],
+    },
+  },
+  {
+    id: 'bram',
+    name: 'Bram',
+    role: 'Groomer, Base Lodge',
+    at: { place: 'gore-mountain-lodge' },
+    look: { jacket: 0xd9822b, trousers: 0x3a3430, hat: 0x1f242e, style: 'trapper' },
+    hello: 'I drive the cat. Not a cat. The cat. Twelve tons, tracks, big comb on the back. I make the corduroy while you sleep.',
+    chat: [
+      'People think the snow just lies like that. It does not. I comb it. Every night. Like a very large, very cold horse.',
+      'Stones come up when I groom. Garnets, mostly. I used to stop for them. Now I leave them for whoever is up first.',
+      'I see things up there at three in the morning. Deer. Foxes. Once, something tall. I do not discuss the tall thing.',
+      'Best run on the mountain is whichever I did last. Ask me tomorrow, different answer.',
+    ],
+    moods: {
+      night: ['Should be up on the hill by now. Just finishing my coffee. Do not tell Hazel.'],
+      snowing: ['Fresh snow on top of fresh corduroy. I should be annoyed. I am not.'],
+    },
+  },
 ];
+
+/** The verb on the button for approaching each kind of thing. */
+export const APPROACH: Record<NonNullable<Person['kind']>, string> = { person: 'Talk to', board: 'Read', dog: 'Pet' };
 
 export const ERRANDS: readonly Errand[] = [
   // Hazel: a first lap of the mountain.

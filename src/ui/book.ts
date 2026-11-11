@@ -1,6 +1,8 @@
 import type { Game } from '../game/game';
 import { MINERALS } from '../game/minerals';
 import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
+import { LETTERS } from '../game/letters';
+import { OFFERINGS } from '../game/offerings';
 import { PATCHES } from '../game/patches';
 import { ERRANDS, GEAR, personById } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
@@ -30,6 +32,18 @@ type Tab = 'passport' | 'minerals' | 'guide' | 'pack';
 
 const SEASON_WORDS = (s: Species): string => (s.seasons ? s.seasons.map((q) => SEASON_NAME[q]).join(', ') : 'All year');
 const WATCH_WORDS = (s: Species): string => (s.watches ? s.watches.join(', ') : '');
+
+/** A picture from the game's generated art: a mineral's or a species' plate. Left out if it cannot be had. */
+function plate(set: 'minerals' | 'species', id: string): HTMLImageElement {
+  const img = document.createElement('img');
+  img.className = 'plate';
+  img.alt = '';
+  img.loading = 'lazy';
+  img.decoding = 'async';
+  img.src = `${import.meta.env.BASE_URL}art/${set}/${id}.webp`;
+  img.addEventListener('error', () => (img.style.visibility = 'hidden'));
+  return img;
+}
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = ''): HTMLElementTagNameMap[K] => {
   const node = document.createElement(tag);
@@ -284,6 +298,34 @@ export class Book {
       }
       out.push(row);
     }
+    // What the town has handed over: a menu ticked off, and a library card stamped.
+    for (const [title, kinds, hint] of [
+      ['Tasted', ['bake', 'sandwich'], "June's bakery and Walt's deli on Main Street each have something new every day."],
+      ['Library card', ['book'], 'Fenn at the Town Hall library lends one book a day, and has never once asked for it back.'],
+    ] as const) {
+      const all = OFFERINGS.filter((o) => (kinds as readonly string[]).includes(o.kind));
+      const had = all.filter((o) => o.id in game.save.tried);
+      out.push(this.heading(title, had.length, all.length));
+      if (had.length === 0) out.push(el('p', 'note', hint));
+      const list = el('div', 'tried');
+      for (const o of had) {
+        const row = el('div', `ticket ticket-${o.kind}`);
+        row.appendChild(el('b', '', o.name));
+        row.appendChild(el('small', '', o.note));
+        list.appendChild(row);
+      }
+      if (had.length > 0) out.push(list);
+    }
+    // Letters collected from the post office, newest first, to read again.
+    const letters = LETTERS.filter((l) => l.id in game.save.letters).sort((a, b) => (game.save.letters[b.id] ?? '').localeCompare(game.save.letters[a.id] ?? ''));
+    out.push(this.heading('Letters', letters.length, LETTERS.length));
+    if (letters.length === 0) out.push(el('p', 'note', 'Dot at the North Creek Post Office keeps your mail. There is one letter a day.'));
+    for (const letter of letters) {
+      const page = el('div', 'letter');
+      page.appendChild(el('p', '', letter.text));
+      page.appendChild(el('small', '', `${letter.signed} · ${shortDay(game.save.letters[letter.id] ?? '')}`));
+      out.push(page);
+    }
     if (game.save.pass) {
       out.push(el('h3', '', 'Snow Train pass'));
       out.push(el('p', 'note', game.save.away ? `You are visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));
@@ -306,7 +348,7 @@ export class Book {
       for (const sp of entries) {
         const record = game.save.sightings[sp.id];
         const card = el('div', `mineral species ${record ? 'earned' : 'todo'}`);
-        card.appendChild(el('span', `badge badge-${kin}`, record ? sp.name.charAt(0) : '?'));
+        card.appendChild(record ? plate('species', sp.id) : el('span', `badge badge-${kin}`, '?'));
         const text = el('div');
         text.appendChild(el('b', '', sp.name));
         if (record) {
@@ -336,10 +378,7 @@ export class Book {
     for (const mineral of MINERALS) {
       const record = game.save.minerals[mineral.id];
       const card = el('div', `mineral ${record ? 'earned' : 'todo'}`);
-      const gem = el('span', 'gem-wrap');
-      const stone = el('span', 'gem');
-      if (record) stone.style.backgroundColor = `#${mineral.colour.toString(16).padStart(6, '0')}`;
-      gem.appendChild(stone);
+      const gem = record ? plate('minerals', mineral.id) : el('span', 'badge', '?');
       const text = el('div');
       const name = el('b', '', mineral.name);
       name.appendChild(el('span', `rarity ${mineral.rarity}`, mineral.rarity));

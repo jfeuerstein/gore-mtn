@@ -5,3 +5,4 @@ tools/terrain/cache/
 .env.*
 *.local
 .DS_Store
+tools/art/cache/

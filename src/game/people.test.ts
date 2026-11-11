@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
+import { namedSpots } from '../world/whereabouts';
 import { Game, type GameWorld, type SaveStore } from './game';
 import { MINERALS } from './minerals';
 import { buildLandmarks } from './passport';
@@ -13,7 +14,7 @@ const gameWorld: GameWorld = {
   lifts: world.lifts,
   places: world.places,
   paths: world.paths,
-  spots: [...world.spots, ...world.ponds],
+  spots: namedSpots(world),
   country: countryOf(world),
   minX: world.source.minX,
   minZ: world.source.minZ,
@@ -52,7 +53,7 @@ describe('the errands', () => {
   });
 
   it('ask only for things the mountain has', () => {
-    const landmarks = buildLandmarks(world.places, [...world.spots, ...world.ponds]).map((l) => l.id);
+    const landmarks = buildLandmarks(world.places, namedSpots(world)).map((l) => l.id);
     const lifts = new Set(world.lifts.map((l) => l.name).filter(Boolean)).size;
     for (const e of ERRANDS) {
       const n = e.need;

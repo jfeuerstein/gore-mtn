@@ -224,7 +224,7 @@ const LANDMARK_NAMES: Record<string, string> = {
   depot: 'North Creek Depot',
 };
 
-/** Named spots worth a stamp: the lookouts, the old garnet workings, and a pond. */
+/** Named spots worth a stamp: the lookouts, the old garnet workings, a pond, and the town's doors. */
 const SPOT_LANDMARKS: Record<string, string> = {
   'vermont-overlook': 'Vermont Overlook',
   'twister-cliffs': 'Twister Cliffs',
@@ -233,6 +233,15 @@ const SPOT_LANDMARKS: Record<string, string> = {
   'barton-mine': 'Barton Mine',
   'garnet-quarry': 'Garnet Quarry',
   'rabbit-pond': 'Rabbit Pond',
+  // North Creek, and the relics up the mountain.
+  'copperfield-inn': 'Copperfield Inn',
+  'north-creek-post-office': 'Post Office',
+  'town-of-johnsburg-library': 'Town Hall & Library',
+  'tannery-pond-community-association': 'Tannery Pond',
+  'saint-james-catholic-church': 'St James Church',
+  'becks-tavern': "Beck's Tavern",
+  'gore-mt-mineral-shop': 'Mineral Shop',
+  'old-gondola-mid-station': 'Old Gondola Station',
 };
 
 /** Places worth a stamp for visiting. */

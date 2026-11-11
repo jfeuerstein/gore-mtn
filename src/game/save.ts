@@ -58,6 +58,12 @@ export interface SaveData {
   patches: Record<string, string>;
   /** Hints already given, so each is given once. */
   hints: string[];
+  /** Letters collected from the post office, by id, and the day each was. */
+  letters: Record<string, string>;
+  /** Days on which the dog has been petted. */
+  pets: string[];
+  /** Things the town has handed over (bakes, sandwiches, library books), by id, with the day each was first had. */
+  tried: Record<string, string>;
 }
 
 export function emptySave(): SaveData {
@@ -83,6 +89,9 @@ export function emptySave(): SaveData {
     away: null,
     patches: {},
     hints: [],
+    letters: {},
+    pets: [],
+    tried: {},
   };
 }
 
@@ -169,6 +178,9 @@ export function parseSave(text: string | null | undefined): SaveData {
   save.away = typeof raw.away === 'string' && ['winter', 'spring', 'summer', 'fall'].includes(raw.away) ? raw.away : null;
   save.patches = days(raw.patches);
   save.hints = strings(raw.hints);
+  save.letters = days(raw.letters);
+  save.pets = strings(raw.pets).filter(isDay);
+  save.tried = days(raw.tried);
   return save;
 }
 

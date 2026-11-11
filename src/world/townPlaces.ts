@@ -1,0 +1,186 @@
+import { distSqToSegment, type Footprint } from './trails';
+import type { Whereabouts } from '../game/people';
+import { locate, slug } from './whereabouts';
+import type { World } from './world';
+
+/**
+ * The places in North Creek and round the mountain that have a name and a look of their own: the
+ * inn, the post office, the church, the old mine buildings. Each is tied to something on the
+ * real map (a named building, or a named point with a building by it), turned to face its road,
+ * and given a style, a sign and a front door. No three.js here.
+ */
+export type TownStyle = 'inn' | 'store' | 'postoffice' | 'church' | 'hall' | 'barn' | 'cafe' | 'deli' | 'house' | 'mill' | 'powerhouse' | 'cabin' | 'station' | 'tavern' | 'shed' | 'firehouse';
+
+interface Listing {
+  id: string;
+  /** What its sign says, in capitals. Empty for no sign. */
+  sign: string;
+  style: TownStyle;
+  /** How to find it: a building's name on the map, or a named point with a building nearby. */
+  building?: string;
+  spot?: string;
+  /** ...or the building nearest a described spot, such as where its keeper stands. */
+  near?: Whereabouts;
+}
+
+export const TOWN_LISTINGS: readonly Listing[] = [
+  { id: 'copperfield-inn', sign: 'COPPERFIELD INN', style: 'inn', building: 'Phoenix Inn Resort' },
+  { id: 'freight-house', sign: 'FREIGHT HOUSE', style: 'shed', building: 'North Creek' },
+  { id: 'tops', sign: 'MARKET', style: 'store', building: 'Tops' },
+  { id: 'church', sign: '', style: 'church', building: 'Saint James Catholic Church' },
+  { id: 'johnsburg-town-hall', sign: 'TOWN HALL & LIBRARY', style: 'hall', building: 'Johnsburg Town Hall' },
+  { id: 'tannery-pond', sign: 'TANNERY POND', style: 'barn', building: 'Tannery Pond Community Association' },
+  { id: 'hostel', sign: 'HEADS IN BEDS', style: 'house', building: 'Heads In Beds' },
+  { id: 'tuning', sign: 'SKI TUNING', style: 'shed', building: 'Tuning Pavillion' },
+  { id: 'north-creek-post-office', sign: 'POST OFFICE', style: 'postoffice', spot: 'north-creek-post-office' },
+  { id: 'ski-bowl-cafe', sign: 'SKI BOWL CAFE', style: 'cafe', spot: 'ski-bowl-cafe' },
+  { id: 'alpine-lodge', sign: 'ALPINE LODGE', style: 'house', spot: 'the-alpine-lodge' },
+  { id: 'tavern', sign: "BECK'S TAVERN", style: 'tavern', spot: 'becks-tavern' },
+  // Where June bakes and Walt makes sandwiches: the buildings they stand outside.
+  { id: 'cafe', sign: "JUNE'S BAKERY", style: 'cafe', near: { road: 'Main Street', from: 'depot', metres: 170 } },
+  { id: 'deli', sign: "WALT'S DELI", style: 'deli', near: { road: 'Main Street', from: 'depot', metres: 290 } },
+  { id: 'inn-on-gore', sign: 'THE INN ON GORE', style: 'inn', spot: 'the-inn-on-gore-mountain' },
+  // The old Barton Mines hamlet, at the western edge of the map.
+  { id: 'gore-mt-mineral-shop', sign: 'MINERAL SHOP', style: 'cabin', spot: 'gore-mt-mineral-shop' },
+  { id: 'optical-mill', sign: 'OPTICAL MILL', style: 'mill', building: 'Optical Mill' },
+  { id: 'power-house', sign: 'POWER HOUSE', style: 'powerhouse', building: 'Power House' },
+  { id: 'old-office', sign: 'MINE OFFICE', style: 'house', building: 'Old Office' },
+  { id: 'carpenter-shop', sign: 'CARPENTER', style: 'mill', building: 'Carpenter Shop' },
+  { id: 'butler-building', sign: '', style: 'mill', building: 'Butler Building' },
+  { id: 'fire-house', sign: 'FIRE HOUSE', style: 'firehouse', building: 'Fire House' },
+  // On the mountain: a relic of the first gondola.
+  { id: 'old-gondola-mid-station', sign: 'MID STATION · 1967', style: 'station', building: 'Old Gondola Mid Station' },
+];
+
+export interface TownPlace {
+  id: string;
+  sign: string;
+  style: TownStyle;
+  x: number;
+  y: number;
+  z: number;
+  /** Width along the front and depth back from it, in metres. */
+  w: number;
+  d: number;
+  /** Turn about the upright axis. The front, with the door and the sign, is the side its own +z faces. */
+  turn: number;
+  /** A spot just outside the front door. */
+  door: { x: number; z: number };
+  /** Which of the map's buildings this is, or -1 for one put up where the map has only a point. */
+  building: number;
+}
+
+/** The point on any road nearest to a position. */
+function nearestRoad(world: World, x: number, z: number): { x: number; z: number } | null {
+  let best: { x: number; z: number } | null = null;
+  let bestSq = Infinity;
+  for (const road of world.roads) {
+    const p = road.pts;
+    for (let i = 0; i + 3 < p.length; i += 2) {
+      const ax = p[i] as number;
+      const az = p[i + 1] as number;
+      const bx = p[i + 2] as number;
+      const bz = p[i + 3] as number;
+      const sq = distSqToSegment(x, z, ax, az, bx, bz);
+      if (sq >= bestSq) continue;
+      bestSq = sq;
+      const len = (bx - ax) ** 2 + (bz - az) ** 2;
+      const t = len > 0 ? Math.min(1, Math.max(0, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / len)) : 0;
+      best = { x: ax + (bx - ax) * t, z: az + (bz - az) * t };
+    }
+  }
+  return best;
+}
+
+/**
+ * A footprint turned so that its own +z side is the one that faces a point (its road). The
+ * width and depth swap when a short side is the front.
+ */
+export function faceToward(b: { x: number; z: number; w: number; d: number; turn: number }, tx: number, tz: number): { w: number; d: number; turn: number } {
+  const dx = tx - b.x;
+  const dz = tz - b.z;
+  // The footprint's own axes, as three.js turns a model: x along (cos, -sin), z along (sin, cos).
+  const alongX = dx * Math.cos(b.turn) - dz * Math.sin(b.turn);
+  const alongZ = dx * Math.sin(b.turn) + dz * Math.cos(b.turn);
+  if (Math.abs(alongZ) >= Math.abs(alongX)) return alongZ >= 0 ? { w: b.w, d: b.d, turn: b.turn } : { w: b.w, d: b.d, turn: b.turn + Math.PI };
+  return alongX >= 0 ? { w: b.d, d: b.w, turn: b.turn + Math.PI / 2 } : { w: b.d, d: b.w, turn: b.turn - Math.PI / 2 };
+}
+
+/** How far out from the front wall the spot by the door is: clear of a porch. */
+const DOOR_OUT = 4.5;
+
+/** How near a building must be to a named point on the map to be the one meant, in metres. */
+const SPOT_REACH = 45;
+
+/** Every listed place that the map has, resolved to a footprint that faces its road. */
+export function resolveTownPlaces(world: World): TownPlace[] {
+  const out: TownPlace[] = [];
+  const used = new Set<number>();
+  for (const listing of TOWN_LISTINGS) {
+    let index = -1;
+    let base: Footprint | null = null;
+    if (listing.building) {
+      index = world.buildings.findIndex((b) => b.name === listing.building);
+    } else {
+      const spot = listing.spot ? world.spots.find((s) => s.id === listing.spot) : listing.near ? locate(world, listing.near) : null;
+      if (!spot) continue;
+      let bestDist = SPOT_REACH;
+      world.buildings.forEach((b, i) => {
+        const d = Math.hypot(b.x - spot.x, b.z - spot.z);
+        // Not a shed, and not one already spoken for.
+        if (d < bestDist && !used.has(i) && Math.min(b.w, b.d) >= 6) {
+          bestDist = d;
+          index = i;
+        }
+      });
+      // The map has the name but no building: put one up on the spot.
+      if (index < 0) base = { x: spot.x, y: world.source.heightAt(spot.x, spot.z), z: spot.z, w: 15, d: 10, turn: 0, kind: null };
+    }
+    if (index >= 0) {
+      if (used.has(index)) continue;
+      used.add(index);
+      base = world.buildings[index] as Footprint;
+    }
+    if (!base) continue;
+    const road = nearestRoad(world, base.x, base.z) ?? { x: base.x, z: base.z + 10 };
+    const facing = faceToward(base, road.x, road.z);
+    const sin = Math.sin(facing.turn);
+    const cos = Math.cos(facing.turn);
+    const out_ = facing.d / 2 + DOOR_OUT;
+    out.push({
+      id: listing.id,
+      sign: listing.sign,
+      style: listing.style,
+      x: base.x,
+      // It stands level with the ground at its front wall, so the door can always be walked up to.
+      y: world.source.heightAt(base.x + (sin * facing.d) / 2, base.z + (cos * facing.d) / 2),
+      z: base.z,
+      ...facing,
+      door: { x: base.x + sin * out_, z: base.z + cos * out_ },
+      building: index,
+    });
+  }
+  return out;
+}
+
+/** The listed place whose walls a point is at or just outside, if any: the one a person described as being there keeps. */
+export function townPlaceAt(places: readonly TownPlace[], x: number, z: number, reach = 14): TownPlace | undefined {
+  let best: TownPlace | undefined;
+  let bestDist = Infinity;
+  for (const p of places) {
+    const d = Math.hypot(p.x - x, p.z - z);
+    if (d < Math.max(p.w, p.d) / 2 + reach && d < bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/** The listed place a description of whereabouts means, if any: by its id, or by the name of its building. */
+export function townPlaceFor(places: readonly TownPlace[], spot: string): TownPlace | undefined {
+  return places.find((p) => p.id === spot) ?? places.find((p) => {
+    const listing = TOWN_LISTINGS.find((l) => l.id === p.id);
+    return (listing?.spot === spot) || (listing?.building !== undefined && slug(listing.building) === spot);
+  });
+}

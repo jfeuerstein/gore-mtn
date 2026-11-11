@@ -54,6 +54,49 @@ function standingFigure(outfit: Outfit): THREE.BufferGeometry {
   return out;
 }
 
+/** A noticeboard: two posts, a board under a little roof, and papers pinned to it. */
+function noticeboard(): THREE.BufferGeometry {
+  const papers: Block[] = [
+    [-0.55, 1.75, 0xfffdf7, 0.06],
+    [0.05, 1.8, 0xf4e4b8, -0.05],
+    [0.6, 1.7, 0xfffdf7, 0.03],
+    [-0.3, 1.25, 0xe8b9b0, -0.04],
+    [0.4, 1.2, 0xfffdf7, 0.07],
+  ].map(([x, y, colour, tip]): Block => ({ size: [0.42, 0.5, 0.03], at: [x as number, y as number, -0.09], colour: colour as number, tip: tip as number }));
+  return blocks(
+    [
+      { size: [0.14, 2.4, 0.14], at: [-1.05, 1.2, 0], colour: 0x6b4a33 },
+      { size: [0.14, 2.4, 0.14], at: [1.05, 1.2, 0], colour: 0x6b4a33 },
+      { size: [2.1, 1.5, 0.1], at: [0, 1.5, 0], colour: 0x8a6a3c },
+      { size: [2.5, 0.12, 0.5], at: [0, 2.45, 0], colour: 0x5c6672 },
+      ...papers,
+    ],
+  );
+}
+
+/** A big mountain dog, sitting: white and brown, with a small barrel at his collar. */
+function dog(): THREE.BufferGeometry {
+  const brown = 0x9a5a2c;
+  const white = 0xf4ead8;
+  return blocks([
+    // Haunches and body, tipped up as a sitting dog's is.
+    { size: [0.62, 0.5, 0.7], at: [0, 0.3, 0.25], colour: brown },
+    { size: [0.56, 0.75, 0.5], at: [0, 0.62, -0.1], colour: white, tip: -0.35 },
+    { size: [0.16, 0.6, 0.16], at: [-0.17, 0.3, -0.36], colour: white },
+    { size: [0.16, 0.6, 0.16], at: [0.17, 0.3, -0.36], colour: white },
+    // Head, muzzle, ears, nose.
+    { size: [0.5, 0.44, 0.46], at: [0, 1.16, -0.34], colour: brown },
+    { size: [0.2, 0.44, 0.47], at: [0, 1.17, -0.34], colour: white },
+    { size: [0.3, 0.24, 0.26], at: [0, 1.06, -0.66], colour: white },
+    { size: [0.12, 0.09, 0.06], at: [0, 1.14, -0.8], colour: 0x1c1c20 },
+    { size: [0.12, 0.3, 0.2], at: [-0.3, 1.12, -0.3], colour: 0x6b3a1c },
+    { size: [0.12, 0.3, 0.2], at: [0.3, 1.12, -0.3], colour: 0x6b3a1c },
+    // The barrel, and a tail laid out behind.
+    { size: [0.2, 0.2, 0.26], at: [0, 0.82, -0.48], colour: 0xb9853f, turn: Math.PI / 2 },
+    { size: [0.14, 0.14, 0.5], at: [0, 0.14, 0.78], colour: brown },
+  ]);
+}
+
 /** A small upright diamond that hangs over someone with something to say, or something to be picked up. */
 function flag(colour: number): THREE.Mesh {
   const w = 0.2;
@@ -78,8 +121,9 @@ export class Folk {
     this.group.name = 'folk';
     const material = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
     for (const standing of people) {
-      const body = new THREE.Mesh(standingFigure(standing.person.look), material);
-      body.scale.setScalar(SCALE);
+      const kind = standing.person.kind ?? 'person';
+      const body = new THREE.Mesh(kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : standingFigure(standing.person.look), material);
+      body.scale.setScalar(kind === 'person' ? SCALE : 1);
       body.position.set(standing.x, standing.y, standing.z);
       // Facing south to begin with, out from the door.
       body.rotation.y = Math.PI;
@@ -120,14 +164,24 @@ export class Folk {
       body.visible = shown;
       mark.visible = shown && hasBusiness(standing.person.id);
       if (!shown) continue;
+      const kind = standing.person.kind ?? 'person';
+      if (kind === 'board') {
+        if (mark.visible) {
+          mark.position.set(standing.x, standing.y + 3 + Math.sin(this.time * 2.2) * 0.08, standing.z);
+          mark.rotation.y = cameraYaw;
+        }
+        continue;
+      }
       // Turn to face whoever is coming; otherwise look out from the door.
       const want = dist < NOTICE_RANGE && dist > 0.5 ? Math.atan2(-dx, -dz) : Math.PI;
       const turn = Math.atan2(Math.sin(want - f.yaw), Math.cos(want - f.yaw));
       f.yaw += turn * Math.min(1, dt * 4);
       // Rocking a little on their heels, as people do who stand outside all day.
-      body.rotation.set(Math.sin(this.time * 0.8 + standing.x) * 0.025, f.yaw, Math.sin(this.time * 0.6 + standing.z) * 0.02);
+      // A dog who sees someone coming wags all over.
+      const wag = kind === 'dog' && dist < NOTICE_RANGE ? Math.sin(this.time * 11) * 0.09 : 0;
+      body.rotation.set(Math.sin(this.time * 0.8 + standing.x) * 0.025, f.yaw + wag, Math.sin(this.time * 0.6 + standing.z) * 0.02 + wag * 0.5);
       if (mark.visible) {
-        mark.position.set(standing.x, standing.y + 2.25 + Math.sin(this.time * 2.2 + standing.z) * 0.08, standing.z);
+        mark.position.set(standing.x, standing.y + (kind === 'dog' ? 1.9 : 2.25) + Math.sin(this.time * 2.2 + standing.z) * 0.08, standing.z);
         mark.rotation.y = cameraYaw;
       }
     }

@@ -8,8 +8,8 @@ const MAX_PITCH = 1.3;
 const MANUAL_HOLD_S = 1.5;
 
 /** Third-person orbit camera. Yaw 0 looks north (-z); positive pitch looks down from above. */
-/** The most the camera rises to see over a building, in metres. */
-const MAX_ROOF_LIFT = 12;
+/** The closest the camera comes to the player when a building is in the way, as a share of its usual distance. */
+const MIN_ARM = 0.3;
 
 export class FollowCamera {
   yaw = 0;
@@ -62,8 +62,8 @@ export class FollowCamera {
     this.yaw = followYaw(this.yaw, heading, amount, dt, always);
   }
 
-  /** How far the camera is presently raised to see over a roof, in metres. */
-  private roofLift = 0;
+  /** How far out the camera presently sits, as a share of its usual distance: less than 1 when a building is in the way. */
+  private arm = 1;
 
   /**
    * Ease the pitch toward a value, unless the camera was just tilted by hand.
@@ -113,21 +113,22 @@ export class FollowCamera {
       if (needed > minY) minY = needed;
     }
     if (cam.y < minY) cam.y = minY;
-    // Likewise a building: rise until the camera is over its roof and can see the player past it.
-    // Roofs come and go abruptly as the camera moves, so this lift is eased, up quickly and down gently.
-    // A wall right beside the player cannot be seen over from any sensible height, so only the
-    // far half of the way is looked at, and the lift has a limit.
-    let over = 0;
-    for (const t of [0.5, 0.75, 1]) {
+    // A building in the way is another matter: no sensible height sees over a house from a
+    // village street. So the camera comes in closer instead, as one on a spring arm does, until
+    // nothing stands between it and the player. It comes in quickly and backs out gently.
+    let reach = 1;
+    for (let t = 0.2; t <= 1.001; t += 0.1) {
       const roof = roofAt(follow.x + (cam.x - follow.x) * t, follow.z + (cam.z - follow.z) * t);
       if (roof === -Infinity) continue;
-      const needed = feetY + (roof + 1 - feetY) / t;
-      if (needed - cam.y > over) over = needed - cam.y;
+      const sightY = this.target.y + (cam.y - this.target.y) * t;
+      if (sightY < roof + 0.6) {
+        reach = Math.max(MIN_ARM, t - 0.1);
+        break;
+      }
     }
-    over = Math.min(over, MAX_ROOF_LIFT);
-    this.roofLift += (over - this.roofLift) * Math.min(1, dt * (over > this.roofLift ? 8 : 2.5));
-    if (dt === 0) this.roofLift = over;
-    cam.y += this.roofLift;
+    this.arm += (reach - this.arm) * Math.min(1, dt * (reach < this.arm ? 10 : 2));
+    if (dt === 0) this.arm = reach;
+    if (this.arm < 0.999) cam.lerpVectors(this.target, cam, this.arm);
     this.aim.copy(this.target);
     this.aim.y += distance * this.aimLift;
     this.camera.lookAt(this.aim);

@@ -1,9 +1,31 @@
 :root {
-  --ink: #1f2a3a;
-  --paper: rgba(250, 247, 240, 0.92);
-  --line: rgba(31, 42, 58, 0.18);
-  --accent: #c2412d;
-  font-family: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /*
+   * One small set of colours and three voices of type, used everywhere, so the game's sheets and
+   * buttons read as one made thing: a paper passport, enamel signs, and print from a 1930s ski
+   * train poster.
+   */
+  --paper: #f7f1e3;
+  --paper-deep: #ede3cd;
+  --card: #fffdf7;
+  --ink: #22304a;
+  --ink-soft: rgba(34, 48, 74, 0.64);
+  --line: rgba(34, 48, 74, 0.18);
+  --red: #c8402d;
+  --pine: #2f6b4f;
+  --blue: #2b62c9;
+  --gold: #c98f1f;
+  --plum: #7a4fa3;
+  --kraft: #a9763f;
+  --accent: var(--red);
+  /* Poster capitals for names and buttons; handwriting for dates and labels; a soft sans for reading. */
+  --display: 'Bebas Neue', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
+  --hand: 'Caveat', 'Bradley Hand', 'Segoe Print', cursive;
+  --body: ui-rounded, 'SF Pro Rounded', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Print slightly out of register: a hard shadow straight down, as on an enamel sign. */
+  --press: 0 3px 0 var(--ink);
+  /* The grain of the paper, drawn here so there is no picture to load. */
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .13 0 0 0 0 .19 0 0 0 0 .29 0 0 0 .07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  font-family: var(--body);
   color: var(--ink);
 }
 
@@ -70,6 +92,8 @@ body {
  * Laid out for an upright phone: things to read sit at the top, things to press sit at the
  * bottom within reach of a thumb, and the middle is left clear for the mountain.
  */
+
+/* Where the player is, as a trail sign: the trail's own colour and mark, as on the mountain. */
 #where {
   position: absolute;
   top: max(8px, env(safe-area-inset-top));
@@ -80,41 +104,57 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 15px;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 19px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink);
   background: var(--paper);
-  border-radius: 999px;
-  padding: 6px 14px;
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  padding: 7px 14px 5px;
+  box-shadow: var(--press);
 }
-
-#where .mark-easy {
-  color: #2f9e55;
+#where:has(.mark-easy) {
+  background: #2f8f55;
+  color: #fff;
 }
-#where .mark-intermediate {
-  color: #2b62c9;
+#where:has(.mark-intermediate) {
+  background: var(--blue);
+  color: #fff;
 }
-#where .mark-advanced,
-#where .mark-expert {
-  color: #111;
+#where:has(.mark-advanced),
+#where:has(.mark-expert) {
+  background: #1d2026;
+  color: #fff;
 }
-#where .mark-freeride {
-  color: #d9822b;
+#where:has(.mark-freeride) {
+  background: #d9822b;
+  color: #fff;
+}
+#where [class^='mark-'] {
+  font-family: var(--body);
+  font-size: 13px;
+  vertical-align: 2px;
 }
 
 #stats {
   position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 40px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 44px);
   left: max(12px, env(safe-area-inset-left));
   font: 10px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
   white-space: pre;
   background: var(--paper);
+  border: 1.5px solid var(--ink);
   border-radius: 8px;
   padding: 5px 8px;
   /* Its text changes several times a second; keep that from causing layout work elsewhere. */
   contain: content;
 }
 
+/* Every button on the mountain: paper, an ink edge, poster capitals, and a press you can see. */
 #menu-button,
 #ski-button,
 #map-button,
@@ -123,143 +163,207 @@ body {
 #book-button {
   position: absolute;
   pointer-events: auto;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  font-family: var(--display);
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--ink);
   background: var(--paper);
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 16px;
-  min-width: 56px;
-  min-height: 44px;
+  border: 2px solid var(--ink);
+  border-radius: 13px;
+  padding: 12px 16px 9px;
+  min-width: 64px;
+  min-height: 46px;
+  box-shadow: var(--press);
+  transition: transform 0.06s;
+}
+#menu-button:active,
+#ski-button:active,
+#map-button:active,
+#action-button:active,
+#talk-button:active,
+#book-button:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
 }
 #menu-button {
-  top: calc(max(8px, env(safe-area-inset-top)) + 40px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 44px);
   right: max(12px, env(safe-area-inset-right));
+  font-size: 15px;
+  min-height: 44px;
+  padding: 11px 12px 8px;
+  border-radius: 11px;
 }
 #book-button {
   right: max(14px, env(safe-area-inset-right));
-  bottom: calc(var(--bottom-clear) + 8px);
+  bottom: calc(var(--bottom-clear) + 10px);
 }
 #map-button {
   left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--bottom-clear) + 8px);
+  margin-left: -36px;
+  width: 72px;
+  bottom: calc(var(--bottom-clear) + 10px);
+}
+#ski-button {
+  left: max(14px, env(safe-area-inset-left));
+  bottom: calc(var(--bottom-clear) + 10px);
+}
+#ski-button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 3px 0 #0e1626;
 }
 
-/* What the player can do right here, such as board a lift. Sits above the other buttons, in the middle. */
-#action-button {
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--bottom-clear) + 68px);
-  max-width: calc(100% - 28px);
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--accent);
-  color: #fff;
-  padding: 12px 22px;
-  font-size: 15px;
-}
-
-/* A second thing to do here, above the first: talking to someone who stands by a lift. */
+/* What the player can do right here, such as board a lift: enamel red, in the middle, above the row. */
+#action-button,
 #talk-button {
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(var(--bottom-clear) + 68px);
+  bottom: calc(var(--bottom-clear) + 72px);
   max-width: calc(100% - 28px);
   box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: var(--ink);
+  background: var(--red);
   color: #fff;
-  padding: 12px 22px;
-  font-size: 15px;
+  padding: 13px 22px 10px;
+  font-size: 21px;
+  box-shadow: 0 3px 0 #7a2318;
+  border-color: #7a2318;
+}
+#action-button:active,
+#talk-button:active {
+  transform: translateX(-50%) translateY(2px);
+  box-shadow: 0 1px 0 #7a2318;
+}
+/* A second thing to do here, above the first: talking to someone who stands by a lift. */
+#talk-button {
+  background: var(--ink);
+  border-color: #0e1626;
+  box-shadow: 0 3px 0 #0e1626;
+}
+#talk-button:active {
+  box-shadow: 0 1px 0 #0e1626;
 }
 #action-button:not([hidden]) ~ #talk-button {
-  bottom: calc(var(--bottom-clear) + 124px);
+  bottom: calc(var(--bottom-clear) + 132px);
 }
 
-#ski-button {
-  left: max(14px, env(safe-area-inset-left));
-  bottom: calc(var(--bottom-clear) + 8px);
-}
-#ski-button[aria-pressed='true'],
-#menu button[aria-pressed='true'] {
-  background: var(--ink);
-  color: #fff;
-}
+/* --- Sheets ------------------------------------------------------------------------------- */
 
-/* Settings open as a sheet from the bottom edge, where a thumb can reach every option. */
-#menu {
+/*
+ * Settings, the map, the book and talk all come up as a sheet of paper from the bottom edge,
+ * where a thumb can reach everything on it.
+ */
+#menu,
+#map-sheet,
+#book-sheet,
+#talk-sheet,
+#bench-results {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  max-height: 72%;
-  overflow-y: auto;
   pointer-events: auto;
-  touch-action: pan-y;
-  background: var(--paper);
-  border-radius: 18px 18px 0 0;
-  padding: 12px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
+  background-color: var(--paper);
+  background-image: var(--grain);
+  border-top: 2px solid var(--ink);
+  border-radius: 20px 20px 0 0;
+  /* The extra strip at the very bottom, where the page may not reach, is filled with the same paper. */
   border-bottom: var(--app-extra, 0px) solid var(--paper);
   box-sizing: border-box;
-  font-size: 14px;
-  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
+  box-shadow: 0 -6px 26px rgba(20, 28, 44, 0.28);
+}
+#menu,
+#map-sheet,
+#bench-results {
+  overflow-y: auto;
+  touch-action: pan-y;
 }
 
-#menu h2 {
-  font-size: 11px;
+/* Buttons on a sheet: smaller cousins of the ones on the mountain. */
+#menu button,
+#menu a,
+#map-sheet button,
+#book-sheet button,
+#talk-sheet button,
+#bench-results button {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin: 12px 0 6px;
-  opacity: 0.7;
+  text-decoration: none;
+  text-align: center;
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 12px 13px 9px;
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 0 var(--ink);
+}
+#menu button:active,
+#menu a:active,
+#map-sheet button:active,
+#book-sheet button:active,
+#talk-sheet button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+/* Settings. */
+#menu {
+  max-height: 74%;
+  padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
+  font-size: 14px;
+}
+#menu h2 {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 16px 0 7px;
+  color: var(--ink-soft);
 }
 #menu .row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
-#menu button,
 #menu a {
-  font: inherit;
-  color: var(--ink);
-  text-decoration: none;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  min-width: 44px;
-  min-height: 20px;
-  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 #menu .divider {
-  margin-top: 22px;
-  padding-top: 14px;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
-  opacity: 1;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--line);
+  color: var(--ink);
+  font-size: 22px;
 }
 #menu .close {
   float: right;
-  font-weight: 600;
   /* Above the heading that follows, whose box runs the full width and would take taps meant for this. */
   position: relative;
   z-index: 1;
 }
-#menu .on {
+#menu .on,
+#menu button[aria-pressed='true'] {
   background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
+  color: var(--paper);
 }
 #menu p {
   margin: 10px 0 0;
-  font-size: 11px;
-  opacity: 0.7;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-soft);
 }
 #menu input {
   flex: 1 1 140px;
@@ -268,35 +372,37 @@ body {
   /* 16px or more, or iOS zooms the page when the field is tapped. */
   font-size: 16px;
   color: var(--ink);
-  background: #fff;
-  border: 1px solid var(--line);
+  background: var(--card);
+  border: 1.5px solid var(--ink);
   border-radius: 10px;
   padding: 8px 10px;
   user-select: text;
   -webkit-user-select: text;
 }
 
-/* The readouts are empty until the first update; do not show empty pills. */
+/* The readouts are empty until the first update; do not show empty boxes. */
 #stats:empty,
 #where:empty {
   display: none;
 }
 
-/* Things just earned, announced near the top where they can be read and are out of the thumb's way. */
+/* --- Announcements ------------------------------------------------------------------------ */
+
+/* Things just earned, as luggage tags near the top where they can be read and are out of the thumb's way. */
 #toasts {
   position: absolute;
   /* Under the place name, and under the frame-rate readout when that is showing. */
-  top: calc(max(8px, env(safe-area-inset-top)) + 92px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 100px);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   pointer-events: none;
 }
 .show-stats #toasts {
-  top: calc(max(8px, env(safe-area-inset-top)) + 118px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 126px);
 }
 .toast {
   display: flex;
@@ -304,11 +410,13 @@ body {
   gap: 10px;
   max-width: calc(100% - 28px);
   box-sizing: border-box;
-  padding: 8px 16px 8px 10px;
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: 0 2px 12px rgba(31, 42, 58, 0.2);
-  animation: toast-in 0.3s ease-out;
+  padding: 7px 16px 7px 8px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background-color: var(--paper);
+  background-image: var(--grain);
+  box-shadow: var(--press);
+  animation: toast-in 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
   transition:
     opacity 0.3s,
     transform 0.3s;
@@ -320,13 +428,13 @@ body {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.92);
+    transform: translateY(-12px) rotate(-2deg) scale(0.9);
   }
 }
 .toast .mark {
   flex: none;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -334,20 +442,45 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: #fff;
-  background: var(--accent);
+  background: var(--red);
+  border: 1.5px solid var(--ink);
+  box-sizing: border-box;
+}
+.toast-peak .mark,
+.toast-season .mark {
+  background: var(--pine);
+}
+.toast-lift .mark {
+  background: var(--blue);
+}
+.toast-condition .mark,
+.toast-patch .mark,
+.toast-errand .mark {
+  background: var(--gold);
+}
+.toast-sighting .mark {
+  background: #4f8a3f;
+}
+.toast-gear .mark,
+.toast-item .mark {
+  background: var(--plum);
+}
+.toast-hint .mark {
+  background: var(--ink);
 }
 /* A found stone shows as a little cut gem in its own colour. */
-.toast-mineral .mark,
-#book-sheet .gem {
+.toast-mineral .mark {
+  border: 0;
   border-radius: 0;
   clip-path: polygon(50% 0, 100% 38%, 50% 100%, 0 38%);
   /* Two facets: a lit side and a shaded one, over the stone's own colour. */
   background-image: linear-gradient(100deg, rgba(255, 255, 255, 0.3) 0 50%, rgba(0, 0, 0, 0.2) 50% 100%);
 }
-/* An edge, so a pale stone still shows on pale paper. The filter goes on a wrapper, outside the clip. */
-.toast-mineral,
-#book-sheet .mineral {
-  --gem-edge: drop-shadow(0 1px 1.5px rgba(31, 42, 58, 0.45));
+.toast .gem-wrap {
+  flex: none;
+  display: flex;
+  /* An edge, so a pale stone still shows on pale paper. The filter goes on a wrapper, outside the clip. */
+  filter: drop-shadow(0 1px 1.5px rgba(31, 42, 58, 0.5));
 }
 .toast b,
 .toast small {
@@ -357,27 +490,29 @@ body {
   text-overflow: ellipsis;
 }
 .toast b {
-  font-size: 14px;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.toast small {
+  font-family: var(--hand);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink-soft);
 }
 /* A hint is a sentence, not a label: let it run to two lines. */
 .toast-hint {
-  border-radius: 18px;
-  max-width: min(320px, calc(100% - 28px));
+  max-width: min(330px, calc(100% - 28px));
 }
 .toast-hint small {
   white-space: normal;
-  font-size: 12px;
-  opacity: 0.8;
-}
-.toast-hint .mark {
-  background: var(--ink);
-}
-.toast-patch .mark {
-  background: #b7791f;
-}
-.toast small {
-  font-size: 11px;
-  opacity: 0.7;
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.3;
+  margin-top: 2px;
 }
 
 #bench-banner {
@@ -395,75 +530,64 @@ body {
   pointer-events: none;
 }
 
-#map-sheet,
-#book-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 86%;
-  overflow-y: auto;
-  pointer-events: auto;
-  touch-action: pan-y;
-  /* Solid, so the buttons underneath do not show through. */
-  background: #faf7f0;
-  border-radius: 18px 18px 0 0;
+/* --- The trail map ------------------------------------------------------------------------ */
+
+#map-sheet {
+  max-height: 88%;
   padding: 12px 14px calc(var(--sheet-pad) + 6px);
-  border-bottom: var(--app-extra, 0px) solid #faf7f0;
-  box-sizing: border-box;
-  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
 }
 #map-sheet .head,
 #book-sheet .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
-#map-sheet h2 {
+#map-sheet h2,
+#bench-results h2 {
   margin: 0;
-  font-size: 16px;
-}
-#map-sheet button,
-#book-sheet button {
-  font: inherit;
-  font-weight: 600;
-  color: var(--ink);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-height: 44px;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 #map-sheet canvas {
   display: block;
   margin: 0 auto;
+  border: 2px solid var(--ink);
   border-radius: 10px;
+  box-sizing: content-box;
 }
 #map-sheet .caption {
-  margin: 8px 0 4px;
-  font-size: 15px;
-  font-weight: 600;
-  min-height: 20px;
+  margin: 10px 0 4px;
+  font-family: var(--display);
+  font-size: 21px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  min-height: 24px;
 }
 #map-sheet .legend {
   margin: 0;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   flex-wrap: wrap;
   gap: 4px 12px;
 }
 
+/* --- The book ----------------------------------------------------------------------------- */
+
 /*
- * The book. Its heading stays put while the page scrolls under it, so the tabs and Close are
- * always to hand.
+ * The book: a passport. Its tabs stay put, like the index tabs of a notebook, while the page
+ * scrolls under them, so they and Close are always to hand.
  */
 #book-sheet {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 78%;
+  height: 80%;
+  padding: 12px 14px 0;
 }
 #book-sheet .body {
   flex: 1;
@@ -472,103 +596,150 @@ body {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  padding: 2px 2px calc(var(--sheet-pad) + 10px);
 }
 #book-sheet .tabs {
   display: flex;
-  gap: 6px;
+  gap: 5px;
+}
+#book-sheet .tabs button {
+  padding: 12px 9px 9px;
+  font-size: 16px;
 }
 #book-sheet .tabs button[aria-pressed='true'] {
   background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
+  color: var(--paper);
+}
+#book-sheet .head .close {
+  padding: 12px 10px 9px;
+  font-size: 16px;
 }
 #book-sheet h3 {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  margin: 14px 0 8px;
-  font-size: 15px;
+  margin: 20px 0 9px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--ink);
+  font-family: var(--display);
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 #book-sheet h3:first-child {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 #book-sheet h4 {
   display: flex;
   justify-content: space-between;
-  margin: 12px 0 4px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  align-items: baseline;
+  margin: 16px 0 5px;
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.7;
+  color: var(--ink-soft);
 }
 #book-sheet h3 span,
 #book-sheet h4 span {
-  font-size: 12px;
-  font-weight: 600;
-  opacity: 0.6;
+  font-family: var(--hand);
+  font-size: 19px;
   letter-spacing: 0;
   text-transform: none;
+  color: var(--ink-soft);
 }
 #book-sheet .note {
-  margin: 0 0 6px;
-  font-size: 12px;
-  opacity: 0.7;
+  margin: 0 0 9px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
 }
+
+/* Stamps: a dotted outline until earned, then inked, a little askew, as a rubber stamp lands. */
 #book-sheet .stamps {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: 9px;
 }
 #book-sheet .stamp {
-  padding: 8px 10px;
-  border-radius: 10px;
+  padding: 9px 10px 7px;
+  border-radius: 9px;
   border: 1.5px dashed var(--line);
-  min-height: 34px;
+  min-height: 36px;
 }
 #book-sheet .stamp b,
 #book-sheet .stamp small {
   display: block;
 }
 #book-sheet .stamp b {
-  font-size: 13px;
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 #book-sheet .stamp small {
   font-size: 11px;
-  opacity: 0.65;
+  line-height: 1.3;
+  color: var(--ink-soft);
 }
 #book-sheet .stamp.todo b {
-  opacity: 0.55;
+  opacity: 0.5;
 }
-/* Earned: inked, like a rubber stamp pressed a little askew. */
 #book-sheet .stamp.earned {
-  border: 2px solid currentColor;
-  color: var(--accent);
-  background: rgba(194, 65, 45, 0.06);
-  transform: rotate(-1.2deg);
+  border: 2.5px solid currentColor;
+  color: var(--red);
+  background: rgba(200, 64, 45, 0.07);
+  transform: rotate(-1.4deg);
+  /* Ink never lands evenly. */
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 3px currentColor;
 }
 #book-sheet .stamp.earned:nth-child(even) {
-  transform: rotate(1deg);
+  transform: rotate(1.1deg);
+}
+#book-sheet .stamp.earned:nth-child(3n) {
+  transform: rotate(-0.4deg);
 }
 #book-sheet .stamp.earned small {
-  opacity: 0.85;
+  font-family: var(--hand);
+  font-size: 17px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.9;
 }
 #book-sheet .stamp.peak.earned {
-  color: #2f6b4f;
-  background: rgba(47, 107, 79, 0.07);
+  color: var(--pine);
+  background: rgba(47, 107, 79, 0.08);
 }
 #book-sheet .stamp.lift.earned {
-  color: #2b62c9;
-  background: rgba(43, 98, 201, 0.06);
+  color: var(--blue);
+  background: rgba(43, 98, 201, 0.07);
 }
-#book-sheet .stamp.patch.earned {
-  color: #b7791f;
-  background: rgba(183, 121, 31, 0.1);
-  border-width: 3px;
-  border-style: double;
+#book-sheet .stamp.condition.earned {
+  color: var(--gold);
+  background: rgba(201, 143, 31, 0.09);
 }
 #book-sheet .stamp.season.earned {
-  color: #7a4fa3;
-  background: rgba(122, 79, 163, 0.07);
+  color: var(--plum);
+  background: rgba(122, 79, 163, 0.08);
+}
+/* A patch is sewn, not stamped: solid cloth with a stitched edge. */
+#book-sheet .stamp.patch.earned {
+  color: #fff8e6;
+  background: var(--kraft);
+  border: 2px solid #6e4a22;
+  box-shadow: none;
+  outline: 1.5px dashed rgba(255, 248, 230, 0.75);
+  outline-offset: -6px;
+  border-radius: 14px;
+  padding: 12px 12px 10px;
+}
+#book-sheet .stamp.patch.earned small {
+  color: #fff8e6;
 }
 /* One small mark for each season a summit has been stood on in. */
 #book-sheet .pips {
@@ -578,33 +749,28 @@ body {
 }
 #book-sheet .pips i {
   font-style: normal;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  padding: 1px 5px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  padding: 2px 6px 0;
   border-radius: 999px;
   border: 1px dashed var(--line);
   color: var(--ink);
   opacity: 0.45;
 }
 #book-sheet .pips i.on {
-  border: 1px solid #2f6b4f;
-  background: #2f6b4f;
+  border: 1px solid var(--pine);
+  background: var(--pine);
   color: #fff;
   opacity: 1;
 }
-#book-sheet .mark-path {
-  color: #8a6a3c;
-}
-#book-sheet .stamp.condition.earned {
-  color: #b7791f;
-  background: rgba(183, 121, 31, 0.07);
-}
+
+/* Trails and paths: a line each, with how far along it is, or the day it was stamped. */
 #book-sheet .trail {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 0;
+  padding: 8px 0 6px;
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
@@ -618,10 +784,13 @@ body {
   color: #2f9e55;
 }
 #book-sheet .mark-intermediate {
-  color: #2b62c9;
+  color: var(--blue);
 }
 #book-sheet .mark-freeride {
   color: #d9822b;
+}
+#book-sheet .mark-path {
+  color: var(--kraft);
 }
 #book-sheet .trail .name {
   flex: 1;
@@ -629,36 +798,39 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  opacity: 0.6;
+  color: var(--ink-soft);
 }
 #book-sheet .trail.earned .name {
-  opacity: 1;
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
 }
 #book-sheet .trail small {
   flex: none;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent);
+  font-family: var(--hand);
+  font-size: 17px;
+  line-height: 1;
+  color: var(--red);
   border: 1.5px solid currentColor;
   border-radius: 6px;
-  padding: 1px 6px;
+  padding: 2px 7px 1px;
   transform: rotate(-2deg);
 }
 #book-sheet .trail .bar {
   flex: none;
   width: 64px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--line);
+  height: 7px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
   overflow: hidden;
 }
 #book-sheet .trail .bar i {
   display: block;
   height: 100%;
   background: var(--ink);
-  opacity: 0.55;
+  opacity: 0.6;
 }
+
+/* Minerals, wildlife and errands: a card each, with its picture once it has been found. */
 #book-sheet .mineral {
   display: flex;
   align-items: center;
@@ -666,172 +838,130 @@ body {
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
 }
-#book-sheet .gem {
+#book-sheet .plate,
+#book-sheet .badge {
   flex: none;
-  width: 38px;
-  height: 38px;
-  background: rgba(31, 42, 58, 0.14);
+  width: 78px;
+  height: 78px;
+  box-sizing: border-box;
+  border-radius: 10px;
 }
-#book-sheet .mineral.todo .gem {
-  background-image: none;
+/* A plate from the field guide: the picture on a card, pinned a little crooked. */
+#book-sheet .plate {
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+  object-fit: cover;
+  transform: rotate(-1.5deg);
 }
-#book-sheet .gem-wrap,
-.toast .gem-wrap {
-  flex: none;
+#book-sheet .mineral:nth-child(even) .plate {
+  transform: rotate(1.2deg);
+}
+#book-sheet .badge {
   display: flex;
-  filter: var(--gem-edge);
+  align-items: center;
+  justify-content: center;
+  font-family: var(--display);
+  font-size: 34px;
+  color: var(--ink);
+  opacity: 0.35;
+  border: 1.5px dashed var(--ink);
 }
-#book-sheet .mineral.todo .gem-wrap {
-  filter: none;
+#book-sheet .badge-errand {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink);
+  background: var(--gold);
+  color: #fff;
+  font-size: 19px;
+  opacity: 1;
+}
+/* Things tried in town: a row of tickets, as torn from a pad. */
+#book-sheet .tried {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+#book-sheet .ticket {
+  padding: 7px 10px 8px;
+  background: var(--paper);
+  border: 1.5px dashed color-mix(in srgb, var(--ink) 45%, transparent);
+  border-left: 6px solid var(--gold);
+  border-radius: 4px;
+}
+#book-sheet .ticket-sandwich {
+  border-left-color: var(--pine);
+}
+#book-sheet .ticket-book {
+  border-left-color: var(--plum);
+}
+#book-sheet .ticket b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+}
+#book-sheet .ticket small {
+  display: block;
+  font-family: var(--hand);
+  font-size: 17px;
+  line-height: 1.15;
+  opacity: 0.85;
+}
+#book-sheet .errand.earned .badge-errand {
+  background: var(--pine);
 }
 #book-sheet .mineral b {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  font-size: 14px;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 #book-sheet .mineral.todo b {
-  opacity: 0.55;
+  opacity: 0.5;
 }
 #book-sheet .mineral small {
   display: block;
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-soft);
 }
+/* The tally is written in by hand. */
 #book-sheet .mineral .tally {
-  opacity: 1;
-  font-weight: 600;
+  font-family: var(--hand);
+  font-size: 18px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 1px 0 2px;
 }
-/* The field guide: a round badge for each entry, in its kind's colour once seen. */
-#book-sheet .badge {
-  flex: none;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
+#book-sheet .rarity,
+#book-sheet .species .when {
+  font-family: var(--body);
+  font-size: 10px;
   font-weight: 700;
-  color: #fff;
-  background: rgba(31, 42, 58, 0.14);
-}
-#book-sheet .species.earned .badge-animal {
-  background: #8a5a3c;
-}
-#book-sheet .species.earned .badge-bird {
-  background: #3f6fb5;
-}
-#book-sheet .species.earned .badge-plant {
-  background: #4f8a3f;
-}
-#book-sheet .species.earned .badge-curio {
-  background: #7a4fa3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
 }
 #book-sheet .species .when {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.5;
-  margin-top: 2px;
-}
-/* Three tabs and Close have to share a narrow screen. */
-#book-sheet .tabs {
-  gap: 4px;
-}
-#book-sheet .tabs button {
-  padding: 10px 9px;
-  font-size: 13px;
-}
-#book-sheet .head .close {
-  padding: 10px 10px;
-  font-size: 13px;
-}
-#book-sheet .rarity {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  opacity: 0.55;
+  margin-top: 3px;
 }
 #book-sheet .rarity.uncommon {
-  color: #2b62c9;
-  opacity: 0.9;
+  color: var(--blue);
 }
 #book-sheet .rarity.rare {
-  color: #9a3fb5;
-  opacity: 1;
+  color: var(--plum);
 }
 
-/* What someone says: a small sheet with their name, a line at a time, and what there is to choose. */
-#talk-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: auto;
-  background: #faf7f0;
-  border-radius: 18px 18px 0 0;
-  padding: 14px 16px calc(var(--sheet-pad) + 8px);
-  border-bottom: var(--app-extra, 0px) solid #faf7f0;
-  box-sizing: border-box;
-  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
-}
-#talk-sheet .head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-#talk-sheet .names b {
-  display: block;
-  font-size: 17px;
-}
-#talk-sheet .names small {
-  font-size: 12px;
-  opacity: 0.65;
-}
-#talk-sheet .line {
-  margin: 12px 0 14px;
-  font-size: 16px;
-  line-height: 1.4;
-  min-height: 67px;
-}
-#talk-sheet .choices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-#talk-sheet button {
-  font: inherit;
-  font-weight: 600;
-  color: var(--ink);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 11px 16px;
-  min-height: 46px;
-}
-#talk-sheet .choices button {
-  flex: 1 1 auto;
-}
-#talk-sheet button.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-#talk-sheet button:disabled {
-  opacity: 0.4;
-}
-
-/* The pack: errands, and a wardrobe of things given in thanks. */
-#book-sheet .badge-errand {
-  background: #b7791f;
-}
-#book-sheet .errand.earned .badge-errand {
-  background: #2f6b4f;
-}
+/* The pack: a wardrobe of things given in thanks. */
 #book-sheet .wardrobe {
   display: flex;
   flex-wrap: wrap;
@@ -842,44 +972,152 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+  padding: 9px 12px 7px;
+  font-size: 15px;
 }
 #book-sheet .wardrobe button.on {
   background: var(--ink);
-  border-color: var(--ink);
-  color: #fff;
+  color: var(--paper);
 }
 #book-sheet .wardrobe button.locked {
-  opacity: 0.45;
+  opacity: 0.4;
   border-style: dashed;
+  box-shadow: none;
 }
 #book-sheet .wardrobe .swatch {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(31, 42, 58, 0.14);
-  border: 1px solid var(--line);
+  background: var(--paper-deep);
+  border: 1.5px solid var(--ink);
+  margin-top: -2px;
 }
 
-#bench-results {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 80%;
-  overflow-y: auto;
-  touch-action: pan-y;
-  background: var(--paper);
-  border-radius: 18px 18px 0 0;
-  padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
-  border-bottom: var(--app-extra, 0px) solid var(--paper);
-  box-sizing: border-box;
-  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
+/* --- Talk --------------------------------------------------------------------------------- */
+
+/* What someone says: their picture and name, a line at a time, and what there is to choose. */
+#talk-sheet {
+  padding: 16px 16px calc(var(--sheet-pad) + 10px);
 }
-#bench-results h2 {
-  margin: 0 0 8px;
+#talk-sheet .head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#talk-sheet .portrait {
+  flex: none;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  box-shadow: var(--press);
+  background: var(--card);
+  object-fit: cover;
+  /* Faces sit in the upper part of each picture. */
+  object-position: 50% 22%;
+}
+#talk-sheet .names {
+  flex: 1;
+  min-width: 0;
+}
+#talk-sheet .names b {
+  display: block;
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+#talk-sheet .names small {
+  font-family: var(--hand);
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--ink-soft);
+}
+/* What is said, in a speech bubble with its tail toward the speaker. */
+#talk-sheet .line {
+  position: relative;
+  margin: 16px 0 14px;
+  padding: 13px 15px;
   font-size: 16px;
+  line-height: 1.42;
+  min-height: 46px;
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 14px;
+}
+#talk-sheet .line::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: 30px;
+  width: 15px;
+  height: 15px;
+  background: var(--card);
+  border-left: 1.5px solid var(--ink);
+  border-top: 1.5px solid var(--ink);
+  transform: rotate(45deg);
+}
+/* Something written: a letter, a notice. On its own ruled paper, in the hand it was written in, with no tail. */
+#talk-sheet .line.written,
+#book-sheet .letter {
+  font-family: var(--hand);
+  font-size: 21px;
+  line-height: 1.22;
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(transparent 0 24.6px, rgba(43, 98, 201, 0.16) 24.6px 25.6px);
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  transform: rotate(-0.6deg);
+  box-shadow: 0 2px 0 var(--ink);
+}
+#talk-sheet .line.written::before {
+  display: none;
+}
+#talk-sheet .line .signed,
+#book-sheet .letter small {
+  display: block;
+  margin-top: 8px;
+  text-align: right;
+  font-size: 18px;
+  color: var(--ink-soft);
+}
+#book-sheet .letter {
+  margin: 0 2px 12px;
+  padding: 10px 13px;
+}
+#book-sheet .letter p {
+  margin: 0;
+}
+#book-sheet .letter:nth-child(even) {
+  transform: rotate(0.5deg);
+}
+#talk-sheet .choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+#talk-sheet .choices button {
+  flex: 1 1 auto;
+  min-height: 48px;
+  font-size: 19px;
+}
+#talk-sheet button.primary {
+  background: var(--red);
+  border-color: #7a2318;
+  color: #fff;
+  box-shadow: 0 2px 0 #7a2318;
+}
+#talk-sheet button:disabled {
+  opacity: 0.4;
+}
+
+/* --- The benchmark ------------------------------------------------------------------------ */
+
+#bench-results {
+  max-height: 80%;
+  padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
 }
 #bench-results pre {
   margin: 12px 0 0;
@@ -892,16 +1130,6 @@ body {
 #bench-results .row {
   display: flex;
   gap: 8px;
-}
-#bench-results button {
-  font: inherit;
-  font-weight: 600;
-  color: var(--ink);
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 16px;
-  min-height: 44px;
 }
 
 /* Wide screens (desktop) have room for everything on one row and a side panel. */
@@ -916,9 +1144,12 @@ body {
     bottom: 12px;
     width: 380px;
     max-height: calc(100% - 80px);
+    border: 2px solid var(--ink);
     border-radius: 18px;
   }
 }
+
+/* --- The stick, and the screens that stand in for the game -------------------------------- */
 
 .stick-base {
   position: absolute;
@@ -928,8 +1159,8 @@ body {
   height: 112px;
   margin: -56px 0 0 -56px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  border: 2px solid rgba(255, 255, 255, 0.6);
+  background: rgba(247, 241, 227, 0.2);
+  border: 2px solid rgba(247, 241, 227, 0.7);
   pointer-events: none;
 }
 .stick-knob {
@@ -939,8 +1170,10 @@ body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 1px 6px rgba(31, 42, 58, 0.25);
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  box-sizing: border-box;
+  box-shadow: 0 2px 0 var(--ink);
 }
 
 #loading,
@@ -953,15 +1186,37 @@ body {
   justify-content: center;
   text-align: center;
   padding: 24px;
-  font-size: 18px;
-  font-weight: 600;
-  background: #e6edf7;
+  font-family: var(--hand);
+  font-size: 24px;
+  background-color: var(--paper);
+  background-image: var(--grain);
 }
+/* The loading screen is the cover of the passport. */
 #loading b {
   display: block;
-  font-size: 44px;
-  letter-spacing: 0.02em;
-  margin-bottom: 6px;
+  font-family: var(--display);
+  font-size: 96px;
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: 0.06em;
+  color: var(--red);
+}
+#loading i {
+  display: block;
+  font-style: normal;
+  font-family: var(--display);
+  font-size: 19px;
+  letter-spacing: 0.22em;
+  margin: 6px 0 18px;
+  padding: 7px 0 4px;
+  border-top: 2px solid var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+#rotate {
+  font-family: var(--display);
+  font-size: 30px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 #fatal {
   font: 13px/1.5 ui-monospace, Menlo, monospace;

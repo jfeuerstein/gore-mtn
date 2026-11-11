@@ -148,6 +148,15 @@ export function tintColour(a: number, b: number): number {
   return (ch(16) << 16) | (ch(8) << 8) | ch(0);
 }
 
+/** A colour moved part of the way toward another. */
+function mixTo(a: number, b: number, t: number): number {
+  const ch = (shift: number): number => {
+    const x = (a >> shift) & 255;
+    return Math.round(x + (((b >> shift) & 255) - x) * t);
+  };
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 /**
  * A palette as the season wears it. The palettes are tuned for snow, which is the game's first
  * look; the other seasons keep their light and sky, and recolour the land the light falls on.
@@ -162,9 +171,18 @@ export function seasonPalette(p: Palette, season: Season): Palette {
   if (!look.snow) {
     // A tyre's line in the grass, lit like the ground around it.
     out.track = tintColour(p.snowTint, look.track);
-    // Bare ground throws back less light than snow; lift the fill a little so shade and night stay readable.
-    out.ambientIntensity = p.ambientIntensity * 1.18;
   }
+  // Moonlight and dusk are tuned for snow, which throws nearly all of it back. Grass, leaves and
+  // bare ground throw back far less, and almost none of the blue, so the same light leaves them
+  // murky. Out of winter the fill is lifted, more the darker it gets, and the night's light is
+  // drawn toward white so that green stays green and gold stays gold.
+  const dark = Math.min(1, Math.max(0, p.lamps));
+  const bare = look.snow ? 0.5 : 1;
+  out.ambientIntensity = p.ambientIntensity * (1 + bare * (0.18 + 0.75 * dark));
+  out.ambientSky = mixTo(p.ambientSky, 0xd6dcec, bare * 0.55 * dark);
+  out.ambientGround = mixTo(p.ambientGround, 0x8a8f9c, bare * 0.5 * dark);
+  out.lightColour = mixTo(p.lightColour, 0xe6eaff, bare * 0.4 * dark);
+  out.lightIntensity = p.lightIntensity * (1 + bare * 0.6 * dark);
   return out;
 }
 

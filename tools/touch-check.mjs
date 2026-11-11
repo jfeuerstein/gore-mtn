@@ -372,7 +372,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 22 + 3 + 4 + 11 + 12 + 14, inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 26 + 3 + 4 + 19 + 12 + 14, inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -500,7 +500,7 @@ try {
     return { said, buttons: await tp.locator('#talk-sheet .choices button').allTextContents() };
   };
 
-  await goTo(person('june').x + 1.5, person('june').z + 3);
+  await goTo(person('june').x + 0.8, person('june').z + 0.8);
   check('standing by someone offers to talk to them by name', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Talk to June'));
   await tp.tap('#talk-button');
   check('talking opens a sheet with their name', (await tp.locator('#talk-sheet').isVisible()) && (await tp.locator('#talk-sheet .names b').textContent()) === 'June');
@@ -537,11 +537,41 @@ try {
   check('standing at a stop offers the shuttle', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Take the shuttle'));
   await tp.tap('#talk-button');
   const fares = await tp.locator('#talk-sheet .choices button').allTextContents();
-  check('it goes to the Ski Bowl and to town', fares.join() === 'Ski Bowl,North Creek,Not now', fares.join());
+  check('it goes to the Ski Bowl, to town and out to the garnet mine', fares.join() === 'Ski Bowl,North Creek,Garnet Mine,Not now', fares.join());
   await tp.locator('#talk-sheet .choices button', { hasText: 'North Creek' }).tap();
   const inTown = await townState();
   check('and sets the player down at the depot', Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z) < 12, `${Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z).toFixed(1)} m from the stop`);
   check('walking off puts the sheet away', !(await tp.locator('#talk-sheet').isVisible()));
+
+  // The town's named places: the postmistress has a letter, the board has notices, and the dog can be petted.
+  const invites = (text) => townSettle((want) => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === want, text);
+  await goTo(person('dot').x + 0.8, person('dot').z + 0.8);
+  check('the postmistress stands outside the post office', await invites('Talk to Dot'));
+  await tp.tap('#talk-button');
+  check('her picture is on the sheet', await townSettle(() => {
+    const img = document.querySelector('#talk-sheet .portrait');
+    return img !== null && img.complete && img.naturalWidth > 0 && !img.hidden;
+  }));
+  let letter = false;
+  for (let i = 0; i < 6 && !letter; i++) {
+    letter = (await tp.locator('#talk-sheet .line.written').count()) === 1;
+    const next = tp.locator('#talk-sheet .choices button', { hasText: /^Next$/ });
+    if (letter || (await next.count()) === 0) break;
+    await next.tap();
+  }
+  const letterLook = letter ? await tp.locator('#talk-sheet .line.written').evaluate((el) => ({ font: getComputedStyle(el).fontFamily, signed: el.querySelector('.signed')?.textContent ?? '' })) : null;
+  check('she hands over the day\'s letter, in handwriting and signed', letter && /Caveat/.test(letterLook.font) && letterLook.signed.length > 2, JSON.stringify(letterLook));
+  await tp.locator('#talk-sheet .choices button').last().tap();
+  check('the letter is kept in the book', (await townState()).book.letters === 1);
+  await goTo(person('notices').x + 0.8, person('notices').z + 0.8);
+  check('the noticeboard outside the town hall can be read', (await invites('Read the noticeboard')) || (await invites('Read the notices')), await tp.locator('#talk-button').textContent());
+  await tp.tap('#talk-button');
+  check('its notices are written out', (await tp.locator('#talk-sheet .line.written').count()) === 1);
+  await tp.locator('#talk-sheet .choices button').last().tap();
+  await goTo(person('biscuit').x + 0.8, person('biscuit').z + 0.8);
+  check('the dog at the Saddle Lodge can be petted', await invites('Pet Biscuit'));
+  await tp.tap('#talk-button');
+  check('and is a good dog', await townSettle(() => [...document.querySelectorAll('.toast')].some((t) => /Good dog/.test(t.textContent))));
   await town.context.close();
 
   // The Snow Train: with the pass, Conductor Bea takes the player to another season, and home again.

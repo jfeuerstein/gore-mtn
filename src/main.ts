@@ -1,3 +1,5 @@
+import '@fontsource/bebas-neue/latin-400.css';
+import '@fontsource/caveat/latin-600.css';
 import * as THREE from 'three/webgpu';
 import { Sound } from './audio/sound';
 import { parseConfig, withParams } from './config';
@@ -11,12 +13,12 @@ import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './loo
 import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { conditionsNow } from './game/passport';
-import { PEOPLE } from './game/people';
+import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book } from './ui/book';
-import { TalkSheet, type Choice } from './ui/talk';
+import { TalkSheet, type Choice, type Written } from './ui/talk';
 import { Toasts } from './ui/toasts';
 import { TrailMap } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
@@ -34,11 +36,16 @@ import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
 import { houseHeight, Town } from './world/town';
+import { buildSignPosts } from './world/signPosts';
+import { buildSigns } from './world/signs';
+import { TownPlaces, townPlaceHeight } from './world/townKit';
+import { trailSignPosts } from './world/trailSigns';
+import { resolveTownPlaces, townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
 import { Walls, type WallBox } from './world/walls';
-import { locate } from './world/whereabouts';
+import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 
 const M_TO_FT = 3.28084;
@@ -190,8 +197,12 @@ async function boot(): Promise<void> {
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Trees keep out of lift corridors and stand back from buildings.
+  // The places with a name and a look of their own: the inn, the post office, the old mine works.
+  const townPlaces = resolveTownPlaces(world);
+  const styled = new Set(townPlaces.map((p) => p.building));
   const nearBuilding = (x: number, z: number): boolean =>
-    world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30));
+    world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30)) ||
+    townPlaces.some((p) => Math.hypot(p.x - x, p.z - z) < Math.max(p.w, p.d) / 2 + 7 || Math.hypot(p.door.x - x, p.door.z - z) < 11);
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
   const trees = new Forest(
@@ -203,16 +214,31 @@ async function boot(): Promise<void> {
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
   const buildings = new Buildings(world.places, shadows, look.roof);
-  const town = new Town(world.buildings, shadows, look.roof);
+  // Every other building is one of the town's plain houses.
+  const plain = world.buildings.filter((_, i) => !styled.has(i));
+  const town = new Town(plain, shadows, look.roof);
+  const townNamed = new TownPlaces(townPlaces, shadows, look.roof);
   const liftCars = new LiftCars(liftPaths, shadows);
-  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group, town.group);
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group, town.group, townNamed.group);
+  // Signs: the town's shopfronts, a board at the top of every trail and a name at the foot of every lift.
+  // All of them are painted onto one sheet, a moment after the rest, once the lettering has loaded.
+  const signPosts = buildSignPosts(
+    trailSignPosts(world.trails, world.lifts, (x, z) => ground.heightAt(x, z), (x, z) => world.onTrail(x, z)),
+    (x, z) => ground.heightAt(x, z),
+    shadows,
+  );
+  scene.add(signPosts.mesh);
+  void buildSigns([...townNamed.signs, ...signPosts.signs]).then((mesh) => {
+    if (mesh) scene.add(mesh);
+  });
   // Buildings are solid: the lodges and huts by their models' footprints, the town by its plots.
   const walls = new Walls([
     ...world.places.flatMap((p): WallBox[] => {
       const size = PLACE_FOOTPRINT[p.id];
       return size ? [{ x: p.x, z: p.z, w: size[0], d: size[1], turn: 0, top: p.y + (PLACE_HEIGHT[p.id] ?? 8) }] : [];
     }),
-    ...world.buildings.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + houseHeight(b) })),
+    ...plain.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + houseHeight(b) })),
+    ...townPlaces.map((p): WallBox => ({ x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn, top: p.y + townPlaceHeight(p.style, p.w, p.d) })),
   ]);
   /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
   const bumpAt = (x: number, z: number, radius: number) => {
@@ -238,7 +264,12 @@ async function boot(): Promise<void> {
       paths: world.paths,
       openAt: (x, z) => world.openAt(x, z),
       country: countryOf(world),
-      spots: [...world.spots, ...world.ponds],
+      spots: namedSpots(world),
+      // Places a rumoured stone may lie: the lookouts, the ponds and the old workings, each resolved to ground that can be stood on.
+      rumourSpots: [...world.spots.filter((sp) => sp.kind === 'viewpoint' || sp.kind === 'quarry'), ...world.ponds.filter((sp) => ['rabbit-pond', 'duck-pond', 'north-creek-reservoir'].includes(sp.id))].flatMap((sp) => {
+        const at = locate(world, { spot: sp.id });
+        return at ? [{ name: sp.name, x: at.x, z: at.z }] : [];
+      }),
       minX: world.source.minX,
       minZ: world.source.minZ,
       trailDistance: (x, z) => world.trailDistance(x, z),
@@ -301,6 +332,15 @@ async function boot(): Promise<void> {
 
   const start = world.places.find((p) => p.id === cfg.at) ?? baseLodge ?? world.places[0];
   if (start) teleport(start);
+  // `at` may also name one of the town's places: stand across the street from its front door.
+  const startDoor = townPlaces.find((p) => p.id === cfg.at);
+  if (startDoor) {
+    const back = startDoor.d / 2 + 16;
+    player.place(startDoor.x + Math.sin(startDoor.turn) * back, startDoor.z + Math.cos(startDoor.turn) * back, ground);
+    follow.faceToward(player.position.x, player.position.z, startDoor.x, startDoor.z);
+    player.face(follow.yaw);
+    fillScene = true;
+  }
   if (cfg.pos) player.place(cfg.pos.x, cfg.pos.z, ground);
   if (cfg.yaw !== null) {
     follow.yaw = cfg.yaw;
@@ -342,7 +382,20 @@ async function boot(): Promise<void> {
     }
     return { x, y: ground.heightAt(x, z), z };
   };
+  // Someone described as being at one of the town's named places stands by its front door,
+  // a step to one side, and the next to arrive stands on the other.
+  const atDoor = new Map<string, number>();
   const standings = PEOPLE.flatMap((person): Standing[] => {
+    const described = 'spot' in person.at || 'road' in person.at ? locate(world, person.at) : null;
+    const keeps = described && townPlaceAt(townPlaces, described.x, described.z);
+    if (keeps) {
+      const taken = atDoor.get(keeps.id) ?? 0;
+      atDoor.set(keeps.id, taken + 1);
+      const aside = (taken % 2 === 0 ? 1 : -1) * (2.4 + Math.floor(taken / 2) * 2.4);
+      const x = keeps.door.x + Math.cos(keeps.turn) * aside;
+      const z = keeps.door.z - Math.sin(keeps.turn) * aside;
+      return [{ person, x, y: ground.heightAt(x, z), z }];
+    }
     const at = standAt(person.at);
     return at ? [{ person, ...at }] : [];
   });
@@ -357,6 +410,9 @@ async function boot(): Promise<void> {
     const at = standAt({ place: id as string }, 13, 7);
     return at ? [{ id: id as string, name: name as string, ...at }] : [];
   });
+  // And out to the old garnet mine, where the tours have always gone by bus.
+  const mineStop = standAt({ spot: 'gore-mt-mineral-shop' }, 12, 8);
+  if (mineStop) stops.push({ id: 'mine', name: 'the Garnet Mine', ...mineStop });
   scene.add(folk.group, keepsakes.group, buildStops(stops, shadows));
   player.setOutfit(game.outfit());
   book.onWear = () => player.setOutfit(game.outfit());
@@ -379,9 +435,17 @@ async function boot(): Promise<void> {
     location.assign(withParams(location.search, { season: null, at: null, pos: depot ? `${depot.x.toFixed(1)},${(depot.z + 6).toFixed(1)}` : null, ski: null }) || location.pathname);
   };
 
+  /** What there is to remark on just now: the weather first, then the hour. */
+  const moodNow = (): Mood | null => {
+    if (weather.snowing > 0.3) return look.falling === 'snow' ? 'snowing' : 'raining';
+    return watch === 'day' ? null : watch;
+  };
+
   const talkTo = (standing: Standing): void => {
-    const talk = game.talk(standing.person.id, today, season);
+    const talk = game.talk(standing.person.id, today, season, moodNow());
     if (!talk) return;
+    // A dog is not talked to. He is petted, and once a day it counts.
+    if (standing.person.kind === 'dog' && game.pet(today)) talk.events.push({ kind: 'sighting', title: standing.person.name, detail: 'Good dog' });
     announce(talk.events);
     if (talk.events.some((e) => e.kind === 'gear')) book.refresh();
     const choices: Choice[] = [];
@@ -405,7 +469,17 @@ async function boot(): Promise<void> {
       }
       talk.lines.push(`Where to? It is ${SEASON_NAME[season].toLowerCase()} here.`);
     }
-    talkSheet.open(talk.person.name, talk.person.role, talk.lines, choices);
+    const lines: (string | Written)[] = [...talk.lines];
+    // A letter is read on the spot, in the hand it was written in.
+    if (talk.letter) lines.push({ written: talk.letter.text, signed: talk.letter.signed });
+    const board = talk.person.kind === 'board';
+    talkSheet.open(
+      board ? 'The noticeboard' : talk.person.name,
+      talk.person.role,
+      board ? lines.map((line) => (typeof line === 'string' ? { written: line } : line)) : lines,
+      choices,
+      board ? null : `${import.meta.env.BASE_URL}art/people/${talk.person.id}.webp`,
+    );
   };
 
   const rideShuttle = (from: Stop): void => {
@@ -525,6 +599,7 @@ async function boot(): Promise<void> {
     snowfall.setAmount(air.amount);
     buildings.setLamps(palette.lamps);
     town.setLamps(palette.lamps);
+    townNamed.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -741,7 +816,7 @@ async function boot(): Promise<void> {
     else hud.setAction(null);
     if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
     if (someone) hint('talk', 'Someone to talk to', 'A gold mark overhead means they have something for you.');
-    if (someone) hud.setTalk(`Talk to ${someone.person.name}`, () => talkTo(someone));
+    if (someone) hud.setTalk(`${APPROACH[someone.person.kind ?? 'person']} ${someone.person.name}`, () => talkTo(someone));
     else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
     else hud.setTalk(null);
     // On a lift the camera levels out to take in the mountain ahead, then goes back to how the

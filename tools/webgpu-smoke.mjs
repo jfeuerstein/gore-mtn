@@ -29,7 +29,9 @@ let lostAfter = null;
   const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
   const note = (text) => {
     // Expected here: the instance is dropped once Chromium fails to present the canvas.
-    if (/Instance dropped/.test(text)) return;
+    // three.js also reports the loss itself, when it hears of it in time. The loss is recorded
+    // separately below (`lostAfter`), so its announcement is not a shader or pipeline problem.
+    if (/Instance dropped|WebGPU Device Lost|external Instance reference/.test(text)) return;
     if (/pipeline|shader|WGSL|WebGPU|validation|GPUValidationError/i.test(text)) problems.push(text.slice(0, 400));
   };
   page.on('console', (m) => {

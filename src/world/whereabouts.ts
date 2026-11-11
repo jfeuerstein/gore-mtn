@@ -26,18 +26,49 @@ function lineLength(pts: readonly number[]): number {
   return total;
 }
 
-/** The nearest dry ground to a point: the point itself unless it is in water, then the closest shore. */
-function dryLand(world: World, x: number, z: number): { x: number; z: number } {
-  if (world.openAt(x, z) !== OPEN_WATER) return { x, z };
-  for (let r = 6; r <= 240; r += 6) {
+/** A name as an id: lower case, words joined by hyphens. The same rule the terrain pipeline uses. */
+export function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .split(' ')
+    .join('-');
+}
+
+/** Ground steeper than this is no place to stand about, in degrees. */
+const TOO_STEEP = 16;
+
+/**
+ * The nearest ground to a point where someone could stand: dry, and not on a steep face. The
+ * point itself if it will do; otherwise the closest that will. A pond's middle becomes its
+ * shore, and the bottom of a quarry becomes its rim.
+ */
+function standable(world: World, x: number, z: number): { x: number; z: number } {
+  const good = (px: number, pz: number): boolean => world.openAt(px, pz) !== OPEN_WATER && world.source.slopeDegAt(px, pz) < TOO_STEEP;
+  if (good(x, z)) return { x, z };
+  for (let r = 6; r <= 300; r += 6) {
     for (let i = 0; i < 16; i++) {
       const a = (i / 16) * Math.PI * 2;
-      const px = x + Math.cos(a) * r;
-      const pz = z + Math.sin(a) * r;
-      if (world.openAt(px, pz) !== OPEN_WATER) return { x: px + Math.cos(a) * 4, z: pz + Math.sin(a) * 4 };
+      // A step past the edge, so as not to stand on the brink.
+      const px = x + Math.cos(a) * (r + 4);
+      const pz = z + Math.sin(a) * (r + 4);
+      if (good(x + Math.cos(a) * r, z + Math.sin(a) * r) && good(px, pz)) return { x: px, z: pz };
     }
   }
   return { x, z };
+}
+
+/**
+ * Everything on the map with a name and a single position: lookouts and shops, ponds, and the
+ * buildings that have names. Buildings go by the name written as an id (`slug`).
+ */
+export function namedSpots(world: World): { id: string; name: string; x: number; z: number }[] {
+  return [
+    ...world.spots,
+    ...world.ponds,
+    ...world.buildings.flatMap((b) => (b.name === undefined ? [] : [{ id: slug(b.name), name: b.name, x: b.x, z: b.z }])),
+  ].map((s) => ({ id: s.id, name: s.name, x: s.x, z: s.z }));
 }
 
 /**
@@ -52,11 +83,14 @@ export function locate(world: World, at: Whereabouts): { x: number; z: number } 
     const [w, d] = PLACE_FOOTPRINT[place.id] ?? [8, 6];
     // By the door, which is on the south wall a little west of the middle; a tower has none, so
     // just south of it. The depot's platform and its roof posts run along that side, so stand beyond them.
-    return { x: place.x - w * 0.12 + 3, z: place.z + d / 2 + (place.id === 'depot' ? 10.5 : 4.5) };
+    return { x: place.x - w * 0.12 + 3 + (at.aside ?? 0), z: place.z + d / 2 + (place.id === 'depot' ? 10.5 : 4.5) };
   }
   if ('spot' in at) {
     const spot = [...world.spots, ...world.ponds].find((s) => s.id === at.spot);
-    return spot ? dryLand(world, spot.x + 5, spot.z + 3) : null;
+    if (spot) return standable(world, spot.x + 5, spot.z + 3);
+    // A building with a name: by its front, on the side its longer wall faces the nearest road... or simply south of it.
+    const building = world.buildings.find((b) => b.name !== undefined && slug(b.name) === at.spot);
+    return building ? standable(world, building.x, building.z + Math.max(building.w, building.d) / 2 + 5) : null;
   }
   if ('lift' in at) {
     const lift = world.lifts.find((l) => l.name === at.lift);
