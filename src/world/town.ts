@@ -38,8 +38,17 @@ export class Town {
   constructor(buildings: readonly Footprint[], castShadow: boolean, roofColour: number) {
     this.group.name = 'town';
     if (buildings.length === 0) return;
-    const wallGeo = blocks([{ size: [1, WALL_SHARE, 1], at: [0, WALL_SHARE / 2, 0], colour: 0xffffff }]);
-    const roofGeo = placed(roof(1.08, 1.12, 1 - WALL_SHARE, 0xffffff, 0xd8d8d8), 0, WALL_SHARE, 0);
+    // The walls go on down below the floor, so a house on a slope has no gap under its lower side.
+    // A door on each long side, darker than the paint; a chimney that goes with the roof.
+    const wallGeo = blocks([
+      { size: [1, WALL_SHARE + 0.3, 1], at: [0, (WALL_SHARE - 0.3) / 2, 0], colour: 0xffffff },
+      { size: [0.13, WALL_SHARE * 0.56, 0.02], at: [0.02, WALL_SHARE * 0.28 + 0.05, 0.505], colour: 0x6a5648 },
+      { size: [0.13, WALL_SHARE * 0.56, 0.02], at: [0, WALL_SHARE * 0.28 + 0.05, -0.505], colour: 0x6a5648 },
+    ]);
+    const roofGeo = blocks(
+      [{ size: [0.09, 0.26, 0.11], at: [0.3, WALL_SHARE + 0.24, -0.12], colour: 0xb07a68 }],
+      [placed(roof(1.08, 1.12, 1 - WALL_SHARE, 0xffffff, 0xd8d8d8), 0, WALL_SHARE, 0)],
+    );
     const panes: Block[] = [];
     for (const side of [-1, 1]) {
       for (const along of [-0.26, 0.26]) panes.push({ size: [0.14, 0.2, 0.02], at: [along, WALL_SHARE * 0.56, side * 0.505], colour: 0xffffff });

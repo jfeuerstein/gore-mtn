@@ -1,13 +1,41 @@
 import * as THREE from 'three/webgpu';
 import { BODY, hipHeight, type Pose } from './pose';
 
+/**
+ * What makes one person on the mountain look unlike the next: a face in place of the player's
+ * goggles, hair, a beard, an apron. All optional, all colours as hex.
+ */
+export interface Features {
+  /** Skin, if not the usual. */
+  skin?: number;
+  /** Hair showing below the hat, and how it is worn. */
+  hair?: number;
+  hairStyle?: 'short' | 'long' | 'braid' | 'bun' | 'curls';
+  beard?: number;
+  moustache?: number;
+  glasses?: boolean;
+  /** A bib apron over the coat. */
+  apron?: number;
+  /** A white cross on chest and back, as ski patrol wear. */
+  cross?: boolean;
+  /** A shawl over the shoulders. */
+  shawl?: number;
+  /** Brass buttons down the front, as on a uniform. */
+  buttons?: boolean;
+  /** How tall they stand against a grown-up, 1 if not given, and how broad. */
+  height?: number;
+  girth?: number;
+}
+
 /** What a figure wears: colours of jacket, trousers and hat, and the shape of the hat. */
 export interface Outfit {
   jacket: number;
   hat: number;
-  /** beanie, trapper, toque, ranger, cap or lamp. */
+  /** beanie, trapper, toque, ranger, cap, lamp, tophat, helmet, antlers, propeller or straw. */
   style: string;
   trousers?: number;
+  /** A face and features of their own. The player has none: goggles, and that is all. */
+  features?: Features;
 }
 
 /**
@@ -98,7 +126,47 @@ export class Skier {
     const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.1, 8), cream);
     scarf.position.y = 0.01;
     const goggles = box(0.3, 0.08, 0.08, dark, 0, 0.19, -0.16);
-    head.add(face, scarf, goggles);
+    head.add(face, scarf);
+    const f = outfit.features;
+    if (!f) {
+      head.add(goggles);
+    } else {
+      // A face: two eyes, and whatever else is theirs. The head is 0.19 across the cheek, its middle at 0.17.
+      if (f.skin !== undefined) skin.color.setHex(f.skin);
+      head.add(box(0.04, 0.05, 0.03, dark, -0.07, 0.2, -0.175), box(0.04, 0.05, 0.03, dark, 0.07, 0.2, -0.175));
+      if (f.glasses) {
+        const rim = mat(0x3a2e26);
+        head.add(box(0.11, 0.09, 0.015, rim, -0.075, 0.2, -0.192), box(0.11, 0.09, 0.015, rim, 0.075, 0.2, -0.192), box(0.07, 0.05, 0.02, cream, -0.075, 0.2, -0.197), box(0.07, 0.05, 0.02, cream, 0.075, 0.2, -0.197), box(0.05, 0.015, 0.015, rim, 0, 0.21, -0.192));
+        head.add(box(0.03, 0.035, 0.03, dark, -0.075, 0.2, -0.205), box(0.03, 0.035, 0.03, dark, 0.075, 0.2, -0.205));
+      }
+      if (f.moustache !== undefined) head.add(box(0.17, 0.045, 0.04, mat(f.moustache), 0, 0.115, -0.185));
+      if (f.beard !== undefined) head.add(box(0.26, 0.15, 0.12, mat(f.beard), 0, 0.055, -0.125), box(0.3, 0.12, 0.1, mat(f.beard), 0, 0.09, -0.06));
+      if (f.hair !== undefined) {
+        const hair = mat(f.hair);
+        const style = f.hairStyle ?? 'short';
+        if (style === 'short') head.add(box(0.37, 0.13, 0.2, hair, 0, 0.15, 0.09));
+        else if (style === 'curls') head.add(box(0.47, 0.2, 0.3, hair, 0, 0.15, 0.05), box(0.4, 0.14, 0.14, hair, 0, 0.05, 0.14));
+        else head.add(box(0.38, 0.3, 0.15, hair, 0, 0.07, 0.13));
+        if (style === 'braid') head.add(box(0.075, 0.42, 0.075, hair, 0.09, -0.2, 0.2), box(0.09, 0.05, 0.09, mat(0xc8402d), 0.09, -0.4, 0.2));
+        if (style === 'bun') head.add(box(0.15, 0.15, 0.13, hair, 0, 0.2, 0.24));
+      }
+      // On the coat: the coat is about 0.23 from middle to front at chest height.
+      if (f.apron !== undefined) {
+        const apron = mat(f.apron);
+        this.torso.add(box(0.3, 0.46, 0.03, apron, 0, 0.22, -0.265), box(0.2, 0.14, 0.03, apron, 0, 0.5, -0.235), box(0.5, 0.04, 0.5, apron, 0, 0.2, 0));
+      }
+      if (f.cross) {
+        for (const z of [-0.255, 0.35]) this.torso.add(box(0.17, 0.055, 0.02, cream, 0, 0.42, z), box(0.055, 0.17, 0.02, cream, 0, 0.42, z));
+      }
+      if (f.buttons) {
+        const brass = mat(0xe2b94a);
+        for (const y of [0.16, 0.3, 0.44]) this.torso.add(box(0.045, 0.045, 0.03, brass, 0, y, -0.26 + (y - 0.16) * 0.08));
+      }
+      if (f.shawl !== undefined) {
+        const shawl = mat(f.shawl);
+        this.torso.add(box(0.66, 0.16, 0.5, shawl, 0, 0.5, 0.02), box(0.5, 0.2, 0.06, shawl, 0, 0.36, 0.3));
+      }
+    }
     this.torso.add(head);
     for (const side of [-1, 1]) {
       const shoulder = new THREE.Group();
@@ -124,6 +192,8 @@ export class Skier {
       this.poles.push(pole);
     }
     this.rig.add(this.torso);
+    // Children are short, cooks are broad.
+    if (f?.height !== undefined || f?.girth !== undefined) this.root.scale.set(f.girth ?? 1, f.height ?? 1, f.girth ?? 1);
     this.root.add(this.rig);
 
     // The bike: two wheels, a frame of straight tubes, bars and a saddle. It faces -z like the rider.

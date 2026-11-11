@@ -59,7 +59,7 @@ describe('patches', () => {
     const full = {
       ...tally,
       summary: { ...s, tasted: s.tastedTotal, read: s.readTotal, trails: s.trailsTotal, paths: s.pathsTotal, lifts: s.liftsTotal, peaks: s.peaksTotal, seasonPeaks: s.seasonPeaksTotal, landmarks: s.landmarksTotal, seasons: 4, conditions: s.conditionsTotal, minerals: s.mineralsTotal, species: s.speciesTotal, errands: s.errandsTotal, letters: s.lettersTotal },
-      save: { ...tally.save, minerals: { garnet: { count: 50, best: 22, first: DAY } }, sightings: { rumor: { count: 1, first: DAY } }, pets: ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'] },
+      save: { ...tally.save, rounds: ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05'], minerals: { garnet: { count: 50, best: 22, first: DAY } }, sightings: { rumor: { count: 1, first: DAY } }, pets: ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07'] },
       trails: Object.fromEntries(Object.entries(tally.trails).map(([k, t]) => [k, { done: t.total, total: t.total }])) as typeof tally.trails,
       biggest: 22,
     };

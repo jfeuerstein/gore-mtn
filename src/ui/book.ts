@@ -4,7 +4,7 @@ import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
 import { LETTERS } from '../game/letters';
 import { OFFERINGS } from '../game/offerings';
 import { PATCHES } from '../game/patches';
-import { ERRANDS, GEAR, personById } from '../game/people';
+import { ERRANDS, GEAR, personById, TOWN_ROUND } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
 import { DIFFICULTY_MARK } from '../world/trails';
@@ -65,6 +65,9 @@ export class Book {
   onOpen: (() => void) | null = null;
   /** Called when the player changes what they are wearing. */
   onWear: (() => void) | null = null;
+
+  /** Today's date, as the game reckons it, for what resets each day. Set by whoever owns the clock. */
+  today: () => string = () => '';
 
   constructor(private readonly game: Game) {
     this.sheet = el('div');
@@ -310,6 +313,16 @@ export class Book {
       }
       out.push(row);
     }
+    // The town round: a punch for each door called at today.
+    const today = game.save.round.who;
+    const round = el('div', `stamp round ${TOWN_ROUND.every((r) => today.includes(r.who)) ? 'earned' : 'todo'}`);
+    round.appendChild(el('b', '', 'The town round'));
+    round.appendChild(el('small', '', game.save.rounds.length === 0 ? 'Call at every door in North Creek in one day.' : `Done on ${game.save.rounds.length} day${game.save.rounds.length === 1 ? '' : 's'}. Today:`));
+    const punches = el('span', 'pips');
+    for (const r of TOWN_ROUND) punches.appendChild(el('i', game.save.round.day === this.today() && today.includes(r.who) ? 'on' : '', r.door));
+    round.appendChild(punches);
+    out.push(el('h3', '', 'North Creek'));
+    out.push(round);
     // What the town has handed over: a menu ticked off, and a library card stamped.
     for (const [title, kinds, hint] of [
       ['Tasted', ['bake', 'sandwich'], "June's bakery and Walt's deli on Main Street each have something new every day."],

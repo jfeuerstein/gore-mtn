@@ -3,6 +3,7 @@ import { fromLocal } from './footprints';
 import type { Car } from './railway';
 import { blocks, placed, type Block } from './shapes';
 import type { SignSpec } from './signs';
+import type { Flue } from './smoke';
 
 /**
  * The Snow Train, standing at the North Creek depot: a small black engine with a garnet-red cab,
@@ -100,7 +101,12 @@ function coach(length: number, roofColour: number): { list: Block[]; panes: Bloc
  * @param heightAt the height of the ground, so each car sits on its own stretch of track
  * @param roofColour snow in winter, dark otherwise
  */
-export function buildTrain(cars: readonly Car[], heightAt: (x: number, z: number) => number, roofColour: number): { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[] } {
+export function buildTrain(
+  cars: readonly Car[],
+  heightAt: (x: number, z: number) => number,
+  roofColour: number,
+): { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[]; flues: Flue[] } {
+  const flues: Flue[] = [];
   const walls: THREE.BufferGeometry[] = [];
   const panes: THREE.BufferGeometry[] = [];
   const signs: SignSpec[] = [];
@@ -110,6 +116,8 @@ export function buildTrain(cars: readonly Car[], heightAt: (x: number, z: number
     const y = heightAt(car.x, car.z) + 0.05;
     walls.push(placed(blocks(model.list), car.x, y, car.z, car.turn));
     if (model.panes.length > 0) panes.push(placed(blocks(model.panes), car.x, y, car.z, car.turn));
+    // The engine is in steam, whatever the season.
+    if (car.kind === 'engine') flues.push({ ...fromLocal(car, 3.1, 0), y: y + 5, size: 1.5 });
     if (car.kind === 'coach') {
       // Its name along both sides, in gold on green.
       for (const side of [1, -1]) {
@@ -118,5 +126,5 @@ export function buildTrain(cars: readonly Car[], heightAt: (x: number, z: number
       }
     }
   }
-  return { walls, panes, signs };
+  return { walls, panes, signs, flues };
 }

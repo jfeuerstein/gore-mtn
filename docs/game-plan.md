@@ -541,6 +541,18 @@ then models, a real town, sillier characters and a cohesive interface).
   Sven the instructor, Bram the groomer with his snowcat, Ivy on patrol with her sled, Madame
   Flurry who foretells the weather afterwards, Biscuit the dog, Mayor Pickles (a cat), and Tom,
   who is a snowman in winter and a scarecrow in summer. Seven more errands and five more hats.
+- **Dressed for the season.** Wreaths and strings of lights on the town's doors in winter,
+  tubs of flowers in spring and summer, pumpkins in the fall. Lamps down Main Street that come
+  on at dusk, benches, and a welcome sign at each end of town.
+- **Lift stations.** Every chairlift and the gondola now have a housing over the wheel at each
+  end and a shack for the attendant at the bottom. (And all the lifts on the mountain now cost
+  four draw calls, where they cost sixty-nine.)
+- **Postcards.** The passport's twenty landmarks are postcards: blank until visited.
+- **The town round.** Calling at the post office, the inn, the bakery, the deli and the library
+  in one day punches a card on the Pack page; rounds are counted, and five earn a patch.
+- **They notice your hat.** Eighteen people have something to say about a hat or jacket they
+  know, once a day. The trail map marks anyone who is waiting for you with a gold diamond.
+  The Snow Train whistles twice before it leaves.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

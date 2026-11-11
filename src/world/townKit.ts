@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
 import { blocks, placed, roof, type Block } from './shapes';
 import type { SignSpec } from './signs';
+import type { Flue } from './smoke';
 import type { TownPlace, TownStyle } from './townPlaces';
 
 /**
@@ -33,6 +34,8 @@ interface Kit {
   /** Height at which the sign hangs, and how tall it stands, in metres. */
   signY: number;
   signH: number;
+  /** The tops of its chimneys, in its own frame, for smoke to rise from. */
+  flues?: [number, number, number][];
 }
 
 /** A four-sided point: a spire, or the cap of a cupola. Its base sits at y = 0. */
@@ -121,6 +124,7 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
       kit.panes.push({ size: [1.2, 1, 0.14], at: [x, 0.7 + h + 1.3, p.d * 0.24 + 1.22], colour: 0xffffff });
     }
     for (const sx of [-1, 1]) kit.list.push({ size: [1.3, h + 5, 1.3], at: [sx * p.w * 0.4, 0.7 + (h + 5) / 2, -p.d * 0.1], colour: BRICK });
+    kit.flues = [-1, 1].map((sx): [number, number, number] => [sx * p.w * 0.4, 0.7 + h + 5.2, -p.d * 0.1]);
     kit.panes.push(...windows(p.w, p.d, floors, 3.1, 0.7));
     kit.signY = 4.6;
     kit.signH = 1.1;
@@ -228,6 +232,7 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
     porch(kit, Math.min(p.w, 7), p.d, roofOf(r, 0x5c6672), 2.2);
     kit.panes.push(...windows(p.w, p.d, 2, 2.8, 0.7));
     kit.list.push({ size: [1, 3.4, 1], at: [p.w * 0.3, 0.7 + 5.6 + 1.7, 0], colour: BRICK });
+    kit.flues = [[p.w * 0.3, 0.7 + 5.6 + 3.6, 0]];
     kit.signY = 3.9;
     kit.signH = 0.7;
     return kit;
@@ -253,6 +258,7 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
     porch(kit, p.w * 0.9, p.d, roofOf(r, 0x3f5a4a), 2.4);
     kit.panes.push(...windows(p.w, p.d, 1, 3, 0.7));
     kit.list.push({ size: [1.6, 0.9, 1.6], at: [p.w / 2 + 2.6, 0.45, p.d / 2 + 2.4], colour: STONE }, { size: [1, 3.6, 1], at: [-p.w * 0.3, 0.7 + 3.8 + 1.6, -p.d * 0.1], colour: STONE });
+    kit.flues = [[-p.w * 0.3, 0.7 + 3.8 + 3.6, -p.d * 0.1]];
     kit.extra.push(placed(boulder(1.25, 0x8f1d2c), p.w / 2 + 2.6, 2.05, p.d / 2 + 2.4, 0.5));
     kit.signY = 4.1;
     return kit;
@@ -279,6 +285,7 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
     porch(kit, p.w * 0.8, p.d, roofOf(r, 0x3a3430), 2.2);
     kit.panes.push(...windows(p.w, p.d, 1, 3, 0.7));
     kit.list.push({ size: [1.2, 4, 1.2], at: [p.w * 0.32, 0.7 + 4.8 + 1.6, 0], colour: STONE });
+    kit.flues = [[p.w * 0.32, 0.7 + 4.8 + 3.8, 0]];
     kit.signY = 4.3;
     return kit;
   },
@@ -357,7 +364,12 @@ function dressing(p: TownPlace, season: Season): { list: Block[]; panes: Block[]
   return { list, panes };
 }
 
-export function buildTownPlaces(places: readonly TownPlace[], roofColour: number, season: Season = 'winter'): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[] } {
+export function buildTownPlaces(
+  places: readonly TownPlace[],
+  roofColour: number,
+  season: Season = 'winter',
+): { walls: THREE.BufferGeometry; panes: THREE.BufferGeometry; signs: SignSpec[]; flues: Flue[] } {
+  const flues: Flue[] = [];
   const wallParts: THREE.BufferGeometry[] = [];
   const paneParts: THREE.BufferGeometry[] = [];
   const signs: SignSpec[] = [];
@@ -372,6 +384,12 @@ export function buildTownPlaces(places: readonly TownPlace[], roofColour: number
     const set = (geo: THREE.BufferGeometry): THREE.BufferGeometry => placed(geo, p.x, p.y - 0.5, p.z, p.turn);
     wallParts.push(set(blocks(kit.list, kit.extra)));
     if (kit.panes.length > 0) paneParts.push(set(blocks(kit.panes)));
+    // Fires are lit when it is cold: every season but summer.
+    if (season !== 'summer') {
+      const cos = Math.cos(p.turn);
+      const sin = Math.sin(p.turn);
+      for (const [lx, ly, lz] of kit.flues ?? []) flues.push({ x: p.x + lx * cos + lz * sin, y: p.y - 0.5 + ly, z: p.z - lx * sin + lz * cos, size: 1 });
+    }
     if (p.sign) {
       const out = p.d / 2 + (p.style === 'hall' ? 2.35 : 0.2);
       signs.push({
@@ -387,7 +405,7 @@ export function buildTownPlaces(places: readonly TownPlace[], roofColour: number
       });
     }
   }
-  return { walls: blocks([], wallParts), panes: blocks([], paneParts), signs };
+  return { walls: blocks([], wallParts), panes: blocks([], paneParts), signs, flues };
 }
 
 /**
@@ -402,6 +420,8 @@ export class TownPlaces {
 
   /** The signs to be painted for these places. */
   readonly signs: SignSpec[];
+  /** The tops of the chimneys that are smoking this season. */
+  readonly flues: Flue[];
 
   /**
    * @param season the doors are dressed for it
@@ -411,6 +431,7 @@ export class TownPlaces {
     this.group.name = 'town-places';
     const built = buildTownPlaces(places, roofColour, season);
     this.signs = [...built.signs, ...also.signs];
+    this.flues = built.flues;
     if (places.length === 0 && also.walls.length === 0) return;
     const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
     walls.castShadow = castShadow;

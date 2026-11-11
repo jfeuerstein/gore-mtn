@@ -24,6 +24,8 @@ node tools/touch-check.mjs                            # emulated-phone touch tes
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
 NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits and plates (needs the fal key)
+node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
+node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
 ```
 
 Run `npm test`, `npm run build`, `node tools/touch-check.mjs` and `node tools/webgpu-smoke.mjs`
@@ -44,7 +46,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby and the last announcement) and a few
@@ -143,6 +145,14 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   mesh: shopfronts, the depot's name, the train's, and a board at the top of every named trail
   and the foot of every lift (`src/world/trailSigns.ts`, pure, tested; posts in `signPosts.ts`).
   A sign is a `SignSpec`; give it a `width` for a board of a set size.
+- `TownPlaces` also takes the season, and dresses the doors for it: a wreath and a string of
+  lights in winter (the lights are in the windows mesh, so they come on at dusk), tubs of
+  flowers in spring and summer, pumpkins in fall. Lamps down Main Street, benches by the doors
+  and a welcome sign at each end of town (`src/world/streets.ts`, pure, tested;
+  `streetFurniture.ts`) are joined into the same two meshes.
+- The lifts (`src/world/scenery.ts`) are four draw calls for the whole mountain: towers and
+  crossarms instanced, every cable in one set of lines, and one mesh for the gates, the
+  stations at each end, the attendants' shacks and the carpets' belts.
 - The depot stands on the real station's plot, lengthways along the rails, and the Snow Train
   stands beside its platform (`src/world/railway.ts`, pure, tested; `train.ts` for the model).
   The train is joined into the town's meshes and is as solid as a house.
@@ -220,6 +230,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   has yet to confirm that on the phone's WebGPU.
 - `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
   announcements at the top of the screen. With `hud=0` announcements are hidden too.
+  Landmarks are postcards: blank until visited, then a picture (`public/art/places/`).
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
   is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;
   never change the meaning of an existing one. Settings can copy the book out as a save code and
@@ -243,11 +254,17 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   once and joined into a single mesh, so each costs one draw call. A gold mark hangs over anyone
   with something for the player. `src/ui/talk.ts` is the sheet they speak in, with their
   portrait; anything written (a letter, a notice) is shown as handwriting on ruled paper.
+- Each has a face and features of their own (`look.features`: hair, a beard, glasses, an apron,
+  a patrol cross, a child's height), built onto the figure by `Skier`. The player has none:
+  goggles, as ever.
 - Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted, and the
   `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
 - Someone whose whereabouts fall at one of the town's named places stands by its front door.
-- People remark on the moment (`moods`: snowing, raining, night, dawn, dusk) before small talk.
+- People remark on the moment (`moods`: snowing, raining, night, dawn, dusk) before small talk,
+  and once a day on what the player has on (`wearing`, by gear id).
+- The town round (`TOWN_ROUND`): calling at the post office, the inn, the bakery, the deli and
+  the library in one day is counted, and shown as a punch card on the Pack page.
 - The town gives small things daily, all data: a letter at the post office
   (`src/game/letters.ts`, sent once what it mentions has happened), the inn's rumour of a rare
   stone lying at a named spot (`Game.rumour`), and one new bake, sandwich or library book from
@@ -296,8 +313,8 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   pipeline's canopy picture. West is up, so the summit is at the top as on a ski map; the
   projection is `src/ui/mapView.ts` (pure, tested).
 - It shows every trail by difficulty, every lift with a ring where you board, the paths through
-  the woods as dotted lines, the main places, and an arrow for the player. Tapping a trail, lift
-  or path names it.
+  the woods as dotted lines, the main places, an arrow for the player, and a gold diamond for
+  anyone with something for the player (`TrailMap.marks`). Tapping any of them names it.
 
 ## Measuring performance
 
@@ -346,9 +363,14 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
 anything repeated; first load under 15 MB.
 
-Since that was measured, a great deal has been added (seasons, the town, wildlife, people), none
-of it yet measured on the phone. In headless runs the full forest near a lodge now draws 190 to
-270 calls, over the target above; the owner's next benchmark will say whether that matters.
+Since that was measured, a great deal has been added (seasons, the town, wildlife, people, signs,
+the train), none of it yet measured on the phone. In headless runs a view from a lodge or the
+depot draws 180 to 310 calls, over the target above; the owner's next benchmark will say
+whether that matters. `node tools/census.mjs` shows where they go: terrain tiles (252 on the
+mountain, those in view drawn) and forest patches are most of it; the player's figure is about
+twenty; the lodges, the town, the lifts, the signs and the train are a dozen between them.
+If the phone says it matters, the far terrain tiles are the place to start (join them into
+larger pieces), then the player's figure (join the parts that move together).
 
 Measured on the owner's iPhone 17 Pro (2026-11-10, Home Screen app) with the mountain at near
 life size: a steady 60 fps at every benchmark step, including the thick forest (623k triangles,

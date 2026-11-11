@@ -744,6 +744,7 @@ body {
 /* One small mark for each season a summit has been stood on in. */
 #book-sheet .pips {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-top: 5px;
 }

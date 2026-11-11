@@ -49,6 +49,7 @@ export const PATCHES: readonly (Patch & { earned(t: Tally): boolean })[] = [
   { id: 'believer', name: 'Believer', how: 'See for yourself whether it is all Lies.', earned: (t) => 'rumor' in t.save.sightings },
   { id: 'good-neighbour', name: 'Good Neighbour', how: 'Finish every errand.', earned: (t) => t.summary.errands >= t.summary.errandsTotal },
   { id: 'pen-pal', name: 'Pen Pal', how: 'Collect ten letters from the post office.', earned: (t) => t.summary.letters >= 10 },
+  { id: 'around-town', name: 'Around Town', how: 'Call at every door in North Creek in one day, on five different days.', earned: (t) => t.save.rounds.length >= 5 },
   { id: 'regular', name: 'A Regular', how: 'Try twelve things from the bakery and the deli.', earned: (t) => t.summary.tasted >= 12 },
   { id: 'bookworm', name: 'Library Card', how: 'Read every book Fenn has to lend.', earned: (t) => t.summary.read >= t.summary.readTotal },
   { id: 'good-dog', name: 'Friend of Biscuit', how: 'Pet the dog on seven different days.', earned: (t) => t.save.pets.length >= 7 },

@@ -1,4 +1,5 @@
 import type { Season } from '../look/season';
+import type { Features } from '../player/skier';
 
 /**
  * The people of the mountain and the town: who they are, where they stand, what they say, and
@@ -66,7 +67,7 @@ export interface Person {
   role: string;
   at: Whereabouts;
   /** What they wear: jacket, trousers and hat colours, and the style of hat. */
-  look: { jacket: number; trousers: number; hat: number; style: string };
+  look: { jacket: number; trousers: number; hat: number; style: string; features?: Features };
   /** Said on first meeting, and after that one of these, by season or any time. */
   hello: string;
   chat: readonly string[];
@@ -86,7 +87,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Hazel',
     role: 'Ski patrol, Base Lodge',
     at: { place: 'base-lodge' },
-    look: { jacket: 0xc8281e, trousers: 0x1f242e, hat: 0xc8281e, style: 'beanie' },
+    look: { jacket: 0xc8281e, trousers: 0x1f242e, hat: 0xc8281e, style: 'beanie', features: { hair: 0x7a4a2a, hairStyle: 'braid', cross: true } },
     wearing: {
       'jacket-patrol': 'Patrol red. People will ask you for directions now. Point uphill and look confident.',
     },
@@ -95,7 +96,15 @@ export const PEOPLE: readonly Person[] = [
       'The gondola goes to Bear Mountain, the Express to the Saddle. Either way is down from there.',
       'If you meet a tree, it wins. Gently. You will be fine.',
       'Tap the Book now and then. It is nice to see it fill up.',
+      'Lost something? Everything turns up at the Base Lodge in the end. Gloves, goggles, husbands.',
+      'People ask which trail is best. Whichever one you are smiling on.',
+      'I have swept this mountain a thousand times. It has never once been the same mountain.',
     ],
+    moods: {
+      snowing: ['It is dumping. Go. Why are you talking to me? Go.'],
+      dusk: ['Last chair soon. The light on Bear Mountain goes pink for about four minutes. Do not miss it.'],
+      night: ['Mountain is yours at night. Mind the groomers. They cannot hear you over the radio and the radio is always country.'],
+    },
     seasonal: {
       winter: ['Corduroy on Sunway this morning. Best there is.', 'Stones glint on the snow after a grooming. The cats turn them up.'],
       spring: ['Stay on the white stuff. The brown stuff is slow going on skis.'],
@@ -108,7 +117,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Otto',
     role: 'Lift attendant, Adirondack Express',
     at: { lift: 'Adirondack Express' },
-    look: { jacket: 0x2b62c9, trousers: 0x3a3430, hat: 0xd9a441, style: 'trapper' },
+    look: { jacket: 0x2b62c9, trousers: 0x3a3430, hat: 0xd9a441, style: 'trapper', features: { moustache: 0xe8e4dc, hair: 0xe8e4dc, girth: 1.08 } },
     wearing: {
       'hat-trapper': 'My spare hat! It suits you. It suited me more. But it suits you.',
       'jacket-liftie': 'The blue! Welcome to the brotherhood. We meet on Tuesdays. We do not meet on Tuesdays. There are no meetings.',
@@ -118,7 +127,16 @@ export const PEOPLE: readonly Person[] = [
       'Fourteen lifts on this hill, counting the carpets. I have ridden every one. Have you?',
       'You can see a lot of wildlife from a chair. They do not mind the lift. They mind you.',
       'I watched your last run. Seven out of ten. The seven is for enthusiasm.',
+      'A chair comes round every nine seconds. I have counted. It is all I have counted.',
+      'People wave from the chair. I wave back. That is the whole job, when you think about it.',
+      'The gondola people think they are better than us. They have doors. That is all it is. Doors.',
     ],
+    moods: {
+      snowing: ['Snow on the seats. I sweep them. You sit in it anyway. Circle of life.'],
+      night: ['Lift is stopped. I am only here because it is quiet and the shack has a heater.'],
+      dawn: ['First chair. Best chair. Nobody on it but the two of us and you are not even on it yet.'],
+      raining: ['Rain. Chairs are wet. I have a towel. It is also wet.'],
+    },
     seasonal: {
       winter: ['Cold enough for you? Good. Snow likes it.'],
       summer: ['Bikes go on the back of the chair. Do not ask me how. Trade secret.'],
@@ -129,7 +147,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Gus',
     role: 'Cook, Saddle Lodge',
     at: { place: 'saddle-lodge' },
-    look: { jacket: 0xf4f1ea, trousers: 0x2b3a55, hat: 0xf4f1ea, style: 'toque' },
+    look: { jacket: 0xf4f1ea, trousers: 0x2b3a55, hat: 0xf4f1ea, style: 'toque', features: { beard: 0x5a4636, apron: 0xb53a2a, girth: 1.15 } },
     wearing: {
       'hat-toque': 'A cook\'s hat on the hill. If anyone asks, the special is chili. It is always chili.',
     },
@@ -137,7 +155,15 @@ export const PEOPLE: readonly Person[] = [
     chat: [
       'Best view on the mountain is out that window. Second best is the chili.',
       'Everything up here comes up on a snowcat or a chairlift. Including me.',
+      'People ski four miles for this chili and then ask what is in it. Beans. Mountain. Time.',
+      'I ring the bell when the cornbread comes out. Nobody has ever heard it. The wind takes it.',
+      'Biscuit gets one sausage a day. He gets it from six different people. I have stopped counting.',
     ],
+    moods: {
+      snowing: ['Storm days I sell twice the chili. I do not make it any faster. People wait. It is good for them.'],
+      dusk: ['Kitchen closes when the light goes. The pot does not. Help yourself, bowl is on the hook.'],
+      night: ['You are up late. So is the chili. It gets better after dark, like most of us.'],
+    },
     seasonal: {
       summer: ['Blueberries on the ledges this time of year. The bears and I have an understanding.'],
       fall: ['Chanterelles under the hardwoods after rain. Orange as a traffic cone, twice as tasty.'],
@@ -149,7 +175,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Wren',
     role: 'Fire tower observer, Gore summit',
     at: { place: 'summit' },
-    look: { jacket: 0x4f7a3f, trousers: 0x5a4a3a, hat: 0x8a6a3c, style: 'ranger' },
+    look: { jacket: 0x4f7a3f, trousers: 0x5a4a3a, hat: 0x8a6a3c, style: 'ranger', features: { hair: 0x9a9aa0, hairStyle: 'long', glasses: true } },
     wearing: {
       'hat-ranger': 'The observer\'s hat. Careful. You start to see smoke everywhere. It is nearly always fog.',
     },
@@ -158,7 +184,16 @@ export const PEOPLE: readonly Person[] = [
       'Ravens ride the updraft off the east face. I have names for all of them. They have names for me.',
       'The whole mountain is hardwood low down and spruce up here. In fall you can see the line.',
       'What you see depends on the hour. Dawn and dusk belong to the deer and the fox.',
+      'People think it is lonely up here. I have forty ravens, a marten and a radio. I am oversubscribed.',
+      'I log the weather four times a day. Mostly I write "sky". It is usually right.',
+      'On a still morning you can hear the Snow Train from up here. It sounds like someone remembering something.',
     ],
+    moods: {
+      snowing: ['Cannot see a thing. The tower is very good for that: you get to not see much further.'],
+      dawn: ['Sun comes up over Vermont and lands here first. I have the earliest morning in the county.'],
+      dusk: ['The lights come on in North Creek one by one. I count them. Somebody always forgets the porch.'],
+      night: ['Clear night, you can read by the stars. Cloudy night, you can hear the owls arguing.'],
+    },
     seasonal: {
       winter: ['A Canada jay will take a crust from your hand up here. It will also take the whole sandwich.'],
       summer: ['Fireflies in the meadows after dark. From up here it looks like the stars fell down.'],
@@ -169,7 +204,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Dr. Mica',
     role: 'Geologist, Gore Mt. Mineral Shop',
     at: { spot: 'gore-mt-mineral-shop' },
-    look: { jacket: 0x7a4fa3, trousers: 0x3a3430, hat: 0x8f1d2c, style: 'beanie' },
+    look: { jacket: 0x7a4fa3, trousers: 0x3a3430, hat: 0x8f1d2c, style: 'beanie', features: { glasses: true, hair: 0x3a2e26, hairStyle: 'curls' } },
     wearing: {
       'jacket-garnet': 'Garnet red. From across the lot you look like an almandine with legs. That is a compliment in this shop.',
     },
@@ -179,14 +214,21 @@ export const PEOPLE: readonly Person[] = [
       'A new scatter of stones lies out every day. Frost and groomers bring them up.',
       'The rare ones keep off the trails: bare rock for labradorite, deep woods for wollastonite.',
       'They mined garnet on this mountain from 1878. Sandpaper, mostly. Imagine: a mountain of gems, for sandpaper.',
+      'Labradorite flashes blue if you turn it just so. I have stood in a car park turning a rock for an hour. No regrets.',
+      'People ask what the big garnet out front is worth. To me? The shop. To anyone else, a very heavy doorstop.',
     ],
+    moods: {
+      raining: ['Rain! Wet stones show their colours. Best collecting weather there is. Nobody believes me.'],
+      snowing: ['Snow hides the stones and the groomers find them again. It is a partnership. They do not know about it.'],
+      night: ['Garnet does not glow in the dark. I have checked. More than once. Still worth checking.'],
+    },
   },
   {
     id: 'bea',
     name: 'Conductor Bea',
     role: 'The Snow Train, North Creek depot',
     at: { place: 'depot' },
-    look: { jacket: 0x1f2a3a, trousers: 0x1f2a3a, hat: 0x1f2a3a, style: 'cap' },
+    look: { jacket: 0x1f2a3a, trousers: 0x1f2a3a, hat: 0x1f2a3a, style: 'cap', features: { hair: 0x8a8f9c, hairStyle: 'bun', buttons: true } },
     wearing: {
       'hat-cap': 'A conductor\'s cap. Very smart. Do not shout "all aboard". That one is mine. Shout something else.',
     },
@@ -195,14 +237,22 @@ export const PEOPLE: readonly Person[] = [
       'Ride up, slide down. That was the slogan. Still good advice.',
       'The Snow Train does not go to other places. It goes to other seasons.',
       'Whatever season you ride to, the mountain waits for you there until you ride home.',
+      'The timetable says we leave "when ready". We have never yet been late.',
+      'I punch every ticket myself. There are no tickets. I punch the air. It is the principle.',
+      'The engine is older than the mountain road. She runs on coal, snow and compliments.',
     ],
+    moods: {
+      snowing: ['Snow on the line. That is not a delay. That is the whole point of the train.'],
+      night: ['Night train. Same seats, better windows.'],
+      dawn: ['First train of the day. The seats are cold and the coffee is not. Board whenever you like.'],
+    },
   },
   {
     id: 'june',
     name: 'June',
     role: 'Baker, the café on Main Street',
     at: { road: 'Main Street', from: 'depot', metres: 170 },
-    look: { jacket: 0xe8b040, trousers: 0x4a3a2e, hat: 0xf4ead8, style: 'beanie' },
+    look: { jacket: 0xe8b040, trousers: 0x4a3a2e, hat: 0xf4ead8, style: 'beanie', features: { hair: 0xc8642d, hairStyle: 'bun', apron: 0xfffdf7 } },
     wearing: {
       'hat-toque': 'A toque! If you are after my job, the oven goes on at four in the morning. Still after it?',
     },
@@ -210,7 +260,16 @@ export const PEOPLE: readonly Person[] = [
     chat: [
       'Half the town skis and the other half feeds them. I do a bit of both.',
       'The turkeys cross Main Street at ten every morning. You could set the depot clock by them.',
+      'I name the sourdough starter every year. This one is Gerald. No relation.',
+      'Walt and I have a feud. It is about napkins. It is in its ninth year.',
+      'If the light is on, the oven is on. If the oven is on, come in. That is the whole sign.',
     ],
+    moods: {
+      snowing: ['Snow day! I bake double and the plough driver gets first pick. That is how you get a clear street.'],
+      dawn: ['You are up with the bakers. There are two of us in this town and the other one is the oven.'],
+      night: ['Closed. Sort of. I am just proving tomorrow. Try the door, it sticks.'],
+      raining: ['Rain keeps people indoors, and indoors has scones in it. I do not mind the rain.'],
+    },
     seasonal: {
       fall: ['Leaf season. The whole town smells of woodsmoke and cider doughnuts.'],
       winter: ['Snow day rule: first tracks, then breakfast. In that order.'],
@@ -221,19 +280,28 @@ export const PEOPLE: readonly Person[] = [
     name: 'Walt',
     role: 'Sandwich maker, the deli on Main Street',
     at: { road: 'Main Street', from: 'depot', metres: 290 },
-    look: { jacket: 0x3f8f5a, trousers: 0x2b3a55, hat: 0xf4f1ea, style: 'cap' },
+    look: { jacket: 0x3f8f5a, trousers: 0x2b3a55, hat: 0xf4f1ea, style: 'cap', features: { moustache: 0x3a2e26, apron: 0xf4f1ea, girth: 1.12 } },
     hello: 'Welcome to the deli. Everything on the board is named after a trail. Order a Rumor and see what you get.',
     chat: [
       'The Hudson starts as a pond up on Marcy. By the time it gets here it has opinions.',
       'An eagle fishes the river behind the depot most mornings. Better at it than I am.',
+      'The secret to a good sandwich is the bread. The secret to the bread is June. Do not tell her I said so.',
+      'I once made a sandwich so tall a man took it up the gondola to eat it from the top down.',
+      'People come off the mountain hungry enough to eat the menu. I laminated it. You learn.',
+      'Napkins go on the left. June says the right. This is why we do not speak in March.',
     ],
+    moods: {
+      snowing: ['Powder day. I will sell forty sandwiches at eleven and none at twelve, because everybody is back up the hill.'],
+      night: ['Kitchen is closed but I can do you a cold Rumor. They are better cold. Everyone says so who has not had one hot.'],
+      raining: ['Soup weather. I do not make soup. I just like to say it.'],
+    },
   },
   {
     id: 'pip',
     name: 'Pip',
     role: 'Aged nine, Ski Bowl',
     at: { place: 'ski-bowl-lodge' },
-    look: { jacket: 0xe86aa0, trousers: 0x3f6fb5, hat: 0xf0d040, style: 'beanie' },
+    look: { jacket: 0xe86aa0, trousers: 0x3f6fb5, hat: 0xf0d040, style: 'beanie', features: { hair: 0xe2b94a, hairStyle: 'long', height: 0.68, girth: 0.8 } },
     wearing: {
       'hat-rainbow': 'That is hat number NINE. I am on hat number fourteen now. Keep up.',
     },
@@ -242,14 +310,22 @@ export const PEOPLE: readonly Person[] = [
       'Somebody keeps building snowmen all over the mountain. Nobody knows who. Definitely nobody.',
       'My record down the Ski Bowl is one minute. I did not time it but it felt like one minute.',
       'There is a monster on The Rumor. My cousin saw it. My cousin also says he can fly.',
+      'I am going to ski every trail before I am ten. I have done three. I am nine and a half. It is fine.',
+      'Tom is my friend. He does not say much to grown-ups. He says LOADS to me.',
+      'I found a rock shaped like a potato. Dr. Mica says it is a rock. I say it is a potato rock.',
     ],
+    moods: {
+      snowing: ['IT IS SNOWING. I am catching it. I have caught nine. Wait. Eight. One melted.'],
+      dusk: ['I have to go in when the lamps come on. They are not on yet. That one does not count.'],
+      night: ['I am allowed to be up. I asked. I asked the dog.'],
+    },
   },
   {
     id: 'amos',
     name: 'Amos',
     role: 'Retired miner, the old garnet quarry',
     at: { spot: 'garnet-quarry' },
-    look: { jacket: 0x8a6a3c, trousers: 0x3a3430, hat: 0xd9a441, style: 'lamp' },
+    look: { jacket: 0x8a6a3c, trousers: 0x3a3430, hat: 0xd9a441, style: 'lamp', features: { beard: 0xe8e4dc, hair: 0xe8e4dc } },
     wearing: {
       'hat-lamp': 'My old lamp. Still lit, I see. Those are the batteries from 1994. Do not ask me how.',
     },
@@ -258,14 +334,22 @@ export const PEOPLE: readonly Person[] = [
       'The best garnet on Earth for grinding came out of this hole. Hard as sin and sharp when it breaks.',
       'There is more garnet lying about up here than anywhere on the hill. We were never tidy.',
       'Now and then you find one clear right through. Gem garnet. I found four in thirty years.',
+      'We called the big crystals "plums". You would crack a boulder and there would be a plum the size of your head.',
+      'The mine moved over to Ruby Mountain in the eighties. Same garnet. Worse view.',
+      'Quiet now. Used to be you could not hear yourself think up here. Turns out I was not thinking much.',
     ],
+    moods: {
+      dusk: ['This time of day the whole pit goes red. Sun on the garnet. We used to stop work to look. Foreman too.'],
+      snowing: ['Snow fills the pit level, like it was never dug. Come spring it remembers.'],
+      night: ['My lamp would have been the only light for a mile, once. Now look at the town down there.'],
+    },
   },
   {
     id: 'dot',
     name: 'Dot',
     role: 'Postmaster, North Creek Post Office',
     at: { spot: 'north-creek-post-office' },
-    look: { jacket: 0x3f6fb5, trousers: 0x1f2a3a, hat: 0x1f2a3a, style: 'cap' },
+    look: { jacket: 0x3f6fb5, trousers: 0x1f2a3a, hat: 0x1f2a3a, style: 'cap', features: { glasses: true, hair: 0xb9b4ac, hairStyle: 'bun', buttons: true } },
     wearing: {
       'hat-cap': 'A uniform cap. If you are from the head office, the stamps are all accounted for. Mostly.',
     },
@@ -286,7 +370,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Marge',
     role: 'Innkeeper, the Copperfield Inn',
     at: { spot: 'copperfield-inn' },
-    look: { jacket: 0x9a4f6a, trousers: 0x3a3430, hat: 0xe8d9ae, style: 'beanie' },
+    look: { jacket: 0x9a4f6a, trousers: 0x3a3430, hat: 0xe8d9ae, style: 'beanie', features: { hair: 0x8f4a3a, hairStyle: 'curls', apron: 0x3a2e26 } },
     wearing: {
       'hat-tophat': 'A top hat, in my lobby. At last, somebody dressed for the wallpaper.',
     },
@@ -295,14 +379,22 @@ export const PEOPLE: readonly Person[] = [
       'Half of what I hear is nonsense. The trick is that I never know which half.',
       'President Roosevelt came through this depot in 1901, in the middle of the night. Did not stay here. I would have remembered.',
       'A guest once asked for a room with a view of the summit. Every room has one. That is the trouble with mountains.',
+      'Forty beds, one of me. I have a system. The system is that I do not sit down.',
+      'Somebody checked in as "Tom" last winter and left a puddle. I have my suspicions.',
+      'The piano in the lobby has not been tuned since the snow trains. It plays one song, and it is not the one you ask for.',
     ],
+    moods: {
+      snowing: ['Snowed in is my favourite kind of full. Nobody checks out and everybody wants cocoa.'],
+      night: ['The lobby fire is lit till midnight. After that it is lit by whoever cannot sleep.'],
+      dusk: ['Lamps are coming on along Main Street. I turn ours on last. Let them wait for it.'],
+    },
   },
   {
     id: 'fenn',
     name: 'Mr. Fennimore',
     role: 'Librarian, Town of Johnsburg Library',
     at: { spot: 'town-of-johnsburg-library' },
-    look: { jacket: 0x6b5a48, trousers: 0x3a3430, hat: 0x8a6a3c, style: 'ranger' },
+    look: { jacket: 0x6b5a48, trousers: 0x3a3430, hat: 0x8a6a3c, style: 'ranger', features: { glasses: true, beard: 0x8a8f9c, height: 1.06, girth: 0.92 } },
     hello: 'Shh. Oh, we are outside. Force of habit. Welcome. Ask me anything about this town. I have read all of it.',
     chat: [
       'The first ski train pulled into North Creek in March of 1934, from Schenectady, with hundreds aboard. Ride up, slide down.',
@@ -365,7 +457,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Sven',
     role: 'Ski instructor, Bear Cub',
     at: { lift: 'Bear Cub' },
-    look: { jacket: 0x2f8f55, trousers: 0x1f242e, hat: 0xf4f1ea, style: 'beanie' },
+    look: { jacket: 0x2f8f55, trousers: 0x1f242e, hat: 0xf4f1ea, style: 'beanie', features: { beard: 0xe2c66a, hair: 0xe2c66a, height: 1.08 } },
     wearing: {
       'hat-helmet': 'A helmet! Very good. Now you may fall over with confidence.',
     },
@@ -387,7 +479,7 @@ export const PEOPLE: readonly Person[] = [
     role: 'Groomer, Base Lodge',
     prop: 'snowcat',
     at: { place: 'gore-mountain-lodge' },
-    look: { jacket: 0xd9822b, trousers: 0x3a3430, hat: 0x1f242e, style: 'trapper' },
+    look: { jacket: 0xd9822b, trousers: 0x3a3430, hat: 0x1f242e, style: 'trapper', features: { beard: 0x3a3430, girth: 1.1 } },
     wearing: {
       'jacket-groomer': 'Orange. Now the plough can see you. So can everybody else. Sorry about that.',
     },
@@ -443,7 +535,7 @@ export const PEOPLE: readonly Person[] = [
     name: 'Madame Flurry',
     role: 'Weather prophet, the warming hut',
     at: { place: 'warming-hut' },
-    look: { jacket: 0x6a3f8f, trousers: 0x3a2a4a, hat: 0xd9a441, style: 'beanie' },
+    look: { jacket: 0x6a3f8f, trousers: 0x3a2a4a, hat: 0xd9a441, style: 'beanie', features: { hair: 0xb9b4ac, hairStyle: 'curls', shawl: 0x8a5a2c, height: 0.94 } },
     wearing: {
       'hat-propeller': 'Is it turning? Then the wind has changed, or you have moved. The science is very exact.',
     },
@@ -473,7 +565,7 @@ export const PEOPLE: readonly Person[] = [
     role: 'Ski patrol, top of the gondola',
     prop: 'sled',
     at: { lift: 'Northwoods Gondola', along: 0.985 },
-    look: { jacket: 0xc8281e, trousers: 0x1f242e, hat: 0xc8281e, style: 'helmet' },
+    look: { jacket: 0xc8281e, trousers: 0x1f242e, hat: 0xc8281e, style: 'helmet', features: { hair: 0x2a2420, hairStyle: 'braid', cross: true } },
     wearing: {
       'hat-helmet': 'Helmet on. Good. Now you look as if you know where the first aid room is. Do you? Nobody does.',
       'jacket-patrol': 'Two of us in red. If anybody falls over, we look at each other, and then you go.',
@@ -519,6 +611,18 @@ export const PEOPLE: readonly Person[] = [
       night: ['(The Mayor works nights. Nobody knows on what.)'],
     },
   },
+];
+
+/**
+ * The town round: the doors in North Creek worth knocking on every day. Calling at all of them
+ * in one day is a round, and rounds are counted.
+ */
+export const TOWN_ROUND: readonly { who: string; door: string }[] = [
+  { who: 'dot', door: 'Post office' },
+  { who: 'marge', door: 'Inn' },
+  { who: 'june', door: 'Bakery' },
+  { who: 'walt', door: 'Deli' },
+  { who: 'fenn', door: 'Library' },
 ];
 
 /** The verb on the button for approaching each kind of thing. */

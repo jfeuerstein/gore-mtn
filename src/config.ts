@@ -32,6 +32,8 @@ export interface Config {
   /** Start on skis. */
   ski: boolean;
   hud: boolean;
+  /** False to leave the player's own figure out of the picture, for photographing what they stand by. */
+  me: boolean;
   /** Show the frame-rate readout. Off unless asked for. */
   stats: boolean;
   /** Greet a new player with a few words of welcome. The tools turn this off. */
@@ -66,6 +68,7 @@ export const DEFAULTS: Config = {
   zoom: 1,
   ski: false,
   hud: true,
+  me: true,
   stats: false,
   intro: true,
   shortPage: 0,
@@ -120,6 +123,7 @@ export function parseConfig(search: string): Config {
     zoom: num(q.get('zoom'), d.zoom, 0.4, 3),
     ski: q.get('ski') === '1',
     hud: q.get('hud') !== '0',
+    me: q.get('me') !== '0',
     stats: q.get('stats') === '1',
     intro: q.get('intro') !== '0',
     shortPage: num(q.get('shortpage'), d.shortPage, 0, 200),

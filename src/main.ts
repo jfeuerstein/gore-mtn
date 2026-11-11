@@ -42,6 +42,7 @@ import { buildSignPosts } from './world/signPosts';
 import { buildStreetFurniture } from './world/streetFurniture';
 import { benches, streetLamps, welcomeSigns } from './world/streets';
 import { buildSigns } from './world/signs';
+import { Smoke } from './world/smoke';
 import { TownPlaces, townPlaceHeight } from './world/townKit';
 import { buildTrain } from './world/train';
 import { trailSignPosts } from './world/trailSigns';
@@ -50,6 +51,7 @@ import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
 import { Walls, type WallBox } from './world/walls';
+import { buildYards } from './world/yards';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 
@@ -237,12 +239,15 @@ async function boot(): Promise<void> {
   // Lamps down Main Street, a bench by the doors, and a welcome at each end of town.
   const street = buildStreetFurniture(streetLamps(world), benches(townPlaces), welcomeSigns(world), (x, z) => ground.heightAt(x, z));
   const townNamed = new TownPlaces(townPlaces, shadows, look.roof, season, {
-    walls: [...train.walls, ...street.walls],
+    walls: [...train.walls, ...street.walls, ...buildYards(world.places, season, (x, z) => ground.heightAt(x, z))],
     panes: [...train.panes, ...street.panes],
     signs: [...train.signs, ...street.signs],
   });
   const liftCars = new LiftCars(liftPaths, shadows);
   scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, buildings.group, town.group, townNamed.group);
+  // Smoke from the chimneys that are lit, and steam from the engine.
+  const smoke = new Smoke([...townNamed.flues, ...train.flues]);
+  scene.add(smoke.mesh);
   // Signs: the town's shopfronts, a board at the top of every trail and a name at the foot of every lift.
   // All of them are painted onto one sheet, a moment after the rest, once the lettering has loaded.
   const signPosts = buildSignPosts(
@@ -280,6 +285,7 @@ async function boot(): Promise<void> {
   const glints = new Glints(shadows);
   const critters = new Critters(season, shadows);
   scene.add(player.object, tracks.mesh, glints.group, critters.group);
+  if (!cfg.me) player.object.visible = false;
 
   // The collecting game.
   const game = new Game(
@@ -363,8 +369,17 @@ async function boot(): Promise<void> {
   // `at` may also name one of the town's places: stand across the street from its front door.
   const startDoor = townPlaces.find((p) => p.id === cfg.at);
   if (startDoor) {
-    const back = startDoor.d / 2 + 16;
-    player.place(startDoor.x + Math.sin(startDoor.turn) * back, startDoor.z + Math.cos(startDoor.turn) * back, ground);
+    // Far enough back to see the front, and out of whatever stands across the street.
+    const back = startDoor.d / 2 + 13;
+    let sx = startDoor.x + Math.sin(startDoor.turn) * back;
+    let sz = startDoor.z + Math.cos(startDoor.turn) * back;
+    for (let i = 0; i < 4; i++) {
+      const bump = walls.bumpAt(sx, sz, 2.5);
+      if (!bump) break;
+      sx = bump.x + bump.nx * 0.5;
+      sz = bump.z + bump.nz * 0.5;
+    }
+    player.place(sx, sz, ground);
     follow.faceToward(player.position.x, player.position.z, startDoor.x, startDoor.z);
     player.face(follow.yaw);
     fillScene = true;
@@ -478,7 +493,9 @@ async function boot(): Promise<void> {
     talkSheet.close();
     sound.play('train');
     toasts.show({ kind: 'season', title: 'All aboard', detail: to ? `Next stop: ${SEASON_NAME[to].toLowerCase()}` : 'Next stop: home' });
-    const next = withParams(location.search, { season: null, at: null, pos: depot ? `${depot.x.toFixed(1)},${(depot.z + 6).toFixed(1)}` : null, ski: null }) || location.pathname;
+    // Step down onto the platform, beside the coaches; or by the shuttle stop if the map has no rails.
+    const platform = depotAt?.rails ? fromLocal(depotAt, 9, 5.6) : depot ? { x: depot.x, z: depot.z + 6 } : null;
+    const next = withParams(location.search, { season: null, at: null, pos: platform ? `${platform.x.toFixed(1)},${platform.z.toFixed(1)}` : null, ski: null }) || location.pathname;
     window.setTimeout(() => location.assign(next), 1700);
   };
 
@@ -647,6 +664,7 @@ async function boot(): Promise<void> {
     buildings.setLamps(palette.lamps);
     town.setLamps(palette.lamps);
     townNamed.setLamps(palette.lamps);
+    smoke.setDaylight(1 - palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -654,6 +672,7 @@ async function boot(): Promise<void> {
 
   // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
   let today = dayKey(new Date());
+  book.today = () => today;
   announce(game.arrivedIn(season, today));
   if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
   /** The watch of the day, which decides what wildlife is about. */
@@ -700,6 +719,8 @@ async function boot(): Promise<void> {
     watch,
     away,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
+    // The town's named places, each with its front: for scripts that want to go and look at one.
+    town: townPlaces.map((p) => ({ id: p.id, x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn })),
     stops: stops.map((st) => ({ id: st.id, x: st.x, z: st.z })),
     errands: game.activeErrands().map((e) => e.id),
     items: [...game.save.items],
@@ -759,6 +780,7 @@ async function boot(): Promise<void> {
     // The lifts run on their own clock, which the chairs and any rider share.
     liftClock += dt;
     liftCars.update(liftClock);
+    smoke.update(liftClock, player.position.x, player.position.z);
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, firmAt, bumpAt, liftClock);
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {

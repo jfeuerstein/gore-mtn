@@ -5,7 +5,7 @@ import { namedSpots } from '../world/whereabouts';
 import { Game, type GameWorld, type SaveStore } from './game';
 import { MINERALS } from './minerals';
 import { buildLandmarks } from './passport';
-import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, PEOPLE, personById } from './people';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, PEOPLE, personById, TOWN_ROUND } from './people';
 import { SPECIES } from './wildlife';
 
 const world = loadTestWorld();
@@ -85,6 +85,20 @@ describe('the errands', () => {
     const remark = game.talk('biscuit', DAY, 'winter');
     expect(remark?.lines[0]).toBe(personById('biscuit')?.wearing?.['hat-antlers']);
     expect(game.talk('biscuit', DAY, 'winter')?.lines[0]).not.toBe(remark?.lines[0]);
+  });
+
+  it('counts a round of the town when every door has been called at in one day', () => {
+    for (const r of TOWN_ROUND) expect(personById(r.who), r.who).toBeDefined();
+    const game = new Game(gameWorld, memory());
+    const events = TOWN_ROUND.flatMap((r) => game.talk(r.who, DAY, 'winter')?.events ?? []);
+    expect(events.filter((e) => e.title === 'The town round')).toHaveLength(1);
+    expect(game.save.rounds).toEqual([DAY]);
+    // Calling again the same day does not count twice; the next day starts a fresh card.
+    for (const r of TOWN_ROUND) game.talk(r.who, DAY, 'winter');
+    expect(game.save.rounds).toEqual([DAY]);
+    game.talk('dot', '2026-11-12', 'winter');
+    expect(game.save.round).toEqual({ day: '2026-11-12', who: ['dot'] });
+    expect(game.save.rounds).toEqual([DAY]);
   });
 
   it('can each earn every piece of gear but the two the player starts in', () => {

@@ -16,7 +16,7 @@ import {
 import { letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
 import { PATCHES, patchesEarned, type Tally } from './patches';
-import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 
@@ -598,6 +598,15 @@ export class Game {
         const remark = mood ? person.moods?.[mood] : undefined;
         const lines = [...(n === 0 && remark ? remark : []), ...(person.seasonal?.[season] ?? []), ...person.chat, ...(n > 0 && remark ? remark : [])];
         talk.lines.push(lines[n % lines.length] as string);
+      }
+    }
+    // The town round: a call at every door in one day is counted.
+    if (TOWN_ROUND.some((r) => r.who === personId)) {
+      if (save.round.day !== day) save.round = { day, who: [] };
+      if (!save.round.who.includes(personId)) save.round.who.push(personId);
+      if (TOWN_ROUND.every((r) => save.round.who.includes(r.who)) && !save.rounds.includes(day)) {
+        save.rounds.push(day);
+        talk.events.push({ kind: 'landmark', title: 'The town round', detail: save.rounds.length === 1 ? 'Every door in North Creek, in one day' : `Every door in one day · ${save.rounds.length} times now` });
       }
     }
     talk.train = personId === 'bea' && save.pass;

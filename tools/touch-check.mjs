@@ -372,7 +372,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 26 + 3 + 4 + 19 + 12 + 14, inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 27 + 3 + 4 + 19 + 12 + 14, inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -583,6 +583,12 @@ try {
   check('she hands over the day\'s letter, in handwriting and signed', letter && /Caveat/.test(letterLook.font) && letterLook.signed.length > 2, JSON.stringify(letterLook));
   await shut();
   check('the letter is kept in the book', (await townState()).book.letters === 1);
+  // The bakery and the post office are two doors of the town round.
+  await tp.tap('#book-button');
+  await tp.tap('#book-sheet [data-tab=pack]');
+  const punched = await tp.locator('#book-sheet .round .pips i.on').allTextContents();
+  check('the town round has a punch for each door called at today', punched.join() === 'Post office,Bakery' && (await tp.locator('#book-sheet .round .pips i').count()) === 5, punched.join());
+  await tp.locator('#book-sheet .close').tap();
   await goTo(person('notices').x + 0.8, person('notices').z + 0.8);
   check('the noticeboard outside the town hall can be read', (await invites('Read the noticeboard')) || (await invites('Read the notices')), await tp.locator('#talk-button').textContent());
   await tp.tap('#talk-button');
