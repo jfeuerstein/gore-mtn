@@ -62,3 +62,81 @@ export function restyle(rgba: Uint8ClampedArray, look: WorldLook, season: Season
     rgba[i + 2] = ink & 255;
   }
 }
+
+/**
+ * Part of a printed picture, enlarged, with its inks kept apart. Stretched in the ordinary way,
+ * a print goes soft: where two inks meet, the stretch blends them. Here each new pixel takes
+ * one of the inks of the four old pixels round it, whichever has the most weight there, so the
+ * edge between two inks stays an edge, and runs smoothly where the old pixels made a staircase.
+ * This is what keeps the ground a print when it is seen from a few metres up.
+ *
+ * @param src the printed picture, four bytes to a pixel
+ * @param x0 the left and top of the part wanted, and its size, in the picture's pixels (fractions allowed)
+ * @param out where the enlargement goes, four bytes to a pixel, `outW` by `rows` of it
+ * @param fromRow the first row of the enlargement to fill, for doing a few rows at a time
+ */
+export function enlarge(
+  src: Uint8ClampedArray,
+  srcW: number,
+  srcH: number,
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  out: Uint8ClampedArray,
+  outW: number,
+  outH: number,
+  fromRow = 0,
+  rows = outH,
+): void {
+  const end = Math.min(outH, fromRow + rows);
+  for (let j = fromRow; j < end; j++) {
+    // Where the middle of this pixel falls among the middles of the old ones.
+    const sy = y0 + ((j + 0.5) / outH) * h - 0.5;
+    const ya = Math.min(srcH - 1, Math.max(0, Math.floor(sy)));
+    const yb = Math.min(srcH - 1, ya + 1);
+    const fy = Math.min(1, Math.max(0, sy - ya));
+    for (let i = 0; i < outW; i++) {
+      const sx = x0 + ((i + 0.5) / outW) * w - 0.5;
+      const xa = Math.min(srcW - 1, Math.max(0, Math.floor(sx)));
+      const xb = Math.min(srcW - 1, xa + 1);
+      const fx = Math.min(1, Math.max(0, sx - xa));
+      const p00 = (ya * srcW + xa) * 4;
+      const p10 = (ya * srcW + xb) * 4;
+      const p01 = (yb * srcW + xa) * 4;
+      const p11 = (yb * srcW + xb) * 4;
+      const k00 = ((src[p00] as number) << 16) | ((src[p00 + 1] as number) << 8) | (src[p00 + 2] as number);
+      const k10 = ((src[p10] as number) << 16) | ((src[p10 + 1] as number) << 8) | (src[p10 + 2] as number);
+      const k01 = ((src[p01] as number) << 16) | ((src[p01 + 1] as number) << 8) | (src[p01 + 2] as number);
+      const k11 = ((src[p11] as number) << 16) | ((src[p11 + 1] as number) << 8) | (src[p11 + 2] as number);
+      let from = p00;
+      // Most of the ground is one ink for a long way: nothing to weigh.
+      if (k00 !== k10 || k00 !== k01 || k00 !== k11) {
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+        // Each corner's ink weighs what all the corners of that ink weigh together.
+        const s00 = w00 + (k10 === k00 ? w10 : 0) + (k01 === k00 ? w01 : 0) + (k11 === k00 ? w11 : 0);
+        const s10 = w10 + (k00 === k10 ? w00 : 0) + (k01 === k10 ? w01 : 0) + (k11 === k10 ? w11 : 0);
+        const s01 = w01 + (k00 === k01 ? w00 : 0) + (k10 === k01 ? w10 : 0) + (k11 === k01 ? w11 : 0);
+        const s11 = w11 + (k00 === k11 ? w00 : 0) + (k10 === k11 ? w10 : 0) + (k01 === k11 ? w01 : 0);
+        let best = s00;
+        if (s10 > best) {
+          best = s10;
+          from = p10;
+        }
+        if (s01 > best) {
+          best = s01;
+          from = p01;
+        }
+        if (s11 > best) from = p11;
+      }
+      const o = (j * outW + i) * 4;
+      out[o] = src[from] as number;
+      out[o + 1] = src[from + 1] as number;
+      out[o + 2] = src[from + 2] as number;
+      out[o + 3] = 255;
+    }
+  }
+}

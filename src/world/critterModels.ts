@@ -265,7 +265,8 @@ export function critterGeometry(id: string, season: Season): THREE.BufferGeometr
     const make = MODELS[id];
     // Anything without a model of its own is a small stone marker, so it can at least be found.
     geo = blocks(make ? make(season) : [{ size: [0.4, 0.4, 0.4], at: [0, 0.2, 0], colour: 0xb0a090 }]);
-    const file = made[id];
+    // The hare has a model for its winter coat and one for the rest of the year.
+    const file = (id === 'hare' && season === 'winter' ? made['hare-white'] : undefined) ?? made[id];
     if (file) {
       // As tall as the one built from blocks, so that it is found and seen from as far.
       geo.computeBoundingBox();

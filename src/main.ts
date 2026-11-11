@@ -46,7 +46,7 @@ import { loadModels } from './world/modelFiles';
 import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
-import { Terrain } from './world/terrainMesh';
+import { Terrain, type Print } from './world/terrainMesh';
 import { fromLocal } from './world/footprints';
 import { townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
@@ -58,7 +58,7 @@ import { loadWorld, OPEN_LAND } from './world/world';
 import { lit, usePrint } from './look/material';
 
 /** A picture of the land as a print: the same picture, repainted on a canvas in the season's inks. */
-function repaint(texture: THREE.Texture, look: WorldLook, season: Season): THREE.Texture {
+function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: { print: Print | null } | null = null): THREE.Texture {
   if (look === 'plain') return texture;
   const image = texture.image as HTMLImageElement;
   const canvas = document.createElement('canvas');
@@ -70,6 +70,8 @@ function repaint(texture: THREE.Texture, look: WorldLook, season: Season): THREE
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   restyle(pixels.data, look, season);
   ctx.putImageData(pixels, 0, 0);
+  // The ground's bytes are kept: the terrain enlarges parts of them for the ground underfoot.
+  if (keep) keep.print = { data: pixels.data, width: canvas.width, height: canvas.height };
   texture.dispose();
   return new THREE.CanvasTexture(canvas);
 }
@@ -268,9 +270,10 @@ async function boot(): Promise<void> {
     loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy-${season}.png`),
   ]);
   // The print repaints both pictures in the season's inks before anything is drawn with them.
-  const snowPicture = repaint(snowTexture, cfg.look, season);
+  const underfoot: { print: Print | null } = { print: null };
+  const snowPicture = repaint(snowTexture, cfg.look, season, underfoot);
   const canopyPicture = repaint(canopyTexture, cfg.look, season);
-  const terrain = new Terrain(ground, snowPicture, canopyPicture);
+  const terrain = new Terrain(ground, snowPicture, canopyPicture, underfoot.print);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
   const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows, cfg.siding);
@@ -319,16 +322,22 @@ async function boot(): Promise<void> {
     const soft = lit({ vertexColors: true });
     const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
     // Four rows of four across the way the player is looking, the small ones in front: an upright screen has no room for more.
-    const all = ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
+    const all =
+      cfg.zoo === 2
+        ? ['chanterelle', 'flyagaric', 'trillium', 'troutlily', 'ladyslipper', 'daisy', 'fiddlehead', 'blueberry', 'mapleleaf', 'balsamcone', 'birchbark', 'goldenrod', 'chickadee', 'hummingbird', 'chipmunk', 'cattail', 'bluejay', 'grayjay', 'grouse', 'hare', 'raven', 'loon', 'cairn', 'snowman']
+        : ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
     // A look that has only some of them shows only those, not the rest in blocks.
     const ids = cfg.models === 'blocks' ? all : all.filter(hasMadeModel);
     const ahead = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
     const across = { x: Math.cos(yaw), z: -Math.sin(yaw) };
     ids.forEach((id, i) => {
       const row = Math.floor(i / 4);
-      const along = ((i % 4) - 1.5) * (1.3 + row * 0.75);
-      const px = x + ahead.x * (3.5 + row * 3) + across.x * along;
-      const pz = z + ahead.z * (3.5 + row * 3) + across.z * along;
+      // Small things stand closer together and nearer than big ones.
+      const wide = cfg.zoo === 2 ? 0.75 + row * 0.22 : 1.3 + row * 0.75;
+      const deep = cfg.zoo === 2 ? 2.2 + row * 1.25 : 3.5 + row * 3;
+      const along = ((i % 4) - 1.5) * wide;
+      const px = x + ahead.x * deep + across.x * along;
+      const pz = z + ahead.z * deep + across.z * along;
       const geometry = critterGeometry(id, season);
       const mesh = new THREE.Mesh(geometry, geometry.userData.smooth ? soft : flat);
       if (geometry.userData.shell) mesh.add(new THREE.Mesh(geometry.userData.shell as THREE.BufferGeometry, ink));

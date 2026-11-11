@@ -26,8 +26,8 @@ export interface Config {
   flyer: boolean;
   /** Which models the animals are: the park prints made outside the game, or the game's own blocks, to set beside them. */
   models: 'blocks' | 'park';
-  /** Line every animal that has a made model up in a row in front of the player, to compare looks. */
-  zoo: boolean;
+  /** Line the made models up in front of the player, to look at them: 1 for the animals, 2 for the birds, plants and the rest. */
+  zoo: 0 | 1 | 2;
   /** Whether anyone else is about: skiers on the trails, people on the chairs, the town out walking. */
   crowd: boolean;
   /** Terrain mesh uses every Nth elevation sample. */
@@ -77,7 +77,7 @@ export const DEFAULTS: Config = {
   look: 'poster',
   flyer: false,
   models: 'park',
-  zoo: false,
+  zoo: 0,
   stride: 1,
   viewDist: 6500,
   at: 'base-lodge',
@@ -135,7 +135,7 @@ export function parseConfig(search: string): Config {
     shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
     siding: q.has('siding') ? q.get('siding') === '1' : d.siding,
     crowd: q.has('crowd') ? q.get('crowd') === '1' : d.crowd,
-    zoo: q.get('zoo') === '1',
+    zoo: q.get('zoo') === '2' ? 2 : q.get('zoo') === '1' ? 1 : 0,
     flyer: q.get('flyer') === '1',
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
     models: oneOf(q.get('models'), ['blocks', 'park'] as const) ?? d.models,

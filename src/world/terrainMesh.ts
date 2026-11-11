@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from './heightfield';
 import { lit } from '../look/material';
+import { enlarge } from '../look/worldLook';
 
 /** Terrain is drawn as square tiles this many cells across. */
 export const TILE_CELLS = 96;
@@ -38,7 +39,33 @@ interface Tile {
   /** What `cull` last decided for it: the level to show (-1 for none), and in which texture. */
   shownLevel: number;
   shownCanopy: boolean;
+  /** A sharper picture of this tile's own ground, for when the camera is on it or beside it. */
+  close: Close | null;
 }
+
+/** A tile's own picture of its ground: the printed picture enlarged, with its inks kept apart. */
+interface Close {
+  pixels: ImageData;
+  /** Rows of it filled in so far: it is made a few at a time. */
+  done: number;
+  canvas: HTMLCanvasElement;
+  material: THREE.MeshLambertMaterial | null;
+}
+
+/** The printed picture of the ground, as bytes, for enlarging parts of. */
+export interface Print {
+  data: Uint8ClampedArray;
+  width: number;
+  height: number;
+}
+
+/** How big a tile's own picture is, in pixels a side: about a foot of ground to a pixel. */
+const CLOSE_SIZE = 1024;
+/** A tile has its own picture while the camera is within this of it, and keeps it until this far, in metres. */
+const CLOSE_RANGE = 50;
+const CLOSE_KEEP = 150;
+/** Rows of a tile's picture filled in each frame, so that making one never holds a frame up. */
+const CLOSE_ROWS = 192;
 
 /**
  * A square of tiles that is drawn as one mesh while every tile in it is far enough off to be at
@@ -174,10 +201,14 @@ export class Terrain {
   private readonly snowMaterial: THREE.MeshLambertMaterial;
   private readonly canopyMaterial: THREE.MeshLambertMaterial;
 
+  /**
+   * @param print the printed picture of the ground as bytes, if the ground is to be kept sharp up close
+   */
   constructor(
     private readonly hf: Heightfield,
     snowTexture: THREE.Texture,
     canopyTexture: THREE.Texture,
+    private readonly print: Print | null = null,
   ) {
     this.group.name = 'terrain';
     for (const t of [snowTexture, canopyTexture]) {
@@ -192,7 +223,7 @@ export class Terrain {
       for (let c0 = 0; c0 < hf.cols - 1; c0 += TILE_CELLS) {
         const c1 = Math.min(c0 + TILE_CELLS, hf.cols - 1);
         const r1 = Math.min(r0 + TILE_CELLS, hf.rows - 1);
-        const tile: Tile = { c0, c1, r0, r1, centerX: 0, centerZ: 0, radius: 0, snow: [], canopy: [], shownLevel: -1, shownCanopy: false };
+        const tile: Tile = { c0, c1, r0, r1, centerX: 0, centerZ: 0, radius: 0, snow: [], canopy: [], shownLevel: -1, shownCanopy: false, close: null };
         // Every tile always has its coarsest level, so there is something to draw at once.
         const mesh = this.mesh(tile, COARSEST, false);
         const sphere = mesh.geometry.boundingSphere as THREE.Sphere;
@@ -228,6 +259,61 @@ export class Terrain {
   setTints(snow: number, canopy: number): void {
     this.snowMaterial.color.setHex(snow);
     this.canopyMaterial.color.setHex(canopy);
+    for (const tile of this.tiles) tile.close?.material?.color.setHex(snow);
+  }
+
+  /**
+   * See to the tiles' own pictures: start one for a tile the camera has come to, fill in a few
+   * more rows of one that is being made, and let go of those left behind.
+   * @param all finish whatever is wanted now, for the first frame and after a teleport
+   */
+  private sharpen(camX: number, camZ: number, all: boolean): void {
+    const print = this.print;
+    if (!print || typeof document === 'undefined') return;
+    const hf = this.hf;
+    let rows = all ? Infinity : CLOSE_ROWS;
+    for (const tile of this.tiles) {
+      // How far the camera is from the tile's own square of ground.
+      const x0 = hf.originX + tile.c0 * hf.cell;
+      const x1 = hf.originX + tile.c1 * hf.cell;
+      const z0 = hf.originZ + tile.r0 * hf.cell;
+      const z1 = hf.originZ + tile.r1 * hf.cell;
+      const away = Math.hypot(Math.max(x0 - camX, 0, camX - x1), Math.max(z0 - camZ, 0, camZ - z1));
+      if (!tile.close) {
+        if (away > CLOSE_RANGE) continue;
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = CLOSE_SIZE;
+        tile.close = { pixels: new ImageData(CLOSE_SIZE, CLOSE_SIZE), done: 0, canvas, material: null };
+      } else if (away > CLOSE_KEEP) {
+        const mesh = tile.snow[0];
+        if (mesh) mesh.material = this.snowMaterial;
+        tile.close.material?.map?.dispose();
+        tile.close.material?.dispose();
+        tile.close = null;
+        continue;
+      }
+      const close = tile.close;
+      if (close.material || rows <= 0) continue;
+      // The part of the printed picture that lies over this tile, in the picture's own pixels.
+      const u0 = (tile.c0 + 0.5) / hf.cols;
+      const u1 = (tile.c1 + 0.5) / hf.cols;
+      const v0 = (tile.r0 + 0.5) / hf.rows;
+      const v1 = (tile.r1 + 0.5) / hf.rows;
+      const some = Math.min(rows, CLOSE_SIZE - close.done);
+      enlarge(print.data, print.width, print.height, u0 * print.width, v0 * print.height, (u1 - u0) * print.width, (v1 - v0) * print.height, close.pixels.data, CLOSE_SIZE, CLOSE_SIZE, close.done, some);
+      close.done += some;
+      rows -= some;
+      if (close.done < CLOSE_SIZE) continue;
+      close.canvas.getContext('2d')?.putImageData(close.pixels, 0, 0);
+      const texture = new THREE.CanvasTexture(close.canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 4;
+      // The tile's corners carry their place in the whole picture; this brings them to their place in the tile's own.
+      texture.repeat.set(1 / (u1 - u0), 1 / (v1 - v0));
+      texture.offset.set(-u0 / (u1 - u0), -(1 - v1) / (v1 - v0));
+      close.material = lit({ map: texture, side: THREE.DoubleSide });
+      close.material.color.copy(this.snowMaterial.color);
+    }
   }
 
   /** The mesh for a tile at a level, building it if need be. */
@@ -265,6 +351,7 @@ export class Terrain {
    * @param unlimited build everything needed now, for the first frame and after a teleport
    */
   cull(camX: number, camZ: number, viewDist: number, treeRange: number, unlimited = false): void {
+    this.sharpen(camX, camZ, unlimited);
     let builds = unlimited ? Infinity : BUILDS_PER_FRAME;
     for (const tile of this.tiles) {
       const dist = Math.max(0, Math.hypot(tile.centerX - camX, tile.centerZ - camZ) - tile.radius);
@@ -306,7 +393,11 @@ export class Terrain {
         for (let l = 0; l < LEVELS.length; l++) {
           const snow = tile.snow[l];
           const far = tile.canopy[l];
-          if (snow) snow.visible = !joined && l === tile.shownLevel && !tile.shownCanopy;
+          if (snow) {
+            snow.visible = !joined && l === tile.shownLevel && !tile.shownCanopy;
+            // At its finest, a tile wears its own sharper picture once that is ready.
+            if (l === 0) snow.material = tile.close?.material ?? this.snowMaterial;
+          }
           if (far) far.visible = !joined && l === tile.shownLevel && tile.shownCanopy;
         }
       }

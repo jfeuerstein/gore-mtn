@@ -166,6 +166,13 @@ trying it beside the plain look. Four things make it, and anything new must take
   a figure, which is how the people and the crowd get theirs. The animals bring their own.
   Nothing with a rim may be drawn two-sided: the rim would cover it.
 - **A banded sky.** Bands of flat colour near the horizon under one flat field (`Atmosphere`).
+- **Hard edges underfoot.** The ground's picture is about 1.7 m to a pixel, and stretched
+  over the ground at the player's feet its inks ran into one another. So the tiles nearest
+  the camera each wear a picture of their own (`Terrain.sharpen`): their part of the printed
+  ground enlarged to 1024 pixels a side by `enlarge()` in `worldLook.ts`, which gives every
+  new pixel one of the inks of the old pixels round it and never a blend. A tile's picture is
+  made a few rows a frame, worn once it is whole, and let go when the camera has left. About
+  four are alive at once, 4 MB each.
 - The boards and shingles on buildings (`siding()`) are flat with one hard line under each
   course, as a pen would draw clapboard.
 - `look=plain&models=blocks` in the address draws the game as it was before the print, for
@@ -184,10 +191,20 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture, cut to six inks and gathered into patches (`calm`), with a dark outline hull. A
   test fails if any model has an open edge or a loose piece. The converter needs Python with
   trimesh, fast-simplification, scipy, scikit-image, pymeshfix and Pillow.
-- They are one small JSON file, `public/models/park.json`, read by `src/world/modelFiles.ts`,
-  and stand in for the block models in `critterModels.ts` at the same height. A species with
-  no made model keeps its blocks: the birds and plants are still blocks. `zoo=1` lines the
-  made animals up in front of the player.
+- They are one small JSON file, `public/models/park.json` (41 models, about 700 KB), read by
+  `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
+  same height. Nearly the whole field guide has one: the animals, the birds, the plants and
+  mushrooms, the cairn and the snowman (the hare has two, for its two coats). The icicles and
+  the Rumor are still blocks. `zoo=1` lines the animals up in front of the player and `zoo=2`
+  the rest.
+- A model says which inks it may be printed in (`inks` in the manifest): an animal's earths,
+  a bird's (which add blue, red and yellow) or a plant's (which add greens and the colours of
+  flowers). A plant is asked for growing from a little mound, so that it stands as one piece.
+  A clump of thin things does not always survive being cut down, so the converter pours it
+  into coarser cubes until it does: such a model comes out stouter and simpler than its
+  picture. Something white is painted `against` a colour: white on white comes back from the
+  shape model as a wall. When a shape comes back wrong (a box behind it, lying flat), make it
+  again with `--redo id --bump n`.
 - The converter can make other looks from the same shape (faceted, smooth), and `--tripo
   id,id` has Tripo make a shape straight from the words (about 30 credits each); the owner
   tried those and chose the park print, so neither ships.

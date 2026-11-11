@@ -38,7 +38,7 @@ async function shape(id) {
   if (redo.has(id) || !existsSync(glb) || !existsSync(picture)) {
     // The same seed for a thing every time, so it can be made again as it was.
     const seed = [...id].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 11) % 1000000;
-    const painted = await run(IMAGE_MODEL, { prompt: `${MODELS[id].what}. ${SHAPE_LOOK}`, image_size: 'square', num_inference_steps: 4, seed: seed + (redo.has(id) ? bump : 0) });
+    const painted = await run(IMAGE_MODEL, { prompt: `${MODELS[id].what}. ${MODELS[id].against ? SHAPE_LOOK.replace('plain white background', `plain ${MODELS[id].against} background`) : SHAPE_LOOK}`, image_size: 'square', num_inference_steps: 4, seed: seed + (redo.has(id) ? bump : 0) });
     await save(painted.images[0].url, picture);
     const shaped = await run(SHAPE_MODEL, { image_url: painted.images[0].url }, { timeoutMs: 600000 });
     await save(shaped.model_mesh.url, glb);
@@ -46,7 +46,7 @@ async function shape(id) {
     console.log(`made ${id}`);
   }
   for (const look of LOOKS) {
-    execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/${id}.${look}.json`, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? 180), '--preview', `${CACHE}/${id}.${look}.png`]);
+    execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/${id}.${look}.json`, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? 180), '--inks', MODELS[id].inks ?? 'animal', '--preview', `${CACHE}/${id}.${look}.png`]);
   }
 }
 

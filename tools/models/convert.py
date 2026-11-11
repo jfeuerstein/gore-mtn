@@ -40,6 +40,14 @@ LOOKS = {
 
 # The inks of an old park poster, for animals: earths, greys, two blues, cream and near-black.
 # No greens: a dull brown is nearer to a green ink than to a brown one, and no animal here is green.
+# What a bird adds to those: the blues of a jay, a red, a yellow, a clean white and a true black.
+BIRD_MORE = [(0x3F, 0x6F, 0xC4), (0x8F, 0xB4, 0xE3), (0xC8, 0x40, 0x2D), (0xE3, 0xB0, 0x3F), (0x14, 0x16, 0x1A)]
+# And what a plant adds: greens, and the colours of flowers, berries and mushrooms.
+PLANT_MORE = [
+    (0xA9, 0xC9, 0x8A), (0x6F, 0xA3, 0x5C), (0x3F, 0x7D, 0x54), (0x2A, 0x5F, 0x4A), (0xF2, 0xD1, 0x6B), (0xD9, 0x77, 0x2B),
+    (0xE8, 0x8F, 0xB0), (0xC2, 0x4F, 0x86), (0x7A, 0x4F, 0xA3), (0x3D, 0x4F, 0x8F), (0x8F, 0x2F, 0x2A),
+]
+
 PARK = [
     (0xF4, 0xEC, 0xD6), (0xE2, 0xC9, 0x9A), (0xC9, 0x8F, 0x4A), (0xA8, 0x5A, 0x32), (0x7A, 0x3F, 0x2A),
     (0x4A, 0x33, 0x26), (0x2A, 0x26, 0x24), (0x9A, 0x7B, 0x5C), (0x5E, 0x66, 0x70), (0x7F, 0xA9, 0xB8),
@@ -142,31 +150,46 @@ def calm(mesh, label, rounds=3):
     return label
 
 
-def convert(source, look, turn, picture=None):
+def convert(source, look, turn, picture=None, which='animal'):
     spec = LOOKS[look]
     full, colours = load(source)
     if picture:
         colours = like(colours, picture)
     full = stand(full, turn)
-    whole = seal(full) if spec['seal'] else full
-    thin = whole.simplify_quadric_decimation(face_count=spec['faces']) if len(whole.faces) > spec['faces'] else whole.copy()
-    thin.remove_unreferenced_vertices()
-    if spec['seal'] and not thin.is_watertight:
-        # Cutting down can pinch a thin part shut; mend whatever that leaves.
-        import pymeshfix
-        v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(thin.vertices, dtype=np.float64), np.ascontiguousarray(thin.faces, dtype=np.int32))
-        thin = trimesh.Trimesh(vertices=v, faces=f, process=True)
+    def cut(shape):
+        out = shape.simplify_quadric_decimation(face_count=spec['faces']) if len(shape.faces) > spec['faces'] else shape.copy()
+        out.remove_unreferenced_vertices()
+        return out
+
+    if spec['seal']:
+        # A clump of thin things (petals, berries, fronds) does not always survive being cut down:
+        # the skin tears. Poured into coarser cubes it comes out stouter and simpler, and does.
+        thin = None
+        for fine in (140, 100, 72, 52):
+            thin = cut(seal(full, fine))
+            if thin.is_watertight and len(thin.split(only_watertight=False)) == 1:
+                break
+        else:
+            # Still torn at the coarsest: mend what is left, and say so if that leaves next to nothing.
+            import pymeshfix
+            v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(thin.vertices, dtype=np.float64), np.ascontiguousarray(thin.faces, dtype=np.int32))
+            thin = trimesh.Trimesh(vertices=v, faces=f, process=True)
+            if len(thin.faces) < 200 or thin.extents.max() < 0.5:
+                raise SystemExit(f'{source}: the shape did not survive being made solid')
+    else:
+        thin = cut(full)
     # Each thinned triangle takes the colour of the original where its middle lies.
     _, where = cKDTree(full.triangles_center).query(thin.triangles_center)
     face_colour = colours[where]
     # A handful of colours: the same ones every time the tool is run.
-    k = min(spec['colours'], len(np.unique(face_colour.round(), axis=0)))
+    # A flower has more colours to it than a fox.
+    k = min(spec['colours'] + (2 if which == 'plant' else 0), len(np.unique(face_colour.round(), axis=0)))
     centres, label = kmeans2(face_colour, k, minit='++', seed=7)
     if spec['palette'] == 'park':
-        inks = np.array(PARK, dtype=np.float64)
+        inks = np.array(PARK + (BIRD_MORE if which != 'animal' else []) + (PLANT_MORE if which == 'plant' else []), dtype=np.float64)
         far = ((centres[:, None, :] - inks[None, :, :]) ** 2).sum(axis=2)
         # A dark coat is black or brown, not navy, unless it is plainly blue.
-        dark = (centres.mean(axis=1) < 95) & (centres[:, 2] - centres[:, 0] < 50)
+        dark = (centres.mean(axis=1) < 95) & (centres[:, 2] - centres[:, 0] < (50 if which == 'animal' else 25))
         blue = inks[:, 2] - inks[:, 0] > 25
         far[np.ix_(dark, blue)] = np.inf
         centres = inks[far.argmin(axis=1)]
@@ -214,9 +237,10 @@ if __name__ == '__main__':
     ap.add_argument('--look', choices=list(LOOKS), default='facet')
     ap.add_argument('--turn', type=float, default=180, help='degrees about upright; generated models come facing +z, so half a turn by default')
     ap.add_argument('--like', help='the picture the model was made from, to grade its colours to')
+    ap.add_argument('--inks', choices=['animal', 'bird', 'plant'], default='animal', help='which inks the park print may use')
     ap.add_argument('--preview')
     args = ap.parse_args()
-    data, mesh, cols = convert(args.source, args.look, args.turn, args.like)
+    data, mesh, cols = convert(args.source, args.look, args.turn, args.like, args.inks)
     with open(args.out, 'w') as f:
         json.dump(data, f, separators=(',', ':'))
     if args.preview:
