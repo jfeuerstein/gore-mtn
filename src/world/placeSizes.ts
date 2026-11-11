@@ -12,8 +12,8 @@ export const PLACE_FOOTPRINT: Record<string, [number, number]> = {
 
 /** How high each stands above its footing, roof and all, in metres: for keeping the camera above it. */
 export const PLACE_HEIGHT: Record<string, number> = {
-  'base-lodge': 15,
-  'saddle-lodge': 10,
+  'base-lodge': 19,
+  'saddle-lodge': 11,
   'gore-mountain-lodge': 14,
   'ski-bowl-lodge': 13,
   'warming-hut': 7.5,

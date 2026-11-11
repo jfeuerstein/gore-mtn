@@ -45,3 +45,29 @@ export function fromLocal(at: { x: number; z: number; turn: number }, lx: number
   const sin = Math.sin(at.turn);
   return { x: at.x + lx * cos + lz * sin, z: at.z - lx * sin + lz * cos };
 }
+
+/**
+ * A footprint moved back from a street it stands too close to: made shallower from the front,
+ * so that its front wall is at least `gap` from the middle of the street and its back wall stays
+ * where it was. The map's plots are true, but the game's streets need room for a sidewalk.
+ * @param b a footprint already turned so that its own +z faces the street
+ */
+export function setBack<T extends { x: number; z: number; w: number; d: number; turn: number }>(b: T, street: readonly { pts: number[] }[], gap: number): T {
+  const sin = Math.sin(b.turn);
+  const cos = Math.cos(b.turn);
+  let out = b;
+  // A plot that stands askew to the street gains less than it gives up, so it is asked more than once.
+  for (let pass = 0; pass < 5; pass++) {
+    // How near the street the front wall comes, taken at a few points along it.
+    let nearest = Infinity;
+    for (const along of [-0.5, -0.25, 0, 0.25, 0.5]) {
+      const at = nearestOnLines(street, out.x + along * out.w * cos + (out.d / 2) * sin, out.z - along * out.w * sin + (out.d / 2) * cos);
+      if (at) nearest = Math.min(nearest, at.dist);
+    }
+    if (nearest >= gap || out.d <= 5) break;
+    const d = Math.max(Math.min(out.d, 5), out.d - (gap - nearest) - 0.05);
+    const back = (out.d - d) / 2;
+    out = { ...out, d, x: out.x - sin * back, z: out.z - cos * back };
+  }
+  return out;
+}

@@ -144,6 +144,25 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   `blocks()` gives every model the coordinates for it; anything snow-coloured is left smooth.
   The lodges, the town's houses and the named places use it. `siding=0`, or Settings, turns it
   off, so the owner can compare the two on the phone.
+- Main Street is a street. Buildings whose fronts are on it in town are shops (false fronts,
+  brick blocks, two-storey porches, little storefronts), each with a trade of its own from
+  `SHOP_SIGNS`, given out in order along the street so no two neighbours match. The trades are
+  plain ones and none is a real business. Every front wall in town is kept back to a building
+  line (`setBack` in `footprints.ts`), because several real plots sit on the centre line.
+- `src/world/roadways.ts` (pure, tested) says which roads have a surface of their own: those
+  in town and at the foot of the mountain. `streetSurface.ts` lays it over the ground as one
+  mesh: ploughed, with the snow banked along it, in winter; blacktop otherwise; and a sidewalk
+  down each side of Main Street. It lies 9 cm above the ground, which feet still stand on.
+  `buildKerbside` in `streetFurniture.ts` stands parked cars, utility poles and their wires,
+  hydrants (in hats, in winter) and the town's tree along it; the car parks at the Base Lodge
+  fill from the lodge outward. Cars are solid. Trees keep out of the street and the car parks.
+- The lodges are each their own building (`buildings.ts`): the Base Lodge has a great hall
+  with a clock, a sun deck on posts on the mountain side, ticket windows and flags; the Saddle
+  Lodge is low and all windows, with a terrace of chairs; the Ski Bowl's is a green town-park
+  lodge with a porch and two yurts; the lodge on Peaceful Valley Road has rooms on two
+  galleries. A model may report boards (signs), flues (smoke) and whatever of it is solid
+  beyond its footprint. `resort.ts` adds what makes the foot of a ski hill look like one: roped
+  lanes behind every chairlift's gate, a fire with chairs round it, and a painted trail map.
 - `src/world/built.ts` puts together everything people have built apart from the lifts (lodges,
   the town, the train, lamps, signs, snow guns, smoke) and gives the game one group to add, one
   list of walls, `setLamps` for the hour and `update` for what moves. Add new structures there.
@@ -171,8 +190,14 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - Outside the lodges (`src/world/yards.ts`) there are racks of skis in the snow months and
   picnic tables otherwise. In winter and spring snow guns stand down the edges of the wide
   groomed trails (`src/world/snowGuns.ts`, pure, tested): one instanced mesh.
-- The town's plain houses (`src/world/town.ts`) are one unit house stretched to each footprint.
-  Its walls go on down below the floor so a house on a slope has no gap under it.
+- Every building on the map without a name of its own is built for what it is.
+  `src/world/houseKinds.ts` (pure, tested) reads each real footprint the way a person reads a
+  town: its size, what it stands beside and which road it faces make it a cape, a farmhouse, a
+  camp in the woods, a shed, a barn, a shop on Main Street, or one of the ski area's own
+  buildings. `src/world/houses.ts` builds each kind to the size of its plot, with nothing
+  stretched, and joins everything in one part of the map into a mesh of walls and a mesh of
+  windows. Add a kind by adding it to `HouseKind`, `KITS` and the choosing in `houseKinds.ts`.
+  Walls go on down below the floor so a building on a slope has no gap under it.
 - The lifts (`src/world/scenery.ts`) are four draw calls for the whole mountain: towers and
   crossarms instanced, every cable in one set of lines, and one mesh for the gates, the
   stations at each end, the attendants' shacks and the carpets' belts.
@@ -456,8 +481,14 @@ below), so the numbers are a caution, not a wall. Three things keep the calls wh
 `node tools/census.mjs` lists what is switched on by part of the scene, and
 `window.__gore.show(part, false)` hides a part, to see what it costs in `state().drawCalls`.
 
+Since that measurement the town and the lodges have been rebuilt (every house its own shape,
+street surfaces, parked cars, a sun deck). In headless runs the Base Lodge view is now about
+180 draw calls and Main Street about 200, with some 200k more triangles in town than before.
+None of that has been measured on the phone: the benchmark's Main Street and Base Lodge steps
+will say what it cost.
+
 Measured on the owner's iPhone 17 Pro (2026-11-11, Home Screen app, WebGPU), with everything
-above built: a steady 60 fps at all twelve benchmark steps, 98 to 100% of frames on time and
+built up to the other skiers: a steady 60 fps at all twelve benchmark steps, 98 to 100% of frames on time and
 none slower than 29 ms, using 4.5 to 6.3 ms of CPU per frame.
 
 - Saddle Lodge: 157 calls, 858k triangles. Without the other people, 150 calls: they cost 7

@@ -230,8 +230,8 @@ export interface Walker {
   wears: number;
 }
 
-/** How far from the middle of the road people walk: off the roadway, inside the line of the lamps. */
-export const WALK_ASIDE = 3.6;
+/** How far from the middle of the road people walk: down the middle of the sidewalk. */
+export const WALK_ASIDE = 4.7;
 
 /**
  * The side of a street as a route: the road's own line moved over, with whatever the map broke

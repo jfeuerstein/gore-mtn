@@ -1,4 +1,4 @@
-import { faceToward, nearestOnLines } from './footprints';
+import { faceToward, nearestOnLines, setBack } from './footprints';
 import type { Footprint } from './trails';
 import type { Whereabouts } from '../game/people';
 import { locate, slug } from './whereabouts';
@@ -34,7 +34,7 @@ export const TOWN_LISTINGS: readonly Listing[] = [
   { id: 'tuning', sign: 'SKI TUNING', style: 'shed', building: 'Tuning Pavillion' },
   { id: 'north-creek-post-office', sign: 'POST OFFICE', style: 'postoffice', spot: 'north-creek-post-office' },
   { id: 'ski-bowl-cafe', sign: 'SKI BOWL CAFE', style: 'cafe', spot: 'ski-bowl-cafe' },
-  { id: 'alpine-lodge', sign: 'ALPINE LODGE', style: 'house', spot: 'the-alpine-lodge' },
+  { id: 'alpine-lodge', sign: 'ALPINE LODGE', style: 'inn', spot: 'the-alpine-lodge' },
   { id: 'tavern', sign: "BECK'S TAVERN", style: 'tavern', spot: 'becks-tavern' },
   // Where June bakes and Walt makes sandwiches: the buildings they stand outside.
   { id: 'cafe', sign: "JUNE'S BAKERY", style: 'cafe', near: { road: 'Main Street', from: 'depot', metres: 170 } },
@@ -69,6 +69,10 @@ export interface TownPlace {
   /** Which of the map's buildings this is, or -1 for one put up where the map has only a point. */
   building: number;
 }
+
+/** The street the town is built along, and how far back from the middle of it every front wall is kept. */
+const HIGH_STREET = 'Main Street';
+const BUILDING_LINE = 6;
 
 /** How far out from the front wall the spot by the door is: clear of a porch. */
 const DOOR_OUT = 4.5;
@@ -107,7 +111,8 @@ export function resolveTownPlaces(world: World): TownPlace[] {
     }
     if (!base) continue;
     const road = nearestOnLines(world.roads, base.x, base.z) ?? { x: base.x, z: base.z + 10 };
-    const facing = faceToward(base, road.x, road.z);
+    // Turned to its road; and, if that is the high street, kept back from it far enough for a sidewalk.
+    const facing = setBack({ x: base.x, z: base.z, ...faceToward(base, road.x, road.z) }, world.roads.filter((r) => r.name === HIGH_STREET), BUILDING_LINE);
     const sin = Math.sin(facing.turn);
     const cos = Math.cos(facing.turn);
     const out_ = facing.d / 2 + DOOR_OUT;
@@ -115,12 +120,10 @@ export function resolveTownPlaces(world: World): TownPlace[] {
       id: listing.id,
       sign: listing.sign,
       style: listing.style,
-      x: base.x,
       // It stands level with the ground at its front wall, so the door can always be walked up to.
-      y: world.source.heightAt(base.x + (sin * facing.d) / 2, base.z + (cos * facing.d) / 2),
-      z: base.z,
+      y: world.source.heightAt(facing.x + (sin * facing.d) / 2, facing.z + (cos * facing.d) / 2),
       ...facing,
-      door: { x: base.x + sin * out_, z: base.z + cos * out_ },
+      door: { x: facing.x + sin * out_, z: facing.z + cos * out_ },
       building: index,
     });
   }
