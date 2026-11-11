@@ -568,7 +568,7 @@ export class Game {
       if (letter) {
         save.letters[letter.id] = day;
         talk.letter = letter;
-        talk.lines.push(letter.from === 'dot' ? 'Here. First piece of mail in your box. I wrote it myself, to see that the box works.' : 'One for you today. I have not read it. I have read the envelope.');
+        talk.lines.push(letter.from === 'dot' ? 'Here - the first piece of mail in your box!\nI wrote it myself, just to make sure the box works.' : "One for you today!\nI didn't read it. I did read the envelope.");
         talk.events.push({ kind: 'item', title: `A letter from ${letter.from ? (personById(letter.from)?.name ?? 'someone') : 'somebody'}`, detail: 'Kept in your pack' });
       }
     }
@@ -577,7 +577,7 @@ export class Game {
       const rumour = this.rumour(day);
       if (rumour && !save.found.spots.includes(rumour.find.id)) {
         this.rumourTold = day;
-        talk.lines.push(`Today's talk at the bar: somebody saw ${rumour.find.mineral.name.toLowerCase()} lying out by ${rumour.place}. A good one. I would go myself, but, forty beds.`);
+        talk.lines.push(`Okay, so. I heard somebody saw ${rumour.find.mineral.name.toLowerCase()} lying out by ${rumour.place}.\nA nice one, supposedly. I'd go look myself, but - forty beds.`);
       }
     }
     const said = talk.lines.length - (talk.lines[0] === person.hello ? 1 : 0);

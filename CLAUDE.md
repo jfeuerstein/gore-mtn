@@ -265,6 +265,17 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - `src/game/people.ts` is the cast, their lines, their errands and the things to wear, all as
   data. `Game.talk()` decides what someone says: a greeting the first time, thanks for an errand
   done, a thing handed over, a reminder, a new errand, or small talk, in that order.
+- **How people talk.** The owner asked for the manner of A Short Hike, in their own voice: short
+  lines that can be read in a breath, said the way a person would say them to a friend. So:
+  contractions always; small hesitations (`Oh!`, `um`, `...`, `I guess`, `a little`); ` - ` for a
+  dash; American spelling (this is upstate New York: `color`, `plow`, `donut`); sincerity before
+  jokes, and never the same joke shape twice running. People talk about their own small worries
+  and about each other more than about their jobs. A line may hold two or three short rows,
+  split with `\n`, which the talk sheet shows one under another; some lines should be one plain
+  row. Each person keeps their own softeners (Hazel and June say `kind of`, Otto `pretty`, Bram
+  `I mean`, Marge `hon`; Ivy and Amos use none). Tom never speaks: his lines are notes stuck to
+  him, written out in full by Pip, and are shown as handwriting. A test in `people.test.ts`
+  fails on `do not`, `cannot` and British spelling. The wording is the owner's to mark up.
 - An errand reads its need from the book (stones found, species seen, stamps earned) or from a
   carried item; nothing is ever handed in and lost. Errands are never timed and cannot be failed.
   Rewards are hats and jackets, worn from the Pack page of the Book. Add an errand by adding it
@@ -281,6 +292,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   goggles, as ever.
 - Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted, and the
   `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
+  What Tom has to say is shown as written notes signed `- Tom`.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
 - Three boards are chalked up fresh each time they are read (`src/game/report.ts`, pure, tested):
   the snow report by the Base Lodge door (the real season, sky and hour), the trail board

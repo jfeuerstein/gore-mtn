@@ -520,7 +520,7 @@ async function boot(): Promise<void> {
         if (to === season) continue;
         choices.push({ label: to === home ? `${SEASON_NAME[to]} (home)` : SEASON_NAME[to], onPick: () => rideTrain(to === home ? null : to) });
       }
-      talk.lines.push(`Where to? It is ${SEASON_NAME[season].toLowerCase()} here.`);
+      talk.lines.push(`Where to? It's ${SEASON_NAME[season].toLowerCase()} here.`);
     }
     const lines: (string | Written)[] = [...talk.lines];
     // Some boards are chalked up fresh each time they are read: from the sky as it is this
@@ -535,11 +535,13 @@ async function boot(): Promise<void> {
     // A letter is read on the spot, in the hand it was written in.
     if (talk.letter) lines.push({ written: talk.letter.text, signed: talk.letter.signed });
     const board = talk.person.kind === 'board';
+    // A snowman says nothing. His side of it is on notes stuck to him, in a child's hand.
+    const notes = talk.person.kind === 'snowman';
     talkSheet.open(
       // A board's name is written small ("the noticeboard"); as a title it takes a capital.
       board ? talk.person.name.charAt(0).toUpperCase() + talk.person.name.slice(1) : talk.person.name,
       talk.person.role,
-      board ? lines.map((line) => (typeof line === 'string' ? { written: line } : line)) : lines,
+      board || notes ? lines.map((line) => (typeof line === 'string' ? { written: line, ...(notes ? { signed: '- Tom' } : {}) } : line)) : lines,
       choices,
       board ? null : `${import.meta.env.BASE_URL}art/people/${talk.person.id}.webp`,
     );
@@ -825,7 +827,7 @@ async function boot(): Promise<void> {
       for (const { find, event } of game.pickUp(px, pz, today)) {
         glints.pickedUp(find, (x, z) => ground.heightAt(x, z));
         announce([event]);
-        hint('stone', 'Your first stone', 'It is in the Book. A new scatter lies out every day.');
+        hint('stone', 'Your first stone', "It's in the Book. New ones turn up every day.");
       }
     }
     glints.show(game.findsNear(px, pz, today), (x, z) => ground.heightAt(x, z));
@@ -833,7 +835,7 @@ async function boot(): Promise<void> {
     // Wildlife: anything come close to is seen and goes in the field guide, then makes off. A shy
     // creature come upon at speed bolts first. From a lift everything below can be watched at ease.
     const looked = game.lookAbout(px, pz, player.mode === 'lift' ? 0 : player.speed, today, season, watch);
-    if (looked.seen.length > 0) hint('guide', 'In the field guide', 'A pale blue mark shows anything you have not seen before.');
+    if (looked.seen.length > 0) hint('guide', 'In the field guide', "A pale blue mark means you haven't seen it before.");
     for (const { sighting, event } of looked.seen) {
       if (sighting.species.kin === 'animal' || sighting.species.kin === 'bird' || sighting.species.id === 'rumor') critters.flee(sighting, px, pz);
       else critters.settle(sighting);
@@ -842,7 +844,7 @@ async function boot(): Promise<void> {
     for (const sighting of looked.bolted) {
       critters.flee(sighting, px, pz);
       // Say what it was the first few times, so the player learns to go gently.
-      if (!(sighting.species.id in game.save.sightings)) toasts.show({ kind: 'sighting', title: 'Something bolted', detail: 'Shy creatures need a gentle approach' });
+      if (!(sighting.species.id in game.save.sightings)) toasts.show({ kind: 'sighting', title: 'Something bolted', detail: 'Shy animals need a slow approach' });
     }
     critters.show(game.sightingsNear(px, pz, today, season, watch), heightAt, (id) => !(id in game.save.sightings));
     critters.update(dt, player.position, follow.yaw, heightAt);
@@ -923,11 +925,11 @@ async function boot(): Promise<void> {
       });
     } else hud.setAction(null);
     if (station) hint('lift', 'A lift', 'Tap Ride at the orange gate to go up.');
-    if (seat && !player.seated) hint('bench', 'A bench', 'Tap Sit. There is no hurry, and the book keeps count.');
-    if (someone) hint('talk', 'Someone to talk to', 'A gold mark overhead means they have something for you.');
+    if (seat && !player.seated) hint('bench', 'A bench', "Tap Sit. There's no hurry.");
+    if (someone) hint('talk', 'Someone to talk to', 'A gold mark means they have something for you.');
     if (stop && !someone) hint('shuttle', 'The shuttle', 'It runs between the mountain, the Ski Bowl, town and the old garnet mine.');
     if (townHeart && Math.hypot(player.position.x - townHeart.x, player.position.z - townHeart.z) < 240) {
-      hint('town', 'North Creek', 'Something new every day: a letter at the post office, a bake on Main Street, a book at the library.');
+      hint('town', 'North Creek', 'Something new every day: a letter, a bake, a sandwich, a book.');
     }
     if (someone) hud.setTalk(`${APPROACH[someone.person.kind ?? 'person']} ${someone.person.name}`, () => talkTo(someone));
     else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
@@ -1017,10 +1019,10 @@ async function boot(): Promise<void> {
       // A few words of welcome, the first time the game is opened.
       if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint('welcome')) {
         talkSheet.open('Welcome to Gore', 'A quiet mountain, in your pocket', [
-          'Nothing here is timed, and nothing can go wrong. Wander.',
-          'Rest a thumb on the lower part of the screen to walk. Drag higher up to look around.',
-          `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill. The lifts will bring you back up.`,
-          'Stones glint on the ground. Trails, lifts and summits stamp your passport. The Book, bottom right, keeps it all.',
+          "Hi! There's no timer here, and nothing can go wrong.\nJust wander around.",
+          'Rest your thumb on the lower part of the screen to walk.\nDrag higher up to look around.',
+          `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill.\nThe lifts will bring you back up.`,
+          'Stones glint on the ground. Trails, lifts and summits stamp your passport.\nIt all goes in the Book, bottom right.',
         ]);
         welcomed = true;
         // Someone new has just been told everything. The news is for those who were here before.
@@ -1028,10 +1030,10 @@ async function boot(): Promise<void> {
       } else if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint(NEWS)) {
         // Once, for someone coming back to a mountain that has changed since they last opened it.
         talkSheet.open('Since you were last here', 'News from the mountain', [
-          'North Creek has opened its doors. The shuttle goes to town: there is a letter for you at the post office every day, and something new at the bakery, the deli and the library.',
-          'Everyone has a face now, and there are new neighbours. One is a snowman. One is the Mayor.',
-          'Every trail has a sign at its top, the Snow Train is waiting at the depot, and there are three boards on the mountain worth reading.',
-          'And there are benches now, in town and at the lookouts. Walk up to one and sit down. That is all it does.',
+          "North Creek's open! The shuttle goes to town now.\nThere's a letter for you at the post office every day, and something new at the bakery, the deli and the library.",
+          "Everybody has a face now, and there are a few new neighbors.\nOne's a snowman. One's the mayor (a cat).",
+          "Every trail has a sign at the top, and the Snow Train's waiting at the depot.\nThere are three boards on the mountain worth reading, too.",
+          "Also - benches! In town and at the lookouts.\nWalk up to one and sit down. That's all it does.",
         ]);
         welcomed = true;
       }

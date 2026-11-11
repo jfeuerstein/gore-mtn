@@ -37,6 +37,27 @@ describe('the people', () => {
       for (const line of [p.hello, ...p.chat, ...Object.values(p.seasonal ?? {}).flat()]) expect(line.length, `${p.id}: ${line}`).toBeLessThan(170);
     }
   });
+
+  it('talk the way people talk: in contractions, a row or two at a time, as it is spelled in New York', () => {
+    // Nobody says "do not" out loud. Tom is left out: his notes are in a nine-year-old's hand, and she writes it all out.
+    const stiff = /\b(do not|does not|did not|is not|are not|was not|cannot|will not|would not|could not|have not|has not|I am not)\b/;
+    const abroad = /\b(colour|favourite|neighbour|centre|plough|practise|metres|doughnut|labelled|car park|cosy)\b/i;
+    const spoken = (p: (typeof PEOPLE)[number]): string[] => [p.hello, ...p.chat, ...Object.values(p.seasonal ?? {}).flat(), ...Object.values(p.moods ?? {}).flat(), ...Object.values(p.wearing ?? {})];
+    for (const p of PEOPLE) {
+      for (const line of spoken(p)) {
+        if (p.kind !== 'snowman') expect(line, p.id).not.toMatch(stiff);
+        expect(line, p.id).not.toMatch(abroad);
+        // A line is at most a few short rows in one bubble; a notice may be a list.
+        expect(line.split('\n').length, `${p.id}: ${line}`).toBeLessThanOrEqual(p.kind === 'board' ? 5 : 3);
+      }
+    }
+    for (const e of ERRANDS) {
+      for (const line of [e.ask, e.nudge, e.thanks, e.fetch?.handover ?? '']) {
+        if (personById(e.from)?.kind !== 'snowman') expect(line, e.id).not.toMatch(stiff);
+        expect(line, e.id).not.toMatch(abroad);
+      }
+    }
+  });
 });
 
 describe('the errands', () => {

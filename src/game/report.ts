@@ -18,50 +18,50 @@ export interface Conditions {
 
 const SURFACE: Record<Season, string> = {
   winter: 'packed powder',
-  spring: 'corn, mashed potato, and some honest mud',
-  summer: 'grass, mostly. Dirt on the bike trails',
-  fall: 'leaves, to a depth of several leaves',
+  spring: 'corn snow, mashed potatoes, a little mud',
+  summer: 'grass. Dirt on the bike trails',
+  fall: 'leaves. Lots of leaves',
 };
 
 const BASE: Record<Season, string> = {
-  winter: 'deep enough',
-  spring: 'going, but not gone',
-  summer: 'none. It is summer. Please stop asking',
-  fall: 'any day now',
+  winter: 'plenty',
+  spring: 'hanging in there',
+  summer: "none. It's summer",
+  fall: 'soon, we hope',
 };
 
 /** Closing remarks, one a day, turn about. */
 const NOTES: readonly string[] = [
-  'Patrol says: know the code. The trees have right of way.',
-  'Groomed overnight: all of it. Bram would like that noted.',
-  'Wildlife on the hill: yes. Please do not feed the Mayor.',
-  'Lost and found: one left mitten. As of this morning, fourteen left mittens.',
-  'Lift lines: none. There is nobody here but you. Enjoy it.',
-  'Chili at the Saddle: on. It is always on.',
-  'Today\'s forecast courtesy of Madame Flurry, who will confirm it tomorrow.',
-  'Tom at the Ski Bowl reports no change. Tom always reports no change.',
-  'Reminder: Gerald, on Twister, is a bump and not a feature. He disagrees.',
-  'The Snow Train leaves when ready. It is ready.',
+  'Trees have the right of way. Thanks! - Patrol',
+  "Bram groomed everything last night. He'd like that noted.",
+  "Please don't feed the Mayor. He's had plenty.",
+  'The lost and found is up to fourteen left mittens. Come get yours.',
+  "No lift lines today. It's pretty much just you.",
+  "Chili's on at the Saddle. (It's always on.)",
+  "Forecast by Madame Flurry. She'll confirm it tomorrow.",
+  'Tom at the Ski Bowl says hi. (Pip says Tom says hi.)',
+  'Gerald, on Twister, is a bump. Go easy on him.',
+  "The Snow Train leaves whenever you're ready.",
 ];
 
 /** What the sky is doing, in a report's words. */
 function sky(c: Conditions): string {
   const snow = c.season === 'winter' || c.season === 'spring';
-  if (c.falling > 0.6) return snow ? 'SNOWING, and meaning it' : 'RAIN, steady';
-  if (c.falling > 0.05) return snow ? 'flurries' : 'a shower passing';
-  if (c.watch === 'night') return c.overcast > 0.5 ? 'dark, and cloudy with it' : 'clear, with stars';
+  if (c.falling > 0.6) return snow ? 'SNOWING. A lot' : 'RAIN, pretty steady';
+  if (c.falling > 0.05) return snow ? 'flurries' : 'a passing shower';
+  if (c.watch === 'night') return c.overcast > 0.5 ? 'dark and cloudy' : 'clear, with stars';
   if (c.overcast > 0.7) return 'overcast';
-  if (c.overcast > 0.3) return 'some cloud';
-  return c.watch === 'dawn' ? 'clear, and pink at the edges' : c.watch === 'dusk' ? 'clear, and going gold' : 'bluebird';
+  if (c.overcast > 0.3) return 'some clouds';
+  return c.watch === 'dawn' ? 'clear, a little pink' : c.watch === 'dusk' ? 'clear, going gold' : 'bluebird';
 }
 
 /** New snow in the last while, as optimistically as honesty allows. */
 function fresh(c: Conditions): string {
   if (c.season === 'summer') return 'no';
-  if (c.season === 'fall') return c.falling > 0.05 ? 'no, that is rain' : 'not yet';
-  if (c.falling > 0.6) return 'yes, as you can see';
-  if (c.falling > 0.05) return 'a dusting, and counting';
-  return c.season === 'winter' ? 'not since the last time' : 'no, and do not get your hopes up';
+  if (c.season === 'fall') return c.falling > 0.05 ? "no, that's rain" : 'not yet';
+  if (c.falling > 0.6) return 'yes! Look outside';
+  if (c.falling > 0.05) return 'a dusting so far';
+  return c.season === 'winter' ? 'not since last time' : 'no, sorry';
 }
 
 /** The report, as lines to be chalked one under another. */
@@ -69,11 +69,14 @@ export function snowReport(c: Conditions, lifts: number, trails: number): string
   let seed = 0;
   for (let i = 0; i < c.day.length; i++) seed = (seed * 31 + c.day.charCodeAt(i)) >>> 0;
   return [
-    `SNOW REPORT. Sky: ${sky(c)}.`,
-    `New snow: ${fresh(c)}. Base: ${BASE[c.season]}. Surface: ${SURFACE[c.season]}.`,
-    `Lifts turning: ${lifts} of ${lifts}. Trails open: ${trails} of ${trails}. Closed: none, ever.`,
+    'SNOW REPORT',
+    `Sky: ${sky(c)}.`,
+    `New snow: ${fresh(c)}. Base: ${BASE[c.season]}.`,
+    `Surface: ${SURFACE[c.season]}.`,
+    `Lifts turning: ${lifts} of ${lifts}.`,
+    `Trails open: ${trails} of ${trails}.`,
     NOTES[seed % NOTES.length] as string,
-  ].join(' ');
+  ].join('\n');
 }
 
 /** A small repeatable number from a day. */
@@ -85,12 +88,12 @@ function dayNumber(day: string): number {
 
 /** Why today's trail is today's trail. */
 const REASONS: readonly string[] = [
-  'you have not skied it. That is the whole reason',
-  'Bram combed it specially',
+  "you haven't been down it yet",
+  'Bram did a really nice job on it',
   'Otto gives it an eight',
-  'somebody has to',
-  'the view, about halfway down',
-  'it has been asking after you',
+  'somebody should',
+  "there's a good view about halfway down",
+  "no reason. It's just a nice one",
 ];
 
 /**
@@ -102,10 +105,10 @@ const REASONS: readonly string[] = [
 export function trailOfTheDay(trails: readonly { name: string; difficulty: Difficulty; glade: boolean }[], stamped: (name: string) => boolean, day: string, riding = false): string {
   const title = riding ? 'RIDE OF THE DAY' : 'TRAIL OF THE DAY';
   const todo = trails.filter((t) => !stamped(t.name));
-  if (todo.length === 0) return `${title}: whichever you like. You have done every one of them. We checked the book. Twice.`;
+  if (todo.length === 0) return `${title}: whichever you like!\nYou've done every single one. We checked the book twice.`;
   const seed = dayNumber(day);
   const pick = todo[seed % todo.length] as (typeof todo)[number];
-  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}. Why: ${REASONS[(seed >>> 3) % REASONS.length]}. ${todo.length} still to stamp.`;
+  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${REASONS[(seed >>> 3) % REASONS.length]}.\n${todo.length} still to stamp.`;
 }
 
 const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime', dusk: 'last light', night: 'after dark' };
@@ -118,7 +121,7 @@ const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime',
 export function wildlifeLog(species: readonly Species[], seen: (id: string) => boolean, season: Season, watch: Watch, day: string): string {
   // What keeps to one named spot is not for a general log, and nor is a cairn.
   const about = species.filter((s) => s.kin !== 'curio' && !s.near && (!s.seasons || s.seasons.includes(season)) && (!s.watches || s.watches.includes(watch)));
-  if (about.length === 0) return `LOG, ${WATCH_NAME[watch]}. Nothing stirring. Even the ravens have gone in.`;
+  if (about.length === 0) return `LOG, ${WATCH_NAME[watch]}.\nNothing's moving. Even the ravens went in.`;
   const seed = dayNumber(day + watch);
   // Turn the list by the day, then put the unseen first.
   const turned = about.map((_, i) => about[(i + seed) % about.length] as Species);
@@ -126,5 +129,5 @@ export function wildlifeLog(species: readonly Species[], seen: (id: string) => b
   const picks = [...fresh, ...turned.filter((s) => seen(s.id))].slice(0, 3);
   const names = picks.map((s) => s.name.toLowerCase()).join(', ');
   const lead = fresh[0];
-  return `LOG, ${WATCH_NAME[watch]}. About on the mountain: ${names}.${lead ? ` Not yet in your guide: ${lead.name.toLowerCase()}. ${lead.hint}` : ' All of them old friends of yours.'}`;
+  return `LOG, ${WATCH_NAME[watch]}.\nOut and about: ${names}.\n${lead ? `Not yet in your guide: ${lead.name.toLowerCase()}. ${lead.hint}` : 'All old friends of yours.'}`;
 }
