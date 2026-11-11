@@ -38,6 +38,8 @@ export class TrailMap {
   private picked: { trail?: Trail; lift?: LiftPath; path?: string; mark?: MapMark } | null = null;
   /** People with something for the player, and anything else worth a mark. Asked for each time the map is drawn. */
   marks: () => MapMark[] = () => [];
+  /** Places with a name that can be tapped for it: the town's doors. Small squares, under the marks. */
+  spots: MapMark[] = [];
   /** Called when the map opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
 
@@ -194,7 +196,8 @@ export class TrailMap {
       const label = place.id === 'depot' ? 'North Creek' : place.id === 'ski-bowl-lodge' ? 'Ski Bowl' : place.name.replace('Gore ', '');
       ctx.fillStyle = '#1f2a3a';
       ctx.fillRect(p.u - 2.5, p.v - 2.5, 5, 5);
-      const left = p.u + ctx.measureText(label).width + 10 > view.width;
+      // Kept well inside the edge, which is rounded off at the corners.
+      const left = p.u + ctx.measureText(label).width + 26 > view.width;
       ctx.textAlign = left ? 'right' : 'left';
       ctx.lineWidth = 3;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
@@ -202,6 +205,17 @@ export class TrailMap {
       const rise = place.id === 'ski-bowl-lodge' ? -10 : 0;
       ctx.strokeText(label, p.u + (left ? -6 : 6), p.v + rise);
       ctx.fillText(label, p.u + (left ? -6 : 6), p.v + rise);
+    }
+
+    // The town's named places: small cream squares, to be tapped for their names.
+    for (const spot of this.spots) {
+      const p = view.toMap(spot.x, spot.z);
+      const half = this.picked?.mark === spot ? 3.5 : 2;
+      ctx.fillStyle = '#f7f1e3';
+      ctx.strokeStyle = '#1f2a3a';
+      ctx.lineWidth = 1;
+      ctx.fillRect(p.u - half, p.v - half, half * 2, half * 2);
+      ctx.strokeRect(p.u - half, p.v - half, half * 2, half * 2);
     }
 
     // Gold diamonds for whoever has something for the player, as over their heads.
@@ -271,6 +285,15 @@ export class TrailMap {
       if (d < best * 0.6) {
         best = d;
         found = { path: path.name };
+      }
+    }
+    // A named place is picked only by a tap right on it: they stand close together in town.
+    let nearest = reach * 0.75;
+    for (const spot of this.spots) {
+      const d = Math.hypot(spot.x - at.x, spot.z - at.z);
+      if (d < nearest) {
+        nearest = d;
+        found = { mark: spot };
       }
     }
     // A diamond is small, and is what someone tapping near one is after.

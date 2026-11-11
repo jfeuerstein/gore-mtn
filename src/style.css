@@ -1244,6 +1244,9 @@ body {
   background-color: var(--paper);
   background-image: var(--grain);
 }
+#loading em {
+  font-style: normal;
+}
 /* The loading screen is the cover of the passport. */
 #loading b {
   display: block;

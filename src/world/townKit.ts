@@ -315,6 +315,9 @@ export function townPlaceHeight(style: TownStyle, w: number, d: number): number 
  * be painted for them.
  * @param roofColour snow in winter, each building's own roof otherwise
  */
+/** How far out each kind of porch comes, for hanging things from its front edge. */
+const PORCH_DEPTH: Partial<Record<TownStyle, number>> = { inn: 2.8, cabin: 2.4, tavern: 2.2, house: 2.2 };
+
 /** The kinds of place that are dressed for the season: where somebody is in and out of the door all day. */
 const DRESSED: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'cafe', 'deli', 'house', 'tavern', 'cabin', 'store', 'church'];
 
@@ -335,12 +338,14 @@ function dressing(p: TownPlace, season: Season): { list: Block[]; panes: Block[]
       { size: [0.32, 0.32, 0.08], at: [0, 2.45, front + 0.21], colour: DOOR },
       { size: [0.2, 0.14, 0.09], at: [0, 2.17, front + 0.22], colour: 0xc8402d },
     );
-    const span = Math.min(p.w * 0.9, 24);
+    // Along the front of the porch where there is one, so its roof does not hide them; else under the eaves.
+    const porchDepth = PORCH_DEPTH[p.style] ?? 0;
+    const span = Math.min(p.w * (porchDepth ? 0.8 : 0.9), 24);
     const bulbs = Math.max(6, Math.round(span / 1.1));
     for (let i = 0; i <= bulbs; i++) {
       // Hung in shallow loops from one end of the front to the other.
       const sag = Math.abs(Math.sin((i / bulbs) * Math.PI * Math.max(2, Math.round(span / 5)))) * 0.22;
-      panes.push({ size: [0.13, 0.13, 0.13], at: [-span / 2 + (i * span) / bulbs, 3.72 - sag, front + 0.45], colour: 0xffffff });
+      panes.push({ size: [0.13, 0.13, 0.13], at: [-span / 2 + (i * span) / bulbs, (porchDepth ? 3.3 : 3.72) - sag, front + (porchDepth ? porchDepth + 0.2 : 0.45)], colour: 0xffffff });
     }
   } else if (season === 'fall') {
     list.push(

@@ -84,6 +84,25 @@ window.__gore = {
   census: () => ({}),
 };
 
+/** A sign's capitals as a name: "TOWN HALL & LIBRARY" to "Town Hall & Library". */
+const titleCase = (text: string): string => text.toLowerCase().replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
+
+/** What the mountain is doing while it loads. One is shown, by the minute of the hour. */
+const LOADING_LINES = [
+  'Loading the mountain…',
+  'Combing the corduroy…',
+  'Waking the lift attendants…',
+  'Counting the garnets…',
+  'Putting the chili on…',
+  'Chalking up the snow report…',
+  'Asking the Mayor…',
+  'Getting up steam…',
+];
+{
+  const line = document.getElementById('loading-line');
+  if (line) line.textContent = LOADING_LINES[new Date().getMinutes() % LOADING_LINES.length] as string;
+}
+
 function showFatal(message: string): void {
   window.__gore.error = message;
   let el = document.getElementById('fatal');
@@ -394,7 +413,9 @@ async function boot(): Promise<void> {
     return [{ person, ...at, ...(beside ? { prop: { ...beside, turn: person.prop === 'snowcat' ? 2.5 : 0.4 } } : {}) }];
   });
   const folk = new Folk(standings, shadows, season);
-  // On the map, a gold diamond for everyone with something for the player.
+  // On the map, a small square for each of the town's doors, named when tapped...
+  trailMap.spots = townPlaces.filter((p) => p.sign).map((p) => ({ x: p.x, z: p.z, label: titleCase(p.sign) }));
+  // ...and a gold diamond for everyone with something for the player.
   trailMap.marks = () =>
     standings
       .filter((st) => game.hasBusiness(st.person.id, season))

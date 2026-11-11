@@ -331,8 +331,9 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   pipeline's canopy picture. West is up, so the summit is at the top as on a ski map; the
   projection is `src/ui/mapView.ts` (pure, tested).
 - It shows every trail by difficulty, every lift with a ring where you board, the paths through
-  the woods as dotted lines, the main places, an arrow for the player, and a gold diamond for
-  anyone with something for the player (`TrailMap.marks`). Tapping any of them names it.
+  the woods as dotted lines, the main places, an arrow for the player, a small square for each
+  of the town's named places (`TrailMap.spots`) and a gold diamond for anyone with something
+  for the player (`TrailMap.marks`). Tapping any of them names it.
 
 ## Measuring performance
 
