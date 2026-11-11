@@ -150,6 +150,8 @@ export class Hud {
     onSkis: (on: boolean) => void,
     /** Where the player is, as address options, so a change of setting brings them back to the same spot. */
     private readonly place: () => Record<string, string | null> = () => ({}),
+    /** The player's book as a code to keep somewhere safe, and a way to bring one back. */
+    private readonly book: { code(): string; holds(code: string): boolean; restore(code: string): boolean } | null = null,
   ) {
     const root = document.getElementById('hud') as HTMLElement;
     root.hidden = !cfg.hud;
@@ -167,9 +169,9 @@ export class Hud {
       });
     };
     this.actionEl.addEventListener('click', () => this.onAction?.());
+    this.buildMenu(places, onTeleport);
     toggle('fast-button', false, onFast);
     toggle('ski-button', cfg.ski, onSkis);
-    this.buildMenu(places, onTeleport);
   }
 
   private buildMenu(places: Place[], onTeleport: (place: Place) => void): void {
@@ -194,6 +196,56 @@ export class Hud {
       b.addEventListener('click', () => {
         onTeleport(place);
         this.menuEl.hidden = true;
+      });
+    }
+    // For getting about while testing: on foot, the stick moves at the speed of a fast lift.
+    const fast = add(go, 'button', 'Fast travel');
+    fast.type = 'button';
+    fast.id = 'fast-button';
+
+    if (this.book) {
+      const book = this.book;
+      add(this.menuEl, 'h2', 'Your book');
+      const keep = add(this.menuEl, 'div');
+      keep.className = 'row';
+      const copyCode = add(keep, 'button', 'Copy save code');
+      copyCode.type = 'button';
+      copyCode.id = 'save-copy';
+      const field = add(keep, 'input');
+      field.id = 'save-field';
+      field.type = 'text';
+      field.placeholder = 'Paste a save code';
+      field.autocapitalize = 'off';
+      field.autocomplete = 'off';
+      field.spellcheck = false;
+      const restore = add(keep, 'button', 'Restore');
+      restore.type = 'button';
+      restore.id = 'save-restore';
+      const note = add(this.menuEl, 'p', 'The book is kept on this phone. A save code is the whole book as text: keep one somewhere safe, or use it to carry the book to another browser.');
+      copyCode.addEventListener('click', () => {
+        const code = book.code();
+        // Show it as well, so it can be copied by hand where the clipboard is not allowed.
+        field.value = code;
+        void (navigator.clipboard?.writeText(code) ?? Promise.reject()).then(
+          () => (copyCode.textContent = 'Copied'),
+          () => (copyCode.textContent = 'Select and copy it'),
+        );
+      });
+      // Restoring replaces the book on this phone, so it takes two taps on the same code.
+      let armed = '';
+      restore.addEventListener('click', () => {
+        const code = field.value.trim();
+        if (!book.holds(code)) {
+          note.textContent = 'That is not a save code.';
+          armed = '';
+        } else if (armed !== code) {
+          armed = code;
+          note.textContent = 'This replaces the book on this phone with the one in the code. Tap Restore again to go ahead.';
+        } else {
+          armed = '';
+          note.textContent = book.restore(code) ? 'Book restored.' : 'That is not a save code.';
+          field.value = '';
+        }
       });
     }
 

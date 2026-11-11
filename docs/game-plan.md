@@ -22,7 +22,7 @@ Working title: **Gore** (placeholder; pick a real one once the slice exists).
 | Must-haves | Sunway, Ruby Run, Quicksilver, Otter Slide, Foxlair, The Rumor, Lies, the Saddle Lodge, and the cafe and sandwich shop in North Creek |
 | Art direction | No reference images. Claude proposes looks; you judge them on the phone. |
 
-**Status:** milestones 0 and 1 are done. Milestone 2 (the look) is built and waiting on the owner's verdict: the mountain changes with the real time of day and weather, and the placeholder skier, lodges and lifts have been replaced. See the roadmap.
+**Status:** milestones 0 and 1 are done. Milestone 2 (the look) and milestone 3 (the collecting loop) are built and waiting on the owner's verdict. The mountain changes with the real time of day and weather; the skier, lodges and lifts are proper models; and there is now a book to fill: a trail passport and a mineral collection, kept between visits. See the roadmap.
 
 ## 2. What the game is
 
@@ -306,7 +306,7 @@ Each milestone ends with something playable on your phone and a single question 
 | 0 | Foundations (done) | Project scaffold, auto-deploy, `CLAUDE.md`, touch input, the whole real mountain as a greybox with instanced trees and a settings menu for load testing | Does it hold 60 fps on your iPhone, and at what tree count? |
 | 1 | Greybox skiing (done) | One-thumb skiing with momentum and a hockey stop, every lift rideable, trees that stop you and duck out of the camera's way, ski tracks, a trail map | Is skiing a run and riding back up fun with grey boxes? Yes. |
 | 2 | The look (built, awaiting verdict) | Four looks compared and a direction chosen; time of day and weather; a jointed skier with walking, skiing, tucking, stopping and sitting poses; lodges, huts, the depot and the fire tower with windows that light after dark; lift towers with moving chairs and gondola cabins | Would you set a screenshot as your wallpaper? |
-| 3 | The collecting loop | Mineral spawns and digging, passport stamps, UI, saves | Does a five-minute session end with something new? |
+| 3 | The collecting loop (built, awaiting verdict) | A fresh scatter of stones every day, picked up by skiing or walking up to them; trail stamps with progress kept between runs; lift pins, summit patches, landmark and condition stamps; the Book; saves, with a save code as a backup. Digging and tools are left for later. | Does a five-minute session end with something new? |
 | 4 | Lodges and seasons | Base Lodge and Saddle Lodge as real places, two characters, display case, a ticket window to one other season (it moves to the depot when town is built) | Does the second season feel like a different visit? |
 | 5 | Slice polish | Audio, onboarding, offline install, icon, credits | Would you show it to a friend? |
 
@@ -393,6 +393,42 @@ Things to judge next:
 6. The buildings and lifts: do they belong on this mountain? Is the Base Lodge recognisable enough, or should specific buildings be modelled more closely on the real ones?
 7. The milestone's question: would you set a screenshot as your wallpaper? If not, what is in the way?
 
+### Milestone 3: the collecting loop
+
+There is now something to collect, a book that shows it, and a save.
+
+**The passport**
+
+- **Trails (112).** Skiing a trail fills in its stamp. Each trail has a checkpoint every 40 m; the stamp is given once nine in ten have been skied past, anywhere across the trail's width. Progress is kept, so a trail left halfway can be finished on another run or another day. Only skiing counts: not walking, not riding a lift over it.
+- **Lifts (14).** Riding a lift to the top earns its pin.
+- **Summits (4).** Gore, Bear Mountain, Burnt Ridge and Little Gore, each earned where its lift sets you down.
+- **Landmarks (5).** The Base Lodge, the Saddle Lodge, the Ski Bowl, the fire tower (a short way through the trees from the top of the Straight Brook Quad) and the North Creek depot (a long walk from the Ski Bowl, until town is built).
+- **Conditions (5).** First Light, Bluebird Day, Powder Day, Alpenglow and Night Owl, earned by skiing in them. These are only given under the real clock and sky, not a moment pinned from Settings.
+
+**Minerals**
+
+- Twelve to start with, from real Adirondack geology: four common (almandine garnet, hornblende, feldspar, quartz), four uncommon (magnetite, calcite, pyrite, graphite) and four rare (labradorite, tourmaline, wollastonite, gem garnet).
+- About 2,000 stones lie on the mountain each day, in four kinds of ground: the groomed snow of the trails, the strip beside a trail, steep bare rock, and deep woods. A skier keeping to a trail passes one within a swerve every hundred metres or so. The common minerals lie on and beside the trails; the uncommon and rare ones favour rock and woods, which take a detour, and the book hints where to look for those not yet found.
+- The scatter is worked out from the date, so it is the same all day and new at midnight. A stone picked up stays picked up until then.
+- Each stone has a size. Most are near typical; a few are much larger, and the book keeps the largest of each.
+- Stones show as a gem in the mineral's colour hovering over the snow with a gold twinkle, so they can be seen in daylight and after dark. Coming within three metres picks one up. There is no digging and there are no tools yet.
+
+**The Book** is the button at the bottom right: a Passport page (stamps inked when earned, dotted outlines when not, a bar for each trail in progress) and a Minerals page. Things just earned are announced at the top of the screen.
+
+**Saving.** The book is kept in the browser's storage on the phone and written as it fills. Settings has a save code: the whole book as a line of text, to keep as a backup or to carry between Safari and the Home Screen app, which do not share storage.
+
+Fast travel moved from the bottom row into Settings, next to the places to go, to make room for the Book.
+
+Things to judge on the phone:
+
+1. Ski a favourite trail from the top. Does the stamp arrive when it feels earned? Too strict, or too easy?
+2. Stones: easy enough to spot by day, at night and in snow? Too many or too few? Is swerving to the edge of a trail for one fun, or a nuisance at speed?
+3. Should picking a stone up stay automatic, or would you rather stop and tap (or dig)?
+4. The Book: is it clear what you have and what to go and get? Is anything missing from it?
+5. Close the game from the Home Screen and open it again. Is the book as you left it?
+6. The milestone's question: does a five-minute session end with something new?
+
+Not built yet, on purpose: tools and digging, quality as well as size, the display case, trading, the other eighteen or so minerals, and anything seasonal. Using Settings to jump to a place earns its stamps like arriving any other way; that is a testing shortcut, not a rule of the game.
 
 ## 10. Risks and honest perspectives
 
@@ -416,6 +452,7 @@ Things to judge next:
 
 ## 12. Open questions
 
-1. The milestone 0 phone results (see the roadmap).
+1. The verdicts on milestones 2 and 3 (see the lists under each in the roadmap).
 2. Are Café Sarah and Izzy's Market & Deli the places you remember?
-3. The fal key is not needed until milestone 2. When it is, it gets entered through a secure form or environment settings, never pasted into chat or committed.
+3. Hiking: part of the first slice, or skiing only until the second season?
+4. The fal key has not been needed so far: everything is built in code. If it is, it gets entered through a secure form or environment settings, never pasted into chat or committed.

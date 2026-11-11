@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Take a screenshot of the built game so changes can be checked by eye without a phone.
 //
-//   npm run build && node tools/shot.mjs <out.png> ["at=summit&trees=20000"] [width] [height] [scale]
+//   npm run build && node tools/shot.mjs <out.png> ["at=summit&trees=20000"] [width] [height] [scale] [script]
+//
+// The optional script runs in the page once the game is ready, to set a scene the address cannot:
+// "document.getElementById('book-button').click()" opens the book, for example. It may be async.
 //
 // Defaults to an upright iPhone 17 Pro screen (402 x 874 points). Use scale 2 for an image a
 // person will look at.
@@ -12,7 +15,7 @@ import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
 
-const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1'] = process.argv.slice(2);
+const [out = 'shot.png', query = '', width = '402', height = '874', scale = '1', script = ''] = process.argv.slice(2);
 
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const address = server.httpServer.address();
@@ -41,6 +44,11 @@ try {
     failed = true;
     console.error(`game failed to start:\n${error}`);
   } else {
+    if (script) {
+      await page.evaluate(`(async () => { ${script} })()`);
+      // Let the game draw a few frames of whatever the script set up.
+      await page.waitForFunction((n) => window.__gore.state().frames > n + 4, await page.evaluate(() => window.__gore.state().frames), { timeout: 120000 });
+    }
     await page.waitForTimeout(600);
     console.log(JSON.stringify(await page.evaluate(() => window.__gore.state())));
   }

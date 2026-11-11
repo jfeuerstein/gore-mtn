@@ -27,6 +27,8 @@ export class TrailMap {
   private view: MapView | null = null;
   private timer = 0;
   private picked: { trail?: Trail; lift?: LiftPath } | null = null;
+  /** Called when the map opens, so other sheets can get out of the way. */
+  onOpen: (() => void) | null = null;
 
   /**
    * @param backdrop the pipeline's canopy picture of the whole mountain, north up
@@ -75,6 +77,7 @@ export class TrailMap {
   }
 
   open(): void {
+    this.onOpen?.();
     this.sheet.hidden = false;
     this.picked = null;
     this.caption.textContent = 'Tap a trail or lift to see its name.';

@@ -7,7 +7,12 @@ import { paletteFor, type Weather } from './look/palette';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
 import { FrameStats } from './debug/perf';
+import { Game, type GameEvent } from './game/game';
+import { conditionsNow } from './game/passport';
+import { dayKey, saveFromCode, saveToCode } from './game/save';
 import { Input } from './input/input';
+import { Book } from './ui/book';
+import { Toasts } from './ui/toasts';
 import { TrailMap } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
@@ -15,6 +20,7 @@ import { fallLineYaw } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
 import { Buildings } from './world/buildings';
 import { LiftCars } from './world/liftCars';
+import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
@@ -27,6 +33,8 @@ const M_TO_FT = 3.28084;
 const MS_TO_MPH = 2.23694;
 /** Camera pitch while riding a lift: nearly level, to look up the mountain. */
 const LIFT_PITCH = 0.2;
+/** Where the player's book is kept in the browser. */
+const SAVE_KEY = 'gore.book';
 
 /** Handle for screenshots and automated checks. See tools/shot.mjs. */
 interface DebugHandle {
@@ -157,7 +165,48 @@ async function boot(): Promise<void> {
 
   const player = new Player(shadows);
   const tracks = new SkiTracks();
-  scene.add(player.object, tracks.mesh);
+  const glints = new Glints(shadows);
+  scene.add(player.object, tracks.mesh, glints.group);
+
+  // The collecting game. Its book lives in the browser's storage; if that is unavailable the game
+  // still plays, and simply forgets.
+  const game = new Game(
+    {
+      trails: world.trails,
+      lifts: world.lifts,
+      places: world.places,
+      minX: world.source.minX,
+      minZ: world.source.minZ,
+      trailDistance: (x, z) => world.trailDistance(x, z),
+      slopeDegAt: (x, z) => world.source.slopeDegAt(x, z),
+    },
+    {
+      read: () => {
+        try {
+          return localStorage.getItem(SAVE_KEY);
+        } catch {
+          return null;
+        }
+      },
+      write: (text) => {
+        try {
+          localStorage.setItem(SAVE_KEY, text);
+        } catch {
+          // Private browsing, or storage full: nothing to be done.
+        }
+      },
+    },
+  );
+  const toasts = new Toasts(cfg.hud);
+  const book = new Book(game);
+  const announce = (events: readonly GameEvent[]): void => {
+    if (events.length === 0) return;
+    for (const event of events) toasts.show(event);
+    book.refresh();
+  };
+  // Keep the book safe when the game is put away.
+  window.addEventListener('pagehide', () => game.persist());
+  document.addEventListener('visibilitychange', () => game.persist());
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 16000); // lens is set by follow.setAspect()
   const follow = new FollowCamera(camera, cfg.zoom);
   const input = new Input(canvas);
@@ -194,11 +243,14 @@ async function boot(): Promise<void> {
     player.face(cfg.yaw);
   }
 
-  new TrailMap(world, liftPaths, canopyTexture.image as CanvasImageSource, () => ({
+  const trailMap = new TrailMap(world, liftPaths, canopyTexture.image as CanvasImageSource, () => ({
     x: player.position.x,
     z: player.position.z,
     yaw: player.travelHeading,
   }));
+  // One sheet at a time.
+  trailMap.onOpen = () => book.close();
+  book.onOpen = () => trailMap.close();
 
   if (cfg.ski) player.setMode('ski');
   const hud = new Hud(
@@ -214,6 +266,15 @@ async function boot(): Promise<void> {
       ski: player.mode === 'ski' ? '1' : null,
       at: null,
     }),
+    {
+      code: () => saveToCode(game.save),
+      holds: (code) => saveFromCode(code) !== null,
+      restore: (code) => {
+        const save = saveFromCode(code);
+        if (save) game.restore(save);
+        return Boolean(save);
+      },
+    },
   );
 
   let pixelRatio = 1;
@@ -278,6 +339,15 @@ async function boot(): Promise<void> {
   paintSky(0);
   let sinceSky = 0;
 
+  // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
+  let today = dayKey(new Date());
+  let sinceSlow = 0;
+  /**
+   * Conditions are stamped only when the game is showing the real sky. A moment pinned from
+   * Settings or the address is for looking at, not for collecting.
+   */
+  const honestSky = cfg.time === 'real' && cfg.weather === 'real';
+
   /** @param unlimited build everything in range at once: before the first frame and after a teleport */
   const cull = (unlimited = false): void => {
     // Haze sets how far there is anything to see, so nothing beyond it need be drawn. Trees are
@@ -303,6 +373,10 @@ async function boot(): Promise<void> {
     weatherSource: cfg.weather !== 'real' ? 'chosen' : realWeather ? 'real' : 'invented',
     viewDist,
     nearestTree: trees.trunkAt(player.position.x, player.position.z, 300),
+    day: today,
+    book: game.summary(),
+    finds: game.findsNear(player.position.x, player.position.z, today).map((f) => ({ x: f.x, z: f.z, mineral: f.mineral.id })),
+    toast: toasts.last,
     speed: player.speed,
     heading: player.travelHeading,
     slip: player.slip,
@@ -368,6 +442,32 @@ async function boot(): Promise<void> {
       const spot = world.nearestTrailSpot(ax, az, 150) ?? { x: ax, z: az };
       player.place(spot.x, spot.z, ground);
       player.face(top.yaw);
+      announce(game.rode(arrived.lift.name, today));
+    }
+
+    // --- Collecting --------------------------------------------------------------------------
+    // Skiing a trail fills in its stamp; standing somewhere worth a visit earns that; and a find
+    // is picked up by coming close to it. None of it happens from a lift.
+    const px = player.position.x;
+    const pz = player.position.z;
+    if (player.mode !== 'lift') {
+      if (player.mode === 'ski') announce(game.skiedAt(px, pz, today));
+      announce(game.reachedAt(px, pz, today));
+      for (const { find, event } of game.pickUp(px, pz, today)) {
+        glints.pickedUp(find, (x, z) => ground.heightAt(x, z));
+        announce([event]);
+      }
+    }
+    glints.show(game.findsNear(px, pz, today), (x, z) => ground.heightAt(x, z));
+    glints.update(dt, follow.yaw);
+    sinceSlow += frameMs;
+    if (sinceSlow >= 1000) {
+      sinceSlow = 0;
+      today = dayKey(new Date());
+      if (honestSky && player.mode === 'ski' && player.speed > 3) {
+        announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather), today));
+      }
+      game.persist();
     }
     // Offer a ride when standing at the foot of a lift.
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);

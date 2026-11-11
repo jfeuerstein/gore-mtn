@@ -3,9 +3,12 @@
 //
 //   npm run build && node tools/webgpu-smoke.mjs ["trees=20000"]
 //
-// Headless Chromium here can start WebGPU but cannot present it (see tools/browser.mjs), so this
-// loads the game, lets it draw its first frames through the WebGPU backend, and fails if three.js
-// reports a shader or pipeline error while doing so. It cannot show what the frames look like.
+// Headless Chromium here can start WebGPU but cannot present it (see tools/browser.mjs): a moment
+// after the first frames it destroys the device, and whatever the game does next fails. So this
+// loads the game, lets it draw what it can through the WebGPU backend, and fails if three.js
+// reports a shader or pipeline error, or if not even one whole frame was drawn before the device
+// went. Errors after the device has gone are this environment's, not the game's, and are only
+// printed. It cannot show what the frames look like.
 import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
@@ -15,6 +18,10 @@ const browser = await launchBrowser({ webgpu: true });
 const problems = [];
 let frames = 0;
 let backend = '';
+let stones = 0;
+let error = null;
+/** Frames drawn when the device was lost, or null if it never was. */
+let lostAfter = null;
 try {
   const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
   const note = (text) => {
@@ -26,17 +33,41 @@ try {
     if (m.type() === 'error' || m.type() === 'warning') note(m.text());
   });
   page.on('pageerror', (e) => note(e.message));
+  // Note when the device is lost, in frames drawn, so later errors can be told from earlier ones.
+  await page.addInitScript(() => {
+    window.__gpuLostAfter = null;
+    if (typeof GPUAdapter === 'undefined') return;
+    const request = GPUAdapter.prototype.requestDevice;
+    GPUAdapter.prototype.requestDevice = async function (...args) {
+      const device = await request.apply(this, args);
+      void device.lost.then(() => {
+        window.__gpuLostAfter = window.__gore?.state?.().frames ?? 0;
+      });
+      return device;
+    };
+  });
   await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/?${query}`);
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
-  ({ frames, backend } = await page.evaluate(() => window.__gore.state()));
   await page.waitForTimeout(300);
+  ({ frames, backend, stones, error, lostAfter } = await page.evaluate(() => {
+    const state = window.__gore.state();
+    return { frames: state.frames, backend: state.backend, stones: state.finds?.length ?? 0, error: window.__gore.error, lostAfter: window.__gpuLostAfter };
+  }));
 } finally {
   await browser.close();
   await server.close();
 }
-console.log(`backend ${backend}, ${frames} frames drawn before the check ended`);
+console.log(`backend ${backend}, ${frames} frames drawn, ${stones} stones on show`);
 if (backend !== 'WebGPU') problems.push(`expected the WebGPU backend, got ${backend || 'none'}`);
-if (frames < 3) problems.push('fewer than three frames were drawn');
+if (lostAfter === null) {
+  // The device held, so the game should simply have run.
+  if (error) problems.push(`the game stopped: ${error.split('\n')[0]}`);
+  if (frames < 3) problems.push('fewer than three frames were drawn');
+} else {
+  console.log(`     this browser destroyed its WebGPU device after ${lostAfter} frame(s), as expected here`);
+  if (error) console.log(`     and the game then stopped, as it must: ${error.split('\n')[0].slice(0, 160)}`);
+  if (lostAfter < 1) problems.push('the WebGPU device was lost before a single frame was drawn');
+}
 for (const p of problems) console.error(`FAIL ${p}`);
 console.log(problems.length ? `${problems.length} problem(s)` : 'ok   first frames drew through WebGPU with no shader or pipeline errors');
 process.exit(problems.length ? 1 : 0);

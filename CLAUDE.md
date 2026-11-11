@@ -19,6 +19,7 @@ npm test             # unit tests (Vitest)
 npm run build        # type-check and build to dist/
 npm run world        # regenerate public/world/ from USGS and OpenStreetMap (needs Python deps)
 node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game (upright phone size)
+node tools/shot.mjs out.png "" 402 874 2 "document.getElementById('book-button').click()"   # ...after running a script in the page
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
@@ -35,13 +36,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   phone's numbers count.
 - **The phone renders with WebGPU; the tools cannot show it.** Headless Chromium here starts
   WebGPU but cannot present it, so screenshots and checks run the WebGL 2 path, and
-  `tools/webgpu-smoke.mjs` only confirms the first WebGPU frames raise no errors. Prefer plain
+  `tools/webgpu-smoke.mjs` only confirms the first WebGPU frames raise no shader or pipeline
+  errors. The browser destroys its WebGPU device a moment after those frames; the check expects
+  that and says how many frames were drawn first. Prefer plain
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
-  and a few actions (`teleport`, `place`, `face`, `setView`) for scripts.
+  (including the book's counts, the stones lying nearby and the last announcement) and a few
+  actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
   heights and the trail mask (gzipped; `src/world/codec.ts` reads them), `ground.png` (the snow's
   colour up close: bright trails, shaded edges, bare rock) and `canopy.png` (the forest as seen
@@ -136,6 +140,34 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   gondola cabin the rider is hidden. Magic carpets and the J-bar carry the rider along the snow,
   standing, with no towers or chairs.
 
+## Collecting
+
+- The rules are in `src/game/`, pure and tested, with no DOM or three.js: `passport.ts` (trail
+  checkpoints and stamps, summits, landmarks, conditions), `minerals.ts` (the minerals, the kinds
+  of ground they lie in, and the day's scatter), `save.ts` (the save, read defensively, and the
+  save code) and `game.ts`, which ties them together: `main.ts` tells it where the player is and
+  what they are doing, and it returns what that earned.
+- Trails are stamped by skiing past nine in ten of their checkpoints, with progress kept between
+  runs. Lifts are pinned on arrival at the top. Summits and landmarks are earned by being there.
+  Conditions are earned by skiing under the real clock and sky only, never a pinned moment.
+- Stones lie in four kinds of ground: on the groomed snow (so skiing a trail meets them), beside
+  the trails, in steep bare rock and in deep woods (the rarer ones, which take a detour). They
+  are laid out patch by patch from the date and the place, so the day's scatter is the same on
+  every load and new at midnight. `FIND_REPORT=1 npx vitest run src/game/minerals.test.ts`
+  prints how many lie on the real mountain, by kind of ground. Change density with `KEEP` and
+  `TRIES` in `minerals.ts`, then check that report.
+- `src/world/glints.ts` draws the stones near the player: one instanced mesh coloured per
+  instance, and one of unlit gold twinkles, two draw calls in all. This is the one place that
+  uses per-instance colour; the owner has yet to confirm it on the phone's WebGPU.
+- `src/ui/book.ts` is the Book sheet (Passport and Minerals pages) and `src/ui/toasts.ts` the
+  announcements at the top of the screen. With `hud=0` announcements are hidden too.
+- The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
+  is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;
+  never change the meaning of an existing one. Settings can copy the book out as a save code and
+  restore from one.
+- New things to collect are data: add them to the tables in `passport.ts` or `minerals.ts`, with
+  a test, and the Book lists them.
+
 ## Trail map
 
 - The Map button opens `src/ui/trailMap.ts`, a bottom sheet drawn on a 2D canvas over the
@@ -160,7 +192,8 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 
 - Everything must be playable with one thumb. A second finger may add convenience, never necessity.
 - Things to read go at the top; things to press go in the bottom third, at least 44 points tall;
-  menus are bottom sheets. Respect the safe-area insets.
+  menus are bottom sheets. Respect the safe-area insets. The bottom row is Skis, Map and Book;
+  testing aids such as fast travel live in Settings.
 - The bottom third of the screen is the movement stick; everything above turns the camera.
 - Everything on screen lives in `#app`, which is sized by hand; nothing is pinned to the page
   (`position: fixed`, `height: 100%` on the body). From the Home Screen, iOS lays the page out

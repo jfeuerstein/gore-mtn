@@ -5,8 +5,9 @@
 //
 // Covers what unit tests cannot, on an upright phone: one thumb walks the player and the camera
 // swings round behind them, a touch at the top of the screen or a second finger turns the camera,
-// the overlay fits the narrow screen, the settings sheet opens and teleports, and on skis the
-// thumb steers, tucks and brakes while the slope does the rest.
+// the overlay fits the narrow screen, the settings sheet opens and teleports, on skis the thumb
+// steers, tucks and brakes while the slope does the rest, lifts carry the player up, and the book
+// fills with stamps and stones and is still there after a reload.
 import { readFileSync } from 'node:fs';
 import { preview } from 'vite';
 import { devices, launchBrowser } from './browser.mjs';
@@ -43,14 +44,19 @@ try {
   // The readouts are hidden until they have something to show; measure the layout once they do.
   await page.waitForFunction(() => document.getElementById('stats').textContent && document.getElementById('where').textContent);
   const boxes = {};
-  for (const sel of ['#where', '#stats', '#menu-button', '#fast-button', '#ski-button', '#map-button']) boxes[sel] = await box(sel);
+  // Starting beside the Base Lodge earns its stamp at once, so an announcement is up as well.
+  await page.waitForSelector('#toasts .toast', { timeout: 20000 }).catch(() => {});
+  for (const sel of ['#where', '#stats', '#menu-button', '#book-button', '#ski-button', '#map-button', '#toasts .toast']) boxes[sel] = await box(sel);
+  check('the first stamp is announced on arrival', boxes['#toasts .toast'] !== null && (await page.evaluate(() => window.__gore.state().toast)).startsWith('Base Lodge'));
+  boxes['#toasts .toast'] ??= { x: 0, y: 0, width: 0, height: 0 };
   const names = Object.keys(boxes);
   const inside = names.every((n) => boxes[n].x >= 0 && boxes[n].y >= 0 && boxes[n].x + boxes[n].width <= width && boxes[n].y + boxes[n].height <= height);
   check('overlay fits inside the upright screen', inside);
   const clashes = names.flatMap((a, i) => names.slice(i + 1).filter((b) => overlap(boxes[a], boxes[b])).map((b) => `${a}/${b}`));
   check('overlay elements do not overlap', clashes.length === 0, clashes.join(', '));
-  check('buttons are at least 44 points tall', ['#menu-button', '#fast-button', '#ski-button', '#map-button'].every((b) => boxes[b].height >= 44));
-  check('skis and fast buttons sit in the lower, thumb-reach part of the screen', boxes['#fast-button'].y > height * 0.6 && boxes['#ski-button'].y > height * 0.6);
+  check('buttons are at least 44 points tall', ['#menu-button', '#book-button', '#ski-button', '#map-button'].every((b) => boxes[b].height >= 44));
+  check('skis, map and book buttons sit in the lower, thumb-reach part of the screen', ['#book-button', '#ski-button', '#map-button'].every((b) => boxes[b].y > height * 0.6));
+  check('announcements sit in the upper part of the screen, clear of the thumb', boxes['#toasts .toast'].y + boxes['#toasts .toast'].height < height * 0.4);
 
   // Trail map.
   await page.tap('#map-button');
@@ -150,9 +156,14 @@ try {
   check('touch at the top does not show the stick', !(await page.locator('.stick-base').isVisible()));
   await touch('touchEnd', []);
 
-  // Fast toggle.
-  await page.tap('#fast-button');
-  check('fast button latches on', (await page.getAttribute('#fast-button', 'aria-pressed')) === 'true');
+  // Fast travel, a testing aid kept in Settings.
+  const setFast = async () => {
+    await page.tap('#menu-button');
+    await page.locator('#fast-button').tap();
+    await page.locator('#menu .close').tap();
+  };
+  await setFast();
+  check('fast travel latches on from Settings', (await page.getAttribute('#fast-button', 'aria-pressed')) === 'true' && !(await page.locator('#menu').isVisible()));
   const slowStart = await state();
   await touch('touchStart', [thumb]);
   await touch('touchMove', [{ ...thumb, y: thumb.y - 70 }]);
@@ -161,7 +172,8 @@ try {
   const fastEnd = await state();
   const fastMoved = Math.hypot(fastEnd.x - slowStart.x, fastEnd.z - slowStart.z);
   check('fast travel covers ground quickly', fastMoved > moved * 1.5, `${fastMoved.toFixed(1)} m in 1 s`);
-  await page.tap('#fast-button');
+  await setFast();
+  check('and latches off again', (await page.getAttribute('#fast-button', 'aria-pressed')) === 'false');
 
   // Settings sheet.
   await page.tap('#menu-button');
@@ -284,6 +296,7 @@ try {
   const off = await liftState();
   const topDist = Math.hypot(off.x - shortLift.pts.at(-2), off.z - shortLift.pts.at(-1));
   check('and sets the player down near the top station, higher than they started', topDist < 190 && off.y > foot.y, `${topDist.toFixed(0)} m from the top`);
+  check('the ride earns the lift its pin', off.book.lifts === 1 && off.toast === `${shortLift.name} · Lift pin`, off.toast);
   await lift.context.close();
 
   // A lift that runs along the snow carries the rider up on their feet.
@@ -301,6 +314,108 @@ try {
   check('higher than they started', high.y > low.y, `${(high.y - low.y).toFixed(1)} m`);
   await carpet.context.close();
 
+  // The book: stamps and stones, earned by being somewhere, and kept between visits.
+  const collect = await open('iPhone 15 Pro');
+  const bp = collect.page;
+  const bookState = () => bp.evaluate(() => window.__gore.state());
+  const bookSettle = (fn, arg) => bp.waitForFunction(fn, arg, { timeout: 60000 }).then(() => true, () => false);
+  /** Stand the player somewhere and let the game take a couple of frames to notice. */
+  const standAt = (x, z) =>
+    bp.evaluate(
+      ([px, pz]) =>
+        new Promise((done) => {
+          window.__gore.place(px, pz);
+          requestAnimationFrame(() => requestAnimationFrame(() => done()));
+        }),
+      [x, z],
+    );
+  check('the book starts with the Base Lodge stamp and nothing else', await bookSettle(() => window.__gore.state().book.landmarks === 1));
+  const fresh = (await bookState()).book;
+  check('and counts what there is to find', fresh.trails === 0 && fresh.trailsTotal > 90 && fresh.liftsTotal === 14 && fresh.mineralsTotal === 12 && fresh.specimens === 0, JSON.stringify(fresh));
+
+  await bp.tap('#book-button');
+  check('the book button opens the book at the passport', (await bp.locator('#book-sheet').isVisible()) && (await bp.getAttribute('#book-sheet [data-tab=passport]', 'aria-pressed')) === 'true');
+  const bookBox = await bp.locator('#book-sheet').boundingBox();
+  check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
+  check('the Base Lodge stamp is inked and the rest are still to earn', (await bp.locator('#book-sheet .stamp.earned').count()) === 1 && (await bp.locator('#book-sheet .stamp.earned b').textContent()) === 'Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 4 + 4 + 5 + 14);
+  check('every trail is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal);
+  await bp.tap('#book-sheet [data-tab=minerals]');
+  check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
+  // An open sheet covers the bottom row, so only one can be opened by hand. Should another be
+  // opened some other way, the first gets out of its way.
+  await bp.evaluate(() => document.getElementById('map-button').click());
+  check('opening the map puts the book away', (await bp.locator('#map-sheet').isVisible()) && !(await bp.locator('#book-sheet').isVisible()));
+  await bp.evaluate(() => document.getElementById('book-button').click());
+  check('and opening the book puts the map away', (await bp.locator('#book-sheet').isVisible()) && !(await bp.locator('#map-sheet').isVisible()));
+  await bp.locator('#book-sheet .close').tap();
+  check('the book closes', !(await bp.locator('#book-sheet').isVisible()));
+
+  // A stone: walk onto the nearest find.
+  const lying = (await bookState()).finds;
+  check('there are stones lying near the lodge', lying.length > 3, `${lying.length}`);
+  const here = await bookState();
+  const stone = lying.map((f) => ({ ...f, d: Math.hypot(f.x - here.x, f.z - here.z) })).sort((a, b) => a.d - b.d)[0];
+  await standAt(stone.x + 1, stone.z);
+  check('coming up to a stone picks it up', await bookSettle(() => window.__gore.state().book.specimens >= 1));
+  const picked = await bookState();
+  check('it is announced by name and size', /^.+ · \d+\.\d cm · New mineral$/.test(picked.toast), picked.toast);
+  check('and it is gone from the snow', !picked.finds.some((f) => f.x === stone.x && f.z === stone.z) && picked.book.minerals >= 1);
+
+  // A trail: on skis, visit the length of a short one.
+  const pieces = (name) => world.trails.filter((t) => t.name === name && !t.area);
+  const run = (t) => {
+    let d = 0;
+    for (let i = 0; i + 3 < t.pts.length; i += 2) d += Math.hypot(t.pts[i + 2] - t.pts[i], t.pts[i + 3] - t.pts[i + 1]);
+    return d;
+  };
+  const short1 = world.trails
+    .filter((t) => t.name && !t.area && !t.glade && pieces(t.name).length === 1 && run(t) > 150)
+    .sort((a, b) => run(a) - run(b))[0];
+  await bp.tap('#ski-button');
+  for (let i = 0; i + 3 < short1.pts.length; i += 2) {
+    const [ax, az, bx, bz] = short1.pts.slice(i, i + 4);
+    const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 25);
+    for (let k = 0; k <= steps; k++) await standAt(ax + ((bx - ax) * k) / steps, az + ((bz - az) * k) / steps);
+  }
+  const skied = await bookState();
+  check(`skiing the length of ${short1.name} stamps it`, skied.book.trails >= 1, `${skied.book.trails} stamped, ${run(short1).toFixed(0)} m`);
+  await bp.tap('#book-button');
+  check('the book opens at the page it was left on', (await bp.getAttribute('#book-sheet [data-tab=minerals]', 'aria-pressed')) === 'true' && (await bp.locator('#book-sheet .mineral.earned').count()) === 1);
+  await bp.tap('#book-sheet [data-tab=passport]');
+  const inked = await bp.locator('#book-sheet .trail.earned .name').allTextContents();
+  check('and the passport shows it inked', inked.includes(short1.name), inked.join(', '));
+  await bp.locator('#book-sheet .close').tap();
+
+  // The book is written down as it fills, and is there the next time the game is opened.
+  await bp.waitForTimeout(1500);
+  await bp.reload();
+  await bp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+  const back = await bookState();
+  check('the book is still there after a reload', back.book.trails === skied.book.trails && back.book.specimens === skied.book.specimens && back.book.landmarks >= 1, JSON.stringify(back.book));
+  await standAt(stone.x + 200, stone.z);
+  await standAt(stone.x + 8, stone.z);
+  check('and a stone picked up today stays picked up', !(await bookState()).finds.some((f) => f.x === stone.x && f.z === stone.z));
+
+  // A save code carries the book to another browser.
+  await bp.tap('#menu-button');
+  await bp.locator('#save-copy').tap();
+  const code = await bp.inputValue('#save-field');
+  check('settings give the book as a save code', /^GORE1\.[A-Za-z0-9+/=]+$/.test(code), `${code.length} characters`);
+  await collect.context.close();
+  const other = await open('iPhone 15 Pro');
+  const op = other.page;
+  await op.tap('#menu-button');
+  await op.fill('#save-field', 'not a code');
+  await op.locator('#save-restore').tap();
+  check('a wrong code is turned away', (await op.locator('#menu').textContent()).includes('That is not a save code'));
+  await op.fill('#save-field', code);
+  await op.locator('#save-restore').tap();
+  check('restoring asks before replacing the book', (await op.evaluate(() => window.__gore.state().book.trails)) === 0 && (await op.locator('#menu').textContent()).includes('Tap Restore again'));
+  await op.locator('#save-restore').tap();
+  const carried = await op.evaluate(() => window.__gore.state().book);
+  check('and then brings the whole book across', carried.trails === skied.book.trails && carried.specimens === skied.book.specimens, JSON.stringify(carried));
+  await other.context.close();
+
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: the `shortpage` option tells the game the
   // screen is 62 points taller than the page.
@@ -310,7 +425,7 @@ try {
   const canvasHeight = await short.page.evaluate(() => document.getElementById('game').clientHeight);
   check('picture extends over the whole screen when the page is short', canvasHeight === pageHeight + 62, `${canvasHeight} of ${pageHeight + 62}`);
   const bottomOf = (sel) => short.page.evaluate((q) => document.querySelector(q).getBoundingClientRect().bottom, sel);
-  check('buttons stay on the part the page covers', (await bottomOf('#ski-button')) <= pageHeight && (await bottomOf('#fast-button')) <= pageHeight);
+  check('buttons stay on the part the page covers', (await bottomOf('#ski-button')) <= pageHeight && (await bottomOf('#book-button')) <= pageHeight);
   check('buttons stay near the bottom', (await bottomOf('#ski-button')) > pageHeight - 40);
   await short.page.evaluate(() => document.getElementById('menu-button').click());
   check('settings sheet reaches the bottom of the screen', Math.abs((await bottomOf('#menu')) - (pageHeight + 62)) < 2);
@@ -319,6 +434,9 @@ try {
     return menu.getBoundingClientRect().bottom - parseFloat(getComputedStyle(menu).borderBottomWidth);
   });
   check('but the part of it that holds the options stays on the part the page covers', scrollBottom <= pageHeight, `${scrollBottom} of ${pageHeight}`);
+  await short.page.evaluate(() => document.getElementById('book-button').click());
+  check('the book reaches the bottom of the screen too', Math.abs((await bottomOf('#book-sheet')) - (pageHeight + 62)) < 2);
+  check('and its pages stay on the part the page covers', (await bottomOf('#book-sheet .body')) <= pageHeight, `${await bottomOf('#book-sheet .body')} of ${pageHeight}`);
   await short.context.close();
 
   const sideways = await open('iPhone 15 Pro landscape');
