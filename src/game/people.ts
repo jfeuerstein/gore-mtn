@@ -29,7 +29,8 @@ export type Need =
 export type Whereabouts =
   | { place: string }
   | { spot: string }
-  | { lift: string }
+  /** `along` is how far up the lift line, 0..1; the foot of the lift if not given. */
+  | { lift: string; along?: number }
   | { trail: string; along: number }
   | { road: string; from: string; metres: number };
 
@@ -404,7 +405,7 @@ export const ERRANDS: readonly Errand[] = [
     ask: 'I lost a mitten. A yellow one. It was on my hand and then it was not. I think it was on the Hudson chair. Under it. Maybe.',
     nudge: 'It is yellow and it is somewhere under the Hudson Chair. Probably.',
     need: { kind: 'item', id: 'mitten' },
-    lost: { name: 'A small yellow mitten', at: { lift: 'Hudson Chair' } },
+    lost: { name: 'A small yellow mitten', at: { lift: 'Hudson Chair', along: 0.45 } },
     thanks: 'MY MITTEN. You found it! Now I have two again. That is the right number.',
     seasons: ['winter', 'spring'],
   },

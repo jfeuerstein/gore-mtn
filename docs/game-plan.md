@@ -474,6 +474,30 @@ the day (dawn, day, dusk, night) as well as the date.
 - Some entries are whimsical: somebody's snowman in winter, a hiker's cairn in summer, and a
   tall shaggy thing said to walk the woods near The Rumor when the light goes.
 
+#### People, errands and the Snow Train
+
+Ten people now stand about the mountain and the town, each at a real place: Hazel of the ski
+patrol at the Base Lodge, Otto the lift attendant at the Adirondack Express, Gus the cook at the
+Saddle Lodge, Wren the observer at the fire tower, Dr. Mica at the Gore Mt. Mineral Shop,
+Conductor Bea at the depot, June the baker and Walt the sandwich maker on Main Street, Pip (aged
+nine) at the Ski Bowl, and Amos, a retired miner, at the old garnet quarry. The baker and the
+sandwich maker stand for the café and the deli the owner remembers; the map data has neither by
+name, so they are placed a short walk down Main Street from the depot.
+
+- Anyone with a gold mark overhead has something to say that matters. Talk is a line at a time
+  and can always be closed.
+- Twenty errands, none timed, none that can be failed: ride a lift, carry a coffee from June to
+  Otto, carry a sandwich from the deli to the fire tower, find Pip's mitten under the Hudson
+  Chair, find a ledge of blueberries for Gus, fill ten entries in the field guide for Wren, find
+  a garnet over fifteen centimetres for Dr. Mica, and so on. Some are asked only in their season.
+- Thanks come as hats and jackets (eleven to earn), worn from the new Pack page of the Book.
+- The ground round the old garnet workings is strewn with garnets, big ones among them, as Amos
+  says.
+- A shuttle runs between the Base Lodge, the Ski Bowl and the depot, so town is a tap away.
+- **The Snow Train.** Conductor Bea gives a pass for a passport with five stamps. After that she
+  will take the player to any season, and home again. This is how the other seasons are meant to
+  be visited; Settings can still pin one for a quick look.
+
 ## 10. Risks and honest perspectives
 
 - **Ski feel on a touchscreen is the whole game.** If milestone 1 is not fun, nothing after it will fix that. Spend disproportionate time there.

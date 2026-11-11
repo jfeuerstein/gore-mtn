@@ -202,7 +202,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - `src/world/glints.ts` draws the stones near the player: one instanced mesh coloured per
   instance, and one of unlit gold twinkles, two draw calls in all. This is the one place that
   uses per-instance colour; the owner has yet to confirm it on the phone's WebGPU.
-- `src/ui/book.ts` is the Book sheet (Passport, Minerals and Field guide pages) and `src/ui/toasts.ts` the
+- `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
   announcements at the top of the screen. With `hud=0` announcements are hidden too.
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
   is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;
@@ -210,6 +210,27 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   restore from one.
 - New things to collect are data: add them to the tables in `passport.ts` or `minerals.ts`, with
   a test, and the Book lists them.
+
+## People and errands
+
+- `src/game/people.ts` is the cast, their lines, their errands and the things to wear, all as
+  data. `Game.talk()` decides what someone says: a greeting the first time, thanks for an errand
+  done, a thing handed over, a reminder, a new errand, or small talk, in that order.
+- An errand reads its need from the book (stones found, species seen, stamps earned) or from a
+  carried item; nothing is ever handed in and lost. Errands are never timed and cannot be failed.
+  Rewards are hats and jackets, worn from the Pack page of the Book. Add an errand by adding it
+  to `ERRANDS`; the tests check that everything it names exists on the real mountain.
+- Where someone stands is a description (`by a place's door`, `at the foot of a lift`, `along a
+  road`), turned into a position by `src/world/whereabouts.ts`, so it survives a regenerated
+  world. Lost property is placed the same way and lies out only while its errand is in hand.
+- `src/world/folk.ts` draws the people: the player's own jointed figure in another outfit, posed
+  once and joined into a single mesh, so each costs one draw call. A gold mark hangs over anyone
+  with something for the player. `src/ui/talk.ts` is the sheet they speak in.
+- The second action button (`Hud.setTalk`) is for talking and for the shuttle, and sits above
+  the first when both are offered, as beside a lift.
+- The shuttle carries the player between the Base Lodge, the Ski Bowl and the depot. The Snow
+  Train, once its pass is earned from Conductor Bea, carries them to another season: the choice
+  is kept in the save (`away`) and the game reopens in it. The `season` option still overrides.
 
 ## Trail map
 

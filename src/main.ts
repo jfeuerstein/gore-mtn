@@ -1,19 +1,21 @@
 import * as THREE from 'three/webgpu';
-import { parseConfig } from './config';
+import { parseConfig, withParams } from './config';
 import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
-import { airFor, SEASON_LOOK, seasonFor, seasonPalette, treeLook, type Season } from './look/season';
+import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
 import { FrameStats } from './debug/perf';
-import { Game, type GameEvent } from './game/game';
+import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { conditionsNow } from './game/passport';
-import { dayKey, saveFromCode, saveToCode } from './game/save';
+import { PEOPLE } from './game/people';
+import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book } from './ui/book';
+import { TalkSheet, type Choice } from './ui/talk';
 import { Toasts } from './ui/toasts';
 import { TrailMap } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
@@ -24,6 +26,7 @@ import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/
 import { Buildings, PLACE_FOOTPRINT, PLACE_HEIGHT } from './world/buildings';
 import { countryOf } from './world/country';
 import { Critters } from './world/critters';
+import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { LiftCars } from './world/liftCars';
 import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
@@ -34,6 +37,7 @@ import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
 import { Walls, type WallBox } from './world/walls';
+import { locate } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 
 const M_TO_FT = 3.28084;
@@ -132,8 +136,27 @@ async function boot(): Promise<void> {
   renderer.shadowMap.enabled = shadows;
 
   const world = await loadWorld(import.meta.env.BASE_URL);
-  // The season: the calendar's, unless one has been asked for by name.
-  const season: Season = cfg.season === 'real' ? seasonFor(new Date()) : cfg.season;
+  // The player's book lives in the browser's storage; if that is unavailable the game still
+  // plays, and simply forgets.
+  const store = {
+    read: (): string | null => {
+      try {
+        return localStorage.getItem(SAVE_KEY);
+      } catch {
+        return null;
+      }
+    },
+    write: (text: string): void => {
+      try {
+        localStorage.setItem(SAVE_KEY, text);
+      } catch {
+        // Private browsing, or storage full: nothing to be done.
+      }
+    },
+  };
+  // The season: one asked for by name; or wherever the Snow Train has taken the player; or the calendar's.
+  const away = parseSave(store.read()).away as Season | null;
+  const season: Season = cfg.season !== 'real' ? cfg.season : (away ?? seasonFor(new Date()));
   const look = SEASON_LOOK[season];
   // The drawn ground and the ground the player stands on are the same decimated grid.
   const ground = world.source.decimate(cfg.stride);
@@ -205,8 +228,7 @@ async function boot(): Promise<void> {
   const critters = new Critters(season, shadows);
   scene.add(player.object, tracks.mesh, glints.group, critters.group);
 
-  // The collecting game. Its book lives in the browser's storage; if that is unavailable the game
-  // still plays, and simply forgets.
+  // The collecting game.
   const game = new Game(
     {
       trails: world.trails,
@@ -215,27 +237,14 @@ async function boot(): Promise<void> {
       paths: world.paths,
       openAt: (x, z) => world.openAt(x, z),
       country: countryOf(world),
+      spots: [...world.spots, ...world.ponds],
       minX: world.source.minX,
       minZ: world.source.minZ,
       trailDistance: (x, z) => world.trailDistance(x, z),
       slopeDegAt: (x, z) => world.source.slopeDegAt(x, z),
+      mineDistance: (x, z) => Math.min(...world.spots.filter((sp) => sp.kind === 'quarry').map((sp) => Math.hypot(sp.x - x, sp.z - z))),
     },
-    {
-      read: () => {
-        try {
-          return localStorage.getItem(SAVE_KEY);
-        } catch {
-          return null;
-        }
-      },
-      write: (text) => {
-        try {
-          localStorage.setItem(SAVE_KEY, text);
-        } catch {
-          // Private browsing, or storage full: nothing to be done.
-        }
-      },
-    },
+    store,
   );
   const toasts = new Toasts(cfg.hud);
   const book = new Book(game);
@@ -289,8 +298,121 @@ async function boot(): Promise<void> {
     yaw: player.travelHeading,
   }));
   // One sheet at a time.
-  trailMap.onOpen = () => book.close();
-  book.onOpen = () => trailMap.close();
+  const talkSheet = new TalkSheet();
+  trailMap.onOpen = () => {
+    book.close();
+    talkSheet.close();
+  };
+  book.onOpen = () => {
+    trailMap.close();
+    talkSheet.close();
+  };
+  talkSheet.onOpen = () => {
+    trailMap.close();
+    book.close();
+  };
+
+  // --- People, lost property and the shuttle --------------------------------------------------
+  /** A spot near a described place where someone can stand: clear of walls, on the ground. */
+  const standAt = (at: Parameters<typeof locate>[1], dx = 0, dz = 0): { x: number; y: number; z: number } | null => {
+    const where = locate(world, at);
+    if (!where) return null;
+    let x = where.x + dx;
+    let z = where.z + dz;
+    for (let i = 0; i < 4; i++) {
+      const bump = walls.bumpAt(x, z, 1.4);
+      if (!bump) break;
+      x = bump.x + bump.nx * 0.5;
+      z = bump.z + bump.nz * 0.5;
+    }
+    return { x, y: ground.heightAt(x, z), z };
+  };
+  const standings = PEOPLE.flatMap((person): Standing[] => {
+    const at = standAt(person.at);
+    return at ? [{ person, ...at }] : [];
+  });
+  const folk = new Folk(standings, shadows);
+  const keepsakes = new Keepsakes();
+  // The shuttle runs between the mountain, the Ski Bowl and town.
+  const stops: Stop[] = [
+    ['base-lodge', 'the Base Lodge'],
+    ['ski-bowl-lodge', 'the Ski Bowl'],
+    ['depot', 'North Creek'],
+  ].flatMap(([id, name]): Stop[] => {
+    const at = standAt({ place: id as string }, 13, 7);
+    return at ? [{ id: id as string, name: name as string, ...at }] : [];
+  });
+  scene.add(folk.group, keepsakes.group, buildStops(stops, shadows));
+  player.setOutfit(game.outfit());
+  book.onWear = () => player.setOutfit(game.outfit());
+
+  /** Lay out whatever lost property the errands in hand are looking for. */
+  const layKeepsakes = (): void => {
+    keepsakes.set(
+      game.lostItems().flatMap((item): Keepsake[] => {
+        const at = standAt(item.at);
+        return at ? [{ id: item.id, ...at }] : [];
+      }),
+    );
+  };
+  layKeepsakes();
+
+  /** Ride the Snow Train to a season, or home: the game opens again at the depot in that season. */
+  const rideTrain = (to: Season | null): void => {
+    if (!game.ride(to)) return;
+    const depot = stops.find((st) => st.id === 'depot');
+    location.assign(withParams(location.search, { season: null, at: null, pos: depot ? `${depot.x.toFixed(1)},${(depot.z + 6).toFixed(1)}` : null, ski: null }) || location.pathname);
+  };
+
+  const talkTo = (standing: Standing): void => {
+    const talk = game.talk(standing.person.id, today, season);
+    if (!talk) return;
+    announce(talk.events);
+    if (talk.events.some((e) => e.kind === 'gear')) book.refresh();
+    const choices: Choice[] = [];
+    const offer = talk.offer;
+    if (offer) {
+      choices.push({
+        label: 'I\'ll do it',
+        primary: true,
+        onPick: () => {
+          announce(game.accept(offer.id, today));
+          layKeepsakes();
+        },
+      });
+    }
+    if (talk.train) {
+      // The train goes to every season but the one the player is standing in.
+      const home = seasonFor(new Date());
+      for (const to of SEASONS) {
+        if (to === season) continue;
+        choices.push({ label: to === home ? `${SEASON_NAME[to]} (home)` : SEASON_NAME[to], onPick: () => rideTrain(to === home ? null : to) });
+      }
+      talk.lines.push(`Where to? It is ${SEASON_NAME[season].toLowerCase()} here.`);
+    }
+    talkSheet.open(talk.person.name, talk.person.role, talk.lines, choices);
+  };
+
+  const rideShuttle = (from: Stop): void => {
+    talkSheet.open(
+      'The Gore shuttle',
+      `Waiting at ${from.name}`,
+      ['Hop in. Where to?'],
+      stops
+        .filter((st) => st.id !== from.id)
+        .map((st) => ({
+          label: st.name.replace(/^the /, ''),
+          onPick: () => {
+            player.place(st.x - 3, st.z + 3, ground);
+            follow.faceToward(st.x - 3, st.z + 3, st.x - 3, st.z + 40);
+            player.face(follow.yaw);
+            fillScene = true;
+            tracks.lift();
+            toasts.show({ kind: 'item', title: 'The Gore shuttle', detail: `Dropped you at ${st.name}` });
+          },
+        })),
+    );
+  };
 
   if (cfg.ski) player.setMode('ski');
   // The button by the left thumb puts on whatever the season rides: skis, or the bike.
@@ -390,6 +512,7 @@ async function boot(): Promise<void> {
   // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
   let today = dayKey(new Date());
   announce(game.arrivedIn(season, today));
+  if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
   /** The watch of the day, which decides what wildlife is about. */
   let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
   const heightAt = (x: number, z: number): number => ground.heightAt(x, z);
@@ -398,7 +521,7 @@ async function boot(): Promise<void> {
    * Conditions are stamped only when the game is showing the real sky. A moment pinned from
    * Settings or the address is for looking at, not for collecting.
    */
-  const honestSky = cfg.time === 'real' && cfg.weather === 'real';
+  const honestSky = cfg.season === 'real' && cfg.time === 'real' && cfg.weather === 'real';
 
   /** @param unlimited build everything in range at once: before the first frame and after a teleport */
   const cull = (unlimited = false): void => {
@@ -432,6 +555,13 @@ async function boot(): Promise<void> {
     finds: game.findsNear(player.position.x, player.position.z, today).map((f) => ({ x: f.x, z: f.z, mineral: f.mineral.id })),
     toast: toasts.last,
     watch,
+    away,
+    people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
+    stops: stops.map((st) => ({ id: st.id, x: st.x, z: st.z })),
+    errands: game.activeErrands().map((e) => e.id),
+    items: [...game.save.items],
+    wearing: { ...game.save.gear },
+    pass: game.save.pass,
     sightings: game.sightingsNear(player.position.x, player.position.z, today, season, watch).map((s) => ({ x: s.x, z: s.z, species: s.species.id, kin: s.species.kin, shy: Boolean(s.species.shy) })),
     speed: player.speed,
     heading: player.travelHeading,
@@ -540,8 +670,23 @@ async function boot(): Promise<void> {
       if (honestSky && player.mode === 'ski' && player.speed > 3) {
         announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather, season), today));
       }
+      layKeepsakes();
       game.persist();
     }
+    // People turn to watch the player come; lost property waits to be picked up.
+    folk.update(dt, player.position, (id) => game.hasBusiness(id, season), follow.yaw);
+    keepsakes.update(dt, follow.yaw);
+    if (player.mode !== 'lift') {
+      const found = keepsakes.near(px, pz, COLLECT_REACH);
+      if (found) {
+        announce(game.takeItem(found.id));
+        layKeepsakes();
+      }
+    }
+    // Wandering off ends a conversation.
+    const someone = player.mode === 'lift' ? null : folk.nearest(px, pz, 7);
+    const stop = player.mode === 'lift' || someone ? null : (stops.find((st) => Math.hypot(st.x - px, st.z - pz) < 9) ?? null);
+    if (talkSheet.isOpen && !someone && !stop) talkSheet.close();
     // Offer a ride when standing at the foot of a lift.
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
     if (station) {
@@ -551,6 +696,9 @@ async function boot(): Promise<void> {
       });
     }
     else hud.setAction(null);
+    if (someone) hud.setTalk(`Talk to ${someone.person.name}`, () => talkTo(someone));
+    else if (stop) hud.setTalk('Take the shuttle', () => rideShuttle(stop));
+    else hud.setTalk(null);
     // On a lift the camera levels out to take in the mountain ahead, then goes back to how the
     // player had it.
     if (player.mode === 'lift') follow.settlePitch(LIFT_PITCH, dt);

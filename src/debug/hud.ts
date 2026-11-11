@@ -153,6 +153,8 @@ export class Hud {
   private lastWhere = '';
   private readonly actionEl = document.getElementById('action-button') as HTMLButtonElement;
   private onAction: (() => void) | null = null;
+  private readonly talkEl = document.getElementById('talk-button') as HTMLButtonElement;
+  private onTalk: (() => void) | null = null;
 
   constructor(
     private readonly cfg: Config,
@@ -181,6 +183,7 @@ export class Hud {
       });
     };
     this.actionEl.addEventListener('click', () => this.onAction?.());
+    this.talkEl.addEventListener('click', () => this.onTalk?.());
     this.buildMenu(places, onTeleport);
     toggle('fast-button', false, onFast);
     toggle('ski-button', cfg.ski, onSkis);
@@ -334,6 +337,20 @@ export class Hud {
     }
     if (this.actionEl.textContent !== label) this.actionEl.textContent = label;
     if (this.actionEl.hidden) this.actionEl.hidden = false;
+  }
+
+  /**
+   * Offer a second thing to do here, such as talking to someone standing by a lift. It sits above
+   * the first. Safe to call every frame.
+   */
+  setTalk(label: string | null, onTap: (() => void) | null = null): void {
+    this.onTalk = onTap;
+    if (label === null) {
+      if (!this.talkEl.hidden) this.talkEl.hidden = true;
+      return;
+    }
+    if (this.talkEl.textContent !== label) this.talkEl.textContent = label;
+    if (this.talkEl.hidden) this.talkEl.hidden = false;
   }
 
   /**

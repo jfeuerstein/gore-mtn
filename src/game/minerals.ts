@@ -11,8 +11,8 @@
 
 export type Rarity = 'common' | 'uncommon' | 'rare';
 /** Kinds of ground a find can lie in. */
-export type Habitat = 'trail' | 'trailside' | 'rock' | 'forest';
-export const HABITATS: readonly Habitat[] = ['trail', 'trailside', 'rock', 'forest'];
+export type Habitat = 'trail' | 'trailside' | 'rock' | 'forest' | 'mine';
+export const HABITATS: readonly Habitat[] = ['trail', 'trailside', 'rock', 'forest', 'mine'];
 
 export interface Mineral {
   id: string;
@@ -37,7 +37,7 @@ export const MINERALS: readonly Mineral[] = [
     name: 'Almandine Garnet',
     rarity: 'common',
     colour: 0x8f1d2c,
-    habitats: { trail: 5, trailside: 5, rock: 4 },
+    habitats: { trail: 5, trailside: 5, rock: 4, mine: 7 },
     size: 3,
     largest: 30,
     about: "New York's state gem. Gore's garnets are among the largest in the world.",
@@ -48,7 +48,7 @@ export const MINERALS: readonly Mineral[] = [
     name: 'Hornblende',
     rarity: 'common',
     colour: 0x23302c,
-    habitats: { trail: 4, trailside: 4, rock: 3, forest: 2 },
+    habitats: { trail: 4, trailside: 4, rock: 3, forest: 2, mine: 2 },
     size: 4,
     largest: 20,
     about: "The dark rock that wraps around Gore's garnets.",
@@ -81,7 +81,7 @@ export const MINERALS: readonly Mineral[] = [
     name: 'Magnetite',
     rarity: 'uncommon',
     colour: 0x2b2b33,
-    habitats: { trail: 0.8, trailside: 2, rock: 3 },
+    habitats: { trail: 0.8, trailside: 2, rock: 3, mine: 1 },
     size: 3,
     largest: 15,
     about: 'Iron ore, mined across the Adirondacks in the 1800s. A magnet picks it up.',
@@ -158,11 +158,11 @@ export const MINERALS: readonly Mineral[] = [
     name: 'Gem Garnet',
     rarity: 'rare',
     colour: 0xd0213a,
-    habitats: { trail: 0.15, trailside: 0.35, rock: 0.5 },
+    habitats: { trail: 0.15, trailside: 0.35, rock: 0.5, mine: 1 },
     size: 1.5,
     largest: 6,
     about: 'Clear, deep red, and flawless enough to cut.',
-    hint: 'Where the ordinary garnets are, once in a long while.',
+    hint: 'Where the ordinary garnets are, once in a long while. Oftener round the old workings.',
   },
 ];
 
@@ -188,13 +188,19 @@ export interface Ground {
   /** Metres to the nearest groomed trail; zero on one. */
   trailDistance(x: number, z: number): number;
   slopeDegAt(x: number, z: number): number;
+  /** Metres to the nearest of the old garnet workings, if the ground knows of any. */
+  mineDistance?(x: number, z: number): number;
 }
+
+/** Ground within this distance of an old garnet working is strewn with what the miners left. */
+export const MINE_REACH = 170;
 
 /** The kind of ground at a position, or null where nothing is found. */
 export function habitatAt(ground: Ground, x: number, z: number): Habitat | null {
   const d = ground.trailDistance(x, z);
   // On the groomed snow, where a skier comes across them without leaving the trail.
   if (d <= 0) return 'trail';
+  if (ground.mineDistance && ground.mineDistance(x, z) <= MINE_REACH) return 'mine';
   if (d < 1.5) return null;
   // Steep enough to be bare rock: the same slopes the ground texture paints grey.
   if (ground.slopeDegAt(x, z) >= 42) return 'rock';
@@ -208,7 +214,7 @@ export function habitatAt(ground: Ground, x: number, z: number): Habitat | null 
 export const FIND_PATCH = 320;
 /** Places tried in each patch, and the chance each is kept, by habitat. */
 const TRIES = 420;
-const KEEP: Record<Habitat, number> = { trail: 0.08, trailside: 0.5, rock: 0.14, forest: 0.006 };
+const KEEP: Record<Habitat, number> = { trail: 0.08, trailside: 0.5, rock: 0.14, forest: 0.006, mine: 0.22 };
 /** No more than this many finds in a patch, however promising the ground. */
 export const MOST_PER_PATCH = 24;
 
@@ -235,7 +241,9 @@ export function findsInPatch(ground: Ground, col: number, row: number, seed: num
     if (!habitat || hash(col, row, i, seed ^ 0x2a2a) >= KEEP[habitat]) continue;
     const mineral = pick(habitat, hash(col, row, i, seed ^ 0x7777));
     if (!mineral) continue;
-    finds.push({ id: `${col}:${row}:${i}`, x, z, mineral, size: specimenSize(mineral, hash(col, row, i, seed ^ 0x1234)) });
+    // Round the old workings the big ones were left where they lay: the roll leans high.
+    const roll = hash(col, row, i, seed ^ 0x1234);
+    finds.push({ id: `${col}:${row}:${i}`, x, z, mineral, size: specimenSize(mineral, habitat === 'mine' ? 1 - (1 - roll) * (1 - roll) : roll) });
   }
   return finds;
 }

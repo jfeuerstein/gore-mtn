@@ -89,6 +89,51 @@ describe('habitatAt', () => {
   });
 });
 
+describe('the old garnet workings', () => {
+  const ground = (mine: number): Ground => ({ trailDistance: () => 100, slopeDegAt: () => 10, mineDistance: () => mine });
+  it('are their own kind of ground, rich in garnet and its gem', () => {
+    expect(habitatAt(ground(50), 0, 0)).toBe('mine');
+    expect(habitatAt(ground(500), 0, 0)).toBe('forest');
+    expect(habitatAt({ trailDistance: () => 100, slopeDegAt: () => 10 }, 0, 0)).toBe('forest');
+    const counts = new Map<string, number>();
+    for (let i = 0; i < 2000; i++) {
+      const id = pick('mine', i / 2000)?.id ?? '';
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    expect((counts.get('garnet') ?? 0) / 2000).toBeGreaterThan(0.5);
+    expect((counts.get('gem-garnet') ?? 0) / 2000).toBeGreaterThan(0.05);
+  });
+
+  it('turn up big garnets far oftener than the trails do', () => {
+    const world = loadTestWorld();
+    const quarry = world.spots.find((s) => s.id === 'garnet-quarry');
+    if (!quarry) throw new Error('no quarry');
+    const mined: Ground = {
+      trailDistance: (x, z) => world.trailDistance(x, z),
+      slopeDegAt: (x, z) => world.source.slopeDegAt(x, z),
+      mineDistance: (x, z) => Math.hypot(x - quarry.x, z - quarry.z),
+    };
+    const col = Math.floor((quarry.x - world.source.minX) / FIND_PATCH);
+    const row = Math.floor((quarry.z - world.source.minZ) / FIND_PATCH);
+    let garnets = 0;
+    let big = 0;
+    for (let day = 1; day <= 30; day++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (const f of findsInPatch(mined, col + dc, row + dr, daySeed(`2026-12-${String(day).padStart(2, '0')}`), world.source.minX, world.source.minZ)) {
+            if (habitatAt(mined, f.x, f.z) !== 'mine' || f.mineral.id !== 'garnet') continue;
+            garnets++;
+            if (f.size >= 15) big++;
+          }
+        }
+      }
+    }
+    // Several a day at the quarry, and a big one every few days.
+    expect(garnets / 30).toBeGreaterThan(3);
+    expect(big).toBeGreaterThan(8);
+  });
+});
+
 describe('finds on the real mountain', () => {
   const world = loadTestWorld();
   const hf = world.source;

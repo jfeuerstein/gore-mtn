@@ -1,6 +1,7 @@
 import type { Game } from '../game/game';
 import { MINERALS } from '../game/minerals';
 import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
+import { ERRANDS, GEAR, personById } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
 import { DIFFICULTY_MARK } from '../world/trails';
@@ -24,7 +25,7 @@ const TRAIL_GROUPS: { title: string; has: (t: TrailEntry) => boolean }[] = [
   { title: 'Terrain parks', has: (t) => !t.glade && t.difficulty === 'freeride' },
 ];
 
-type Tab = 'passport' | 'minerals' | 'guide';
+type Tab = 'passport' | 'minerals' | 'guide' | 'pack';
 
 const SEASON_WORDS = (s: Species): string => (s.seasons ? s.seasons.map((q) => SEASON_NAME[q]).join(', ') : 'All year');
 const WATCH_WORDS = (s: Species): string => (s.watches ? s.watches.join(', ') : '');
@@ -47,6 +48,8 @@ export class Book {
   private tab: Tab = 'passport';
   /** Called when the book opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
+  /** Called when the player changes what they are wearing. */
+  onWear: (() => void) | null = null;
 
   constructor(private readonly game: Game) {
     this.sheet = el('div');
@@ -57,7 +60,8 @@ export class Book {
     for (const [tab, label] of [
       ['passport', 'Passport'],
       ['minerals', 'Minerals'],
-      ['guide', 'Field guide'],
+      ['guide', 'Guide'],
+      ['pack', 'Pack'],
     ] as const) {
       const button = el('button', '', label);
       button.type = 'button';
@@ -101,7 +105,8 @@ export class Book {
 
   private render(): void {
     for (const [tab, button] of this.tabs) button.setAttribute('aria-pressed', String(tab === this.tab));
-    this.body.replaceChildren(...(this.tab === 'passport' ? this.passport() : this.tab === 'minerals' ? this.minerals() : this.guide()));
+    const page = { passport: () => this.passport(), minerals: () => this.minerals(), guide: () => this.guide(), pack: () => this.pack() }[this.tab];
+    this.body.replaceChildren(...page());
   }
 
   private heading(title: string, have: number, of: number): HTMLElement {
@@ -208,6 +213,77 @@ export class Book {
       paths.appendChild(row);
     }
     out.push(paths);
+    return out;
+  }
+
+  /** Errands in hand and done, things being carried, and things to wear. */
+  private pack(): HTMLElement[] {
+    const { game } = this;
+    const s = game.summary();
+    const out: HTMLElement[] = [this.heading('Errands', s.errands, s.errandsTotal)];
+    const active = game.activeErrands();
+    if (active.length === 0 && s.errands === 0) {
+      out.push(el('p', 'note', 'People around the mountain and in town have things to ask. Anyone with a gold mark over their head has something for you. Nothing is timed, and nothing can be failed.'));
+    }
+    const list = el('div', 'minerals');
+    for (const e of active) {
+      const card = el('div', 'mineral errand');
+      card.appendChild(el('span', 'badge badge-errand', '✉'));
+      const text = el('div');
+      const who = personById(e.to ?? e.from);
+      text.appendChild(el('b', '', e.title));
+      text.appendChild(el('small', 'tally', game.needMet(e.need) ? `Done. Go and see ${who?.name ?? 'them'}.` : `For ${who?.name ?? 'someone'} · ${who?.role ?? ''}`));
+      text.appendChild(el('small', '', e.nudge));
+      card.appendChild(text);
+      list.appendChild(card);
+    }
+    for (const e of ERRANDS) {
+      const done = game.save.errands[e.id]?.done;
+      if (!done) continue;
+      const card = el('div', 'mineral errand earned');
+      card.appendChild(el('span', 'badge badge-errand', '✓'));
+      const text = el('div');
+      text.appendChild(el('b', '', e.title));
+      text.appendChild(el('small', '', `For ${personById(e.from)?.name ?? 'someone'} · done ${shortDay(done)}`));
+      card.appendChild(text);
+      list.appendChild(card);
+    }
+    out.push(list);
+
+    if (game.save.items.length > 0) {
+      const h = el('h3', '', 'Carrying');
+      out.push(h);
+      const carried = ERRANDS.filter((e) => e.need.kind === 'item' && game.save.items.includes(e.need.id)).map((e) => e.lost?.name ?? e.fetch?.name ?? e.title);
+      out.push(el('p', 'note', carried.join(' · ')));
+    }
+
+    const owned = GEAR.filter((g) => game.save.gear.owned.includes(g.id));
+    out.push(this.heading('Wardrobe', owned.length, GEAR.length));
+    out.push(el('p', 'note', 'Hats and jackets, given in thanks. Tap one to put it on.'));
+    for (const slot of ['hat', 'jacket'] as const) {
+      const row = el('div', 'wardrobe');
+      for (const g of GEAR.filter((q) => q.slot === slot)) {
+        const have = game.save.gear.owned.includes(g.id);
+        const b = el('button', have ? (game.save.gear[slot] === g.id ? 'on' : '') : 'locked');
+        b.type = 'button';
+        b.disabled = !have;
+        const swatch = el('span', 'swatch');
+        if (have) swatch.style.backgroundColor = `#${g.colour.toString(16).padStart(6, '0')}`;
+        b.append(swatch, el('span', '', have ? g.name : '?'));
+        b.addEventListener('click', () => {
+          if (game.wear(g.id)) {
+            this.onWear?.();
+            this.render();
+          }
+        });
+        row.appendChild(b);
+      }
+      out.push(row);
+    }
+    if (game.save.pass) {
+      out.push(el('h3', '', 'Snow Train pass'));
+      out.push(el('p', 'note', game.save.away ? `You are visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));
+    }
     return out;
   }
 

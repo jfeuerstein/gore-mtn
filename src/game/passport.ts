@@ -224,12 +224,24 @@ const LANDMARK_NAMES: Record<string, string> = {
   depot: 'North Creek Depot',
 };
 
+/** Named spots worth a stamp: the lookouts, the old garnet workings, and a pond. */
+const SPOT_LANDMARKS: Record<string, string> = {
+  'vermont-overlook': 'Vermont Overlook',
+  'twister-cliffs': 'Twister Cliffs',
+  'windy-hill-lookout': 'Windy Hill Lookout',
+  'scenic-view': 'Scenic View',
+  'barton-mine': 'Barton Mine',
+  'garnet-quarry': 'Garnet Quarry',
+  'rabbit-pond': 'Rabbit Pond',
+};
+
 /** Places worth a stamp for visiting. */
-export function buildLandmarks(places: readonly Place[]): Spot[] {
-  return places
+export function buildLandmarks(places: readonly Place[], spots: readonly { id: string; x: number; z: number }[] = []): Spot[] {
+  const named = spots.filter((s) => s.id in SPOT_LANDMARKS).map((s) => ({ id: s.id, name: SPOT_LANDMARKS[s.id] as string, x: s.x, z: s.z, reach: 60 }));
+  return [...places
     .filter((p) => p.id in LANDMARK_NAMES)
     // The Base Lodge is a big building with a wide apron of snow; standing in front of it counts.
-    .map((p) => ({ id: p.id === 'summit' ? 'fire-tower' : p.id, name: LANDMARK_NAMES[p.id] as string, x: p.x, z: p.z, reach: p.id === 'base-lodge' ? 120 : 70 }));
+    .map((p) => ({ id: p.id === 'summit' ? 'fire-tower' : p.id, name: LANDMARK_NAMES[p.id] as string, x: p.x, z: p.z, reach: p.id === 'base-lodge' ? 120 : 70 })), ...named];
 }
 
 /** The spots within reach of a position that have not been earned yet. */

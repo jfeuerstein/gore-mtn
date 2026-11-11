@@ -1,6 +1,15 @@
 import * as THREE from 'three/webgpu';
 import { BODY, hipHeight, type Pose } from './pose';
 
+/** What a figure wears: colours of jacket, trousers and hat, and the shape of the hat. */
+export interface Outfit {
+  jacket: number;
+  hat: number;
+  /** beanie, trapper, toque, ranger, cap or lamp. */
+  style: string;
+  trousers?: number;
+}
+
 /**
  * The skier: a small figure of rigid parts, jointed at hips, knees, shoulders and elbows and posed
  * by a Pose. About 2 model units tall, facing -z, feet at the origin.
@@ -22,15 +31,27 @@ export class Skier {
   /** The mountain bike, and its two wheels, which turn. */
   private readonly bike = new THREE.Group();
   private readonly wheels: THREE.Object3D[] = [];
+  private readonly jacketMat: THREE.MeshLambertMaterial;
+  private readonly trousersMat: THREE.MeshLambertMaterial;
+  private readonly hatMat: THREE.MeshLambertMaterial;
+  private readonly creamMat: THREE.MeshLambertMaterial;
+  private readonly darkMat: THREE.MeshLambertMaterial;
+  private readonly head = new THREE.Group();
+  private hat: THREE.Group | null = null;
+  private hatStyle = '';
 
-  constructor(castShadow: boolean) {
+  /** @param outfit what to wear; the player's red jacket and blue beanie if not given */
+  constructor(
+    private readonly castShadow: boolean,
+    outfit: Outfit = { jacket: 0xe2452f, hat: 0x2f6f8f, style: 'beanie' },
+  ) {
     const mat = (color: number): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ color, flatShading: true });
-    const jacket = mat(0xe2452f);
-    const trousers = mat(0x2b3a55);
-    const dark = mat(0x1f242e);
+    const jacket = (this.jacketMat = mat(outfit.jacket));
+    const trousers = (this.trousersMat = mat(outfit.trousers ?? 0x2b3a55));
+    const dark = (this.darkMat = mat(0x1f242e));
     const skin = mat(0xf0c9a4);
-    const hat = mat(0x2f6f8f);
-    const cream = mat(0xf4ead8);
+    this.hatMat = mat(outfit.hat);
+    const cream = (this.creamMat = mat(0xf4ead8));
     const leather = mat(0x6b4a33);
     const skiMat = mat(0xd9a441);
     const box = (w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => {
@@ -70,20 +91,14 @@ export class Skier {
     const coat = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.27, 0.6, 8), jacket);
     coat.position.y = 0.3;
     this.torso.add(coat, box(0.34, 0.4, 0.16, leather, 0, 0.36, 0.26));
-    const head = new THREE.Group();
+    const head = this.head;
     head.position.y = 0.62;
     const face = new THREE.Mesh(new THREE.SphereGeometry(0.19, 10, 8), skin);
     face.position.y = 0.17;
     const scarf = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 0.1, 8), cream);
     scarf.position.y = 0.01;
-    const beanie = new THREE.Mesh(new THREE.SphereGeometry(0.205, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), hat);
-    beanie.position.y = 0.2;
-    const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.212, 0.212, 0.07, 10), cream);
-    cuff.position.y = 0.21;
-    const pompom = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), cream);
-    pompom.position.y = 0.43;
     const goggles = box(0.3, 0.08, 0.08, dark, 0, 0.19, -0.16);
-    head.add(face, scarf, beanie, cuff, pompom, goggles);
+    head.add(face, scarf, goggles);
     this.torso.add(head);
     for (const side of [-1, 1]) {
       const shoulder = new THREE.Group();
@@ -146,6 +161,55 @@ export class Skier {
     this.root.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = castShadow;
     });
+    this.setOutfit(outfit);
+  }
+
+  /** Change the colours of jacket and hat, and the hat itself if its style differs. */
+  setOutfit(outfit: Outfit): void {
+    this.jacketMat.color.setHex(outfit.jacket);
+    this.hatMat.color.setHex(outfit.hat);
+    if (outfit.trousers !== undefined) this.trousersMat.color.setHex(outfit.trousers);
+    if (outfit.style === this.hatStyle) return;
+    this.hatStyle = outfit.style;
+    if (this.hat) this.head.remove(this.hat);
+    this.hat = this.buildHat(outfit.style);
+    this.hat.traverse((o) => {
+      if (o instanceof THREE.Mesh) o.castShadow = this.castShadow;
+    });
+    this.head.add(this.hat);
+  }
+
+  /** A hat, sitting on a head whose crown is about 0.36 above the neck. */
+  private buildHat(style: string): THREE.Group {
+    const g = new THREE.Group();
+    const { hatMat: hat, creamMat: cream, darkMat: dark } = this;
+    const part = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number): THREE.Mesh => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      return mesh;
+    };
+    const dome = (): THREE.Mesh => part(new THREE.SphereGeometry(0.205, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), hat, 0, 0.2, 0);
+    if (style === 'trapper') {
+      // Fur-lined, with flaps over the ears.
+      g.add(dome(), part(new THREE.BoxGeometry(0.34, 0.08, 0.08), cream, 0, 0.24, -0.17));
+      for (const side of [-1, 1]) g.add(part(new THREE.BoxGeometry(0.07, 0.22, 0.2), hat, side * 0.2, 0.12, 0.01), part(new THREE.BoxGeometry(0.075, 0.05, 0.21), cream, side * 0.2, 0.02, 0.01));
+    } else if (style === 'toque') {
+      // A cook's tall white hat.
+      g.add(part(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 10), hat, 0, 0.26, 0), part(new THREE.CylinderGeometry(0.24, 0.19, 0.3, 10), hat, 0, 0.45, 0));
+    } else if (style === 'ranger') {
+      // Flat-brimmed, as fire tower observers wore.
+      g.add(part(new THREE.CylinderGeometry(0.36, 0.36, 0.03, 12), hat, 0, 0.29, 0), part(new THREE.CylinderGeometry(0.15, 0.19, 0.17, 10), hat, 0, 0.39, 0), part(new THREE.CylinderGeometry(0.195, 0.195, 0.04, 10), dark, 0, 0.32, 0));
+    } else if (style === 'cap') {
+      // A peaked cap.
+      g.add(part(new THREE.CylinderGeometry(0.21, 0.2, 0.13, 10), hat, 0, 0.32, 0), part(new THREE.BoxGeometry(0.3, 0.03, 0.16), dark, 0, 0.27, -0.24), part(new THREE.CylinderGeometry(0.205, 0.205, 0.04, 10), cream, 0, 0.28, 0));
+    } else if (style === 'lamp') {
+      // A miner's hard hat with its lamp, which stays lit.
+      g.add(dome(), part(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 12), hat, 0, 0.22, 0), part(new THREE.BoxGeometry(0.1, 0.09, 0.06), new THREE.MeshBasicMaterial({ color: 0xfff0a8 }), 0, 0.3, -0.2));
+    } else {
+      // A beanie with a turned-up cuff and a pompom.
+      g.add(dome(), part(new THREE.CylinderGeometry(0.212, 0.212, 0.07, 10), cream, 0, 0.21, 0), part(new THREE.SphereGeometry(0.07, 6, 5), cream, 0, 0.43, 0));
+    }
+    return g;
   }
 
   /** Put the skis and poles on, or take them off. */

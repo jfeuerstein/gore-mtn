@@ -13,16 +13,31 @@ import {
   type Spot,
   type TrailEntry,
 } from './passport';
+import { PATCHES, patchesEarned, type Tally } from './patches';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, type Errand, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 
 /** Something the player has just earned, to announce. */
 export interface GameEvent {
-  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting';
+  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting' | 'errand' | 'gear' | 'item' | 'patch' | 'hint';
   title: string;
   detail: string;
   /** For a mineral, its colour. */
   colour?: number;
+}
+
+/** What a person has to say, and what comes of it. */
+export interface Talk {
+  person: Person;
+  /** What they say, in order. */
+  lines: string[];
+  /** An errand they are asking, to take or leave. */
+  offer?: Errand;
+  /** Stamps, gear and the like that the talk earned. */
+  events: GameEvent[];
+  /** True when this person can put the player on the Snow Train. */
+  train: boolean;
 }
 
 /** How close the player must come to a find to pick it up, in metres. */
@@ -58,6 +73,10 @@ export interface BookSummary {
   /** Entries in the field guide that have been seen. */
   species: number;
   speciesTotal: number;
+  errands: number;
+  errandsTotal: number;
+  patches: number;
+  patchesTotal: number;
 }
 
 /** Where the save is kept. */
@@ -73,6 +92,8 @@ export interface GameWorld extends Ground {
   places: readonly Place[];
   /** Named paths through the woods. */
   paths?: readonly Path[];
+  /** Lookouts, quarries and ponds by name, some of which are landmarks. */
+  spots?: readonly { id: string; x: number; z: number }[];
   /** Nonzero where the ground is a road, a lot or water, and no stone lies. */
   openAt?(x: number, z: number): number;
   /** The world as wildlife sees it. Without it there is nothing to spot. */
@@ -103,6 +124,8 @@ export class Game {
   private near: readonly Find[] = [];
   private nearKey = '';
   private dirty = false;
+  /** How many times each person has made small talk, so they say something different each time. */
+  private readonly chatted = new Map<string, number>();
   private readonly sightPatches = new Map<string, Sighting[]>();
   private sightKey = '';
   private about: readonly Sighting[] = [];
@@ -118,7 +141,11 @@ export class Game {
     this.paths = buildPathBook(world.paths ?? [], world.trails);
     this.pathIndex = new TrailIndex(this.paths);
     this.peaks = buildPeaks(world.places, world.lifts);
-    this.landmarks = buildLandmarks(world.places);
+    this.landmarks = buildLandmarks(world.places, world.spots ?? []);
+    // Start out in the plain red jacket and blue beanie.
+    for (const id of [DEFAULT_GEAR.hat, DEFAULT_GEAR.jacket]) if (!this.save.gear.owned.includes(id)) this.save.gear.owned.unshift(id);
+    if (!gearById(this.save.gear.hat)) this.save.gear.hat = DEFAULT_GEAR.hat;
+    if (!gearById(this.save.gear.jacket)) this.save.gear.jacket = DEFAULT_GEAR.jacket;
     this.liftNames = [...new Set(world.lifts.map((l) => l.name).filter((n): n is string => Boolean(n)))].sort();
   }
 
@@ -335,6 +362,211 @@ export class Game {
     return this.world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? BASE_LODGE_CLEAR : BUILDING_CLEAR));
   }
 
+  /** What the patches are judged on. */
+  tally(): Tally {
+    const trails = { easy: { done: 0, total: 0 }, intermediate: { done: 0, total: 0 }, advanced: { done: 0, total: 0 }, expert: { done: 0, total: 0 }, freeride: { done: 0, total: 0 }, glade: { done: 0, total: 0 } };
+    for (const t of this.trails) {
+      const kind = trails[t.glade ? 'glade' : t.difficulty];
+      kind.total++;
+      if (this.save.trails[t.name]?.stamped) kind.done++;
+    }
+    return { summary: this.summary(), save: this.save, trails, biggest: Math.max(0, ...Object.values(this.save.minerals).map((m) => m.best)) };
+  }
+
+  /** Award any patches that have newly been earned. Cheap enough to call once a second. */
+  checkPatches(day: string): GameEvent[] {
+    const events: GameEvent[] = [];
+    for (const id of patchesEarned(this.tally())) {
+      if (id in this.save.patches) continue;
+      this.save.patches[id] = day;
+      const patch = PATCHES.find((p) => p.id === id);
+      events.push({ kind: 'patch', title: patch?.name ?? id, detail: 'A patch for your passport' });
+    }
+    if (events.length > 0) this.dirty = true;
+    return events;
+  }
+
+  /** True the first time a hint is asked for, and never again: so each is given once. */
+  hint(id: string): boolean {
+    if (this.save.hints.includes(id)) return false;
+    this.save.hints.push(id);
+    this.dirty = true;
+    return true;
+  }
+
+  /** Every stamp, pin and patch in the passport, of any kind. */
+  stamps(): number {
+    const s = this.summary();
+    return s.trails + s.paths + s.lifts + s.landmarks + s.seasonPeaks + s.conditions + s.seasons;
+  }
+
+  /** Whether what an errand asks for has been done. */
+  needMet(need: Need): boolean {
+    const save = this.save;
+    switch (need.kind) {
+      case 'mineral':
+        return (save.minerals[need.id]?.count ?? 0) >= need.count;
+      case 'mineralSize':
+        return (save.minerals[need.id]?.best ?? 0) >= need.cm;
+      case 'minerals':
+        return Object.keys(save.minerals).length >= need.count;
+      case 'species':
+        return need.id in save.sightings;
+      case 'speciesCount':
+        return Object.keys(save.sightings).length >= need.count;
+      case 'trail':
+        return Boolean(save.trails[need.name]?.stamped);
+      case 'trails':
+        return this.summary().trails >= need.count;
+      case 'lifts':
+        return this.summary().lifts >= need.count;
+      case 'landmark':
+        return need.id in save.landmarks;
+      case 'peak':
+        return need.id in save.peaks;
+      case 'stamps':
+        return this.stamps() >= need.count;
+      case 'seasons':
+        return Object.keys(save.seasons).length >= need.count;
+      case 'item':
+        return save.items.includes(need.id);
+    }
+  }
+
+  /** Errands taken and not yet done. */
+  activeErrands(): Errand[] {
+    return ERRANDS.filter((e) => this.save.errands[e.id] && !this.save.errands[e.id]?.done);
+  }
+
+  /** The next errand a person has to ask, if any: one not yet taken, whose turn has come, in its season. */
+  private nextErrand(personId: string, season: Season): Errand | undefined {
+    return ERRANDS.find(
+      (e) => e.from === personId && !this.save.errands[e.id] && (!e.after || Boolean(this.save.errands[e.after]?.done)) && (!e.seasons || e.seasons.includes(season)),
+    );
+  }
+
+  /** People who have something for the player: an errand to ask, one to finish, or a thing to hand over. */
+  hasBusiness(personId: string, season: Season): boolean {
+    for (const e of this.activeErrands()) {
+      if ((e.to ?? e.from) === personId && this.needMet(e.need)) return true;
+      if (e.fetch?.from === personId && e.need.kind === 'item' && !this.save.items.includes(e.need.id)) return true;
+    }
+    return this.nextErrand(personId, season) !== undefined;
+  }
+
+  /** Talk to someone. They greet, thank, hand over, remind or ask, as the case may be. */
+  talk(personId: string, day: string, season: Season): Talk | null {
+    const person = personById(personId);
+    if (!person) return null;
+    const save = this.save;
+    const talk: Talk = { person, lines: [], events: [], train: false };
+    if (!(personId in save.met)) {
+      save.met[personId] = day;
+      talk.lines.push(person.hello);
+    }
+    // Errands this person is waiting on.
+    for (const e of this.activeErrands()) {
+      if ((e.to ?? e.from) !== personId || !this.needMet(e.need)) continue;
+      (save.errands[e.id] as { taken: string; done?: string }).done = day;
+      if (e.need.kind === 'item') save.items = save.items.filter((i) => i !== (e.need as { id: string }).id);
+      talk.lines.push(e.thanks);
+      talk.events.push({ kind: 'errand', title: e.title, detail: 'Errand done' });
+      const gear = e.reward?.gear ? gearById(e.reward.gear) : undefined;
+      if (gear && !save.gear.owned.includes(gear.id)) {
+        save.gear.owned.push(gear.id);
+        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat, in your pack' : 'A new jacket, in your pack', colour: gear.colour });
+      }
+      if (e.reward?.pass && !save.pass) {
+        save.pass = true;
+        talk.events.push({ kind: 'gear', title: 'Snow Train pass', detail: 'Ride to any season from the depot', colour: 0x1f2a3a });
+      }
+    }
+    // Things this person hands over for someone else.
+    for (const e of this.activeErrands()) {
+      if (e.fetch?.from !== personId || e.need.kind !== 'item' || save.items.includes(e.need.id)) continue;
+      save.items.push(e.need.id);
+      talk.lines.push(e.fetch.handover);
+      talk.events.push({ kind: 'item', title: e.fetch.name, detail: 'In your pack' });
+    }
+    const said = talk.lines.length - (talk.lines[0] === person.hello ? 1 : 0);
+    if (said === 0) {
+      const waiting = this.activeErrands().find((e) => e.from === personId);
+      const offer = this.nextErrand(personId, season);
+      if (waiting) {
+        talk.lines.push(waiting.nudge);
+      } else if (offer) {
+        talk.lines.push(offer.ask);
+        talk.offer = offer;
+      } else if (talk.lines.length === 0) {
+        const lines = [...(person.seasonal?.[season] ?? []), ...person.chat];
+        const n = this.chatted.get(personId) ?? 0;
+        this.chatted.set(personId, n + 1);
+        talk.lines.push(lines[n % lines.length] as string);
+      }
+    }
+    talk.train = personId === 'bea' && save.pass;
+    this.dirty = true;
+    return talk;
+  }
+
+  /** Take on an errand that was offered. */
+  accept(errandId: string, day: string): GameEvent[] {
+    const e = errandById(errandId);
+    if (!e || this.save.errands[errandId]) return [];
+    this.save.errands[errandId] = { taken: day };
+    this.dirty = true;
+    const events: GameEvent[] = [{ kind: 'errand', title: e.title, detail: 'New errand, in your pack' }];
+    // A delivery taken on from the person who has the goods is handed over on the spot.
+    if (e.fetch && e.fetch.from === e.from && e.need.kind === 'item' && !this.save.items.includes(e.need.id)) {
+      this.save.items.push(e.need.id);
+      events.push({ kind: 'item', title: e.fetch.name, detail: 'In your pack' });
+    }
+    return events;
+  }
+
+  /** Lost property lying on the mountain for errands in hand: what it is and where. */
+  lostItems(): { id: string; name: string; at: Whereabouts }[] {
+    const out: { id: string; name: string; at: Whereabouts }[] = [];
+    for (const e of this.activeErrands()) {
+      if (e.lost && e.need.kind === 'item' && !this.save.items.includes(e.need.id)) out.push({ id: e.need.id, name: e.lost.name, at: e.lost.at });
+    }
+    return out;
+  }
+
+  /** The player has picked up a piece of lost property. */
+  takeItem(id: string): GameEvent[] {
+    const lost = this.lostItems().find((i) => i.id === id);
+    if (!lost) return [];
+    this.save.items.push(id);
+    this.dirty = true;
+    return [{ kind: 'item', title: lost.name, detail: 'Found! In your pack' }];
+  }
+
+  /** Put on a hat or a jacket that is owned. */
+  wear(gearId: string): boolean {
+    const gear = gearById(gearId);
+    if (!gear || !this.save.gear.owned.includes(gearId)) return false;
+    this.save.gear[gear.slot] = gearId;
+    this.dirty = true;
+    return true;
+  }
+
+  /** What the player is wearing: the colours of jacket and hat, and the hat's style. */
+  outfit(): { jacket: number; hat: number; style: string } {
+    const hat = gearById(this.save.gear.hat) ?? (GEAR.find((g) => g.id === DEFAULT_GEAR.hat) as (typeof GEAR)[number]);
+    const jacket = gearById(this.save.gear.jacket) ?? (GEAR.find((g) => g.id === DEFAULT_GEAR.jacket) as (typeof GEAR)[number]);
+    return { jacket: jacket.colour, hat: hat.colour, style: hat.style ?? 'beanie' };
+  }
+
+  /** Ride the Snow Train to a season, or home (null). Needs the pass. */
+  ride(season: Season | null): boolean {
+    if (!this.save.pass) return false;
+    this.save.away = season;
+    this.dirty = true;
+    this.persist();
+    return true;
+  }
+
   /** Write the save if anything has changed since the last time. */
   persist(): void {
     if (!this.dirty) return;
@@ -375,6 +607,10 @@ export class Game {
       specimens: Object.values(this.save.minerals).reduce((n, m) => n + m.count, 0),
       species: SPECIES.filter((sp) => this.save.sightings[sp.id]).length,
       speciesTotal: SPECIES.length,
+      errands: ERRANDS.filter((e) => this.save.errands[e.id]?.done).length,
+      errandsTotal: ERRANDS.length,
+      patches: PATCHES.filter((p) => p.id in this.save.patches).length,
+      patchesTotal: PATCHES.length,
     };
   }
 }

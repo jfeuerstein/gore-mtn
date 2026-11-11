@@ -1,7 +1,8 @@
 import type { GameEvent } from '../game/game';
 
-/** How long an announcement stays up, in milliseconds, and how many show at once. */
+/** How long an announcement stays up, in milliseconds (a hint, which has to be read, stays longer), and how many show at once. */
 const STAY = 3800;
+const HINT_STAY = 7000;
 const MOST = 3;
 
 const KIND_MARK: Record<GameEvent['kind'], string> = {
@@ -9,6 +10,11 @@ const KIND_MARK: Record<GameEvent['kind'], string> = {
   path: '✓',
   season: '❖',
   sighting: '✦',
+  errand: '✉',
+  gear: '❉',
+  item: '❑',
+  patch: '★',
+  hint: '☞',
   lift: '⌃',
   peak: '▲',
   landmark: '⌂',
@@ -64,11 +70,12 @@ export class Toasts {
       text.append(title, detail);
       toast.append(mark, text);
       this.el.appendChild(toast);
-      window.setTimeout(() => toast.classList.add('going'), STAY);
+      const stay = event.kind === 'hint' ? HINT_STAY : STAY;
+      window.setTimeout(() => toast.classList.add('going'), stay);
       window.setTimeout(() => {
         toast.remove();
         this.fill();
-      }, STAY + 350);
+      }, stay + 350);
     }
   }
 }

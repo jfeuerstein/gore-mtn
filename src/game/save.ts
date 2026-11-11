@@ -42,6 +42,22 @@ export interface SaveData {
   sightings: Record<string, { count: number; first: string }>;
   /** Sightings made (or startled away) in the present watch of the present day, so they are not met twice. */
   seen: { watch: string; spots: string[] };
+  /** Errands, by id: the day each was taken on and, once it is, the day it was done. */
+  errands: Record<string, { taken: string; done?: string }>;
+  /** Things being carried for an errand, by item id. */
+  items: string[];
+  /** Things to wear: what is owned, and what is on. */
+  gear: { owned: string[]; hat: string; jacket: string };
+  /** People met, by id, and the day. */
+  met: Record<string, string>;
+  /** True once the Snow Train pass has been earned. */
+  pass: boolean;
+  /** The season the Snow Train has taken the player to, or null when they are at home in the real one. */
+  away: string | null;
+  /** Patches, by id, and the day each was earned. */
+  patches: Record<string, string>;
+  /** Hints already given, so each is given once. */
+  hints: string[];
 }
 
 export function emptySave(): SaveData {
@@ -59,6 +75,14 @@ export function emptySave(): SaveData {
     found: { day: '', spots: [] },
     sightings: {},
     seen: { watch: '', spots: [] },
+    errands: {},
+    items: [],
+    gear: { owned: [], hat: '', jacket: '' },
+    met: {},
+    pass: false,
+    away: null,
+    patches: {},
+    hints: [],
   };
 }
 
@@ -125,6 +149,26 @@ export function parseSave(text: string | null | undefined): SaveData {
   if (isRecord(raw.seen) && typeof raw.seen.watch === 'string' && Array.isArray(raw.seen.spots)) {
     save.seen = { watch: raw.seen.watch, spots: raw.seen.spots.filter((s): s is string => typeof s === 'string') };
   }
+  if (isRecord(raw.errands)) {
+    for (const [id, e] of Object.entries(raw.errands)) {
+      if (!isRecord(e) || !isDay(e.taken)) continue;
+      save.errands[id] = isDay(e.done) ? { taken: e.taken, done: e.done } : { taken: e.taken };
+    }
+  }
+  const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  save.items = strings(raw.items);
+  if (isRecord(raw.gear)) {
+    save.gear = {
+      owned: strings(raw.gear.owned),
+      hat: typeof raw.gear.hat === 'string' ? raw.gear.hat : '',
+      jacket: typeof raw.gear.jacket === 'string' ? raw.gear.jacket : '',
+    };
+  }
+  save.met = days(raw.met);
+  save.pass = raw.pass === true;
+  save.away = typeof raw.away === 'string' && ['winter', 'spring', 'summer', 'fall'].includes(raw.away) ? raw.away : null;
+  save.patches = days(raw.patches);
+  save.hints = strings(raw.hints);
   return save;
 }
 

@@ -24,11 +24,12 @@ const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
   if (!ok) failures.push(label);
 };
+/** @param season the season to pin, or null to leave the game to the calendar and the Snow Train */
 const open = async (device, extra = '', season = 'winter') => {
   const context = await browser.newContext({ ...devices[device] });
   const page = await context.newPage();
   page.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
-  await page.goto(url.replace('season=winter', `season=${season}`) + extra);
+  await page.goto(url.replace('season=winter', season ? `season=${season}` : 'x=1') + extra);
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   return { context, page };
 };
@@ -371,7 +372,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 3 + 4 + 4 + 12 + 14, inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 3 + 4 + 11 + 12 + 14, inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -467,6 +468,132 @@ try {
   const carried = await op.evaluate(() => window.__gore.state().book);
   check('and then brings the whole book across', carried.trails === skied.book.trails && carried.specimens === skied.book.specimens, JSON.stringify(carried));
   await other.context.close();
+
+  // People: talk, take an errand, carry a coffee across the mountain, and wear the hat it earns.
+  const town = await open('iPhone 15 Pro');
+  const tp = town.page;
+  const townState = () => tp.evaluate(() => window.__gore.state());
+  const townSettle = (fn, arg) => tp.waitForFunction(fn, arg, { timeout: 60000 }).then(() => true, () => false);
+  const goTo = (x, z) =>
+    tp.evaluate(
+      ([px, pz]) =>
+        new Promise((done) => {
+          window.__gore.place(px, pz);
+          requestAnimationFrame(() => requestAnimationFrame(() => done()));
+        }),
+      [x, z],
+    );
+  const everyone = (await townState()).people;
+  check('people stand about the mountain and the town', everyone.length >= 8 && everyone.every((p) => Number.isFinite(p.x)), everyone.map((p) => p.id).join(', '));
+  const person = (id) => everyone.find((p) => p.id === id);
+  check('those with something to ask are marked', person('hazel').business && person('june').business && !person('otto').business);
+  /** Read whatever the person says to the end, and return the last screen's buttons. */
+  const hear = async () => {
+    const said = [];
+    for (let i = 0; i < 6; i++) {
+      said.push(await tp.locator('#talk-sheet .line').textContent());
+      const next = tp.locator('#talk-sheet .choices button', { hasText: /^Next$/ });
+      if ((await next.count()) === 0) break;
+      await next.tap();
+    }
+    return { said, buttons: await tp.locator('#talk-sheet .choices button').allTextContents() };
+  };
+
+  await goTo(person('june').x + 1.5, person('june').z + 3);
+  check('standing by someone offers to talk to them by name', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Talk to June'));
+  await tp.tap('#talk-button');
+  check('talking opens a sheet with their name', (await tp.locator('#talk-sheet').isVisible()) && (await tp.locator('#talk-sheet .names b').textContent()) === 'June');
+  const talkBox = await tp.locator('#talk-sheet').boundingBox();
+  check('the talk sheet sits at the bottom, within the screen', Math.abs(talkBox.y + talkBox.height - height) < 2 && talkBox.y > height * 0.4 && talkBox.width >= width - 1);
+  const june = await hear();
+  check('she says hello, then asks an errand that can be taken or left', june.said.length === 2 && june.buttons.join() === "I'll do it,Not now", `${june.said.length} lines; ${june.buttons.join()}`);
+  await tp.locator('#talk-sheet .choices button', { hasText: "I'll do it" }).tap();
+  const carrying = await townState();
+  check('taking it closes the sheet, puts the errand in the pack and the coffee in hand', !(await tp.locator('#talk-sheet').isVisible()) && carrying.errands.join() === 'ottos-coffee' && carrying.items.join() === 'coffee');
+  await goTo(person('otto').x + 1.5, person('otto').z + 3);
+  check('the person it is for is now marked', (await townState()).people.find((p) => p.id === 'otto').business);
+  await townSettle(() => document.getElementById('talk-button').textContent === 'Talk to Otto' && !document.getElementById('talk-button').hidden);
+  const rideBox = await tp.locator('#action-button').boundingBox();
+  const talkButton = await tp.locator('#talk-button').boundingBox();
+  check('beside a lift, the talk button sits above the ride button', rideBox !== null && talkButton.y + talkButton.height <= rideBox.y && talkButton.height >= 44);
+  await tp.tap('#talk-button');
+  await hear();
+  await tp.locator('#talk-sheet .choices button').last().tap();
+  const thanked = await townState();
+  check('handing it over finishes the errand and earns his hat', thanked.errands.length === 0 && thanked.items.length === 0 && thanked.wearing.owned.includes('hat-trapper') && thanked.book.errands === 1, JSON.stringify(thanked.wearing));
+  await tp.tap('#book-button');
+  await tp.tap('#book-sheet [data-tab=pack]');
+  check('the pack shows the errand done and the hat in the wardrobe', (await tp.locator('#book-sheet .errand.earned').count()) === 1 && (await tp.locator('#book-sheet .wardrobe button:not(.locked)').count()) === 3);
+  await tp.locator('#book-sheet .wardrobe button', { hasText: 'trapper' }).tap();
+  check('tapping the hat puts it on', (await townState()).wearing.hat === 'hat-trapper' && (await tp.locator('#book-sheet .wardrobe button.on', { hasText: 'trapper' }).count()) === 1);
+  await tp.locator('#book-sheet .close').tap();
+
+  // The shuttle between the mountain and town.
+  const stops = (await townState()).stops;
+  const baseStop = stops.find((st) => st.id === 'base-lodge');
+  const depotStop = stops.find((st) => st.id === 'depot');
+  await goTo(baseStop.x - 2, baseStop.z + 2);
+  check('standing at a stop offers the shuttle', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Take the shuttle'));
+  await tp.tap('#talk-button');
+  const fares = await tp.locator('#talk-sheet .choices button').allTextContents();
+  check('it goes to the Ski Bowl and to town', fares.join() === 'Ski Bowl,North Creek,Not now', fares.join());
+  await tp.locator('#talk-sheet .choices button', { hasText: 'North Creek' }).tap();
+  const inTown = await townState();
+  check('and sets the player down at the depot', Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z) < 12, `${Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z).toFixed(1)} m from the stop`);
+  check('walking off puts the sheet away', !(await tp.locator('#talk-sheet').isVisible()));
+  await town.context.close();
+
+  // The Snow Train: with the pass, Conductor Bea takes the player to another season, and home again.
+  const rail = await open('iPhone 15 Pro', '', null);
+  const rp = rail.page;
+  const railState = () => rp.evaluate(() => window.__gore.state());
+  const homeSeason = (await railState()).season;
+  const bea = (await railState()).people.find((p) => p.id === 'bea');
+  const board = async (label) => {
+    await rp.evaluate(
+      ([px, pz]) =>
+        new Promise((done) => {
+          window.__gore.place(px, pz);
+          requestAnimationFrame(() => requestAnimationFrame(() => done()));
+        }),
+      [bea.x + 1.5, bea.z + 3],
+    );
+    await rp.waitForFunction(() => !document.getElementById('talk-button').hidden, null, { timeout: 30000 });
+    await rp.tap('#talk-button');
+    for (let i = 0; i < 6; i++) {
+      const next = rp.locator('#talk-sheet .choices button', { hasText: /^Next$/ });
+      if ((await next.count()) === 0) break;
+      await next.tap();
+    }
+    const offered = await rp.locator('#talk-sheet .choices button').allTextContents();
+    if (label) {
+      await Promise.all([rp.waitForNavigation(), rp.locator('#talk-sheet .choices button', { hasText: label }).tap()]);
+      await rp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
+    }
+    return offered;
+  };
+  const noPass = await board(null);
+  check('without a pass the conductor only asks her errand', !noPass.some((b) => /Summer|Winter|Spring|Fall/.test(b)), noPass.join());
+  await rp.locator('#talk-sheet .close').tap();
+  // Give the player a passport with five stamps and the errand in hand, as a save code.
+  const passCode = await rp.evaluate(() => `GORE1.${btoa(JSON.stringify({ lifts: { 'Adirondack Express': '2026-11-01', Sunway: '2026-11-01', 'Bear Cub': '2026-11-01', 'North Quad': '2026-11-01', 'Village Chair': '2026-11-01' }, errands: { 'season-pass': { taken: '2026-11-01' } }, met: { bea: '2026-11-01' } }))}`);
+  await rp.tap('#menu-button');
+  await rp.fill('#save-field', passCode);
+  await rp.locator('#save-restore').tap();
+  await rp.locator('#save-restore').tap();
+  await rp.locator('#menu .close').tap();
+  const elsewhere = homeSeason === 'summer' ? 'Fall' : 'Summer';
+  const seasonsOffered = await board(elsewhere);
+  check('five stamps earn the pass, and then she offers every other season', seasonsOffered.length === 4 && seasonsOffered.includes(elsewhere) && !seasonsOffered.some((b) => b.toLowerCase().startsWith(homeSeason)), seasonsOffered.join());
+  const visiting = await railState();
+  check(`the train arrives in ${elsewhere.toLowerCase()}, at the depot`, visiting.season === elsewhere.toLowerCase() && visiting.away === elsewhere.toLowerCase() && Math.hypot(visiting.x - bea.x, visiting.z - bea.z) < 60 && !(await rp.evaluate(() => window.__gore.error)), `${visiting.season}`);
+  // The restored book had no season stamps, so this is its first.
+  check('and the book stamps the season arrived in', visiting.book.seasons === 1);
+  const wayHome = await board('(home)');
+  check('she offers the way home', wayHome.some((b) => b.endsWith('(home)')), wayHome.join());
+  const returned = await railState();
+  check('and the train brings the player home to the real season', returned.season === homeSeason && returned.away === null, returned.season);
+  await rail.context.close();
 
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be
   // reproduced here, but its effect on layout can: the `shortpage` option tells the game the

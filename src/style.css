@@ -119,6 +119,7 @@ body {
 #ski-button,
 #map-button,
 #action-button,
+#talk-button,
 #book-button {
   position: absolute;
   pointer-events: auto;
@@ -161,6 +162,25 @@ body {
   color: #fff;
   padding: 12px 22px;
   font-size: 15px;
+}
+
+/* A second thing to do here, above the first: talking to someone who stands by a lift. */
+#talk-button {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bottom-clear) + 68px);
+  max-width: calc(100% - 28px);
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 22px;
+  font-size: 15px;
+}
+#action-button:not([hidden]) ~ #talk-button {
+  bottom: calc(var(--bottom-clear) + 124px);
 }
 
 #ski-button {
@@ -684,9 +704,16 @@ body {
   margin-top: 2px;
 }
 /* Three tabs and Close have to share a narrow screen. */
+#book-sheet .tabs {
+  gap: 4px;
+}
 #book-sheet .tabs button {
+  padding: 10px 9px;
+  font-size: 13px;
+}
+#book-sheet .head .close {
   padding: 10px 10px;
-  font-size: 14px;
+  font-size: 13px;
 }
 #book-sheet .rarity {
   font-size: 10px;
@@ -702,6 +729,104 @@ body {
 #book-sheet .rarity.rare {
   color: #9a3fb5;
   opacity: 1;
+}
+
+/* What someone says: a small sheet with their name, a line at a time, and what there is to choose. */
+#talk-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: auto;
+  background: #faf7f0;
+  border-radius: 18px 18px 0 0;
+  padding: 14px 16px calc(var(--sheet-pad) + 8px);
+  border-bottom: var(--app-extra, 0px) solid #faf7f0;
+  box-sizing: border-box;
+  box-shadow: 0 -4px 24px rgba(31, 42, 58, 0.18);
+}
+#talk-sheet .head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+#talk-sheet .names b {
+  display: block;
+  font-size: 17px;
+}
+#talk-sheet .names small {
+  font-size: 12px;
+  opacity: 0.65;
+}
+#talk-sheet .line {
+  margin: 12px 0 14px;
+  font-size: 16px;
+  line-height: 1.4;
+  min-height: 67px;
+}
+#talk-sheet .choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#talk-sheet button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px 16px;
+  min-height: 46px;
+}
+#talk-sheet .choices button {
+  flex: 1 1 auto;
+}
+#talk-sheet button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+#talk-sheet button:disabled {
+  opacity: 0.4;
+}
+
+/* The pack: errands, and a wardrobe of things given in thanks. */
+#book-sheet .badge-errand {
+  background: #b7791f;
+}
+#book-sheet .errand.earned .badge-errand {
+  background: #2f6b4f;
+}
+#book-sheet .wardrobe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+#book-sheet .wardrobe button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+#book-sheet .wardrobe button.on {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+#book-sheet .wardrobe button.locked {
+  opacity: 0.45;
+  border-style: dashed;
+}
+#book-sheet .wardrobe .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(31, 42, 58, 0.14);
+  border: 1px solid var(--line);
 }
 
 #bench-results {

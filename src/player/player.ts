@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
 import { deflect, type Bump } from './collide';
 import { mixPose, ridePose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
-import { Skier } from './skier';
+import { Skier, type Outfit } from './skier';
 import { boardingDistance, riderAlong, type LiftPath } from '../world/lifts';
 import {
   advanceSki,
@@ -80,6 +80,11 @@ export class Player {
     this.object.rotation.order = 'YXZ';
     this.object.add(this.skier.root);
     this.skier.pose(this.shown, false);
+  }
+
+  /** Change what the player is wearing. */
+  setOutfit(outfit: Outfit): void {
+    this.skier.setOutfit(outfit);
   }
 
   /** Ease the figure toward a pose. */

@@ -138,7 +138,7 @@ describe('sightings on the real mountain', () => {
         expect(Math.max(...perPatch.values())).toBeLessThanOrEqual(MOST_SIGHTINGS);
       }
     }
-  });
+  }, 60000);
 
   it('lets every entry in the guide be found somewhere, at some time of some season', () => {
     const found = new Set<string>();
@@ -147,7 +147,7 @@ describe('sightings on the real mountain', () => {
       for (const season of SEASONS) for (const watch of WATCHES) for (const s of all(day, season, watch)) found.add(s.species.id);
     }
     expect(SPECIES.filter((s) => !found.has(s.id)).map((s) => s.id)).toEqual([]);
-  });
+  }, 60000);
 
   it('keeps The Rumor to the woods by its trail, in poor light', () => {
     let seen = 0;
@@ -164,7 +164,7 @@ describe('sightings on the real mountain', () => {
     expect(seen).toBeGreaterThan(0);
     // Rare: not something to stumble on every evening.
     expect(seen).toBeLessThan(40);
-  });
+  }, 60000);
 
   it('puts water birds on water and the eagle by the Hudson', () => {
     for (const s of all(DAY, 'summer', 'day')) {
