@@ -42,6 +42,7 @@ export class Built {
   /**
    * @param heightAt the height of the ground
    * @param roof the colour of the roofs this season: snow, or shingle
+   * @param textured whether walls and roofs wear their courses of boards and shingles
    */
   constructor(
     private readonly world: World,
@@ -49,6 +50,7 @@ export class Built {
     season: Season,
     roof: number,
     shadows: boolean,
+    textured = true,
   ) {
     this.group.name = 'built';
     const townPlaces = (this.townPlaces = resolveTownPlaces(world));
@@ -56,10 +58,10 @@ export class Built {
     const styled = new Set([...townPlaces.map((p) => p.building), depot?.building ?? -1]);
 
     const placeSettings: Record<string, { x: number; y: number; z: number; turn: number }> = depot ? { depot: { ...depot, y: heightAt(depot.x, depot.z) } } : {};
-    this.buildings = new Buildings(world.places, shadows, roof, placeSettings);
+    this.buildings = new Buildings(world.places, shadows, roof, placeSettings, textured);
     // Every building without a look of its own is one of the town's plain houses.
     const plain = world.buildings.filter((_, i) => !styled.has(i));
-    this.town = new Town(plain, shadows, roof);
+    this.town = new Town(plain, shadows, roof, textured);
     const train = buildTrain(trainCars(world), heightAt, roof);
     if (placeSettings.depot) {
       // The station's name board, under the eaves on the platform side.
@@ -73,7 +75,7 @@ export class Built {
       walls: [...train.walls, ...street.walls, ...buildYards(world.places, season, heightAt)],
       panes: [...train.panes, ...street.panes],
       signs: [...train.signs, ...street.signs],
-    });
+    }, textured);
     this.group.add(this.buildings.group, this.town.group, this.named.group);
 
     // While there is snow to make, the guns stand along the wide trails.

@@ -79,6 +79,8 @@ The full list is under "What to judge" in `docs/game-plan.md`. In short:
 - Does town feel like North Creek? I put June's bakery and Walt's deli in real buildings on Main
   Street, but I chose which. Say if they should move, and what else the town is missing.
 - The new look of the menus and the Book, the portraits and the plates: right for the game?
+- Buildings now have courses of boards and shingles on them. Settings > For testing > "Boards
+  and shingles on buildings" switches them off. Which do you prefer on the phone?
 - The new people: funny, or too much?
 - Is the sound pleasant after twenty minutes?
 - After a week of five-minute visits: does the book still pull you back?

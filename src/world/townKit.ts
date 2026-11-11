@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
-import { blocks, placed, roof, type Block } from './shapes';
+import { blocks, placed, roof, siding, type Block } from './shapes';
 import type { SignSpec } from './signs';
 import type { Flue } from './smoke';
 import type { TownPlace, TownStyle } from './townPlaces';
@@ -431,14 +431,15 @@ export class TownPlaces {
   /**
    * @param season the doors are dressed for it
    * @param also other things made the same way (the train, the street lamps), to be joined into the same two meshes
+   * @param textured whether the walls wear their courses of boards
    */
-  constructor(places: readonly TownPlace[], castShadow: boolean, roofColour: number, season: Season, also: { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[] } = { walls: [], panes: [], signs: [] }) {
+  constructor(places: readonly TownPlace[], castShadow: boolean, roofColour: number, season: Season, also: { walls: THREE.BufferGeometry[]; panes: THREE.BufferGeometry[]; signs: SignSpec[] } = { walls: [], panes: [], signs: [] }, textured = true) {
     this.group.name = 'town-places';
     const built = buildTownPlaces(places, roofColour, season);
     this.signs = [...built.signs, ...also.signs];
     this.flues = built.flues;
     if (places.length === 0 && also.walls.length === 0) return;
-    const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    const walls = new THREE.Mesh(blocks([], [built.walls, ...also.walls]), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
     walls.castShadow = castShadow;
     walls.receiveShadow = true;
     const panes = new THREE.Mesh(blocks([], [built.panes, ...also.panes]), this.glass);

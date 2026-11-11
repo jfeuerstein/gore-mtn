@@ -1,10 +1,13 @@
 import * as THREE from 'three/webgpu';
-import { blocks, placed, roof, type Block } from './shapes';
+import { blocks, placed, roof, siding, type Block } from './shapes';
 import type { Footprint } from './trails';
 
 /** Paint colours for the houses of North Creek. Each is picked by the house's place, so a house keeps its colour. */
 const PAINTS = [0xece5d3, 0xcfd8df, 0xdcbfa6, 0xbcc8ae, 0xe8d9ae, 0xb9a996, 0xf5f2ea, 0xa9483a, 0xc7b79c, 0x9fb0bd];
 const STEEPLE = 0xf5f2ea;
+
+/** One course of boards on the unit house, which is one unit tall: about a foot on a house of ordinary height. */
+const UNIT_COURSE = 1 / 26;
 
 /** Share of a house's height that is wall; the rest is roof. */
 const WALL_SHARE = 0.6;
@@ -35,7 +38,7 @@ export class Town {
   private readonly lit = new THREE.Color(0xffc56e);
 
   /** @param roofColour snow in winter, shingle otherwise */
-  constructor(buildings: readonly Footprint[], castShadow: boolean, roofColour: number) {
+  constructor(buildings: readonly Footprint[], castShadow: boolean, roofColour: number, textured = true) {
     this.group.name = 'town';
     if (buildings.length === 0) return;
     // The walls go on down below the floor, so a house on a slope has no gap under its lower side.
@@ -44,10 +47,11 @@ export class Town {
       { size: [1, WALL_SHARE + 0.3, 1], at: [0, (WALL_SHARE - 0.3) / 2, 0], colour: 0xffffff },
       { size: [0.13, WALL_SHARE * 0.56, 0.02], at: [0.02, WALL_SHARE * 0.28 + 0.05, 0.505], colour: 0x6a5648 },
       { size: [0.13, WALL_SHARE * 0.56, 0.02], at: [0, WALL_SHARE * 0.28 + 0.05, -0.505], colour: 0x6a5648 },
-    ]);
+    ], [], UNIT_COURSE);
     const roofGeo = blocks(
       [{ size: [0.09, 0.26, 0.11], at: [0.3, WALL_SHARE + 0.24, -0.12], colour: 0xb07a68 }],
       [placed(roof(1.08, 1.12, 1 - WALL_SHARE, 0xffffff, 0xd8d8d8), 0, WALL_SHARE, 0)],
+      UNIT_COURSE,
     );
     const panes: Block[] = [];
     for (const side of [-1, 1]) {
@@ -56,8 +60,10 @@ export class Town {
     }
     const paneGeo = blocks(panes);
 
-    const walls = new THREE.InstancedMesh(wallGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }), buildings.length);
-    const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, color: roofColour }), buildings.length);
+    // Boards on the walls and shingles on the roofs; but snow on a roof is smooth.
+    const map = textured ? siding() : null;
+    const walls = new THREE.InstancedMesh(wallGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map }), buildings.length);
+    const roofs = new THREE.InstancedMesh(roofGeo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, color: roofColour, map: roofColour === 0xf2f5fa ? null : map }), buildings.length);
     const windows = new THREE.InstancedMesh(paneGeo, this.glass, buildings.length);
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();

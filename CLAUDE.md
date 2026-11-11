@@ -47,7 +47,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby and the last announcement) and a few
@@ -137,6 +137,11 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
   this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
   glow after dark and in falling snow.
+- Walls and roofs wear courses of boards and shingles: one small texture drawn in code
+  (`siding()` in `shapes.ts`) that only varies up and down and multiplies the colour under it.
+  `blocks()` gives every model the coordinates for it; anything snow-coloured is left smooth.
+  The lodges, the town's houses and the named places use it. `siding=0`, or Settings, turns it
+  off, so the owner can compare the two on the phone.
 - `src/world/built.ts` puts together everything people have built apart from the lifts (lodges,
   the town, the train, lamps, signs, snow guns, smoke) and gives the game one group to add, one
   list of walls, `setLamps` for the hour and `update` for what moves. Add new structures there.

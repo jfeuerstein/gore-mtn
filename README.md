@@ -4,6 +4,8 @@ A cozy 3D collectathon set on the real Gore Mountain and in North Creek, NY. Ski
 
 **Status:** built through to a long playtest. The real mountain and North Creek at close to life size, in four seasons that follow the calendar, under the real time of day and weather at Gore. Ski it in winter and spring and ride it in summer and fall; ride every lift; pick up the day's scatter of garnets and minerals; spot wildlife for a field guide; run errands for the people of the mountain; and take the Snow Train from the depot to another season.
 
+North Creek is a town to walk through: an inn, a post office with a letter for you every day, a bakery, a deli, a library, a church that strikes the real hour, lamps that come on at dusk, and a mayor who is a cat. Every trail has its sign, every lift its station, and three boards on the mountain read the real sky, your passport and your field guide.
+
 - [Playtest guide](docs/playtest.md): what to try, and what to tell me
 - [Game plan](docs/game-plan.md): scope, art direction, tech stack, roadmap
 - [CLAUDE.md](CLAUDE.md): how the project is built and checked

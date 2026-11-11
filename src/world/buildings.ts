@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { blocks, placed, roof, type Block } from './shapes';
+import { blocks, placed, roof, siding, type Block } from './shapes';
 import type { Place } from './trails';
 
 export { PLACE_FOOTPRINT, PLACE_HEIGHT } from './placeSizes';
@@ -141,7 +141,7 @@ export class Buildings {
    * @param roof the colour of the roofs: snow, or shingle
    * @param settings where a building stands and how it is turned, when that is not simply at its place, square to the compass
    */
-  constructor(places: readonly Place[], castShadow: boolean, roof = 0xf2f5fa, settings: Record<string, { x: number; y: number; z: number; turn: number }> = {}) {
+  constructor(places: readonly Place[], castShadow: boolean, roof = 0xf2f5fa, settings: Record<string, { x: number; y: number; z: number; turn: number }> = {}, textured = true) {
     this.group.name = 'buildings';
     ROOF_SNOW = roof;
     // Every lodge, hut and tower is set down where it stands and joined to the rest: two draw
@@ -159,7 +159,7 @@ export class Buildings {
       }
     }
     if (wallParts.length === 0) return;
-    const body = new THREE.Mesh(blocks([], wallParts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
+    const body = new THREE.Mesh(blocks([], wallParts), new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, map: textured ? siding() : null }));
     body.castShadow = castShadow;
     body.receiveShadow = true;
     const panes = new THREE.Mesh(blocks([], paneParts), this.glass);

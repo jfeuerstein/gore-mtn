@@ -567,6 +567,10 @@ then models, a real town, sillier characters and a cohesive interface).
   what is about this season and hour and where to look for whatever is not in the guide yet.
 - **Four errands for the town**, and an errand is now asked once a day: turned down, its asker
   has other things to say until tomorrow.
+- **Texture.** Walls and roofs wear courses of boards and shingles, drawn in code and laid over
+  whatever colour is under them: clapboard on the houses, logs on the lodges, brick on the Town
+  Hall. Snow on a roof stays smooth. A setting turns it off, for comparing on the phone.
+- **News.** A returning player is told once what has changed since they were last here.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

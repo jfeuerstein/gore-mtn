@@ -17,6 +17,8 @@ export interface Config {
   /** Upper limit on device pixel ratio. */
   dpr: number;
   shadows: boolean;
+  /** Whether walls and roofs wear their courses of boards and shingles, or are left plain. */
+  siding: boolean;
   /** Terrain mesh uses every Nth elevation sample. */
   stride: number;
   /** Trees and terrain tiles beyond this distance are not drawn. */
@@ -59,6 +61,7 @@ export const DEFAULTS: Config = {
   trees: 220000,
   dpr: 2,
   shadows: true,
+  siding: true,
   stride: 1,
   viewDist: 6500,
   at: 'base-lodge',
@@ -114,6 +117,7 @@ export function parseConfig(search: string): Config {
     trees: Math.round(num(q.get('trees'), d.trees, 0, 1000000)),
     dpr: num(q.get('dpr'), d.dpr, 0.5, 3),
     shadows: q.has('shadows') ? q.get('shadows') === '1' : d.shadows,
+    siding: q.has('siding') ? q.get('siding') === '1' : d.siding,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 12000),
     at: q.get('at') ?? d.at,

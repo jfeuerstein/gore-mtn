@@ -106,6 +106,15 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
+    title: 'Boards and shingles on buildings',
+    param: 'siding',
+    current: (c) => (c.siding ? '1' : '0'),
+    options: [
+      { label: 'Plain', value: '0' },
+      { label: 'On', value: '1' },
+    ],
+  },
+  {
     title: 'Terrain detail',
     param: 'stride',
     current: (c) => String(c.stride),

@@ -222,7 +222,7 @@ async function boot(): Promise<void> {
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
-  const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows);
+  const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows, cfg.siding);
   const { townPlaces, depot: depotAt } = built;
   // Trees keep out of lift corridors and stand back from buildings...
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
