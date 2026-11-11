@@ -5,6 +5,8 @@ import { skyDirection, type SunPosition } from './sun';
 
 /** How far away the sky and the far hills are drawn. Inside the camera's far limit. */
 const SKY_RADIUS = 12000;
+/** How many stars there are, on a clear night. */
+const STARS = 420;
 const DEG = Math.PI / 180;
 /** Below this the sun gives no light to speak of and the moon takes over. Matches the palette's darkest twilight. */
 const MOON_TAKES_OVER = -5 * DEG;
@@ -28,6 +30,7 @@ export class Atmosphere {
   private readonly sky = new THREE.Group();
   private readonly dome: THREE.Mesh;
   private readonly disc: THREE.Mesh;
+  private readonly stars: THREE.Mesh;
   private readonly plain: THREE.Mesh;
   private readonly ridges: { mesh: THREE.Mesh; heights: number[] }[] = [];
   private readonly a = new THREE.Color();
@@ -47,7 +50,42 @@ export class Atmosphere {
     this.disc = new THREE.Mesh(new THREE.CircleGeometry(1, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, depthWrite: false }));
     this.disc.renderOrder = -1;
     this.disc.frustumCulled = false;
-    this.sky.add(this.dome, this.disc);
+    // Stars: a few hundred small diamonds set in the upper sky, the same ones every night.
+    const starRng = makeRng(1878);
+    const corners: number[] = [];
+    const d = new THREE.Vector3();
+    const across = new THREE.Vector3();
+    const upward = new THREE.Vector3();
+    const point = new THREE.Vector3();
+    for (let i = 0; i < STARS; i++) {
+      // Spread evenly over the dome above the far hills.
+      const height = 0.14 + starRng() * 0.86;
+      const round = starRng() * Math.PI * 2;
+      const flat = Math.sqrt(1 - height * height);
+      d.set(Math.cos(round) * flat, height, Math.sin(round) * flat);
+      across.set(-d.z, 0, d.x).normalize();
+      upward.crossVectors(d, across);
+      // Most are faint. A few are bright enough to steer by.
+      const size = (starRng() < 0.12 ? 0.0034 : 0.0015) * (0.7 + starRng() * 0.6);
+      const at = (ax: number, ay: number): void => {
+        point.copy(d).addScaledVector(across, ax * size).addScaledVector(upward, ay * size);
+        corners.push(point.x, point.y, point.z);
+      };
+      at(0, 1);
+      at(-1, 0);
+      at(0, -1);
+      at(0, 1);
+      at(0, -1);
+      at(1, 0);
+    }
+    const starGeo = new THREE.BufferGeometry();
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(corners, 3));
+    this.stars = new THREE.Mesh(starGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, fog: false, depthWrite: false }));
+    this.stars.scale.setScalar(SKY_RADIUS * 0.99);
+    this.stars.renderOrder = -1.5;
+    this.stars.frustumCulled = false;
+    this.stars.visible = false;
+    this.sky.add(this.dome, this.stars, this.disc);
 
     // Land beyond the mapped mountain, so the world does not stop at the edge of the data.
     this.plain = new THREE.Mesh(new THREE.CircleGeometry(SKY_RADIUS, 48), new THREE.MeshBasicMaterial({ color: 0xffffff }));
@@ -96,8 +134,11 @@ export class Atmosphere {
     this.sky.position.copy(camera);
   }
 
-  /** Repaint for a palette and a position of the sun. */
-  apply(p: Palette, sun: SunPosition): void {
+  /**
+   * Repaint for a palette and a position of the sun.
+   * @param starlight how far the stars are out, 0..1: none by day or under cloud
+   */
+  apply(p: Palette, sun: SunPosition, starlight = 0): void {
     // Sky: horizon colour at and below eye level, through the middle colour low in the sky, to the top.
     const top = this.a.setHex(p.skyTop);
     const middle = this.b.setHex(p.skyMiddle);
@@ -133,6 +174,11 @@ export class Atmosphere {
     // The disc fades by taking on the colour of the sky behind it, which needs no transparency.
     (this.disc.material as THREE.MeshBasicMaterial).color.setHex(mixColour(p.skyMiddle, p.discColour, p.discShown));
     this.disc.visible = p.discShown > 0.03 && seen[1] > -0.02;
+
+    // Stars come out as the sky darkens, by taking their colour from the sky and then leaving it:
+    // like the disc, they need no transparency.
+    this.stars.visible = starlight > 0.04;
+    (this.stars.material as THREE.MeshBasicMaterial).color.setHex(mixColour(p.skyTop, 0xfff4dc, Math.min(1, starlight)));
 
     const lit = skyDirection(Math.max(elevation, LOWEST_LIGHT), azimuth);
     this.lightDirection.set(lit[0], lit[1], lit[2]);

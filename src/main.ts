@@ -640,7 +640,9 @@ async function boot(): Promise<void> {
     sunNow = sunPosition(skyTime());
     const sunDeg = (sunNow.elevation * 180) / Math.PI;
     const palette = seasonPalette(paletteFor(sunDeg, weather), season);
-    atmosphere.apply(palette, sunNow);
+    // Stars on a clear night: out once the sun is well down, and hidden by cloud.
+    const starlight = Math.min(1, Math.max(0, (-sunDeg - 5) / 7)) * (1 - weather.overcast);
+    atmosphere.apply(palette, sunNow, starlight);
     terrain.setTints(palette.snowTint, palette.canopyTint);
     tracks.setColour(palette.track);
     // Snow in winter, rain otherwise; leaves on a fair fall day, fireflies on a summer night.

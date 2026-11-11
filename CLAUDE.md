@@ -113,6 +113,8 @@ moves between those with the real time of day and the real weather at Gore.
   All three are pure and tested. Change the look by editing the palettes there.
 - `src/look/atmosphere.ts` paints a palette onto the scene (sky, sun or moon, light, haze, far
   hills) ten times a second. Haze also sets how far anything is drawn.
+  On a clear night it brings out the stars: a few hundred small diamonds, the same ones every
+  night, that fade in by taking their colour from the sky, as the sun's disc does. No transparency.
 - Trees and snow are neutral in colour so they take on the colour of the light. Keep new models
   the same: no baked-in sunlight or shadow.
 - Gore faces east, so dawn lights the trails and evening puts them in shade under a warm sky.
