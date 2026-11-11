@@ -443,6 +443,25 @@ export const PEOPLE: readonly Person[] = [
     chat: ['SNOW REPORT. Conditions: yes. Lifts: turning. Trails: open. Chalk: still missing.', 'SNOW REPORT. See yesterday. It was a good one.'],
   },
   {
+    id: 'lostfound',
+    name: 'the lost and found',
+    kind: 'board',
+    role: 'By the Ski Bowl lodge door',
+    at: { place: 'ski-bowl-lodge', aside: 6 },
+    look: { jacket: 0x8a6a3c, trousers: 0x8a6a3c, hat: 0x8a6a3c, style: 'beanie' },
+    hello: 'LOST AND FOUND. Found: one ski pole. Lost: the other one. If you have it, you know who you are.',
+    chat: [
+      'FOUND: fourteen left mittens. If you are missing a left mitten, please form an orderly queue.',
+      'LOST: my sense of direction, somewhere on Twister. No reward. I would only lose it again.',
+      'FOUND: a top hat, full of snow. CLAIMED. Thank you. I am nodding. You cannot tell. — T.',
+      'LOST: one kite, red. FOUND: one kite, red, chewed. The lodge accepts no liability for whatever chewed it.',
+      'FOUND: a sandwich labelled "The Lies". It is not a salad. Would somebody collect it. Walt is upset.',
+      'LOST: one snowcat. Large. Red. Last seen where I parked it. — Bram. UPDATE: found. It was where I parked it.',
+      'FOUND: one green thermos, still warm. This is the fourth time. — Patrol',
+      'LOST: nine hats. I am not worried. I have others. — Pip (aged nine)',
+    ],
+  },
+  {
     // Picks, each day, a trail not yet in the passport (`trailOfTheDay`).
     id: 'trailboard',
     name: 'the trail board',

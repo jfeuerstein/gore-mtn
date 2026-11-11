@@ -112,6 +112,8 @@ export class Player {
   }
 
   private stop(): void {
+    // Being put somewhere, turned, or getting on a lift all end a sit on a bench.
+    this.seat = null;
     this.speed = 0;
     this.skiState = skierAt(this.position.x, this.position.z, this.heading);
   }
