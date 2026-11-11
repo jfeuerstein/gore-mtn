@@ -25,13 +25,13 @@ export const LOOKS = ['facet', 'park', 'smooth'];
 
 /**
  * Animals of the field guide, by species id. `turn` is degrees about upright to face it front,
- * if it came out facing some other way than most do.
+ * if it came out facing some other way than most do; `tripoTurn` is the same for Tripo's shape.
  */
 export const MODELS = {
   deer: { what: 'a white-tailed deer buck with antlers, standing' },
   fox: { what: 'a red fox standing, with black legs and a white-tipped bushy tail' },
-  bear: { what: 'an American black bear standing on all fours' },
-  moose: { what: 'a bull moose with wide antlers, standing' },
+  bear: { what: 'an American black bear standing on all fours', tripoTurn: 90 },
+  moose: { what: 'a bull moose with wide antlers, standing', tripoTurn: 90 },
   otter: { what: 'a river otter standing on all fours, long body and thick tail' },
   beaver: { what: 'a beaver on all fours with a broad flat tail' },
   porcupine: { what: 'a North American porcupine on all fours, covered in quills' },
@@ -41,7 +41,7 @@ export const MODELS = {
   bobcat: { what: 'a bobcat standing, spotted tawny coat, tufted ears, short tail', turn: 90 },
   marten: { what: 'an American pine marten standing on all fours, dark brown with an orange throat' },
   turkey: { what: 'a wild turkey tom with its tail fanned out' },
-  owl: { what: 'a barred owl perched upright, brown and white barred feathers, dark eyes' },
+  owl: { what: 'a barred owl perched upright, brown and white barred feathers, dark eyes', tripoTurn: 90 },
   eagle: { what: 'a bald eagle perched upright, white head and tail, dark brown body, yellow beak' },
   heron: { what: 'a great blue heron standing on long legs, neck curved', turn: 90 },
 };

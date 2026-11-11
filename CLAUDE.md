@@ -143,7 +143,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 Two things are being tried beside that, both off unless asked for, for the owner to compare on
 the phone. Neither is settled.
 
-- **Made models** (`models=facet|park|smooth`, or Settings). `tools/models/make-models.mjs`
+- **Made models** (`models=facet|park|smooth|toy`, or Settings). `tools/models/make-models.mjs`
   asks an image model for a picture of each animal in `tools/models/manifest.mjs`, an
   image-to-3D model (Trellis, through fal) for its shape, and `convert.py` for a game-ready
   model: stood up, cut down to about a thousand triangles, its texture baked into a colour per
@@ -153,6 +153,11 @@ the phone. Neither is settled.
   `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
   same height. No textures and no new materials: vertex colours on the plain material, as
   everything else. `zoo=1` lines sixteen animals up in front of the player to compare.
+  `toy` is the same animals made a second way, for six of them so far: `--tripo id,id` has
+  Tripo make the shape straight from the words, already low-poly and plainly coloured (about
+  30 credits and two or three minutes each), and the converter only tidies it. They come out
+  as chunky toys, where the first way comes out nearer to life. An animal with no model in
+  the look that is on keeps its blocks.
 - **World looks** (`look=poster|topo`, or Settings). `src/look/worldLook.ts` (pure, tested)
   repaints the pipeline's two pictures of the land when the game loads: `poster` prints them
   in a handful of inks for the season, and `topo` thins those inks toward paper and draws a

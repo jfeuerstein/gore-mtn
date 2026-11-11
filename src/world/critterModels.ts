@@ -252,6 +252,11 @@ export function useMadeModels(models: Record<string, ModelFile>): void {
   cache.clear();
 }
 
+/** Whether a species has a model in the look that is on. */
+export function hasMadeModel(id: string): boolean {
+  return id in made;
+}
+
 /** The model for a species in a season. Built once and shared. */
 export function critterGeometry(id: string, season: Season): THREE.BufferGeometry {
   const key = id === 'hare' ? `${id}:${season === 'winter' ? 'white' : 'brown'}` : id;

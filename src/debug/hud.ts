@@ -133,6 +133,7 @@ const OPTIONS: OptionGroup[] = [
       { label: 'Faceted', value: 'facet' },
       { label: 'Park print', value: 'park' },
       { label: 'Smooth', value: 'smooth' },
+      { label: 'Toy', value: 'toy' },
     ],
   },
   {

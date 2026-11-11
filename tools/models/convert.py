@@ -34,6 +34,8 @@ LOOKS = {
     'facet': dict(faces=1100, colours=8, smooth=False, palette=None),
     'park': dict(faces=900, colours=6, smooth=False, palette='park'),
     'smooth': dict(faces=2000, colours=12, smooth=True, palette=None),
+    # For a shape that was made low-poly and plainly coloured to begin with: little is taken away.
+    'toy': dict(faces=1400, colours=10, smooth=False, palette=None),
 }
 
 # The inks of an old park poster: a few earths, two greens, two blues, cream and near-black.

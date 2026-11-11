@@ -21,7 +21,7 @@ export interface ModelFile {
 }
 
 /** The looks a model can be had in, besides the game's own blocks. */
-export const MODEL_LOOKS = ['facet', 'park', 'smooth'] as const;
+export const MODEL_LOOKS = ['facet', 'park', 'smooth', 'toy'] as const;
 export type ModelLook = (typeof MODEL_LOOKS)[number];
 
 /** Every model of one look, by id. Nothing, if the file cannot be had: the blocks are used instead. */

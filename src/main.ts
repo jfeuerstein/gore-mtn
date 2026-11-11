@@ -36,7 +36,7 @@ import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { buildRoute, busyness, routePoint } from './world/crowd';
 import { Crowd } from './world/crowdMesh';
-import { critterGeometry, useMadeModels } from './world/critterModels';
+import { critterGeometry, hasMadeModel, useMadeModels } from './world/critterModels';
 import { LiftCars } from './world/liftCars';
 import { loadModels } from './world/modelFiles';
 import { Glints } from './world/glints';
@@ -309,7 +309,9 @@ async function boot(): Promise<void> {
     const soft = new THREE.MeshLambertMaterial({ vertexColors: true });
     const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
     // Four rows of four across the way the player is looking, the small ones in front: an upright screen has no room for more.
-    const ids = ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
+    const all = ['squirrel', 'marten', 'otter', 'beaver', 'porcupine', 'raccoon', 'fox', 'owl', 'bobcat', 'coyote', 'turkey', 'eagle', 'deer', 'bear', 'moose', 'heron'];
+    // A look that has only some of them shows only those, not the rest in blocks.
+    const ids = cfg.models === 'blocks' ? all : all.filter(hasMadeModel);
     const ahead = { x: -Math.sin(yaw), z: -Math.cos(yaw) };
     const across = { x: Math.cos(yaw), z: -Math.sin(yaw) };
     ids.forEach((id, i) => {

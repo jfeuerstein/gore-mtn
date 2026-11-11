@@ -10,8 +10,8 @@
 // one small file per look, public/models/<look>.json, holding every model in that look.
 //
 // --tripo makes the named models a second way, to set beside the first: Tripo makes the shape
-// straight from the words, already low-poly, and the converter gives it the faceted look. Those
-// go to public/models/tripo.json. A shape costs Tripo credits, so only the ones named are made.
+// straight from the words, already low-poly and plainly coloured, and the converter only tidies
+// it (the toy look). Those go to public/models/toy.json. A shape costs Tripo credits, so only the ones named are made.
 //
 // Needs Python with trimesh, fast-simplification, scipy and Pillow for the converter.
 import { execFileSync } from 'node:child_process';
@@ -60,8 +60,7 @@ async function tripoShape(id) {
     if (done.output.rendered_image_url) await saveTripo(done.output.rendered_image_url, picture);
     console.log(`made ${id} with Tripo (${done.credits_consumed ?? '?'} credits)`);
   }
-  const like = existsSync(picture) ? ['--like', picture] : [];
-  execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/tripo-${id}.json`, '--look', 'facet', ...like, '--turn', String(TRIPO_SHAPE.turn), '--preview', `${CACHE}/tripo-${id}.png`]);
+  execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/tripo-${id}.json`, '--look', 'toy', '--turn', String(MODELS[id].tripoTurn ?? TRIPO_SHAPE.turn), '--preview', `${CACHE}/tripo-${id}.png`]);
 }
 
 // A few at a time: a shape takes half a minute.
@@ -87,7 +86,7 @@ for (const id of Object.keys(MODELS)) {
   if (existsSync(file)) theirs[id] = JSON.parse(readFileSync(file, 'utf8'));
 }
 if (Object.keys(theirs).length) {
-  writeFileSync(`${ROOT}public/models/tripo.json`, JSON.stringify(theirs));
-  console.log(`tripo: ${Object.keys(theirs).length} models`);
+  writeFileSync(`${ROOT}public/models/toy.json`, JSON.stringify(theirs));
+  console.log(`toy: ${Object.keys(theirs).length} models`);
 }
 console.log(`${made} new model(s) asked of fal`);
