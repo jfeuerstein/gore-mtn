@@ -69,6 +69,8 @@ export interface SaveData {
   /** The town round: who has been called on today, and the days on which everyone was. */
   round: { day: string; who: string[] };
   rounds: string[];
+  /** The flag the player has planted on the map, to find their way to; null when there is none. */
+  flag: { x: number; z: number; label: string } | null;
 }
 
 export function emptySave(): SaveData {
@@ -100,6 +102,7 @@ export function emptySave(): SaveData {
     benches: {},
     round: { day: '', who: [] },
     rounds: [],
+    flag: null,
   };
 }
 
@@ -192,6 +195,9 @@ export function parseSave(text: string | null | undefined): SaveData {
   if (isRecord(raw.round) && isDay(raw.round.day)) save.round = { day: raw.round.day, who: strings(raw.round.who) };
   save.rounds = strings(raw.rounds).filter(isDay);
   save.benches = days(raw.benches);
+  if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {
+    save.flag = { x: raw.flag.x, z: raw.flag.z, label: typeof raw.flag.label === 'string' ? raw.flag.label.slice(0, 80) : 'Your flag' };
+  }
   return save;
 }
 

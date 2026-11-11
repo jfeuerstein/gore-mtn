@@ -84,10 +84,51 @@ try {
   let named = '';
   for (let f = 0.15; f < 0.9 && !named; f += 0.05) {
     await page.touchscreen.tap(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * f);
+    // Two taps close together in time and place are a double tap, which zooms: leave a moment between them.
+    await page.waitForTimeout(380);
     const text = await page.locator('#map-sheet .caption').textContent();
-    if (!text.startsWith('Tap a trail')) named = text;
+    if (/^(Lift:|Path:|[●■◆])/.test(text)) named = text;
   }
   check('tapping the map names a trail or lift', named !== '', named);
+  // The map is a window that can be zoomed and slid about, and a flag can be planted on it.
+  const zoomOf = () => page.evaluate(() => window.__gore.map().zoom);
+  await page.locator('#map-sheet .tools button', { hasText: '+' }).tap();
+  await page.waitForTimeout(120);
+  const closer = await zoomOf();
+  check('the + button zooms the map in', closer > 1.5, `zoom ${closer.toFixed(2)}`);
+  const mapWas = await page.evaluate(() => window.__gore.map());
+  await page.mouse.move(mapBox.x + mapBox.width * 0.5, mapBox.y + mapBox.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(mapBox.x + mapBox.width * 0.5 + 60, mapBox.y + mapBox.height * 0.5 + 40, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(120);
+  const mapNow = await page.evaluate(() => window.__gore.map());
+  check('dragging slides the map under the finger', Math.hypot(mapNow.x - mapWas.x, mapNow.z - mapWas.z) > 30 && Math.abs(mapNow.zoom - mapWas.zoom) < 0.01, `${Math.round(mapNow.x - mapWas.x)}, ${Math.round(mapNow.z - mapWas.z)} m`);
+  // Both taps are sent from inside the page: sent from here, a slow machine can put them too far apart to count as one.
+  await page.evaluate(([x, y]) => {
+    const canvas = document.querySelector('#map-sheet canvas');
+    for (let i = 0; i < 2; i++) {
+      for (const type of ['pointerdown', 'pointerup']) canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, bubbles: true }));
+    }
+  }, [mapBox.x + mapBox.width * 0.3, mapBox.y + mapBox.height * 0.3]);
+  await page.waitForTimeout(150);
+  check('a double tap zooms in', (await zoomOf()) > closer * 1.5, `zoom ${(await zoomOf()).toFixed(2)}`);
+  await page.locator('#map-sheet .tools button', { hasText: 'All' }).tap();
+  await page.waitForTimeout(120);
+  check('All shows the whole mountain again', (await zoomOf()) === 1);
+  const toolBoxes = await page.locator('#map-sheet .tools button').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ w: r.width, h: r.height, bottom: r.bottom })));
+  check('the map buttons are thumb-sized and on the screen', toolBoxes.length === 4 && toolBoxes.every((b) => b.w >= 44 && b.h >= 44 && b.bottom <= height));
+  await page.waitForTimeout(380);
+  await page.touchscreen.tap(mapBox.x + mapBox.width * 0.72, mapBox.y + mapBox.height * 0.2);
+  await page.waitForTimeout(100);
+  await page.locator('#map-sheet .told .flag').tap();
+  const planted = await page.evaluate(() => window.__gore.state().flag);
+  check('a flag can be planted on the map', planted !== null && Number.isFinite(planted.x), planted ? planted.label : 'none');
+  check('and the way to it is shown under the place name', (await page.locator('#flag-pointer').isVisible()) && /(ft|mi)$/.test(await page.locator('#flag-pointer').textContent()), await page.locator('#flag-pointer').textContent());
+  await page.locator('#map-sheet .told .flag').tap();
+  check('and taken up again', (await page.evaluate(() => window.__gore.state().flag)) === null && !(await page.locator('#flag-pointer').isVisible()));
+  const chips = page.locator('#map-sheet .legend button');
+  check('the legend is six chips that show and hide what they mark', (await chips.count()) === 6 && (await chips.first().getAttribute('aria-pressed')) === 'true');
   await page.locator('#map-sheet button', { hasText: 'Close' }).tap();
   check('the map closes', !(await page.locator('#map-sheet').isVisible()));
 

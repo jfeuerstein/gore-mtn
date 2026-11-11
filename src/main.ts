@@ -20,10 +20,11 @@ import { snowReport, trailOfTheDay, wildlifeLog } from './game/report';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
 import { Input } from './input/input';
-import { Book } from './ui/book';
+import { Book, shortDay } from './ui/book';
 import { TalkSheet, type Choice, type Written } from './ui/talk';
 import { Toasts } from './ui/toasts';
-import { TrailMap } from './ui/trailMap';
+import { sayDistance, wayTo } from './ui/mapView';
+import { TrailMap, type MapPoint } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { pushOut } from './player/collide';
@@ -88,6 +89,8 @@ interface DebugHandle {
   face(yaw: number): void;
   /** Stand the player at a position. */
   place(x: number, z: number): void;
+  /** Where the trail map is looking: how far in, and the spot at the middle of it. */
+  map(): { zoom: number; x: number; z: number };
   /** How many things are set to be drawn, by the part of the scene they belong to: where the draw calls go. */
   census(): Record<string, number>;
   /** Show or hide a part of the scene by name (as `census` lists them), to see what it costs. */
@@ -108,6 +111,7 @@ window.__gore = {
   setView: () => {},
   face: () => {},
   place: () => {},
+  map: () => ({ zoom: 1, x: 0, z: 0 }),
   census: () => ({}),
   show: () => {},
 };
@@ -468,11 +472,13 @@ async function boot(): Promise<void> {
   }
   if (cfg.zoo) lineUp(player.position.x, player.position.z, follow.yaw);
 
-  const trailMap = new TrailMap(world, liftPaths, canopyPicture.image as CanvasImageSource, () => ({
-    x: player.position.x,
-    z: player.position.z,
-    yaw: player.travelHeading,
-  }));
+  const trailMap = new TrailMap(
+    world,
+    liftPaths,
+    canopyPicture.image as CanvasImageSource,
+    () => ({ x: player.position.x, z: player.position.z, yaw: player.travelHeading }),
+    snowPicture.image as CanvasImageSource,
+  );
   // One sheet at a time.
   const talkSheet = new TalkSheet();
   trailMap.onOpen = () => {
@@ -524,13 +530,75 @@ async function boot(): Promise<void> {
     return [{ person, ...at, ...(beside ? { prop: { ...beside, turn: person.prop === 'snowcat' ? 2.5 : 0.4 } } : {}) }];
   });
   const folk = new Folk(standings, shadows, season);
-  // On the map, a small square for each of the town's doors, named when tapped...
-  trailMap.spots = townPlaces.filter((p) => p.sign).map((p) => ({ x: p.x, z: p.z, label: signName(p.sign) }));
-  // ...and a gold diamond for everyone with something for the player.
-  trailMap.marks = () =>
-    standings
-      .filter((st) => game.hasBusiness(st.person.id, season))
-      .map((st) => ({ x: st.x, z: st.z, label: `${st.person.name} · ${st.person.role}` }));
+  // What the map marks: the lodges and the town, the four summits, every place worth a postcard,
+  // every bench, the town's doors, and whoever has something for the player. Things that go in
+  // the book say whether they are in it yet.
+  const MAP_LODGES: Record<string, string> = { 'base-lodge': 'Base Lodge', 'saddle-lodge': 'Saddle Lodge', 'ski-bowl-lodge': 'Ski Bowl', depot: 'North Creek' };
+  const kept = (day: string | undefined, did: string, yet: string): string => (day ? `${did} ${shortDay(day)}` : yet);
+  const fixedPoints: MapPoint[] = [
+    ...world.places.filter((p) => p.id in MAP_LODGES).map((p): MapPoint => ({ kind: 'lodge', x: p.x, z: p.z, label: MAP_LODGES[p.id] as string })),
+    ...townPlaces.filter((p) => p.sign).map((p): MapPoint => ({ kind: 'place', x: p.x, z: p.z, label: signName(p.sign) })),
+  ];
+  trailMap.points = () => [
+    ...fixedPoints,
+    ...game.peaks.map((p): MapPoint => ({ kind: 'summit', x: p.x, z: p.z, label: p.name, done: p.id in game.save.peaks, note: kept(game.save.peaks[p.id], 'stood on', 'not climbed yet') })),
+    // A lodge that is also worth a postcard is marked as a lodge.
+    ...game.landmarks
+      .filter((l) => !(l.id in MAP_LODGES) && !game.peaks.some((p) => p.id === l.id))
+      .map((l): MapPoint => ({ kind: 'landmark', x: l.x, z: l.z, label: l.name, done: l.id in game.save.landmarks, note: kept(game.save.landmarks[l.id], 'visited', 'no postcard yet') })),
+    ...built.benches.map((b): MapPoint => ({ kind: 'bench', x: b.x, z: b.z, label: `Bench: ${b.name}`, done: b.id in game.save.benches, note: kept(game.save.benches[b.id], 'sat on', 'not sat on yet') })),
+    ...standings.filter((st) => game.hasBusiness(st.person.id, season)).map((st): MapPoint => ({ kind: 'person', x: st.x, z: st.z, label: `${st.person.name} · ${st.person.role}` })),
+  ];
+  trailMap.progress = (kind, name) => {
+    if (kind === 'lift') return { done: name in game.save.lifts, note: kept(game.save.lifts[name], 'ridden', 'not ridden yet') };
+    const entry = (kind === 'trail' ? game.save.trails : game.save.paths)[name];
+    if (entry?.stamped) return { done: true, note: `stamped ${shortDay(entry.stamped)}` };
+    const passed = [...(entry?.seen ?? '')].filter((c) => c === '1').length;
+    const of = entry?.seen.length ?? 0;
+    return { done: false, note: passed > 0 ? `${passed} of ${of} checkpoints` : 'no stamp yet' };
+  };
+  // The player's flag: planted from the map, it stands in the world as a pennant on a pole, and
+  // a pointer under the place name says how far off it is and which way. Coming to it takes it up.
+  const pennant = new THREE.Group();
+  pennant.name = 'flag';
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 9, 6).translate(0, 4.5, 0), lit({ color: 0xd9dde4, flatShading: true }));
+  const cloth = new THREE.BufferGeometry();
+  cloth.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 9, 0, 0, 7.2, 0, 2.8, 8.1, 0]), 3));
+  cloth.computeVertexNormals();
+  pennant.add(pole, new THREE.Mesh(cloth, lit({ color: 0xc8402d, side: THREE.DoubleSide, flatShading: true })));
+  pennant.visible = false;
+  scene.add(pennant);
+  const pointer = document.createElement('div');
+  pointer.id = 'flag-pointer';
+  pointer.hidden = true;
+  const pointerArrow = document.createElement('i');
+  pointerArrow.textContent = '▲';
+  const pointerText = document.createElement('span');
+  pointer.append(pointerArrow, pointerText);
+  document.getElementById('hud')?.appendChild(pointer);
+  const showFlag = (): void => {
+    const flag = game.save.flag;
+    trailMap.flag = flag;
+    pennant.visible = flag !== null;
+    pointer.hidden = flag === null;
+    if (flag) pennant.position.set(flag.x, ground.heightAt(flag.x, flag.z), flag.z);
+  };
+  /** Turn the pointer toward the flag, as seen from where the camera looks. */
+  const pointToFlag = (): void => {
+    const flag = game.save.flag;
+    if (!flag) return;
+    const way = wayTo({ x: player.position.x, z: player.position.z, yaw: follow.yaw }, flag);
+    // Up the screen is straight ahead; a turn to the left leans the arrow left.
+    pointerArrow.style.transform = `rotate(${(-way.turn).toFixed(2)}rad)`;
+    const text = `${flag.label} · ${sayDistance(way.metres)}`;
+    if (pointerText.textContent !== text) pointerText.textContent = text;
+  };
+  trailMap.onFlag = (flag) => {
+    game.plant(flag);
+    showFlag();
+    pointToFlag();
+  };
+  showFlag();
   const keepsakes = new Keepsakes();
   /** A step given in a building's own frame (along its front, out from it), as a step in the world. */
   const offsetFrom = (at: { turn: number }, lx: number, lz: number): [number, number] => {
@@ -685,6 +753,7 @@ async function boot(): Promise<void> {
           game.restore(save);
           player.setOutfit(game.outfit());
           layKeepsakes();
+          showFlag();
         }
         return Boolean(save);
       },
@@ -818,6 +887,7 @@ async function boot(): Promise<void> {
     watch,
     away,
     // How many others are in the picture just now.
+    flag: game.save.flag,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
     // The benches, and whether the player is sitting on one.
@@ -843,6 +913,7 @@ async function boot(): Promise<void> {
     trees: trees.count,
     frames,
   });
+  window.__gore.map = () => trailMap.looking;
   window.__gore.teleport = (id) => {
     const place = world.places.find((p) => p.id === id);
     if (place) teleport(place);
@@ -926,6 +997,11 @@ async function boot(): Promise<void> {
       if (player.mode === 'ski') announce(game.skiedAt(px, pz, today));
       announce(game.travelledAt(px, pz, today));
       announce(game.reachedAt(px, pz, today, season));
+      const flagged = game.save.flag?.label;
+      if (flagged && game.reachedFlag(px, pz)) {
+        showFlag();
+        toasts.show({ kind: 'hint', title: 'You found your flag', detail: flagged });
+      }
       for (const { find, event } of game.pickUp(px, pz, today)) {
         glints.pickedUp(find, (x, z) => ground.heightAt(x, z));
         announce([event]);
@@ -1117,6 +1193,7 @@ async function boot(): Promise<void> {
         height: Math.round(canvas.clientHeight * pixelRatio),
         trees: trees.count,
       });
+      pointToFlag();
       hud.setWhere(
         trailAt(world.trails, player.position.x, player.position.z),
         world.realElevationM(player.position.y) * M_TO_FT,

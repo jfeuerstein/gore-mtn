@@ -555,28 +555,130 @@ body {
   letter-spacing: 0.06em;
   text-transform: var(--display-case);
 }
+/* The map is a window: the picture, with its buttons down the right-hand edge where a thumb is. */
+#map-sheet .frame {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto;
+}
 #map-sheet canvas {
   display: block;
-  margin: 0 auto;
   border: 2px solid var(--ink);
   border-radius: 10px;
   box-sizing: content-box;
+  /* Every finger on it is the map's: dragging it must not scroll the sheet or the page. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#map-sheet .tools {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+#map-sheet .tools button {
+  width: 46px;
+  height: 46px;
+  padding: 3px 0 0;
+  font-size: 17px;
+}
+#map-sheet .tools button:nth-child(-n + 2) {
+  font-size: 30px;
+  padding-top: 0;
+}
+/* What was tapped, and the flag to plant on it. */
+#map-sheet .told {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  margin: 8px 0 6px;
 }
 #map-sheet .caption {
-  margin: 10px 0 4px;
+  flex: 1;
+  margin: 0;
   font-family: var(--display);
-  font-size: 21px;
+  font-size: 19px;
+  line-height: 1.05;
   letter-spacing: 0.04em;
   text-transform: var(--display-case);
-  min-height: 24px;
 }
+#map-sheet .told .flag {
+  flex: none;
+  background: var(--red);
+  color: #fff;
+}
+/* The legend is a row of chips: each shows its mark, and shows or hides what it marks. */
 #map-sheet .legend {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+#map-sheet .legend button {
+  font-size: 15px;
+  padding: 11px 4px 8px;
+  white-space: nowrap;
+}
+#map-sheet .legend button i {
+  font-family: var(--body);
+  font-style: normal;
+  font-size: 12px;
+  margin-right: 3px;
+  vertical-align: 1px;
+}
+#map-sheet .legend button[aria-pressed='false'] {
+  background: none;
+  box-shadow: none;
+  border-style: dashed;
+  color: var(--ink-soft);
+}
+#map-sheet .legend button[aria-pressed='false'] i {
+  opacity: 0.35;
+}
+#map-sheet .legend button:last-child[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* The way to the player's flag: under the place name, out of the way of Settings. */
+#flag-pointer {
+  position: absolute;
+  top: calc(max(8px, env(safe-area-inset-top)) + 46px);
+  left: max(12px, env(safe-area-inset-left));
+  max-width: calc(100% - 176px);
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 12px;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: var(--display-case);
+  color: #fff;
+  background: var(--red);
+  border: 2px solid var(--ink);
+  border-radius: 9px;
+  padding: 6px 10px 4px;
+  box-shadow: var(--press);
+}
+#flag-pointer i {
+  flex: none;
+  font-family: var(--body);
+  font-style: normal;
+  font-size: 12px;
+  margin-top: -2px;
+}
+#flag-pointer span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.show-stats #flag-pointer {
+  top: calc(max(8px, env(safe-area-inset-top)) + 100px);
 }
 
 /* --- The book ----------------------------------------------------------------------------- */

@@ -56,6 +56,20 @@ describe('save', () => {
   });
 });
 
+describe('the flag', () => {
+  it('is kept with the book, and a book from before there were flags has none', () => {
+    expect(parseSave('{}').flag).toBeNull();
+    const save = emptySave();
+    save.flag = { x: 12.5, z: -40, label: 'Top of Sunway' };
+    expect(parseSave(serializeSave(save)).flag).toEqual({ x: 12.5, z: -40, label: 'Top of Sunway' });
+  });
+
+  it('drops a flag that is not somewhere', () => {
+    expect(parseSave('{"flag":{"x":"here","z":2}}').flag).toBeNull();
+    expect(parseSave('{"flag":{"x":1,"z":2}}').flag).toEqual({ x: 1, z: 2, label: 'Your flag' });
+  });
+});
+
 describe('dayKey', () => {
   it('formats the local date', () => {
     expect(dayKey(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');

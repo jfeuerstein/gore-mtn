@@ -478,12 +478,27 @@ yet the game's own look.
 ## Trail map
 
 - The Map button opens `src/ui/trailMap.ts`, a bottom sheet drawn on a 2D canvas over the
-  pipeline's canopy picture. West is up, so the summit is at the top as on a ski map; the
-  projection is `src/ui/mapView.ts` (pure, tested).
-- It shows every trail by difficulty, every lift with a ring where you board, the paths through
-  the woods as dotted lines, the main places, an arrow for the player, a small square for each
-  of the town's named places (`TrailMap.spots`) and a gold diamond for anyone with something
-  for the player (`TrailMap.marks`). Tapping any of them names it.
+  pipeline's pictures of the land. West is up, so the summit is at the top as on a ski map.
+  The maths is `src/ui/mapView.ts` (pure, tested): the projection, the window's camera
+  (`lookAt`, `clampCamera`, `zoomAbout`, `panBy`), and `wayTo` and `sayDistance` for the flag.
+- The map is a window on the mountain. One finger drags it; the `+` and `−` buttons down its
+  right edge, or a double tap, zoom it (a pinch does too, but nothing needs two fingers); `Me`
+  goes to the player and `All` back to the whole mountain. It is fitted to the trails and can
+  be slid out to the edge of the world, since the town lies beyond them. Well in, the close
+  picture of the ground takes over from the far one.
+- What is marked grows as the map goes in (`SHOWN_FROM`, `NAMED_FROM`): lodges and summits
+  always; then places worth a postcard, benches, the town's doors; then names, of trails and
+  lifts along their lines and of points beside them, never one over another. Each kind of
+  point has its own sign, filled in if it is in the book and hollow if not. `main.ts` gives
+  the map its points (`TrailMap.points`) and what the book says of a trail, path or lift
+  (`TrailMap.progress`); tapping anything names it and says where it stands in the book.
+- The legend is a row of chips that show and hide what they mark (trails, lifts, paths,
+  places, people). `To do` fades everything already in the book, so what is left stands out.
+- A flag can be planted on anything tapped, or on a bare spot. It is kept in the save
+  (`flag`), stands in the world as a pennant on a pole, and a pointer under the place name
+  gives its name, the distance and an arrow that turns with the camera. Coming to it takes it
+  up (`Game.reachedFlag`). It is only a mark to steer by: it earns nothing.
+- `window.__gore.map()` says where the map is looking, for the tools.
 
 ## Measuring performance
 

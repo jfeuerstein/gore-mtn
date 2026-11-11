@@ -714,6 +714,24 @@ export class Game {
     return true;
   }
 
+  /** Plant the player's flag somewhere, or take it up (null). It is only a mark to steer by: it earns nothing. */
+  plant(flag: SaveData['flag']): void {
+    this.save.flag = flag;
+    this.dirty = true;
+    this.persist();
+  }
+
+  /** How close to the flag counts as having reached it, in metres. */
+  static readonly FLAG_REACH = 14;
+
+  /** True, once, when the player comes to their flag: the flag is taken up. */
+  reachedFlag(x: number, z: number): boolean {
+    const flag = this.save.flag;
+    if (!flag || Math.hypot(flag.x - x, flag.z - z) > Game.FLAG_REACH) return false;
+    this.plant(null);
+    return true;
+  }
+
   /** Write the save if anything has changed since the last time. */
   persist(): void {
     if (!this.dirty) return;

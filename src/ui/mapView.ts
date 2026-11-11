@@ -60,3 +60,94 @@ export function boundsOf(lists: readonly (readonly number[])[]): Bounds {
   }
   return b;
 }
+
+/** Where the map is looking: how far in, and the spot in the world at the middle of it. */
+export interface MapCamera {
+  /** 1 shows the whole mountain. */
+  zoom: number;
+  x: number;
+  z: number;
+}
+
+/** As far in as the map goes: about a city block across the screen. */
+export const MAX_ZOOM = 12;
+
+/** The whole of the bounds, as seen from the middle. */
+export function wholeMap(bounds: Bounds): MapCamera {
+  return { zoom: 1, x: (bounds.minX + bounds.maxX) / 2, z: (bounds.minZ + bounds.maxZ) / 2 };
+}
+
+/**
+ * The map as a window of a set size, looking where the camera says. At zoom 1 the bounds and
+ * their margin just fit; further in, the window shows part of them.
+ */
+export function lookAt(bounds: Bounds, width: number, height: number, camera: MapCamera, margin = 0): MapView {
+  const across = bounds.maxZ - bounds.minZ + margin * 2;
+  const down = bounds.maxX - bounds.minX + margin * 2;
+  const scale = Math.min(width / across, height / down) * camera.zoom;
+  return {
+    width,
+    height,
+    scale,
+    // West is up and north is to the right, as in fitMap.
+    toMap: (x, z) => ({ u: width / 2 + (camera.z - z) * scale, v: height / 2 + (x - camera.x) * scale }),
+    toWorld: (u, v) => ({ x: camera.x + (v - height / 2) / scale, z: camera.z - (u - width / 2) / scale }),
+    toMapAngle: (yaw) => Math.PI / 2 - yaw,
+  };
+}
+
+/**
+ * The camera kept to sensible limits: no nearer or further than allowed, and never looking off the map.
+ * @param reach how far the window may be slid, where that is further than the bounds the map is fitted to:
+ *   the map is fitted to the trails, but the town lies beyond them
+ */
+export function clampCamera(bounds: Bounds, width: number, height: number, camera: MapCamera, margin = 0, reach: Bounds = bounds): MapCamera {
+  const zoom = Math.min(MAX_ZOOM, Math.max(1, camera.zoom));
+  const scale = lookAt(bounds, width, height, { ...camera, zoom }, margin).scale;
+  const keep = (at: number, min: number, max: number, half: number): number => {
+    // If the window shows the whole span, it is centred on it; otherwise its edge stops at the map's.
+    if (half * 2 >= max - min) return (min + max) / 2;
+    return Math.min(max - half, Math.max(min + half, at));
+  };
+  return {
+    zoom,
+    x: keep(camera.x, Math.min(reach.minX, bounds.minX - margin), Math.max(reach.maxX, bounds.maxX + margin), height / 2 / scale),
+    z: keep(camera.z, Math.min(reach.minZ, bounds.minZ - margin), Math.max(reach.maxZ, bounds.maxZ + margin), width / 2 / scale),
+  };
+}
+
+/** Zoom by a factor, keeping whatever is under a point of the window where it is. */
+export function zoomAbout(bounds: Bounds, width: number, height: number, camera: MapCamera, u: number, v: number, factor: number, margin = 0, reach: Bounds = bounds): MapCamera {
+  const before = lookAt(bounds, width, height, camera, margin);
+  const held = before.toWorld(u, v);
+  const zoom = Math.min(MAX_ZOOM, Math.max(1, camera.zoom * factor));
+  const after = lookAt(bounds, width, height, { ...camera, zoom }, margin);
+  const now = after.toWorld(u, v);
+  return clampCamera(bounds, width, height, { zoom, x: camera.x + held.x - now.x, z: camera.z + held.z - now.z }, margin, reach);
+}
+
+/** Slide the map under a finger that has moved by (du, dv) on the window. */
+export function panBy(bounds: Bounds, width: number, height: number, camera: MapCamera, du: number, dv: number, margin = 0, reach: Bounds = bounds): MapCamera {
+  const scale = lookAt(bounds, width, height, camera, margin).scale;
+  return clampCamera(bounds, width, height, { zoom: camera.zoom, x: camera.x - dv / scale, z: camera.z + du / scale }, margin, reach);
+}
+
+/**
+ * How far off something is, and which way to turn to face it.
+ * @returns metres, and the turn in radians from the way `yaw` faces: positive is to the left
+ */
+export function wayTo(from: { x: number; z: number; yaw: number }, to: { x: number; z: number }): { metres: number; turn: number } {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  // Yaw 0 faces north (-z); positive yaw turns left, toward the west (-x).
+  let turn = Math.atan2(-dx, -dz) - from.yaw;
+  turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+  return { metres: Math.hypot(dx, dz), turn };
+}
+
+/** A distance as it is said in upstate New York: feet when it is near, miles when it is not. */
+export function sayDistance(metres: number): string {
+  const feet = metres * 3.28084;
+  if (feet < 1000) return `${Math.max(10, Math.round(feet / 10) * 10)} ft`;
+  return `${(feet / 5280).toFixed(1)} mi`;
+}

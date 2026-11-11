@@ -55,6 +55,20 @@ describe('Game', () => {
     expect(s.mineralsTotal).toBe(12);
   });
 
+  it('keeps a flag where it is planted, and takes it up when the player comes to it', () => {
+    const store = memory();
+    const game = new Game(gameWorld, store);
+    game.plant({ x: 100, z: -50, label: 'A spot you marked' });
+    expect(new Game(gameWorld, store).save.flag).toEqual({ x: 100, z: -50, label: 'A spot you marked' });
+    expect(game.reachedFlag(160, -50)).toBe(false);
+    expect(game.save.flag).not.toBeNull();
+    expect(game.reachedFlag(108, -45)).toBe(true);
+    expect(game.save.flag).toBeNull();
+    // Once only: there is no flag left to come to.
+    expect(game.reachedFlag(108, -45)).toBe(false);
+    expect(new Game(gameWorld, store).save.flag).toBeNull();
+  });
+
   it('stamps a trail skied top to bottom, announces it once, and counts it', () => {
     const game = new Game(gameWorld, memory());
     const events = skiTrail(game, 'Sunway').filter((e) => e.title.endsWith('Sunway'));
