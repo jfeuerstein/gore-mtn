@@ -81,6 +81,28 @@ export const FIR: TreeStyle = {
   farTip: 0xcfdadc,
 };
 
+/**
+ * The same tree with no colour of its own, pale at the tips and darker in its depths. Out of
+ * winter each tree is given a colour (a fir's green, a maple's red) that this shades.
+ */
+export const PLAIN_TREE: TreeStyle = {
+  trunk: 0x5a4a40,
+  tiers: [
+    { radius: 1.0, y0: 0.6, y1: 2.5, sides: 6, base: 0x787878, tip: 0xd6d6d6 },
+    { radius: 0.74, y0: 1.7, y1: 3.1, sides: 6, base: 0x8c8c8c, tip: 0xececec },
+    { radius: 0.46, y0: 2.6, y1: 3.6, sides: 5, base: 0xa4a4a4, tip: 0xffffff },
+  ],
+  farBase: 0x8a8a8a,
+  farTip: 0xf2f2f2,
+};
+
+/** How one tree is dressed: a colour, and how wide and tall it stands against the plain tree. */
+export interface TreeDress {
+  colour: number;
+  wide: number;
+  tall: number;
+}
+
 /** A tree: a square trunk and a stack of cones, each shaded from rim to tip. */
 export function buildTreeGeometry(style: TreeStyle): THREE.BufferGeometry {
   const pos: number[] = [];
@@ -185,7 +207,12 @@ export class Forest {
     private readonly castShadow: boolean,
     /** Places kept clear of trees besides the trails, such as lift lines. */
     private readonly keepClear: (x: number, z: number) => boolean = () => false,
-    style: TreeStyle = FIR,
+    /**
+     * How to dress the tree at a place, from two rolls in 0..1; or null to leave every tree the
+     * snowy fir. Trees stand in the same places whichever is used.
+     */
+    private readonly dress: ((x: number, z: number, kindRoll: number, pickRoll: number) => TreeDress | null) | null = null,
+    style: TreeStyle = dress ? PLAIN_TREE : FIR,
   ) {
     this.group.name = 'trees';
     this.geometry = buildTreeGeometry(style);
@@ -217,7 +244,9 @@ export class Forest {
     const x1 = Math.min(x0 + PATCH_SIZE, hf.maxX);
     const z1 = Math.min(z0 + PATCH_SIZE, hf.maxZ);
     const rng = makeRng(1934 + col * 7919 + row * 104729);
-    const spots: { x: number; y: number; z: number; scale: number; scaleY: number; turn: number }[] = [];
+    // Rolls for a tree's dress come from their own sequence, so dressing trees does not move them.
+    const dressRng = makeRng(2026 + col * 104729 + row * 7919);
+    const spots: { x: number; y: number; z: number; scale: number; scaleY: number; turn: number; colour: number }[] = [];
     for (let z = z0; z < z1; z += this.spacing) {
       for (let x = x0; x < x1; x += this.spacing) {
         const tx = x + rng() * this.spacing;
@@ -227,7 +256,16 @@ export class Forest {
         const turn = rng() * Math.PI * 2;
         const chance = rng();
         if (tx >= x1 || tz >= z1 || chance >= this.densityAt(tx, tz) || this.keepClear(tx, tz)) continue;
-        spots.push({ x: tx, y: hf.heightAt(tx, tz) - 0.2, z: tz, scale, scaleY, turn });
+        const dress = this.dress?.(tx, tz, dressRng(), dressRng()) ?? null;
+        spots.push({
+          x: tx,
+          y: hf.heightAt(tx, tz) - 0.2,
+          z: tz,
+          scale: scale * (dress?.wide ?? 1),
+          scaleY: scaleY * (dress?.tall ?? 1),
+          turn,
+          colour: dress?.colour ?? 0xffffff,
+        });
       }
     }
     if (spots.length === 0) return null;
@@ -246,9 +284,11 @@ export class Forest {
     const up = new THREE.Vector3(0, 1, 0);
     const p = new THREE.Vector3();
     const s = new THREE.Vector3();
+    const tint = new THREE.Color();
     spots.forEach((t, i) => {
       mesh.setMatrixAt(i, m.compose(p.set(t.x, t.y, t.z), q.setFromAxisAngle(up, t.turn), s.set(t.scale, t.scaleY, t.scale)));
       trees.set([t.x, t.y, t.z, TREE_RADIUS * t.scale, TREE_HEIGHT * t.scaleY], i * 5);
+      if (this.dress) mesh.setColorAt(i, tint.setHex(t.colour));
     });
     mesh.instanceMatrix.needsUpdate = true;
     mesh.computeBoundingSphere();
@@ -257,6 +297,7 @@ export class Forest {
     // The distant version draws the same trees from the same matrices, and casts no shadow.
     const far = new THREE.InstancedMesh(this.farGeometry, this.material, spots.length);
     far.instanceMatrix = mesh.instanceMatrix;
+    far.instanceColor = mesh.instanceColor;
     far.boundingSphere = mesh.boundingSphere;
     far.matrixAutoUpdate = false;
     const sphere = mesh.boundingSphere as THREE.Sphere;

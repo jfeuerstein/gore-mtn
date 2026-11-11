@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODY, hipHeight, mixPose, SEATED, skiPose, STANDING, walkPose } from './pose';
+import { BODY, hipHeight, mixPose, PEDAL_LOW, ridePose, SEATED, skiPose, STANDING, walkPose } from './pose';
 
 const LEG = BODY.thigh + BODY.shin + BODY.boot;
 
@@ -81,6 +81,33 @@ describe('SEATED', () => {
   it('has level thighs and hanging shins, so the hips sit low', () => {
     expect(hipHeight(SEATED)).toBeLessThan(LEG * 0.65);
     expect(Math.abs(SEATED.hipL - SEATED.kneeL)).toBeLessThan(0.2); // shins near vertical
+  });
+});
+
+describe('ridePose', () => {
+  it('sits the rider at saddle height with both feet clear of the ground', () => {
+    for (const phase of [0, 0.8, 1.6, 3.1, 4.7]) {
+      const p = ridePose(phase, 1, 0, 0);
+      // The lower foot is on a pedal at or above the bottom of its turn.
+      expect(p.bob).toBeGreaterThanOrEqual(PEDAL_LOW);
+      expect(hipHeight(p)).toBeGreaterThan(0.85);
+      expect(hipHeight(p)).toBeLessThan(1.15);
+      expect(p.kneeL).toBeGreaterThan(0);
+      expect(p.kneeR).toBeGreaterThan(0);
+    }
+  });
+
+  it('turns the legs against each other when pedalling and holds them level when coasting', () => {
+    const pedalling = ridePose(Math.PI / 2, 1, 0, 0);
+    expect(pedalling.hipL).toBeGreaterThan(pedalling.hipR);
+    const coasting = ridePose(Math.PI / 2, 0, 0, 0);
+    expect(coasting.hipL).toBeCloseTo(coasting.hipR);
+    expect(coasting.kneeL).toBeCloseTo(coasting.kneeR);
+  });
+
+  it('drops the chest in a tuck and sits back to brake', () => {
+    expect(ridePose(0, 0, 1, 0).torso).toBeGreaterThan(ridePose(0, 0, 0, 0).torso);
+    expect(ridePose(0, 0, 0, 1).torso).toBeLessThan(ridePose(0, 0, 0, 0).torso);
   });
 });
 

@@ -1,17 +1,26 @@
 import { isGzip, unpackHeights } from './codec';
 import { distanceToMask } from './distance';
 import { Heightfield } from './heightfield';
-import type { Lift, Place, Trail } from './trails';
+import type { Footprint, Lift, NamedSpot, Path, Place, Road, Trail } from './trails';
 
 interface WorldFile {
-  grid: { cols: number; rows: number; cell: number; heightStep: number; width: number; depth: number };
+  grid: { cols: number; rows: number; cell: number; heightStep: number; width: number; depth: number; forestCols: number; forestRows: number; forestCell: number };
   real: { hScale: number; vScale: number; elevMinM: number; elevMaxM: number };
   places: Place[];
   lifts: Lift[];
   trails: Trail[];
-  paths: { name: string; pts: number[] }[];
+  paths: Path[];
+  water: { name: string; kind: string; pts: number[] }[];
+  roads: Road[];
+  buildings: Footprint[];
+  ponds: NamedSpot[];
+  spots: NamedSpot[];
   attribution: string;
 }
+
+/** What stands in the way of trees at a place, besides the trails. */
+export const OPEN_LAND = 1;
+export const OPEN_WATER = 2;
 
 /** Everything the terrain pipeline produced, loaded and ready to query. */
 export interface World {
@@ -22,7 +31,20 @@ export interface World {
   trails: Trail[];
   lifts: Lift[];
   places: Place[];
+  /** Named paths through the woods: hiking, biking and cross-country trails. */
+  paths: Path[];
+  water: { name: string; kind: string; pts: number[] }[];
+  roads: Road[];
+  /** Houses and other buildings that are not places of their own. */
+  buildings: Footprint[];
+  ponds: NamedSpot[];
+  /** Lookouts, quarries and businesses, by name. */
+  spots: NamedSpot[];
   attribution: string;
+  /** 0 where forest may grow, OPEN_LAND on roads, paths and lots, OPEN_WATER on rivers, brooks and ponds. */
+  openAt(x: number, z: number): number;
+  /** How much of the forest at a place is hardwood, 0..1: all of it low down, none near the summit. */
+  hardwoodAt(x: number, z: number): number;
   /** Real-world metres above sea level for a game height. */
   realElevationM(y: number): number;
   /** True when the position is on a groomed trail. */
@@ -47,25 +69,31 @@ async function fetchUnzipped(url: string): Promise<ArrayBuffer> {
 }
 
 export async function loadWorld(baseUrl: string): Promise<World> {
-  const [meta, heightBuf, maskBuf] = await Promise.all([
+  const [meta, heightBuf, maskBuf, openBuf, forestBuf] = await Promise.all([
     fetch(`${baseUrl}world/world.json`).then((r) => {
       if (!r.ok) throw new Error(`could not load world.json: ${r.status}`);
       return r.json() as Promise<WorldFile>;
     }),
     fetchUnzipped(`${baseUrl}world/height.bin.gz`),
     fetchUnzipped(`${baseUrl}world/trailmask.bin.gz`),
+    fetchUnzipped(`${baseUrl}world/open.bin.gz`),
+    fetchUnzipped(`${baseUrl}world/forest.bin.gz`),
   ]);
-  return buildWorld(meta, heightBuf, maskBuf);
+  return buildWorld(meta, heightBuf, maskBuf, openBuf, forestBuf);
 }
 
 /**
  * @param heightBuf the unzipped contents of height.bin.gz (still packed as differences)
  * @param maskBuf the unzipped contents of trailmask.bin.gz
+ * @param openBuf the unzipped contents of open.bin.gz
+ * @param forestBuf the unzipped contents of forest.bin.gz
  */
-export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: ArrayBuffer): World {
-  const { cols, rows, cell, heightStep, width, depth } = meta.grid;
+export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: ArrayBuffer, openBuf: ArrayBuffer, forestBuf: ArrayBuffer): World {
+  const { cols, rows, cell, heightStep, width, depth, forestCols, forestRows, forestCell } = meta.grid;
   const trailMask = new Uint8Array(maskBuf);
-  if (heightBuf.byteLength !== cols * rows * 2 || trailMask.length !== cols * rows) {
+  const open = new Uint8Array(openBuf);
+  const forest = new Uint8Array(forestBuf);
+  if (heightBuf.byteLength !== cols * rows * 2 || trailMask.length !== cols * rows || open.length !== cols * rows || forest.length !== forestCols * forestRows) {
     throw new Error('world files do not match the grid size in world.json');
   }
   const raw = unpackHeights(new Uint16Array(heightBuf), cols, rows);
@@ -80,7 +108,25 @@ export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: Arr
     trails: meta.trails,
     lifts: meta.lifts,
     places: meta.places,
+    paths: meta.paths,
+    water: meta.water,
+    roads: meta.roads,
+    buildings: meta.buildings,
+    ponds: meta.ponds,
+    spots: meta.spots,
     attribution: meta.attribution,
+    openAt(x, z) {
+      const c = Math.round((x - source.originX) / cell);
+      const r = Math.round((z - source.originZ) / cell);
+      if (c < 0 || r < 0 || c >= cols || r >= rows) return 0;
+      return open[r * cols + c] as number;
+    },
+    hardwoodAt(x, z) {
+      // Each sample covers a square of ground; read the one this place falls in.
+      const c = Math.min(forestCols - 1, Math.max(0, Math.floor((x - source.originX + cell / 2) / forestCell)));
+      const r = Math.min(forestRows - 1, Math.max(0, Math.floor((z - source.originZ + cell / 2) / forestCell)));
+      return (forest[r * forestCols + c] as number) / 255;
+    },
     realElevationM: (y) => meta.real.elevMinM + y / meta.real.vScale,
     onTrail(x, z) {
       const c = Math.round((x - source.originX) / cell);

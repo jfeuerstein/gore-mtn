@@ -4,30 +4,37 @@ import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
+import { airFor, SEASON_LOOK, seasonFor, seasonPalette, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
 import { FrameStats } from './debug/perf';
 import { Game, type GameEvent } from './game/game';
 import { conditionsNow } from './game/passport';
 import { dayKey, saveFromCode, saveToCode } from './game/save';
+import { watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book } from './ui/book';
 import { Toasts } from './ui/toasts';
 import { TrailMap } from './ui/trailMap';
 import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
-import { fallLineYaw } from './player/skiPhysics';
+import { pushOut } from './player/collide';
+import { BIKE, fallLineYaw, SKI, SPRING_SKI } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
-import { Buildings } from './world/buildings';
+import { Buildings, PLACE_FOOTPRINT, PLACE_HEIGHT } from './world/buildings';
+import { countryOf } from './world/country';
+import { Critters } from './world/critters';
 import { LiftCars } from './world/liftCars';
 import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain } from './world/terrainMesh';
+import { houseHeight, Town } from './world/town';
 import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
-import { loadWorld } from './world/world';
+import { Walls, type WallBox } from './world/walls';
+import { loadWorld, OPEN_LAND } from './world/world';
 
 const M_TO_FT = 3.28084;
 const MS_TO_MPH = 2.23694;
@@ -125,6 +132,9 @@ async function boot(): Promise<void> {
   renderer.shadowMap.enabled = shadows;
 
   const world = await loadWorld(import.meta.env.BASE_URL);
+  // The season: the calendar's, unless one has been asked for by name.
+  const season: Season = cfg.season === 'real' ? seasonFor(new Date()) : cfg.season;
+  const look = SEASON_LOOK[season];
   // The drawn ground and the ground the player stands on are the same decimated grid.
   const ground = world.source.decimate(cfg.stride);
 
@@ -150,23 +160,50 @@ async function boot(): Promise<void> {
 
   const loader = new THREE.TextureLoader();
   const [snowTexture, canopyTexture] = await Promise.all([
-    loader.loadAsync(`${import.meta.env.BASE_URL}world/ground.png`),
-    loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy.png`),
+    loader.loadAsync(`${import.meta.env.BASE_URL}world/ground-${season}.png`),
+    loader.loadAsync(`${import.meta.env.BASE_URL}world/canopy-${season}.png`),
   ]);
   const terrain = new Terrain(ground, snowTexture, canopyTexture);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   // Trees keep out of lift corridors and stand back from buildings.
   const nearBuilding = (x: number, z: number): boolean =>
     world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 46 : 30));
-  const trees = new Forest(ground, world, cfg.trees, shadows, (x, z) => inLiftClearing(liftPaths, x, z) || nearBuilding(x, z));
-  const buildings = new Buildings(world.places, shadows);
+  // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
+  // hardwoods low on the mountain, spruce and fir higher up.
+  const trees = new Forest(
+    ground,
+    world,
+    cfg.trees,
+    shadows,
+    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || nearBuilding(x, z),
+    look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
+  );
+  const buildings = new Buildings(world.places, shadows, look.roof);
+  const town = new Town(world.buildings, shadows, look.roof);
   const liftCars = new LiftCars(liftPaths, shadows);
-  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group);
+  scene.add(terrain.group, trees.group, buildLifts(liftPaths), liftCars.group, buildings.group, town.group);
+  // Buildings are solid: the lodges and huts by their models' footprints, the town by its plots.
+  const walls = new Walls([
+    ...world.places.flatMap((p): WallBox[] => {
+      const size = PLACE_FOOTPRINT[p.id];
+      return size ? [{ x: p.x, z: p.z, w: size[0], d: size[1], turn: 0, top: p.y + (PLACE_HEIGHT[p.id] ?? 8) }] : [];
+    }),
+    ...world.buildings.map((b): WallBox => ({ x: b.x, z: b.z, w: b.w, d: b.d, turn: b.turn, top: b.y + houseHeight(b) })),
+  ]);
+  /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
+  const bumpAt = (x: number, z: number, radius: number) => {
+    const trunk = trees.trunkAt(x, z, radius);
+    return (trunk && pushOut(x, z, radius, trunk)) ?? walls.bumpAt(x, z, radius);
+  };
+  /** Ground that runs fast: a trail, or a road, path or lawn. */
+  const firmAt = (x: number, z: number): boolean => world.onTrail(x, z) || world.openAt(x, z) === OPEN_LAND;
 
-  const player = new Player(shadows);
-  const tracks = new SkiTracks();
+  const player = new Player(shadows, look.ride, look.ride === 'bike' ? BIKE : season === 'spring' ? SPRING_SKI : SKI);
+  // A bike's wheels run in one line; skis side by side.
+  const tracks = new SkiTracks(undefined, look.ride === 'bike' ? 0 : undefined);
   const glints = new Glints(shadows);
-  scene.add(player.object, tracks.mesh, glints.group);
+  const critters = new Critters(season, shadows);
+  scene.add(player.object, tracks.mesh, glints.group, critters.group);
 
   // The collecting game. Its book lives in the browser's storage; if that is unavailable the game
   // still plays, and simply forgets.
@@ -175,6 +212,9 @@ async function boot(): Promise<void> {
       trails: world.trails,
       lifts: world.lifts,
       places: world.places,
+      paths: world.paths,
+      openAt: (x, z) => world.openAt(x, z),
+      country: countryOf(world),
       minX: world.source.minX,
       minZ: world.source.minZ,
       trailDistance: (x, z) => world.trailDistance(x, z),
@@ -253,6 +293,9 @@ async function boot(): Promise<void> {
   book.onOpen = () => trailMap.close();
 
   if (cfg.ski) player.setMode('ski');
+  // The button by the left thumb puts on whatever the season rides: skis, or the bike.
+  const rideButton = document.getElementById('ski-button');
+  if (rideButton) rideButton.textContent = look.ride === 'bike' ? 'Bike' : 'Skis';
   const hud = new Hud(
     cfg,
     world.places,
@@ -328,12 +371,17 @@ async function boot(): Promise<void> {
   const paintSky = (seconds: number): void => {
     weather = easeWeather(weather, weatherWanted(), seconds);
     sunNow = sunPosition(skyTime());
-    const palette = paletteFor((sunNow.elevation * 180) / Math.PI, weather);
+    const sunDeg = (sunNow.elevation * 180) / Math.PI;
+    const palette = seasonPalette(paletteFor(sunDeg, weather), season);
     atmosphere.apply(palette, sunNow);
     terrain.setTints(palette.snowTint, palette.canopyTint);
     tracks.setColour(palette.track);
-    snowfall.setAmount(palette.snowfall);
+    // Snow in winter, rain otherwise; leaves on a fair fall day, fireflies on a summer night.
+    const air = airFor(season, palette.snowfall, sunDeg);
+    snowfall.setKind(air.kind);
+    snowfall.setAmount(air.amount);
     buildings.setLamps(palette.lamps);
+    town.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
   paintSky(0);
@@ -341,6 +389,10 @@ async function boot(): Promise<void> {
 
   // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
   let today = dayKey(new Date());
+  announce(game.arrivedIn(season, today));
+  /** The watch of the day, which decides what wildlife is about. */
+  let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+  const heightAt = (x: number, z: number): number => ground.heightAt(x, z);
   let sinceSlow = 0;
   /**
    * Conditions are stamped only when the game is showing the real sky. A moment pinned from
@@ -366,6 +418,8 @@ async function boot(): Promise<void> {
     yaw: follow.yaw,
     pitch: follow.pitch,
     mode: player.mode,
+    season,
+    glide: player.glide,
     lift: player.riding?.lift.name ?? null,
     tracks: tracks.count,
     sunElevationDeg: (sunNow.elevation * 180) / Math.PI,
@@ -377,6 +431,8 @@ async function boot(): Promise<void> {
     book: game.summary(),
     finds: game.findsNear(player.position.x, player.position.z, today).map((f) => ({ x: f.x, z: f.z, mineral: f.mineral.id })),
     toast: toasts.last,
+    watch,
+    sightings: game.sightingsNear(player.position.x, player.position.z, today, season, watch).map((s) => ({ x: s.x, z: s.z, species: s.species.id, kin: s.species.kin, shy: Boolean(s.species.shy) })),
     speed: player.speed,
     heading: player.travelHeading,
     slip: player.slip,
@@ -417,7 +473,7 @@ async function boot(): Promise<void> {
     // The lifts run on their own clock, which the chairs and any rider share.
     liftClock += dt;
     liftCars.update(liftClock);
-    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, world.onTrail, (x, z, r) => trees.trunkAt(x, z, r), liftClock);
+    player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, firmAt, bumpAt, liftClock);
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {
       // Below a crawl the direction of travel is not steady enough to draw from; use the skis.
@@ -452,7 +508,8 @@ async function boot(): Promise<void> {
     const pz = player.position.z;
     if (player.mode !== 'lift') {
       if (player.mode === 'ski') announce(game.skiedAt(px, pz, today));
-      announce(game.reachedAt(px, pz, today));
+      announce(game.travelledAt(px, pz, today));
+      announce(game.reachedAt(px, pz, today, season));
       for (const { find, event } of game.pickUp(px, pz, today)) {
         glints.pickedUp(find, (x, z) => ground.heightAt(x, z));
         announce([event]);
@@ -460,12 +517,28 @@ async function boot(): Promise<void> {
     }
     glints.show(game.findsNear(px, pz, today), (x, z) => ground.heightAt(x, z));
     glints.update(dt, follow.yaw);
+    // Wildlife: anything come close to is seen and goes in the field guide, then makes off. A shy
+    // creature come upon at speed bolts first. From a lift everything below can be watched at ease.
+    const looked = game.lookAbout(px, pz, player.mode === 'lift' ? 0 : player.speed, today, season, watch);
+    for (const { sighting, event } of looked.seen) {
+      if (sighting.species.kin === 'animal' || sighting.species.kin === 'bird' || sighting.species.id === 'rumor') critters.flee(sighting, px, pz);
+      else critters.settle(sighting);
+      announce([event]);
+    }
+    for (const sighting of looked.bolted) {
+      critters.flee(sighting, px, pz);
+      // Say what it was the first few times, so the player learns to go gently.
+      if (!(sighting.species.id in game.save.sightings)) toasts.show({ kind: 'sighting', title: 'Something bolted', detail: 'Shy creatures need a gentle approach' });
+    }
+    critters.show(game.sightingsNear(px, pz, today, season, watch), heightAt, (id) => !(id in game.save.sightings));
+    critters.update(dt, player.position, follow.yaw, heightAt);
     sinceSlow += frameMs;
     if (sinceSlow >= 1000) {
       sinceSlow = 0;
       today = dayKey(new Date());
+      watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
       if (honestSky && player.mode === 'ski' && player.speed > 3) {
-        announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather), today));
+        announce(game.skiedIn(conditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather, season), today));
       }
       game.persist();
     }
@@ -493,7 +566,7 @@ async function boot(): Promise<void> {
           : Math.min(1, Math.hypot(input.moveX, input.moveY));
     follow.follow(player.travelHeading, followAmount, dt, player.mode !== 'walk');
     if (bench) follow.yaw = bench.yawAt(now);
-    follow.update(player.position, ground, player.speed, dt);
+    follow.update(player.position, ground, player.speed, dt, (x, z) => walls.roofAt(x, z));
     trees.update(player.position, camera.position, dt);
     sinceSky += frameMs;
     if (sinceSky >= 100) {

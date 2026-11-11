@@ -5,7 +5,8 @@ import type { Place } from './trails';
 const TIMBER = 0x8a5a3c;
 const TIMBER_DARK = 0x6b4530;
 const STONE = 0x7d8494;
-const ROOF_SNOW = 0xf2f5fa;
+/** Roofs: under snow in winter, shingle the rest of the year. Set when the buildings are made. */
+let ROOF_SNOW = 0xf2f5fa;
 const TRIM = 0xf4ead8;
 const DOOR = 0x4a3326;
 const STEEL = 0x4d5666;
@@ -124,6 +125,30 @@ const MODELS: Record<string, () => Model> = {
   summit: fireTower,
 };
 
+/** The ground each of these buildings stands on, as width and depth in metres, for walking round them. */
+export const PLACE_FOOTPRINT: Record<string, [number, number]> = {
+  'base-lodge': [44, 16],
+  'saddle-lodge': [22, 11],
+  'gore-mountain-lodge': [30, 13],
+  'ski-bowl-lodge': [24, 11],
+  'warming-hut': [7, 5.5],
+  'warming-hut-2': [7, 5.5],
+  depot: [26, 8],
+  summit: [4.4, 4.4],
+};
+
+/** How high each stands above its footing, roof and all, in metres: for keeping the camera above it. */
+export const PLACE_HEIGHT: Record<string, number> = {
+  'base-lodge': 15,
+  'saddle-lodge': 10,
+  'gore-mountain-lodge': 14,
+  'ski-bowl-lodge': 13,
+  'warming-hut': 7.5,
+  'warming-hut-2': 7.5,
+  depot: 9,
+  summit: 22,
+};
+
 /** Dark glass by day; lamplight after dark. */
 const GLASS_DARK = new THREE.Color(0x3d4a5e);
 const GLASS_LIT = new THREE.Color(0xffc56e);
@@ -133,8 +158,10 @@ export class Buildings {
   readonly group = new THREE.Group();
   private readonly glass = new THREE.MeshBasicMaterial({ color: GLASS_DARK.getHex(), vertexColors: true });
 
-  constructor(places: readonly Place[], castShadow: boolean) {
+  /** @param roof the colour of the roofs: snow, or shingle */
+  constructor(places: readonly Place[], castShadow: boolean, roof = 0xf2f5fa) {
     this.group.name = 'buildings';
+    ROOF_SNOW = roof;
     const walls = new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true });
     for (const place of places) {
       const make = MODELS[place.id];

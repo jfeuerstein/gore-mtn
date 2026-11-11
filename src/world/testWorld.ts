@@ -9,5 +9,5 @@ export function loadTestWorld(): World {
     const b = gunzipSync(read(name));
     return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
   };
-  return buildWorld(JSON.parse(read('world.json').toString()), bytes('height.bin.gz'), bytes('trailmask.bin.gz'));
+  return buildWorld(JSON.parse(read('world.json').toString()), bytes('height.bin.gz'), bytes('trailmask.bin.gz'), bytes('open.bin.gz'), bytes('forest.bin.gz'));
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
 import { COLLECT_REACH, Game, type GameWorld, type SaveStore } from './game';
 import { MINERALS } from './minerals';
@@ -77,6 +78,119 @@ describe('Game', () => {
     expect(events.map((e) => e.title).sort()).toEqual(['Fire Tower', 'Gore Mountain']);
     expect(game.reachedAt(top.x, top.z, DAY)).toEqual([]);
     expect(game.reachedAt(place('base-lodge').x, place('base-lodge').z, DAY).map((e) => e.title)).toEqual(['Base Lodge']);
+  });
+
+  it('gives each summit a patch in every season', () => {
+    const game = new Game(gameWorld, memory());
+    const top = place('summit');
+    expect(game.reachedAt(top.x + 10, top.z + 10, DAY, 'winter').map((e) => e.detail).sort()).toEqual(['Landmark stamped', 'Summit patch']);
+    expect(game.reachedAt(top.x, top.z, DAY, 'winter')).toEqual([]);
+    expect(game.reachedAt(top.x, top.z, '2027-07-04', 'summer')).toEqual([{ kind: 'peak', title: 'Gore Mountain', detail: 'Summer summit patch' }]);
+    expect(game.reachedAt(top.x, top.z, '2027-07-05', 'summer')).toEqual([]);
+    expect(game.summary()).toMatchObject({ peaks: 1, peaksTotal: 4, seasonPeaks: 2, seasonPeaksTotal: 16 });
+    // The first patch keeps the day it was first earned.
+    expect(game.save.peaks.gore).toBe(DAY);
+  });
+
+  it('stamps each season the first time the game is opened in it', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.arrivedIn('winter', DAY)).toEqual([{ kind: 'season', title: 'Winter', detail: 'Your first season on the mountain' }]);
+    expect(game.arrivedIn('winter', '2026-12-01')).toEqual([]);
+    expect(game.arrivedIn('summer', '2027-07-04')).toEqual([{ kind: 'season', title: 'Summer', detail: 'A new season on the mountain' }]);
+    expect(game.summary().seasons).toBe(2);
+  });
+
+  it('stamps a path walked from end to end, however it is travelled', () => {
+    const game = new Game({ ...gameWorld, paths: world.paths }, memory());
+    expect(game.summary().pathsTotal).toBeGreaterThan(15);
+    const events = [];
+    for (const piece of world.paths.filter((p) => p.name === 'Hoot (bike)')) {
+      for (let i = 0; i + 3 < piece.pts.length; i += 2) {
+        const [ax, az, bx, bz] = piece.pts.slice(i, i + 4) as [number, number, number, number];
+        const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 5);
+        for (let k = 0; k <= steps; k++) events.push(...game.travelledAt(ax + ((bx - ax) * k) / steps, az + ((bz - az) * k) / steps, DAY));
+      }
+    }
+    expect(events).toContainEqual({ kind: 'path', title: 'Hoot (bike)', detail: 'Path stamped' });
+    expect(game.summary().paths).toBeGreaterThanOrEqual(1);
+  });
+
+  it('lays no stone on a road, a lot or water', () => {
+    const game = new Game({ ...gameWorld, openAt: (x, z) => world.openAt(x, z) }, memory());
+    const depot = place('depot');
+    for (const p of [depot, place('ski-bowl-lodge'), place('base-lodge')]) {
+      for (const f of game.findsNear(p.x, p.z, DAY)) expect(world.openAt(f.x, f.z), f.id).toBe(0);
+    }
+  });
+
+  it('reads a book from before the seasons as one filled in winter', () => {
+    const game = new Game(gameWorld, memory(JSON.stringify({ peaks: { gore: DAY } })));
+    const top = place('summit');
+    expect(game.reachedAt(top.x, top.z, '2026-12-01', 'winter').map((e) => e.kind)).toEqual(['landmark']);
+    expect(game.summary().seasonPeaks).toBe(1);
+  });
+
+  describe('the field guide', () => {
+    const wild: GameWorld = { ...gameWorld, country: countryOf(world) };
+    const base = place('base-lodge');
+
+    it('shows what is about near the player, the same list until something changes', () => {
+      const game = new Game(wild, memory());
+      const list = game.sightingsNear(base.x, base.z, DAY, 'winter', 'day');
+      expect(list.length).toBeGreaterThan(3);
+      expect(game.sightingsNear(base.x + 2, base.z, DAY, 'winter', 'day')).toBe(list);
+      expect(game.sightingsNear(base.x, base.z, DAY, 'winter', 'night')).not.toBe(list);
+      for (const s of list) expect(Math.hypot(s.x - base.x, s.z - base.z)).toBeLessThan(700);
+    });
+
+    it('records a sighting come up to gently, once, and counts it in the guide', () => {
+      const game = new Game(wild, memory());
+      const list = game.sightingsNear(base.x, base.z, DAY, 'winter', 'day');
+      const target = list[0];
+      if (!target) throw new Error('nothing about');
+      const first = game.lookAbout(target.x + 2, target.z, 1, DAY, 'winter', 'day');
+      expect(first.seen.map((s) => s.sighting.id)).toContain(target.id);
+      expect(first.seen.find((s) => s.sighting.id === target.id)?.event).toEqual({ kind: 'sighting', title: target.species.name, detail: 'New in the field guide' });
+      expect(game.lookAbout(target.x + 2, target.z, 1, DAY, 'winter', 'day').seen.some((s) => s.sighting.id === target.id)).toBe(false);
+      expect(game.sightingsNear(base.x, base.z, DAY, 'winter', 'day').some((s) => s.id === target.id)).toBe(false);
+      expect(game.summary().species).toBeGreaterThanOrEqual(1);
+      expect(game.summary().speciesTotal).toBeGreaterThanOrEqual(38);
+    });
+
+    it('lets a shy creature bolt unseen from someone who comes in fast', () => {
+      const game = new Game(wild, memory());
+      // Find a shy creature somewhere on the mountain.
+      let shy = null;
+      for (const p of world.places) {
+        shy = game.sightingsNear(p.x, p.z, DAY, 'winter', 'dawn').find((s) => s.species.shy) ?? null;
+        if (shy) break;
+      }
+      if (!shy) throw new Error('no shy creature about');
+      const fast = game.lookAbout(shy.x + 25, shy.z, 20, DAY, 'winter', 'dawn');
+      expect(fast.bolted.map((s) => s.id)).toContain(shy.id);
+      expect(fast.seen.some((s) => s.sighting.id === shy.id)).toBe(false);
+      expect(game.save.sightings[shy.species.id]).toBeUndefined();
+      // It is gone for this watch.
+      expect(game.lookAbout(shy.x + 1, shy.z, 1, DAY, 'winter', 'dawn').seen.some((s) => s.sighting.id === shy.id)).toBe(false);
+    });
+
+    it('brings everything back with the next watch, and keeps the guide across a reload', () => {
+      const store = memory();
+      const game = new Game(wild, store);
+      const target = game.sightingsNear(base.x, base.z, DAY, 'winter', 'day')[0];
+      if (!target) throw new Error('nothing about');
+      game.lookAbout(target.x, target.z, 1, DAY, 'winter', 'day');
+      game.persist();
+      const again = new Game(wild, store);
+      expect(again.save.sightings[target.species.id]).toEqual({ count: 1, first: DAY });
+      expect(again.sightingsNear(base.x, base.z, DAY, 'winter', 'day').some((s) => s.id === target.id)).toBe(false);
+      expect(again.sightingsNear(base.x, base.z, DAY, 'winter', 'dusk').length).toBeGreaterThan(0);
+      expect(again.save.seen.spots).toEqual([]);
+    });
+
+    it('has nothing to show without a country to look at', () => {
+      expect(new Game(gameWorld, memory()).sightingsNear(base.x, base.z, DAY, 'winter', 'day')).toEqual([]);
+    });
   });
 
   it('stamps each condition once', () => {

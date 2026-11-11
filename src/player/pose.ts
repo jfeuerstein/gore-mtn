@@ -113,6 +113,38 @@ export const SEATED: Pose = {
   bob: 0,
 };
 
+/** How high the bike's pedals sit above the ground at the bottom of their turn, in model units. */
+export const PEDAL_LOW = 0.12;
+
+/**
+ * Riding a bike: sat on the saddle, leaning to the bars, feet on the pedals. The legs go round
+ * with `phase` when pedalling; coasting, they hold level. A tuck drops the chest to the bars and
+ * braking sits the rider back.
+ * @param pedalling 0 coasting, 1 pedalling
+ */
+export function ridePose(phase: number, pedalling: number, tuck: number, brake: number): Pose {
+  const t = clamp01(tuck);
+  const b = clamp01(brake) * (1 - t);
+  const turn = Math.sin(phase) * clamp01(pedalling);
+  // One knee comes up as the other goes down; level pedals when coasting.
+  const hip = (s: number): number => 1.0 + s * 0.28;
+  const knee = (s: number): number => 1.36 + s * 0.42;
+  return {
+    hipL: hip(turn),
+    hipR: hip(-turn),
+    kneeL: knee(turn),
+    kneeR: knee(-turn),
+    torso: 0.62 + 0.4 * t - 0.2 * b,
+    shoulderL: 1.25 + 0.15 * t - 0.15 * b,
+    shoulderR: 1.25 + 0.15 * t - 0.15 * b,
+    armsOut: 0.16,
+    elbow: 0.3 + 0.55 * t,
+    poles: -1.2,
+    // The legs do not reach the ground: this lifts the rider to where the saddle is.
+    bob: PEDAL_LOW + 0.1,
+  };
+}
+
 export function mixPose(a: Pose, b: Pose, t: number): Pose {
   const k = clamp01(t);
   const out = { ...a };

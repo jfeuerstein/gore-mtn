@@ -19,6 +19,9 @@ export class Skier {
   private readonly elbows: THREE.Group[] = [];
   private readonly skis: THREE.Object3D[] = [];
   private readonly poles: THREE.Object3D[] = [];
+  /** The mountain bike, and its two wheels, which turn. */
+  private readonly bike = new THREE.Group();
+  private readonly wheels: THREE.Object3D[] = [];
 
   constructor(castShadow: boolean) {
     const mat = (color: number): THREE.MeshLambertMaterial => new THREE.MeshLambertMaterial({ color, flatShading: true });
@@ -107,6 +110,39 @@ export class Skier {
     }
     this.rig.add(this.torso);
     this.root.add(this.rig);
+
+    // The bike: two wheels, a frame of straight tubes, bars and a saddle. It faces -z like the rider.
+    const frame = mat(0x2f6f8f);
+    const WHEEL = 0.36;
+    for (const z of [-0.56, 0.56]) {
+      const wheel = new THREE.Group();
+      wheel.position.set(0, WHEEL, z);
+      const tyre = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL, WHEEL, 0.07, 12), dark);
+      tyre.rotation.z = Math.PI / 2;
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(WHEEL * 0.62, WHEEL * 0.62, 0.075, 12), cream);
+      hub.rotation.z = Math.PI / 2;
+      // A spoke that can be seen going round.
+      wheel.add(tyre, hub, box(0.08, WHEEL * 1.9, 0.05, dark));
+      this.bike.add(wheel);
+      this.wheels.push(wheel);
+    }
+    const tube = (length: number, y: number, z: number, tip: number, m: THREE.Material = frame): THREE.Mesh => {
+      const part = box(0.06, length, 0.06, m, 0, y, z);
+      part.rotation.x = tip;
+      return part;
+    };
+    this.bike.add(
+      // Seat tube, top tube, down tube, the stays to the back wheel, and the fork.
+      tube(0.62, 0.66, 0.2, 0.25),
+      tube(0.66, 0.9, -0.1, 1.45),
+      tube(0.72, 0.62, -0.14, 0.95),
+      tube(0.5, 0.4, 0.36, -1.35),
+      tube(0.7, 0.66, -0.47, -0.28),
+      box(0.56, 0.05, 0.06, dark, 0, 1.0, -0.4),
+      box(0.16, 0.05, 0.3, dark, 0, 0.98, 0.2),
+    );
+    this.bike.visible = false;
+    this.root.add(this.bike);
     this.root.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = castShadow;
     });
@@ -115,6 +151,16 @@ export class Skier {
   /** Put the skis and poles on, or take them off. */
   setSkis(on: boolean): void {
     for (const part of [...this.skis, ...this.poles]) part.visible = on;
+  }
+
+  /** Get on the bike, or off it. */
+  setBike(on: boolean): void {
+    this.bike.visible = on;
+  }
+
+  /** Turn the bike's wheels for a distance ridden, in model units. */
+  rollWheels(distance: number): void {
+    for (const wheel of this.wheels) wheel.rotation.x -= distance / 0.36;
   }
 
   /**

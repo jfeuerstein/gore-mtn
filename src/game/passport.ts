@@ -1,12 +1,14 @@
-import type { Difficulty, Lift, Place, Trail } from '../world/trails';
+import type { Season } from '../look/season';
+import type { Difficulty, Lift, Path, Place, Trail } from '../world/trails';
 import type { TrailProgress } from './save';
 
 /**
  * The trail passport: what there is to earn on the mountain and the rules for earning it.
  * No DOM or three.js here.
  *
- * - A trail is stamped once nearly all of it has been skied. It need not be in one run: progress
- *   down each trail is kept, so a trail left halfway can be finished another day.
+ * - A trail is stamped once nearly all of it has been skied (or, when the snow has gone, ridden).
+ *   It need not be in one run: progress down each trail is kept, so a trail left halfway can be
+ *   finished another day. A path through the woods is stamped the same way, on foot or on wheels.
  * - A lift is pinned by riding it to the top.
  * - A summit is patched by standing on it, a landmark stamped by visiting it.
  * - A condition is stamped by skiing in it: first light, a powder day, after dark.
@@ -19,15 +21,72 @@ export const STAMP_SHARE = 0.9;
 /** Checkpoints are looked up on a grid this size, in metres. */
 const CELL = 96;
 
-export interface TrailEntry {
+/** Something stamped by travelling its length: a ski trail, or a path. */
+export interface Route {
   name: string;
-  difficulty: Difficulty;
-  glade: boolean;
-  /** Points down the trail, flat x, z pairs, with how far either side counts as skiing it. */
+  /** Points along it, flat x, z pairs, with how far either side counts as being on it. */
   checkpoints: number[];
   reach: number;
-  /** Length down the centre line, in metres. */
+  /** Length along the centre line, in metres. */
   length: number;
+}
+
+export interface TrailEntry extends Route {
+  difficulty: Difficulty;
+  glade: boolean;
+}
+
+/** Points every CHECKPOINT_SPACING metres along each of some lines, and the lines' length in all. */
+function checkpointsAlong(lines: readonly (readonly number[])[]): { checkpoints: number[]; length: number } {
+  const checkpoints: number[] = [];
+  let length = 0;
+  for (const pts of lines) {
+    const before = checkpoints.length;
+    let carried = CHECKPOINT_SPACING / 2;
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      const ax = pts[i] as number;
+      const az = pts[i + 1] as number;
+      const bx = pts[i + 2] as number;
+      const bz = pts[i + 3] as number;
+      const seg = Math.hypot(bx - ax, bz - az);
+      length += seg;
+      while (carried <= seg) {
+        checkpoints.push(ax + ((bx - ax) * carried) / seg, az + ((bz - az) * carried) / seg);
+        carried += CHECKPOINT_SPACING;
+      }
+      carried -= seg;
+    }
+    // A line too short to hold a checkpoint still counts, at its middle.
+    if (checkpoints.length === before && checkpoints.length === 0 && pts.length >= 4) {
+      checkpoints.push(((pts[0] as number) + (pts.at(-2) as number)) / 2, ((pts[1] as number) + (pts.at(-1) as number)) / 2);
+    }
+  }
+  return { checkpoints, length };
+}
+
+/** How close to a path counts as walking it, in metres. Paths are narrow and wind through trees. */
+const PATH_REACH = 14;
+
+/**
+ * Every named path as one entry: the hiking, biking and cross-country trails through the woods.
+ * Pieces sharing a name are joined. A path that only repeats a ski trail's name is left out; the
+ * trail has its own stamp.
+ */
+export function buildPathBook(paths: readonly Path[], trails: readonly Trail[]): Route[] {
+  const skiNames = new Set(trails.map((t) => t.name));
+  const byName = new Map<string, number[][]>();
+  for (const p of paths) {
+    if (!p.name || skiNames.has(p.name)) continue;
+    const list = byName.get(p.name);
+    if (list) list.push(p.pts);
+    else byName.set(p.name, [p.pts]);
+  }
+  const book: Route[] = [];
+  for (const [name, lines] of byName) {
+    const { checkpoints, length } = checkpointsAlong(lines);
+    if (checkpoints.length > 0) book.push({ name, checkpoints, reach: PATH_REACH, length });
+  }
+  return book.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -47,30 +106,7 @@ export function buildTrailBook(trails: readonly Trail[]): TrailEntry[] {
   for (const [name, pieces] of byName) {
     const lines = pieces.filter((p) => !p.area);
     const use = lines.length > 0 ? lines : pieces;
-    const checkpoints: number[] = [];
-    let length = 0;
-    for (const piece of use) {
-      const pts = piece.pts;
-      let carried = CHECKPOINT_SPACING / 2;
-      for (let i = 0; i + 3 < pts.length; i += 2) {
-        const ax = pts[i] as number;
-        const az = pts[i + 1] as number;
-        const bx = pts[i + 2] as number;
-        const bz = pts[i + 3] as number;
-        const seg = Math.hypot(bx - ax, bz - az);
-        length += seg;
-        // Walk down the piece dropping a checkpoint every CHECKPOINT_SPACING metres.
-        while (carried <= seg) {
-          checkpoints.push(ax + ((bx - ax) * carried) / seg, az + ((bz - az) * carried) / seg);
-          carried += CHECKPOINT_SPACING;
-        }
-        carried -= seg;
-      }
-      // A piece too short to hold a checkpoint still counts, at its middle.
-      if (checkpoints.length === 0 && pts.length >= 4) {
-        checkpoints.push(((pts[0] as number) + (pts.at(-2) as number)) / 2, ((pts[1] as number) + (pts.at(-1) as number)) / 2);
-      }
-    }
+    const { checkpoints, length } = checkpointsAlong(use.map((piece) => piece.pts));
     if (checkpoints.length === 0) continue;
     const widest = Math.max(...use.map((p) => p.width));
     const first = use[0] as Trail;
@@ -87,11 +123,13 @@ export function buildTrailBook(trails: readonly Trail[]): TrailEntry[] {
   return book.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Looks up which trail checkpoints are near a position. */
+/** Looks up which checkpoints of some trails or paths are near a position. */
 export class TrailIndex {
   private readonly cells = new Map<number, { entry: number; checkpoint: number }[]>();
+  /** Checkpoints newly passed since this was made, so a caller can tell whether a visit changed anything. */
+  marked = 0;
 
-  constructor(readonly book: readonly TrailEntry[]) {
+  constructor(readonly book: readonly Route[]) {
     book.forEach((entry, e) => {
       for (let c = 0; c < entry.checkpoints.length / 2; c++) {
         const key = this.key(entry.checkpoints[c * 2] as number, entry.checkpoints[c * 2 + 1] as number);
@@ -117,7 +155,7 @@ export class TrailIndex {
         const cell = this.cells.get(this.key(x + dx * CELL, z + dz * CELL));
         if (!cell) continue;
         for (const { entry, checkpoint } of cell) {
-          const trail = this.book[entry] as TrailEntry;
+          const trail = this.book[entry] as Route;
           const cx = trail.checkpoints[checkpoint * 2] as number;
           const cz = trail.checkpoints[checkpoint * 2 + 1] as number;
           if (Math.hypot(cx - x, cz - z) > trail.reach) continue;
@@ -127,6 +165,7 @@ export class TrailIndex {
           if (p.seen.length !== count) p.seen = '0'.repeat(count);
           if (p.seen[checkpoint] === '1') continue;
           p.seen = `${p.seen.slice(0, checkpoint)}1${p.seen.slice(checkpoint + 1)}`;
+          this.marked++;
           if (!p.stamped && trailShare(p) >= STAMP_SHARE) {
             p.stamped = day;
             stamped.push(trail.name);
@@ -203,27 +242,52 @@ export interface Condition {
   name: string;
   /** What to do to earn it, for the passport. */
   how: string;
+  /** The seasons it can be earned in; all of them if not given. */
+  seasons?: readonly Season[];
 }
 
 export const CONDITIONS: readonly Condition[] = [
-  { id: 'first-light', name: 'First Light', how: 'Ski in the first hour after sunrise.' },
-  { id: 'bluebird', name: 'Bluebird Day', how: 'Ski under a clear midday sky.' },
-  { id: 'powder-day', name: 'Powder Day', how: 'Ski while it is snowing.' },
-  { id: 'alpenglow', name: 'Alpenglow', how: 'Ski in the last hour before sunset.' },
-  { id: 'night-owl', name: 'Night Owl', how: 'Ski after dark.' },
+  { id: 'first-light', name: 'First Light', how: 'Be on the move in the first hour after sunrise.' },
+  { id: 'bluebird', name: 'Bluebird Day', how: 'Ski or ride under a clear midday sky.' },
+  { id: 'alpenglow', name: 'Alpenglow', how: 'Be on the move in the last hour before sunset.' },
+  { id: 'night-owl', name: 'Night Owl', how: 'Ski or ride after dark.' },
+  { id: 'powder-day', name: 'Powder Day', how: 'Ski while it is snowing.', seasons: ['winter'] },
+  { id: 'corn-snow', name: 'Corn Snow', how: 'Ski soft spring snow under a high sun.', seasons: ['spring'] },
+  { id: 'mud-season', name: 'Mud Season', how: 'Ski the ribbons in spring rain.', seasons: ['spring'] },
+  { id: 'dog-days', name: 'Dog Days', how: 'Ride under a high summer sun.', seasons: ['summer'] },
+  { id: 'firefly-night', name: 'Firefly Night', how: 'Ride among the fireflies on a summer night.', seasons: ['summer'] },
+  { id: 'soaker', name: 'Soaker', how: 'Ride in the rain.', seasons: ['summer', 'fall'] },
+  { id: 'peak-foliage', name: 'Peak Foliage', how: 'Ride through the colours on a clear fall day.', seasons: ['fall'] },
+  { id: 'harvest-moon', name: 'Harvest Moon', how: 'Ride after dark in fall.', seasons: ['fall'] },
 ];
 
 /**
  * The conditions that hold right now, by id.
  * @param sunElevationDeg height of the sun above the horizon
  * @param sunInEast true before solar noon
+ * @param weather `snowing` is whatever is falling: snow in winter, rain otherwise
  */
-export function conditionsNow(sunElevationDeg: number, sunInEast: boolean, weather: { overcast: number; snowing: number }): string[] {
+export function conditionsNow(sunElevationDeg: number, sunInEast: boolean, weather: { overcast: number; snowing: number }, season: Season = 'winter'): string[] {
   const out: string[] = [];
-  if (weather.snowing >= 0.5) out.push('powder-day');
-  if (sunElevationDeg < -6) out.push('night-owl');
+  const falling = weather.snowing >= 0.5;
+  const night = sunElevationDeg < -6;
   const clear = weather.overcast < 0.35 && weather.snowing < 0.1;
+  if (night) out.push('night-owl');
   if (clear && sunElevationDeg > 20) out.push('bluebird');
   if (clear && sunElevationDeg > 0 && sunElevationDeg < 9) out.push(sunInEast ? 'first-light' : 'alpenglow');
+  if (season === 'winter' && falling) out.push('powder-day');
+  if (season === 'spring') {
+    if (clear && sunElevationDeg > 30) out.push('corn-snow');
+    if (falling) out.push('mud-season');
+  }
+  if (season === 'summer') {
+    if (clear && sunElevationDeg > 50) out.push('dog-days');
+    if (night && !falling) out.push('firefly-night');
+  }
+  if ((season === 'summer' || season === 'fall') && falling) out.push('soaker');
+  if (season === 'fall') {
+    if (clear && sunElevationDeg > 10) out.push('peak-foliage');
+    if (night) out.push('harvest-moon');
+  }
   return out;
 }

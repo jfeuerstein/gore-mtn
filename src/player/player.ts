@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
-import { deflect, pushOut, type Obstacle } from './collide';
-import { mixPose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
+import { deflect, type Bump } from './collide';
+import { mixPose, ridePose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
 import { Skier } from './skier';
 import { boardingDistance, riderAlong, type LiftPath } from '../world/lifts';
 import {
@@ -10,9 +10,11 @@ import {
   skierAt,
   slipAngle,
   speedOf,
+  SKI,
   stickToSki,
   travelYaw,
   type SkiInput,
+  type SkiParams,
   type SkiState,
 } from './skiPhysics';
 
@@ -59,8 +61,18 @@ export class Player {
    */
   private ride: { path: LiftPath; from: number; since: number; resume: 'walk' | 'ski' } | null = null;
   private arrived: LiftPath | null = null;
+  /** How far the pedals have gone round. */
+  private pedal = 0;
 
-  constructor(castShadow: boolean) {
+  /**
+   * @param glide what the player glides down on: skis on snow, a bike when the snow has gone
+   * @param tune how that handles
+   */
+  constructor(
+    castShadow: boolean,
+    readonly glide: 'skis' | 'bike' = 'skis',
+    private readonly tune: SkiParams = SKI,
+  ) {
     this.skier = new Skier(castShadow);
     // Small against the trails, as a person is on a real mountain.
     this.object.scale.setScalar(PLAYER_SCALE);
@@ -115,8 +127,9 @@ export class Player {
     this.mode = 'lift';
     this.stop();
     this.lean = 0;
-    // Inside a gondola cabin the rider is out of sight.
+    // Inside a gondola cabin the rider is out of sight. A bike rides up on the back of the chair, unseen.
     this.skier.root.visible = !path.cabins;
+    this.skier.setBike(false);
   }
 
   /** The lift being ridden, if any. */
@@ -136,7 +149,9 @@ export class Player {
 
   /** Clip into or out of skis. Either way the player starts from a standstill. On a lift, it takes effect at the top. */
   setMode(mode: 'walk' | 'ski'): void {
-    this.skier.setSkis(mode === 'ski');
+    this.skier.setSkis(mode === 'ski' && this.glide === 'skis');
+    // On a lift the bike goes up out of sight; it is back under the rider at the top.
+    this.skier.setBike(mode === 'ski' && this.glide === 'bike' && !this.ride);
     if (this.ride) {
       this.ride.resume = mode;
       return;
@@ -155,7 +170,7 @@ export class Player {
    * @param moveY stick up (+) and down (-), 0..1
    * @param camYaw camera yaw, so on foot "up" means away from the camera
    * @param groomedAt whether a position is on a groomed trail
-   * @param obstacleAt the solid thing, such as a tree trunk, that a circle at a position overlaps
+   * @param bumpAt where a circle at a position must move to in order to clear a tree trunk or a wall, if it touches one
    * @param clock the lift clock, in seconds
    */
   update(
@@ -166,12 +181,12 @@ export class Player {
     fast: boolean,
     hf: Heightfield,
     groomedAt: (x: number, z: number) => boolean,
-    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null = () => null,
+    bumpAt: (x: number, z: number, radius: number) => Bump | null = () => null,
     clock = 0,
   ): void {
     if (this.mode === 'lift') this.rideLift(dt, clock);
-    else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt, obstacleAt);
-    else this.walk(dt, moveX, moveY, camYaw, fast, hf, obstacleAt);
+    else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt, bumpAt);
+    else this.walk(dt, moveX, moveY, camYaw, fast, hf, bumpAt);
   }
 
   private rideLift(dt: number, clock: number): void {
@@ -202,7 +217,7 @@ export class Player {
     camYaw: number,
     fast: boolean,
     hf: Heightfield,
-    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null,
+    bumpAt: (x: number, z: number, radius: number) => Bump | null,
   ): void {
     const mag = Math.min(1, Math.hypot(moveX, moveY));
     const top = fast ? FAST_SPEED : WALK_SPEED;
@@ -219,9 +234,8 @@ export class Player {
       const dz = (-sin * moveX - cos * moveY) / mag;
       let x = Math.min(Math.max(this.position.x + dx * this.speed * dt, hf.minX + 1), hf.maxX - 1);
       let z = Math.min(Math.max(this.position.z + dz * this.speed * dt, hf.minZ + 1), hf.maxZ - 1);
-      // Walk round trees, not through them. (Fast travel is a debug aid and goes through.)
-      const tree = fast ? null : obstacleAt(x, z, BODY_RADIUS);
-      const bump = tree && pushOut(x, z, BODY_RADIUS, tree);
+      // Walk round trees and buildings, not through them. (Fast travel is a testing aid and goes through.)
+      const bump = fast ? null : bumpAt(x, z, BODY_RADIUS);
       if (bump) {
         x = bump.x;
         z = bump.z;
@@ -242,13 +256,12 @@ export class Player {
     input: SkiInput,
     hf: Heightfield,
     groomedAt: (x: number, z: number) => boolean,
-    obstacleAt: (x: number, z: number, radius: number) => Obstacle | null,
+    bumpAt: (x: number, z: number, radius: number) => Bump | null,
   ): void {
     const before = this.position.clone();
-    let after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt);
+    let after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt, this.tune);
     // A tree is a bump, not a crash: the skier is nudged clear and loses speed, more the squarer the hit.
-    const tree = obstacleAt(after.x, after.z, BODY_RADIUS);
-    const bump = tree && pushOut(after.x, after.z, BODY_RADIUS, tree);
+    const bump = bumpAt(after.x, after.z, BODY_RADIUS);
     if (bump) after = { ...after, x: bump.x, z: bump.z, ...deflect(after.vx, after.vz, bump) };
     const x = Math.min(Math.max(after.x, hf.minX + 1), hf.maxX - 1);
     const z = Math.min(Math.max(after.z, hf.minZ + 1), hf.maxZ - 1);
@@ -270,6 +283,14 @@ export class Player {
     const want = -this.skiState.lean * 0.34 * Math.min(1, ground / 6) + sideways * 0.5 * Math.min(1, ground / 5);
     this.lean += (want - this.lean) * ease;
     this.object.rotation.set(-Math.asin(descentAlong(hf, x, z, this.heading)), this.heading, this.lean);
+    if (this.glide === 'bike') {
+      // In the saddle the whole time. The legs go round when pedalling does any good, and coast otherwise.
+      const pedalling = input.tuck > 0 && ground < this.tune.poleMaxSpeed ? 1 : 0;
+      this.pedal += dt * (4 + ground * 0.9) * pedalling;
+      this.skier.rollWheels((this.speed * dt) / PLAYER_SCALE);
+      this.show(ridePose(this.pedal, pedalling, input.tuck, ground > 0.5 ? input.brake : 0), dt, true);
+      return;
+    }
     // Standing tall at rest, a skier's stance once moving, folding into a tuck or sitting back to stop.
     const moving = Math.min(1, ground / 2.5);
     this.show(mixPose(STANDING, skiPose(input.tuck, ground > 0.5 ? input.brake : 0), Math.max(moving, input.tuck)), dt, true);

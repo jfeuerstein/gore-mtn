@@ -2,15 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { angleDiff } from './cameraMath';
 import {
   advanceSki,
+  BIKE,
   descentAlong,
   fallLineYaw,
   SKI,
   skierAt,
   slipAngle,
   speedOf,
+  SPRING_SKI,
   stickToSki,
   travelYaw,
   type SkiGround,
+  type SkiParams,
   type SkiInput,
   type SkiState,
 } from './skiPhysics';
@@ -209,6 +212,70 @@ describe('simulation', () => {
     const b = at(20);
     expect(speedOf(b)).toBeCloseTo(speedOf(a), 1);
     expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeLessThan(1);
+  });
+});
+
+describe('the mountain bike', () => {
+  const ride = (ground: SkiGround, start: SkiState, input: SkiInput, seconds: number, groomed = true, p: SkiParams = BIKE): SkiState => {
+    let s = start;
+    for (let t = 0; t < seconds; t += 1 / 60) s = advanceSki(s, input, ground, () => groomed, 1 / 60, p);
+    return s;
+  };
+
+  it('rolls downhill by itself, but not as fast as skis slide', () => {
+    const bike = speedOf(ride(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40));
+    const skis = speedOf(run(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40));
+    expect(bike).toBeGreaterThan(10);
+    expect(bike).toBeLessThan(skis);
+  });
+
+  it('pedals to a brisk pace on the flat, faster than walking', () => {
+    const v = speedOf(ride(FLAT, skierAt(0, 0, DOWNHILL), TUCK, 20));
+    expect(v).toBeGreaterThan(8);
+    expect(v).toBeLessThan(BIKE.poleMaxSpeed + 0.5);
+  });
+
+  it('pedals up a gentle hill, and stops rather than roll back on one too steep', () => {
+    const gentle = ride(ramp(5), skierAt(0, 0, UPHILL), TUCK, 12);
+    expect(gentle.z).toBeLessThan(-20);
+    const steep = ride(ramp(30), moving(UPHILL, 6), NONE, 12);
+    expect(speedOf(steep)).toBe(0);
+    expect(steep.z).toBeLessThanOrEqual(0);
+  });
+
+  it('stops with the brake, sliding the back wheel round', () => {
+    const start = moving(DOWNHILL, 14);
+    const mid = ride(ramp(18), start, BRAKE, 0.6);
+    expect(Math.abs(slipAngle(mid))).toBeGreaterThan(0.6);
+    expect(speedOf(ride(ramp(18), start, BRAKE, 6))).toBe(0);
+  });
+
+  it('is slow off the trail, in the woods', () => {
+    const on = speedOf(ride(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40));
+    const off = speedOf(ride(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40, false));
+    expect(off).toBeLessThan(on * 0.75);
+  });
+});
+
+describe('spring skiing', () => {
+  const springRun = (ground: SkiGround, start: SkiState, input: SkiInput, seconds: number, groomed: boolean): SkiState => {
+    let s = start;
+    for (let t = 0; t < seconds; t += 1 / 60) s = advanceSki(s, input, ground, () => groomed, 1 / 60, SPRING_SKI);
+    return s;
+  };
+
+  it('runs nearly as fast as winter on the ribbons of snow', () => {
+    const spring = speedOf(springRun(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40, true));
+    const winter = speedOf(run(ramp(15), skierAt(0, 0, DOWNHILL), NONE, 40));
+    expect(spring).toBeGreaterThan(winter * 0.9);
+    expect(spring).toBeLessThanOrEqual(winter);
+  });
+
+  it('grinds to a crawl on bare ground, yet can always pole back to the snow', () => {
+    const sliding = springRun(ramp(8), moving(DOWNHILL, 15), NONE, 12, false);
+    expect(speedOf(sliding)).toBeLessThan(3);
+    const poling = springRun(FLAT, skierAt(0, 0, DOWNHILL), TUCK, 10, false);
+    expect(poling.z).toBeGreaterThan(3);
   });
 });
 

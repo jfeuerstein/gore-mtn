@@ -11,6 +11,7 @@ const TRAIL_COLOUR: Record<Difficulty, string> = {
   freeride: '#d9822b',
 };
 const LIFT_COLOUR = '#c2412d';
+const PATH_COLOUR = '#f4e4b8';
 /** Places worth a label on the map, by id. */
 const LABELLED = new Set(['base-lodge', 'saddle-lodge', 'summit', 'ski-bowl-lodge', 'depot']);
 /** How close a tap must land to a trail or lift to pick it, in screen points. */
@@ -26,7 +27,7 @@ export class TrailMap {
   private readonly caption: HTMLElement;
   private view: MapView | null = null;
   private timer = 0;
-  private picked: { trail?: Trail; lift?: LiftPath } | null = null;
+  private picked: { trail?: Trail; lift?: LiftPath; path?: string } | null = null;
   /** Called when the map opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
 
@@ -63,6 +64,7 @@ export class TrailMap {
       [TRAIL_COLOUR.intermediate, '■ more difficult'],
       [TRAIL_COLOUR.advanced, '◆ most difficult'],
       [LIFT_COLOUR, '— lift'],
+      ['#8a6a3c', '⋯ path'],
     ] as const) {
       const item = document.createElement('span');
       item.style.color = colour;
@@ -132,6 +134,16 @@ export class TrailMap {
     };
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+
+    // Paths through the woods: dotted, under everything else.
+    for (const path of world.paths) {
+      trace(path.pts);
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = PATH_COLOUR;
+      ctx.lineWidth = this.picked?.path === path.name ? 3 : 1.3;
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
     // Trails, easiest first so the harder ones sit on top where they cross.
     const order: Difficulty[] = ['easy', 'freeride', 'intermediate', 'advanced', 'expert'];
@@ -209,7 +221,7 @@ export class TrailMap {
     const at = view.toWorld(e.clientX - box.left, e.clientY - box.top);
     const reach = TAP_REACH / view.scale;
     let best = reach;
-    let found: { trail?: Trail; lift?: LiftPath } | null = null;
+    let found: { trail?: Trail; lift?: LiftPath; path?: string } | null = null;
     for (const path of this.lifts) {
       const d = distToPolyline(at.x, at.z, path.lift.pts);
       if (d < best) {
@@ -225,8 +237,17 @@ export class TrailMap {
         found = { trail };
       }
     }
+    // A path is picked only when no trail or lift is as close.
+    for (const path of this.world.paths) {
+      const d = distToPolyline(at.x, at.z, path.pts);
+      if (d < best * 0.6) {
+        best = d;
+        found = { path: path.name };
+      }
+    }
     this.picked = found;
-    if (found?.lift) this.caption.textContent = `Lift: ${found.lift.lift.name ?? 'unnamed'}`;
+    if (found?.path) this.caption.textContent = `Path: ${found.path}`;
+    else if (found?.lift) this.caption.textContent = `Lift: ${found.lift.lift.name ?? 'unnamed'}`;
     else if (found?.trail) this.caption.textContent = `${DIFFICULTY_MARK[found.trail.difficulty]} ${found.trail.name}${found.trail.glade ? ' (glade)' : ''}`;
     else this.caption.textContent = 'Tap a trail or lift to see its name.';
     this.draw();

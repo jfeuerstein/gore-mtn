@@ -24,6 +24,18 @@ interface OptionGroup {
 
 const OPTIONS: OptionGroup[] = [
   {
+    title: 'Season',
+    param: 'season',
+    current: (c) => c.season,
+    options: [
+      { label: 'Real', value: 'real' },
+      { label: 'Winter', value: 'winter' },
+      { label: 'Spring', value: 'spring' },
+      { label: 'Summer', value: 'summer' },
+      { label: 'Fall', value: 'fall' },
+    ],
+  },
+  {
     title: 'Time of day',
     param: 'time',
     current: (c) => c.time,
@@ -267,7 +279,7 @@ export class Hud {
         });
       }
       if (group.param === 'weather') {
-        add(this.menuEl, 'p', 'Real follows the clock and the sky over Gore. The others are for trying a moment out; the game goes back to Real the next time it is opened.');
+        add(this.menuEl, 'p', 'Real follows the calendar, the clock and the sky over Gore. The others are for trying a moment out; the game goes back to Real the next time it is opened.');
       }
     }
 

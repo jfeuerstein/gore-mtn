@@ -42,14 +42,16 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
   the owner when a change touches rendering so they look for breakage.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
-  string (`time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
+  string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `shortpage`, `bench`, `benchsecs`). Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby and the last announcement) and a few
   actions (`teleport`, `place`, `face`, `setView`) for scripts.
 - **The world is generated, not edited.** `public/world/` comes from `tools/terrain/build_world.py`:
-  heights and the trail mask (gzipped; `src/world/codec.ts` reads them), `ground.png` (the snow's
-  colour up close: bright trails, shaded edges, bare rock) and `canopy.png` (the forest as seen
-  from afar).
+  heights, the trail mask, where no trees grow (`open.bin.gz`: roads, lots, paths, water) and how
+  much of the forest is hardwood (`forest.bin.gz`), all gzipped (`src/world/codec.ts` reads
+  them); and for each season `ground-<season>.png` (the ground up close: trails, forest floor,
+  rock, with roads, paths and water painted in) and `canopy-<season>.png` (the forest as seen
+  from afar). `world.json` also lists paths, roads, the town's buildings, ponds and named spots.
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
   OpenStreetMap, not memory.
 - **Content is data.** Trails, lifts, places, and later minerals and stamps live in data files with
@@ -65,6 +67,32 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   mountain (rocks, minerals, signs) must follow the same pattern rather than exist everywhere.
 - **The ground you see is the ground you stand on.** `Heightfield.heightAt` uses the same
   triangle split as `buildTerrain`. Keep them in step.
+
+## Seasons
+
+The mountain follows the calendar (`src/look/season.ts`, pure and tested): winter from 10 November,
+spring from April, summer from June, fall from mid-September.
+
+- A season is a repaint of the same mountain, not a different one. The pipeline paints the ground
+  and the far-off forest for each; the game loads the pair for the season it is in. Trees stand
+  in the same places all year.
+- Winter is the look the owner chose and is left exactly as it was: every tree a snowy fir. Out
+  of winter each tree is dressed from `SEASON_LOOK`: spruce and fir stay green, and the hardwoods
+  of the lower slopes are bare or budding in spring, green in summer, and red, orange and gold in
+  fall. The dress is a colour per tree (instance colour over a plain grey tree) and a change of
+  proportions, so it costs no extra draw calls.
+- `seasonPalette()` recolours the land beyond the map and the ski or tyre track; the sky and the
+  light stay those of `palette.ts`.
+- The air (`src/world/snowfall.ts`) carries snow in winter and rain otherwise, leaves on a fair
+  fall day and fireflies on a summer night.
+- Skiing belongs to the snow. In spring the trails keep it, in ribbons through bare woods
+  (`SPRING_SKI`: off the snow, skis crawl). In summer and fall the way down is a mountain bike
+  (`BIKE`): the same simulation as skiing with other numbers, where pedalling stands in for
+  poling. The button by the left thumb reads Skis or Bike to suit.
+- `season=winter|spring|summer|fall` pins a season from the address or Settings, like `time` and
+  `weather`. The tools pin winter unless told otherwise.
+- After a change to trees, ground or light, look at all four:
+  `node tools/shot.mjs out.png "season=fall&at=base-lodge&pitch=0.22"`.
 
 ## Time of day and weather
 
@@ -98,6 +126,8 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 
 - `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
   call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),
+  the houses of North Creek (`src/world/town.ts`: one house stretched to each real footprint,
+  painted per house),
   lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
   this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
   glow after dark and in falling snow.
@@ -122,7 +152,7 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
   backwards. A tree is a bump, not a crash (`src/player/collide.ts`): the skier is nudged clear and
-  loses speed, more the squarer the hit.
+  loses speed, more the squarer the hit. Buildings are solid too (`src/world/walls.ts`).
 - Skis leave tracks (`src/world/tracks.ts`): thin lines when carving, wide scrapes when skidding.
   The last 900 m or so stay on the snow.
 
@@ -147,19 +177,32 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
   of ground they lie in, and the day's scatter), `save.ts` (the save, read defensively, and the
   save code) and `game.ts`, which ties them together: `main.ts` tells it where the player is and
   what they are doing, and it returns what that earned.
-- Trails are stamped by skiing past nine in ten of their checkpoints, with progress kept between
-  runs. Lifts are pinned on arrival at the top. Summits and landmarks are earned by being there.
-  Conditions are earned by skiing under the real clock and sky only, never a pinned moment.
+- Trails are stamped by skiing (or riding) past nine in ten of their checkpoints, with progress
+  kept between runs. The named paths through the woods are stamped the same way, on foot or
+  however the player likes. Lifts are pinned on arrival at the top. Landmarks are earned by being
+  there, and each summit has a patch for every season. The first visit to each season is a stamp.
+  Conditions, some of them particular to a season, are earned by skiing or riding under the real
+  calendar, clock and sky only, never a pinned one.
 - Stones lie in four kinds of ground: on the groomed snow (so skiing a trail meets them), beside
   the trails, in steep bare rock and in deep woods (the rarer ones, which take a detour). They
   are laid out patch by patch from the date and the place, so the day's scatter is the same on
   every load and new at midnight. `FIND_REPORT=1 npx vitest run src/game/minerals.test.ts`
   prints how many lie on the real mountain, by kind of ground. Change density with `KEEP` and
   `TRIES` in `minerals.ts`, then check that report.
+- The field guide is `src/game/wildlife.ts`: some forty animals, birds, plants and curiosities,
+  each with the kinds of ground, seasons and watches of the day (dawn, day, dusk, night) it keeps
+  to. Sightings are scattered like stones, but change with the watch as well as the day. Coming
+  close enters one in the guide; a shy creature come upon faster than `GENTLE_SPEED` bolts
+  unseen. `src/world/country.ts` is the world as wildlife sees it. `FIND_REPORT=1 npx vitest run
+  src/game/wildlife.test.ts` prints how many of each are about in every season and watch.
+- `src/world/critterModels.ts` builds each species from blocks (a few body plans: four legs, a
+  bird, a clump of plants) and `src/world/critters.ts` shows the ones near the player: one small
+  mesh each, drawn within 280 m, with a pale blue mark over anything not yet in the guide. A new
+  species needs an entry in `SPECIES` and a model; tests check both exist.
 - `src/world/glints.ts` draws the stones near the player: one instanced mesh coloured per
   instance, and one of unlit gold twinkles, two draw calls in all. This is the one place that
   uses per-instance colour; the owner has yet to confirm it on the phone's WebGPU.
-- `src/ui/book.ts` is the Book sheet (Passport and Minerals pages) and `src/ui/toasts.ts` the
+- `src/ui/book.ts` is the Book sheet (Passport, Minerals and Field guide pages) and `src/ui/toasts.ts` the
   announcements at the top of the screen. With `hud=0` announcements are hidden too.
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
   is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;

@@ -6,6 +6,9 @@ const MOST = 3;
 
 const KIND_MARK: Record<GameEvent['kind'], string> = {
   trail: '✓',
+  path: '✓',
+  season: '❖',
+  sighting: '✦',
   lift: '⌃',
   peak: '▲',
   landmark: '⌂',

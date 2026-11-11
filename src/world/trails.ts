@@ -27,6 +27,43 @@ export interface Place {
   z: number;
 }
 
+/** A hiking, biking or cross-country path through the woods. */
+export interface Path {
+  name: string;
+  /** Flat list of x, z pairs. */
+  pts: number[];
+}
+
+export interface Road {
+  name: string | null;
+  kind: string;
+  pts: number[];
+}
+
+/** A building's footprint, as a box. */
+export interface Footprint {
+  x: number;
+  y: number;
+  z: number;
+  /** Width along its longest wall and depth across, in metres. */
+  w: number;
+  d: number;
+  /** Turn about the upright axis that lays the width along that wall. */
+  turn: number;
+  kind: string | null;
+  name?: string;
+}
+
+/** Somewhere with a name: a lookout, a pond, a quarry, a shop. */
+export interface NamedSpot {
+  id: string;
+  name: string;
+  kind?: string;
+  x: number;
+  y: number;
+  z: number;
+}
+
 export const DIFFICULTY_MARK: Record<Difficulty, string> = {
   easy: '●',
   intermediate: '■',

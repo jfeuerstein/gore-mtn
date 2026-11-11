@@ -17,18 +17,18 @@ const shot = process.argv[2];
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 // A fixed time and sky, so the checks do not depend on when they are run, and light settings,
 // because software rendering is slow and several checks wait on the game to cover ground.
-const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&time=midday&weather=clear`;
+const url = `http://127.0.0.1:${server.httpServer.address().port}/?trees=2000&shadows=0&stride=2&view=1500&dpr=1&season=winter&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
 const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
   if (!ok) failures.push(label);
 };
-const open = async (device, extra = '') => {
+const open = async (device, extra = '', season = 'winter') => {
   const context = await browser.newContext({ ...devices[device] });
   const page = await context.newPage();
   page.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
-  await page.goto(url + extra);
+  await page.goto(url.replace('season=winter', `season=${season}`) + extra);
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   return { context, page };
 };
@@ -44,10 +44,18 @@ try {
   // The readouts are hidden until they have something to show; measure the layout once they do.
   await page.waitForFunction(() => document.getElementById('stats').textContent && document.getElementById('where').textContent);
   const boxes = {};
-  // Starting beside the Base Lodge earns its stamp at once, so an announcement is up as well.
+  // Starting beside the Base Lodge in a new season earns two stamps at once, so announcements are up as well.
   await page.waitForSelector('#toasts .toast', { timeout: 20000 }).catch(() => {});
-  for (const sel of ['#where', '#stats', '#menu-button', '#book-button', '#ski-button', '#map-button', '#toasts .toast']) boxes[sel] = await box(sel);
-  check('the first stamp is announced on arrival', boxes['#toasts .toast'] !== null && (await page.evaluate(() => window.__gore.state().toast)).startsWith('Base Lodge'));
+  for (const sel of ['#where', '#stats', '#menu-button', '#book-button', '#ski-button', '#map-button']) boxes[sel] = await box(sel);
+  // The announcements as one block: from the top of the first to the bottom of the last.
+  boxes['#toasts .toast'] = await page.evaluate(() => {
+    const all = [...document.querySelectorAll('#toasts .toast')].map((t) => t.getBoundingClientRect());
+    if (all.length === 0) return null;
+    const x = Math.min(...all.map((r) => r.left));
+    const y = Math.min(...all.map((r) => r.top));
+    return { x, y, width: Math.max(...all.map((r) => r.right)) - x, height: Math.max(...all.map((r) => r.bottom)) - y };
+  });
+  check('the first stamps are announced on arrival', boxes['#toasts .toast'] !== null && (await page.evaluate(() => window.__gore.state().toast)).startsWith('Base Lodge'));
   boxes['#toasts .toast'] ??= { x: 0, y: 0, width: 0, height: 0 };
   const names = Object.keys(boxes);
   const inside = names.every((n) => boxes[n].x >= 0 && boxes[n].y >= 0 && boxes[n].x + boxes[n].width <= width && boxes[n].y + boxes[n].height <= height);
@@ -246,6 +254,30 @@ try {
   check('taking skis off stops and goes back to walking', offSkis.mode === 'walk' && offSkis.speed === 0);
   await ski.context.close();
 
+  // The other seasons: the snow goes, and the way down is a mountain bike.
+  const summer = await open('iPhone 15 Pro', `&ski=1&pos=${sunway.pts[mid]},${sunway.pts[mid + 1]}`, 'summer');
+  const up = summer.page;
+  const rideState = () => up.evaluate(() => window.__gore.state());
+  const rideSettle = (fn, arg) => up.waitForFunction(fn, arg, { timeout: 60000 }).then(() => true, () => false);
+  const riding = await rideState();
+  check('summer puts the player on a bike, and the button says so', riding.season === 'summer' && riding.glide === 'bike' && riding.mode === 'ski' && (await up.locator('#ski-button').textContent()) === 'Bike', `${riding.season}, ${riding.glide}`);
+  await up.evaluate(() => window.__gore.face(window.__gore.state().fallLineYaw));
+  check('the bike rolls down the hill', await rideSettle(() => window.__gore.state().speed > 4));
+  check('and leaves a tyre track', await rideSettle(() => window.__gore.state().tracks > 5));
+  const cdpUp = await summer.context.newCDPSession(up);
+  await cdpUp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [thumb] });
+  await cdpUp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...thumb, y: thumb.y + 70 }] });
+  check('thumb down brings the bike to a stop', await rideSettle(() => window.__gore.state().speed === 0));
+  await cdpUp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  check('the book stamps the first visit to a season', (await rideState()).book.seasons === 1);
+  await summer.context.close();
+  for (const season of ['spring', 'fall']) {
+    const other = await open('iPhone 15 Pro', '&at=saddle-lodge', season);
+    const st = await other.page.evaluate(() => window.__gore.state());
+    check(`${season} starts and draws`, !(await other.page.evaluate(() => window.__gore.error)) && st.season === season && st.glide === (season === 'spring' ? 'skis' : 'bike') && st.trees > 100, `${st.trees} trees`);
+    await other.context.close();
+  }
+
   // Time of day and weather: choosing one in Settings repaints the mountain, at the same spot.
   const sky = await open('iPhone 15 Pro', '&at=saddle-lodge');
   const kp = sky.page;
@@ -255,6 +287,7 @@ try {
   await kp.tap('#menu-button');
   const offered = await kp.locator('#menu a', { hasText: /^(Dawn|Midday|Evening|Dusk|Night|Clear|Cloudy|Snow)$/ }).count();
   check('settings offer times of day and kinds of weather', offered === 8, `${offered}`);
+  check('and the four seasons', (await kp.locator('#menu a', { hasText: /^(Winter|Spring|Summer|Fall)$/ }).count()) === 4);
   await Promise.all([kp.waitForNavigation(), kp.locator('#menu a', { hasText: /^Night$/ }).tap()]);
   await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const night = await kp.evaluate(() => window.__gore.state());
@@ -266,7 +299,7 @@ try {
   const snowy = await kp.evaluate(() => window.__gore.state());
   check('choosing snow closes the view in and keeps the chosen time', snowy.weather.snowing === 1 && snowy.viewDist < 1300 && kp.url().includes('time=night'), `view ${Math.round(snowy.viewDist)} m`);
   // Left to itself the game follows the clock, and makes up weather if it cannot fetch the real thing.
-  await kp.goto(url.replace('&time=midday&weather=clear', ''));
+  await kp.goto(url.replace('&season=winter&time=midday&weather=clear', ''));
   await kp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const real = await kp.evaluate(() => window.__gore.state());
   check('with nothing chosen it runs on the real clock and a real or invented sky', !(await kp.evaluate(() => window.__gore.error)) && ['real', 'invented'].includes(real.weatherSource) && Number.isFinite(real.sunElevationDeg), real.weatherSource);
@@ -337,8 +370,9 @@ try {
   check('the book button opens the book at the passport', (await bp.locator('#book-sheet').isVisible()) && (await bp.getAttribute('#book-sheet [data-tab=passport]', 'aria-pressed')) === 'true');
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
-  check('the Base Lodge stamp is inked and the rest are still to earn', (await bp.locator('#book-sheet .stamp.earned').count()) === 1 && (await bp.locator('#book-sheet .stamp.earned b').textContent()) === 'Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 4 + 4 + 5 + 14);
-  check('every trail is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal);
+  const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 3 + 4 + 4 + 12 + 14, inkedStamps.join());
+  check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
   // An open sheet covers the bottom row, so only one can be opened by hand. Should another be
@@ -360,6 +394,24 @@ try {
   const picked = await bookState();
   check('it is announced by name and size', /^.+ · \d+\.\d cm · New mineral$/.test(picked.toast), picked.toast);
   check('and it is gone from the snow', !picked.finds.some((f) => f.x === stone.x && f.z === stone.z) && picked.book.minerals >= 1);
+
+  // Wildlife: walk up to the nearest creature or plant.
+  const about = (await bookState()).sightings;
+  check('there is wildlife about near the lodge', about.length > 2, `${about.length}: ${[...new Set(about.map((a) => a.species))].join(', ')}`);
+  const me = await bookState();
+  const creature = about.map((f) => ({ ...f, d: Math.hypot(f.x - me.x, f.z - me.z) })).sort((a, b) => a.d - b.d)[0];
+  await standAt(creature.x + 2, creature.z);
+  check('coming up to it enters it in the field guide', await bookSettle(() => window.__gore.state().book.species >= 1));
+  const spotted = await bookState();
+  check('and it is announced', /New in the field guide$/.test(spotted.toast), spotted.toast);
+  check('and it is not met again this watch', !spotted.sightings.some((f) => f.x === creature.x && f.z === creature.z));
+  await bp.tap('#book-button');
+  await bp.tap('#book-sheet [data-tab=guide]');
+  check('the field guide lists every entry, with the one seen filled in', (await bp.locator('#book-sheet .species').count()) === spotted.book.speciesTotal && (await bp.locator('#book-sheet .species.earned').count()) === spotted.book.species && spotted.book.speciesTotal >= 38, `${spotted.book.species} of ${spotted.book.speciesTotal}`);
+  const tabsBox = await bp.locator('#book-sheet .head').boundingBox();
+  check('the three tabs and Close fit across the screen', tabsBox.x >= 0 && tabsBox.x + tabsBox.width <= width && (await bp.locator('#book-sheet .close').boundingBox()).x + (await bp.locator('#book-sheet .close').boundingBox()).width <= width);
+  await bp.tap('#book-sheet [data-tab=minerals]');
+  await bp.locator('#book-sheet .close').tap();
 
   // A trail: on skis, visit the length of a short one.
   const pieces = (name) => world.trails.filter((t) => t.name === name && !t.area);
@@ -391,7 +443,7 @@ try {
   await bp.reload();
   await bp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const back = await bookState();
-  check('the book is still there after a reload', back.book.trails === skied.book.trails && back.book.specimens === skied.book.specimens && back.book.landmarks >= 1, JSON.stringify(back.book));
+  check('the book is still there after a reload', back.book.trails === skied.book.trails && back.book.specimens === skied.book.specimens && back.book.species === skied.book.species && back.book.landmarks >= 1, JSON.stringify(back.book));
   await standAt(stone.x + 200, stone.z);
   await standAt(stone.x + 8, stone.z);
   check('and a stone picked up today stays picked up', !(await bookState()).finds.some((f) => f.x === stone.x && f.z === stone.z));

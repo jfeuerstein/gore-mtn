@@ -23,29 +23,42 @@ export interface MineralRecord {
 
 export interface SaveData {
   version: number;
-  /** By trail name. */
+  /** By trail name, and by the name of a path through the woods. */
   trails: Record<string, TrailProgress>;
+  paths: Record<string, TrailProgress>;
   /** Day each was earned, by lift name, peak id, landmark id and condition id. */
   lifts: Record<string, string>;
   peaks: Record<string, string>;
   landmarks: Record<string, string>;
   conditions: Record<string, string>;
+  /** Day each summit was first stood on in each season, by "peak:season"; and the day each season was first visited. */
+  seasonPeaks: Record<string, string>;
+  seasons: Record<string, string>;
   /** By mineral id. */
   minerals: Record<string, MineralRecord>;
   /** Finds picked up today, so they do not come back until tomorrow. */
   found: { day: string; spots: string[] };
+  /** The field guide, by species id: how many times each has been seen, and the day of the first. */
+  sightings: Record<string, { count: number; first: string }>;
+  /** Sightings made (or startled away) in the present watch of the present day, so they are not met twice. */
+  seen: { watch: string; spots: string[] };
 }
 
 export function emptySave(): SaveData {
   return {
     version: SAVE_VERSION,
     trails: {},
+    paths: {},
     lifts: {},
     peaks: {},
     landmarks: {},
     conditions: {},
+    seasonPeaks: {},
+    seasons: {},
     minerals: {},
     found: { day: '', spots: [] },
+    sightings: {},
+    seen: { watch: '', spots: [] },
   };
 }
 
@@ -55,6 +68,16 @@ const isDay = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2
 function days(v: unknown): Record<string, string> {
   const out: Record<string, string> = {};
   if (isRecord(v)) for (const [k, d] of Object.entries(v)) if (isDay(d)) out[k] = d;
+  return out;
+}
+
+function progress(v: unknown): Record<string, TrailProgress> {
+  const out: Record<string, TrailProgress> = {};
+  if (!isRecord(v)) return out;
+  for (const [name, t] of Object.entries(v)) {
+    if (!isRecord(t) || typeof t.seen !== 'string' || !/^[01]*$/.test(t.seen)) continue;
+    out[name] = isDay(t.stamped) ? { seen: t.seen, stamped: t.stamped } : { seen: t.seen };
+  }
   return out;
 }
 
@@ -73,12 +96,12 @@ export function parseSave(text: string | null | undefined): SaveData {
   }
   if (!isRecord(raw)) return save;
 
-  if (isRecord(raw.trails)) {
-    for (const [name, t] of Object.entries(raw.trails)) {
-      if (!isRecord(t) || typeof t.seen !== 'string' || !/^[01]*$/.test(t.seen)) continue;
-      save.trails[name] = isDay(t.stamped) ? { seen: t.seen, stamped: t.stamped } : { seen: t.seen };
-    }
-  }
+  save.trails = progress(raw.trails);
+  save.paths = progress(raw.paths);
+  save.seasonPeaks = days(raw.seasonPeaks);
+  save.seasons = days(raw.seasons);
+  // A book from before the seasons were told apart was filled in winter.
+  if (!isRecord(raw.seasonPeaks)) for (const [id, day] of Object.entries(days(raw.peaks))) save.seasonPeaks[`${id}:winter`] = day;
   save.lifts = days(raw.lifts);
   save.peaks = days(raw.peaks);
   save.landmarks = days(raw.landmarks);
@@ -92,6 +115,15 @@ export function parseSave(text: string | null | undefined): SaveData {
   }
   if (isRecord(raw.found) && isDay(raw.found.day) && Array.isArray(raw.found.spots)) {
     save.found = { day: raw.found.day, spots: raw.found.spots.filter((s): s is string => typeof s === 'string') };
+  }
+  if (isRecord(raw.sightings)) {
+    for (const [id, m] of Object.entries(raw.sightings)) {
+      if (!isRecord(m) || typeof m.count !== 'number' || !Number.isFinite(m.count) || m.count < 1 || !isDay(m.first)) continue;
+      save.sightings[id] = { count: Math.floor(m.count), first: m.first };
+    }
+  }
+  if (isRecord(raw.seen) && typeof raw.seen.watch === 'string' && Array.isArray(raw.seen.spots)) {
+    save.seen = { watch: raw.seen.watch, spots: raw.seen.spots.filter((s): s is string => typeof s === 'string') };
   }
   return save;
 }

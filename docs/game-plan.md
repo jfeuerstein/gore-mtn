@@ -430,6 +430,50 @@ Things to judge on the phone:
 
 Not built yet, on purpose: tools and digging, quality as well as size, the display case, trading, the other eighteen or so minerals, and anything seasonal. Using Settings to jump to a place earns its stamps like arriving any other way; that is a testing shortcut, not a rule of the game.
 
+### Beyond the slice
+
+The owner liked the direction after milestone 3 and asked for the game to be taken on to a state
+fit for a long playtest, with creative liberties and some whimsy. What follows was built without
+a check-in between stages; the list of things to judge is at the end.
+
+#### Seasons
+
+The mountain now follows the calendar: winter from 10 November, spring from April, summer from
+June, fall from mid-September. Settings can pin any of them for a look.
+
+- **Winter** is unchanged.
+- **Spring** keeps the snow on the trails, in white ribbons through bare brown woods, as late
+  April looks in the East. Skiing works as in winter; off the snow, skis crawl. The hardwoods are
+  bare or in bud, and rain falls instead of snow.
+- **Summer** is green, and the way down is a mountain bike, as on the real Gore. It is the skiing
+  simulation with other numbers: tyres let go sooner than edges, the rider sits up in the wind,
+  and pushing the thumb up pedals. Fireflies come out after dark.
+- **Fall** turns the hardwoods of the lower slopes red, orange and gold under the dark spruce and
+  fir of the upper mountain, and leaves drift on a fair day.
+
+The same pass brought in the rest of the real map: North Creek's streets and some five hundred
+houses on their real plots, the Hudson, the brooks and ponds, the railway, the hiking and biking
+paths through the woods, and the lookouts and old garnet workings by name. Buildings are solid
+now. The passport gained a stamp for each season, a patch for each summit in each season
+(sixteen), stamps for the named paths, and seven more conditions that belong to particular
+seasons.
+
+#### The field guide
+
+A third page in the Book, for things seen rather than picked up: some forty animals, birds,
+plants and curiosities of the real Adirondacks. Each keeps to its own ground, seasons and hours:
+deer at the wood's edge at dawn and dusk, owls after dark, loons on the ponds in summer, trillium
+on the forest floor in spring, bears anywhere but winter. What is about changes with the watch of
+the day (dawn, day, dusk, night) as well as the date.
+
+- Coming close to something enters it in the guide. Animals and birds then make off; plants stay.
+- Anything not yet in the guide carries a pale blue mark, so new things can be told from afar.
+- A few creatures are shy (deer, fox, moose, heron, bobcat and others) and bolt if come upon at
+  speed. They have to be approached at a walk, or a gentle glide.
+- Everything can be watched from a lift.
+- Some entries are whimsical: somebody's snowman in winter, a hiker's cairn in summer, and a
+  tall shaggy thing said to walk the woods near The Rumor when the light goes.
+
 ## 10. Risks and honest perspectives
 
 - **Ski feel on a touchscreen is the whole game.** If milestone 1 is not fun, nothing after it will fix that. Spend disproportionate time there.

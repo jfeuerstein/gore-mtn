@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import type { Trail } from '../world/trails';
-import { buildLandmarks, buildPeaks, buildTrailBook, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare } from './passport';
+import { buildLandmarks, buildPathBook, buildPeaks, buildTrailBook, CONDITIONS, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare } from './passport';
 import type { TrailProgress } from './save';
 
 const trail = (name: string | null, pts: number[], extra: Partial<Trail> = {}): Trail => ({
@@ -154,6 +154,78 @@ describe('the real trails', () => {
   });
 });
 
+describe('the seasons\' conditions', () => {
+  const clear = { overcast: 0, snowing: 0 };
+  const wet = { overcast: 1, snowing: 0.8 };
+  it('keeps powder for winter and gives the other seasons their own weather', () => {
+    expect(conditionsNow(30, true, wet, 'winter')).toEqual(['powder-day']);
+    expect(conditionsNow(30, true, wet, 'spring')).toEqual(['mud-season']);
+    expect(conditionsNow(30, true, wet, 'summer')).toEqual(['soaker']);
+    expect(conditionsNow(30, true, wet, 'fall')).toEqual(['soaker']);
+  });
+
+  it('knows a spring afternoon, a summer noon and night, and a fall day and night', () => {
+    expect(conditionsNow(40, false, clear, 'spring')).toContain('corn-snow');
+    expect(conditionsNow(60, true, clear, 'summer')).toContain('dog-days');
+    expect(conditionsNow(-20, true, clear, 'summer')).toContain('firefly-night');
+    expect(conditionsNow(25, true, clear, 'fall')).toContain('peak-foliage');
+    expect(conditionsNow(-20, true, clear, 'fall')).toContain('harvest-moon');
+    expect(conditionsNow(-20, true, clear, 'winter')).toEqual(['night-owl']);
+  });
+
+  it('only ever names conditions that are in the book, in a season they belong to', () => {
+    for (const season of ['winter', 'spring', 'summer', 'fall'] as const) {
+      for (const sun of [-30, -3, 4, 15, 35, 65]) {
+        for (const weather of [clear, wet, { overcast: 0.8, snowing: 0 }]) {
+          for (const id of conditionsNow(sun, true, weather, season)) {
+            const c = CONDITIONS.find((q) => q.id === id);
+            expect(c, id).toBeDefined();
+            expect(!c?.seasons || c.seasons.includes(season), `${id} in ${season}`).toBe(true);
+          }
+        }
+      }
+    }
+    // And every condition can come up at some moment.
+    const reachable = new Set<string>();
+    for (const season of ['winter', 'spring', 'summer', 'fall'] as const) {
+      for (const sun of [-30, 4, 35, 65]) for (const east of [true, false]) for (const weather of [clear, wet]) for (const id of conditionsNow(sun, east, weather, season)) reachable.add(id);
+    }
+    expect([...reachable].sort()).toEqual(CONDITIONS.map((c) => c.id).sort());
+  });
+});
+
+describe('buildPathBook', () => {
+  const world = loadTestWorld();
+  const book = buildPathBook(world.paths, world.trails);
+  it('lists the paths through the woods by name, each once, leaving out those that repeat a ski trail', () => {
+    const names = book.map((p) => p.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain('Schaefer Foot Trail');
+    expect(names).toContain('Rabbit Pond Ski Trail');
+    expect(names).not.toContain('Sunway');
+    expect(names).not.toContain('Ruby Run');
+    expect(book.length).toBeGreaterThan(15);
+    for (const p of book) expect(p.checkpoints.length, p.name).toBeGreaterThan(0);
+  });
+
+  it('stamps a path walked from end to end', () => {
+    const path = book.find((p) => p.name === 'Schaefer Foot Trail');
+    if (!path) throw new Error('no path');
+    const index = new TrailIndex(book);
+    const progress = {};
+    const stamped: string[] = [];
+    for (const piece of world.paths.filter((p) => p.name === path.name)) {
+      for (let i = 0; i + 3 < piece.pts.length; i += 2) {
+        const [ax, az, bx, bz] = piece.pts.slice(i, i + 4) as [number, number, number, number];
+        const steps = Math.ceil(Math.hypot(bx - ax, bz - az) / 5);
+        for (let k = 0; k <= steps; k++) stamped.push(...index.visit(progress, ax + ((bx - ax) * k) / steps, az + ((bz - az) * k) / steps, '2026-07-04'));
+      }
+    }
+    expect(stamped).toContain('Schaefer Foot Trail');
+    expect(index.marked).toBeGreaterThan(10);
+  });
+});
+
 describe('conditionsNow', () => {
   const clear = { overcast: 0, snowing: 0 };
   it('names the moment', () => {
@@ -166,7 +238,7 @@ describe('conditionsNow', () => {
 
   it('gives a powder day whenever it snows, and no bluebird under cloud', () => {
     expect(conditionsNow(30, true, { overcast: 1, snowing: 1 })).toEqual(['powder-day']);
-    expect(conditionsNow(-20, false, { overcast: 1, snowing: 0.6 })).toEqual(['powder-day', 'night-owl']);
+    expect(conditionsNow(-20, false, { overcast: 1, snowing: 0.6 }).sort()).toEqual(['night-owl', 'powder-day']);
     expect(conditionsNow(30, true, { overcast: 0.8, snowing: 0 })).toEqual([]);
   });
 });

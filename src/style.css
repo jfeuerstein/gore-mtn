@@ -513,6 +513,36 @@ body {
   color: #2b62c9;
   background: rgba(43, 98, 201, 0.06);
 }
+#book-sheet .stamp.season.earned {
+  color: #7a4fa3;
+  background: rgba(122, 79, 163, 0.07);
+}
+/* One small mark for each season a summit has been stood on in. */
+#book-sheet .pips {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+#book-sheet .pips i {
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  color: var(--ink);
+  opacity: 0.45;
+}
+#book-sheet .pips i.on {
+  border: 1px solid #2f6b4f;
+  background: #2f6b4f;
+  color: #fff;
+  opacity: 1;
+}
+#book-sheet .mark-path {
+  color: #8a6a3c;
+}
 #book-sheet .stamp.condition.earned {
   color: #b7791f;
   background: rgba(183, 121, 31, 0.07);
@@ -618,6 +648,45 @@ body {
 #book-sheet .mineral .tally {
   opacity: 1;
   font-weight: 600;
+}
+/* The field guide: a round badge for each entry, in its kind's colour once seen. */
+#book-sheet .badge {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(31, 42, 58, 0.14);
+}
+#book-sheet .species.earned .badge-animal {
+  background: #8a5a3c;
+}
+#book-sheet .species.earned .badge-bird {
+  background: #3f6fb5;
+}
+#book-sheet .species.earned .badge-plant {
+  background: #4f8a3f;
+}
+#book-sheet .species.earned .badge-curio {
+  background: #7a4fa3;
+}
+#book-sheet .species .when {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin-top: 2px;
+}
+/* Three tabs and Close have to share a narrow screen. */
+#book-sheet .tabs button {
+  padding: 10px 10px;
+  font-size: 14px;
 }
 #book-sheet .rarity {
   font-size: 10px;

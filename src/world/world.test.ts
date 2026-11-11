@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { trailAt } from './trails';
 import { loadTestWorld } from './testWorld';
+import { OPEN_LAND, OPEN_WATER } from './world';
 
 // These run against the real generated files in public/world, so a bad pipeline run fails here.
 const world = loadTestWorld();
@@ -74,5 +75,67 @@ describe('generated world', () => {
     const covered = world.trailMask.reduce((n, v) => n + (v > 0 ? 1 : 0), 0) / world.trailMask.length;
     expect(covered).toBeGreaterThan(0.02);
     expect(covered).toBeLessThan(0.25);
+  });
+
+  it('knows the town: roads, houses, ponds and lookouts, all inside the map', () => {
+    expect(world.roads.length).toBeGreaterThan(100);
+    expect(world.roads.some((r) => r.name === 'Main Street')).toBe(true);
+    expect(world.buildings.length).toBeGreaterThan(300);
+    const hf = world.source;
+    for (const b of world.buildings) {
+      expect(b.x).toBeGreaterThanOrEqual(hf.minX);
+      expect(b.x).toBeLessThanOrEqual(hf.maxX);
+      expect(b.z).toBeGreaterThanOrEqual(hf.minZ);
+      expect(b.z).toBeLessThanOrEqual(hf.maxZ);
+      expect(b.w).toBeGreaterThanOrEqual(3);
+      expect(b.d).toBeGreaterThanOrEqual(3);
+      expect(Math.abs(b.y - hf.heightAt(b.x, b.z))).toBeLessThan(3);
+    }
+    expect(world.ponds.map((p) => p.id)).toContain('rabbit-pond');
+    expect(world.spots.filter((s) => s.kind === 'viewpoint').map((s) => s.id).sort()).toEqual(['scenic-view', 'twister-cliffs', 'vermont-overlook', 'windy-hill-lookout']);
+    expect(world.spots.filter((s) => s.kind === 'quarry').map((s) => s.id).sort()).toEqual(['barton-mine', 'garnet-quarry']);
+  });
+
+  it('keeps forest off roads, lots and water, and marks the Hudson as water', () => {
+    const depot = world.places.find((p) => p.id === 'depot');
+    if (!depot) throw new Error('no depot');
+    // The depot stands on its own lot.
+    expect(world.openAt(depot.x, depot.z)).toBe(OPEN_LAND);
+    for (const b of world.buildings.slice(0, 80)) expect(world.openAt(b.x, b.z), `${b.x},${b.z}`).not.toBe(0);
+    const pond = world.ponds.find((p) => p.id === 'rabbit-pond');
+    if (!pond) throw new Error('no pond');
+    expect(world.openAt(pond.x, pond.z)).toBe(OPEN_WATER);
+    const hudson = world.water.find((w) => w.kind === 'river');
+    if (!hudson) throw new Error('no river');
+    let wet = 0;
+    let inside = 0;
+    for (let i = 0; i + 1 < hudson.pts.length; i += 2) {
+      const [x, z] = [hudson.pts[i] as number, hudson.pts[i + 1] as number];
+      if (x < world.source.minX || x > world.source.maxX || z < world.source.minZ || z > world.source.maxZ) continue;
+      inside++;
+      if (world.openAt(x, z) === OPEN_WATER) wet++;
+    }
+    expect(inside).toBeGreaterThan(2);
+    expect(wet).toBe(inside);
+    // Deep woods are neither.
+    const summit = world.places.find((p) => p.id === 'summit');
+    expect(world.openAt((summit?.x ?? 0) - 300, (summit?.z ?? 0) - 300)).toBe(0);
+  });
+
+  it('puts hardwoods on the lower slopes and spruce and fir at the top', () => {
+    const at = (id: string) => {
+      const p = world.places.find((q) => q.id === id);
+      if (!p) throw new Error(id);
+      return world.hardwoodAt(p.x, p.z);
+    };
+    expect(at('summit')).toBeLessThan(0.1);
+    expect(at('depot')).toBeGreaterThan(0.6);
+    expect(at('ski-bowl-lodge')).toBeGreaterThan(0.6);
+    expect(at('base-lodge')).toBeGreaterThan(at('saddle-lodge'));
+    for (let i = 0; i < 200; i++) {
+      const share = world.hardwoodAt(world.source.minX + (i * 277) % world.source.width, world.source.minZ + (i * 191) % world.source.depth);
+      expect(share).toBeGreaterThanOrEqual(0);
+      expect(share).toBeLessThanOrEqual(1);
+    }
   });
 });

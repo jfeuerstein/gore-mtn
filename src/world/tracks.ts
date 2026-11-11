@@ -33,8 +33,14 @@ export class SkiTracks {
   private lastX = 0;
   private lastZ = 0;
 
-  /** @param colour a touch darker than groomed snow, so tracks read as shallow grooves */
-  constructor(colour = 0xc3cfe3) {
+  /**
+   * @param colour a touch darker than groomed snow, so tracks read as shallow grooves
+   * @param gap half the distance between the two marks, in metres: skis run side by side, a bike's wheels in one line
+   */
+  constructor(
+    colour = 0xc3cfe3,
+    private readonly gap = SKI_GAP,
+  ) {
     this.positions = new Float32Array(MAX_STEPS * FLOATS);
     this.attribute = new THREE.BufferAttribute(this.positions, 3);
     this.attribute.setUsage(THREE.DynamicDrawUsage);
@@ -75,8 +81,8 @@ export class SkiTracks {
     const half = trackHalfWidth(slip);
     const acrossX = Math.cos(travel) * half;
     const acrossZ = -Math.sin(travel) * half;
-    const gapX = Math.cos(heading) * SKI_GAP;
-    const gapZ = -Math.sin(heading) * SKI_GAP;
+    const gapX = Math.cos(heading) * this.gap;
+    const gapZ = -Math.sin(heading) * this.gap;
     const now = new Float32Array(12);
     for (let ski = 0; ski < 2; ski++) {
       const side = ski === 0 ? -1 : 1;

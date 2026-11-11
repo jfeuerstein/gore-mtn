@@ -110,6 +110,36 @@ export const SKI: SkiParams = {
   poleMaxSpeed: 6,
 };
 
+/**
+ * Spring skiing. The trails keep their snow, softer and a touch slower than winter's; off them
+ * the ground is bare, and skis grind across it at a crawl. Poling still gets a skier back to the
+ * snow, so nobody is ever stuck.
+ */
+export const SPRING_SKI: SkiParams = { ...SKI, friction: 0.05, powderFriction: 0.3, powderDrag: 2.5 };
+
+/**
+ * A mountain bike, for when the snow has gone. The same simulation with other numbers: tyres on
+ * grass roll less freely than skis on snow and let go sooner in a hard turn, the rider sits up in
+ * the wind, and "poling" is pedalling, which is good for a steady pace on the flat and up a
+ * gentle hill. Braking hard slides the back wheel round, as a hockey stop does skis.
+ */
+export const BIKE: SkiParams = {
+  ...SKI,
+  friction: 0.055,
+  powderFriction: 0.16,
+  staticFriction: 0.06,
+  drag: 0.0075,
+  powderDrag: 1.5,
+  tuckDrag: 0.7,
+  carveRadius: 6.5,
+  maxTurnRate: 2.6,
+  edgeHold: 17,
+  skidFriction: 4,
+  brakeFriction: 11,
+  poleAccel: 5,
+  poleMaxSpeed: 10,
+};
+
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v);
 const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 const smoothstep = (a: number, b: number, v: number): number => {

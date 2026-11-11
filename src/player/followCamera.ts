@@ -8,6 +8,9 @@ const MAX_PITCH = 1.3;
 const MANUAL_HOLD_S = 1.5;
 
 /** Third-person orbit camera. Yaw 0 looks north (-z); positive pitch looks down from above. */
+/** The most the camera rises to see over a building, in metres. */
+const MAX_ROOF_LIFT = 12;
+
 export class FollowCamera {
   yaw = 0;
   pitch = 0.32;
@@ -59,6 +62,9 @@ export class FollowCamera {
     this.yaw = followYaw(this.yaw, heading, amount, dt, always);
   }
 
+  /** How far the camera is presently raised to see over a roof, in metres. */
+  private roofLift = 0;
+
   /**
    * Ease the pitch toward a value, unless the camera was just tilted by hand.
    * @returns true once it has arrived
@@ -76,8 +82,9 @@ export class FollowCamera {
 
   /**
    * @param speed the player's speed in m/s, for the sense of rush at pace
+   * @param roofAt the height of any roof over a point, or -Infinity under open sky
    */
-  update(follow: THREE.Vector3, hf: Heightfield, speed = 0, dt = 0): void {
+  update(follow: THREE.Vector3, hf: Heightfield, speed = 0, dt = 0, roofAt: (x: number, z: number) => number = () => -Infinity): void {
     const rushTarget = Math.min(1, Math.max(0, (speed - 10) / 24));
     this.rush += (rushTarget - this.rush) * Math.min(1, dt * 1.5);
     const distance = this.distance * (1 + 0.22 * this.rush);
@@ -106,6 +113,21 @@ export class FollowCamera {
       if (needed > minY) minY = needed;
     }
     if (cam.y < minY) cam.y = minY;
+    // Likewise a building: rise until the camera is over its roof and can see the player past it.
+    // Roofs come and go abruptly as the camera moves, so this lift is eased, up quickly and down gently.
+    // A wall right beside the player cannot be seen over from any sensible height, so only the
+    // far half of the way is looked at, and the lift has a limit.
+    let over = 0;
+    for (const t of [0.5, 0.75, 1]) {
+      const roof = roofAt(follow.x + (cam.x - follow.x) * t, follow.z + (cam.z - follow.z) * t);
+      if (roof === -Infinity) continue;
+      const needed = feetY + (roof + 1 - feetY) / t;
+      if (needed - cam.y > over) over = needed - cam.y;
+    }
+    over = Math.min(over, MAX_ROOF_LIFT);
+    this.roofLift += (over - this.roofLift) * Math.min(1, dt * (over > this.roofLift ? 8 : 2.5));
+    if (dt === 0) this.roofLift = over;
+    cam.y += this.roofLift;
     this.aim.copy(this.target);
     this.aim.y += distance * this.aimLift;
     this.camera.lookAt(this.aim);

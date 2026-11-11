@@ -1,8 +1,11 @@
+import { SEASONS, type Season } from './look/season';
 import { TIMES, type TimeName } from './look/sun';
 import { WEATHERS, type WeatherName } from './look/weather';
 
 /** Debug and quality options, read from the URL so any state can be linked to and screenshotted. */
 export interface Config {
+  /** The season: by the calendar (or wherever the Snow Train has taken the player), or a named one for trying out. */
+  season: 'real' | Season;
   /** The time of day: the real clock at Gore, or a named moment of today. */
   time: 'real' | TimeName;
   /** The weather: the real sky at Gore, or a settled kind. */
@@ -41,6 +44,7 @@ export interface Config {
 }
 
 export const DEFAULTS: Config = {
+  season: 'real',
   time: 'real',
   weather: 'real',
   renderer: 'webgpu',
@@ -94,6 +98,7 @@ export function parseConfig(search: string): Config {
       ? { x: px, z: pz }
       : null;
   return {
+    season: oneOf(q.get('season'), SEASONS) ?? d.season,
     time: oneOf(q.get('time'), TIMES) ?? d.time,
     weather: oneOf(q.get('weather'), WEATHERS) ?? d.weather,
     renderer: q.get('renderer') === 'webgl' ? 'webgl' : d.renderer,

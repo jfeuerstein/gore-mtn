@@ -1,6 +1,8 @@
 import type { Game } from '../game/game';
 import { MINERALS } from '../game/minerals';
 import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
+import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
+import { SEASON_NAME, SEASONS } from '../look/season';
 import { DIFFICULTY_MARK } from '../world/trails';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -22,7 +24,10 @@ const TRAIL_GROUPS: { title: string; has: (t: TrailEntry) => boolean }[] = [
   { title: 'Terrain parks', has: (t) => !t.glade && t.difficulty === 'freeride' },
 ];
 
-type Tab = 'passport' | 'minerals';
+type Tab = 'passport' | 'minerals' | 'guide';
+
+const SEASON_WORDS = (s: Species): string => (s.seasons ? s.seasons.map((q) => SEASON_NAME[q]).join(', ') : 'All year');
+const WATCH_WORDS = (s: Species): string => (s.watches ? s.watches.join(', ') : '');
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text = ''): HTMLElementTagNameMap[K] => {
   const node = document.createElement(tag);
@@ -52,6 +57,7 @@ export class Book {
     for (const [tab, label] of [
       ['passport', 'Passport'],
       ['minerals', 'Minerals'],
+      ['guide', 'Field guide'],
     ] as const) {
       const button = el('button', '', label);
       button.type = 'button';
@@ -95,7 +101,7 @@ export class Book {
 
   private render(): void {
     for (const [tab, button] of this.tabs) button.setAttribute('aria-pressed', String(tab === this.tab));
-    this.body.replaceChildren(...(this.tab === 'passport' ? this.passport() : this.minerals()));
+    this.body.replaceChildren(...(this.tab === 'passport' ? this.passport() : this.tab === 'minerals' ? this.minerals() : this.guide()));
   }
 
   private heading(title: string, have: number, of: number): HTMLElement {
@@ -104,13 +110,21 @@ export class Book {
     return h;
   }
 
-  /** A row of stamps: inked when earned, a dotted outline when not. */
-  private stamps(kind: string, items: { name: string; day: string | undefined; how?: string }[]): HTMLElement {
+  /**
+   * A row of stamps: inked when earned, a dotted outline when not.
+   * `pips` are smaller marks on a stamp, one for each season it can be earned in.
+   */
+  private stamps(kind: string, items: { name: string; day: string | undefined; how?: string; pips?: { label: string; on: boolean }[] }[]): HTMLElement {
     const row = el('div', 'stamps');
     for (const item of items) {
       const stamp = el('div', `stamp ${kind} ${item.day ? 'earned' : 'todo'}`);
       stamp.appendChild(el('b', '', item.name));
       stamp.appendChild(el('small', '', item.day ? shortDay(item.day) : (item.how ?? '')));
+      if (item.pips) {
+        const pips = el('span', 'pips');
+        for (const pip of item.pips) pips.appendChild(el('i', pip.on ? 'on' : '', pip.label));
+        stamp.appendChild(pips);
+      }
       row.appendChild(stamp);
     }
     return row;
@@ -122,8 +136,21 @@ export class Book {
     const s = game.summary();
     const out: HTMLElement[] = [];
 
-    out.push(this.heading('Summits', s.peaks, s.peaksTotal));
-    out.push(this.stamps('peak', game.peaks.map((p) => ({ name: p.name, day: save.peaks[p.id], how: 'Stand on top.' }))));
+    out.push(this.heading('Seasons', s.seasons, SEASONS.length));
+    out.push(this.stamps('season', SEASONS.map((season) => ({ name: SEASON_NAME[season], day: save.seasons[season], how: 'Visit the mountain.' }))));
+    out.push(this.heading('Summits', s.seasonPeaks, s.seasonPeaksTotal));
+    out.push(el('p', 'note', 'Each summit has a patch for every season.'));
+    out.push(
+      this.stamps(
+        'peak',
+        game.peaks.map((p) => ({
+          name: p.name,
+          day: save.peaks[p.id],
+          how: 'Stand on top.',
+          pips: SEASONS.map((season) => ({ label: SEASON_NAME[season].slice(0, 2), on: `${p.id}:${season}` in save.seasonPeaks })),
+        })),
+      ),
+    );
     out.push(this.heading('Landmarks', s.landmarks, s.landmarksTotal));
     out.push(this.stamps('landmark', game.landmarks.map((p) => ({ name: p.name, day: save.landmarks[p.id], how: 'Pay a visit.' }))));
     out.push(this.heading('Conditions', s.conditions, s.conditionsTotal));
@@ -132,7 +159,7 @@ export class Book {
     out.push(this.stamps('lift', game.liftNames.map((name) => ({ name, day: save.lifts[name], how: 'Ride to the top.' }))));
 
     out.push(this.heading('Trails', s.trails, s.trailsTotal));
-    out.push(el('p', 'note', 'Ski a trail from top to bottom to stamp it. It need not be in one run.'));
+    out.push(el('p', 'note', 'Ski a trail from top to bottom to stamp it, or ride it when the snow has gone. It need not be in one run.'));
     for (const group of TRAIL_GROUPS) {
       const trails = game.trails.filter(group.has);
       if (trails.length === 0) continue;
@@ -157,6 +184,61 @@ export class Book {
           row.appendChild(bar);
         }
         list.appendChild(row);
+      }
+      out.push(list);
+    }
+
+    out.push(this.heading('Paths', s.paths, s.pathsTotal));
+    out.push(el('p', 'note', 'The hiking, biking and cross-country trails through the woods. Follow one from end to end, on foot or however you like. They are on the map as dotted lines.'));
+    const paths = el('div', 'trails');
+    for (const path of game.paths) {
+      const progress = save.paths[path.name];
+      const row = el('div', `trail ${progress?.stamped ? 'earned' : ''}`);
+      row.appendChild(el('span', 'mark mark-path', '⋯'));
+      row.appendChild(el('span', 'name', path.name));
+      if (progress?.stamped) {
+        row.appendChild(el('small', '', shortDay(progress.stamped)));
+      } else {
+        const bar = el('span', 'bar');
+        const fill = el('i');
+        fill.style.width = `${Math.round(trailShare(progress) * 100)}%`;
+        bar.appendChild(fill);
+        row.appendChild(bar);
+      }
+      paths.appendChild(row);
+    }
+    out.push(paths);
+    return out;
+  }
+
+  private guide(): HTMLElement[] {
+    const { game } = this;
+    const s = game.summary();
+    const out: HTMLElement[] = [this.heading('Field guide', s.species, s.speciesTotal)];
+    out.push(el('p', 'note', 'Come close to an animal, a bird or a plant to enter it in the guide. Anything not yet in it carries a pale blue mark. What is about changes with the season and the hour.'));
+    for (const kin of ['animal', 'bird', 'plant', 'curio'] as Kin[]) {
+      const entries = SPECIES.filter((sp) => sp.kin === kin);
+      const seen = entries.filter((sp) => game.save.sightings[sp.id]).length;
+      const h = el('h4', '', KIN_NAME[kin]);
+      h.appendChild(el('span', '', `${seen} of ${entries.length}`));
+      out.push(h);
+      const list = el('div', 'minerals');
+      for (const sp of entries) {
+        const record = game.save.sightings[sp.id];
+        const card = el('div', `mineral species ${record ? 'earned' : 'todo'}`);
+        card.appendChild(el('span', `badge badge-${kin}`, record ? sp.name.charAt(0) : '?'));
+        const text = el('div');
+        text.appendChild(el('b', '', sp.name));
+        if (record) {
+          text.appendChild(el('small', 'tally', `Seen ${record.count === 1 ? 'once' : `${record.count} times`} · first ${shortDay(record.first)}`));
+          text.appendChild(el('small', '', sp.about));
+        } else {
+          text.appendChild(el('small', '', sp.hint));
+        }
+        const when = [SEASON_WORDS(sp), WATCH_WORDS(sp)].filter(Boolean).join(' · ');
+        text.appendChild(el('small', 'when', when));
+        card.append(card.firstChild as Node, text);
+        list.appendChild(card);
       }
       out.push(list);
     }

@@ -12,9 +12,12 @@
 import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
-const query = process.argv[2] ?? 'trees=20000&view=900';
+// Winter is the plain path; fall also dresses each tree in its own colour.
+const queries = process.argv[2] ? [process.argv[2]] : ['season=winter&trees=20000&view=900', 'season=fall&trees=20000&view=900'];
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const browser = await launchBrowser({ webgpu: true });
+const allProblems = [];
+for (const query of queries) {
 const problems = [];
 let frames = 0;
 let backend = '';
@@ -22,7 +25,7 @@ let stones = 0;
 let error = null;
 /** Frames drawn when the device was lost, or null if it never was. */
 let lostAfter = null;
-try {
+{
   const page = await browser.newPage({ viewport: { width: 402, height: 874 } });
   const note = (text) => {
     // Expected here: the instance is dropped once Chromium fails to present the canvas.
@@ -53,11 +56,9 @@ try {
     const state = window.__gore.state();
     return { frames: state.frames, backend: state.backend, stones: state.finds?.length ?? 0, error: window.__gore.error, lostAfter: window.__gpuLostAfter };
   }));
-} finally {
-  await browser.close();
-  await server.close();
+  await page.close();
 }
-console.log(`backend ${backend}, ${frames} frames drawn, ${stones} stones on show`);
+console.log(`${query}: backend ${backend}, ${frames} frames drawn, ${stones} stones on show`);
 if (backend !== 'WebGPU') problems.push(`expected the WebGPU backend, got ${backend || 'none'}`);
 if (lostAfter === null) {
   // The device held, so the game should simply have run.
@@ -69,5 +70,9 @@ if (lostAfter === null) {
   if (lostAfter < 1) problems.push('the WebGPU device was lost before a single frame was drawn');
 }
 for (const p of problems) console.error(`FAIL ${p}`);
-console.log(problems.length ? `${problems.length} problem(s)` : 'ok   first frames drew through WebGPU with no shader or pipeline errors');
-process.exit(problems.length ? 1 : 0);
+allProblems.push(...problems);
+}
+await browser.close();
+await server.close();
+console.log(allProblems.length ? `${allProblems.length} problem(s)` : 'ok   first frames drew through WebGPU with no shader or pipeline errors');
+process.exit(allProblems.length ? 1 : 0);

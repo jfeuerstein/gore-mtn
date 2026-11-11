@@ -22,6 +22,7 @@ const address = server.httpServer.address();
 // The game follows the real clock and weather, which would make screenshots differ from one run
 // to the next. Unless the query says otherwise, take them at midday under a clear sky.
 const params = new URLSearchParams(query);
+if (!params.has('season')) params.set('season', 'winter');
 if (!params.has('time')) params.set('time', 'midday');
 if (!params.has('weather')) params.set('weather', 'clear');
 const url = `http://127.0.0.1:${address.port}/?${params}`;
