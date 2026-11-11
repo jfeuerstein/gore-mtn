@@ -14,9 +14,9 @@ import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
-import { snowReport } from './game/report';
+import { snowReport, trailOfTheDay, wildlifeLog } from './game/report';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
-import { watchFor } from './game/wildlife';
+import { SPECIES, watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book } from './ui/book';
 import { TalkSheet, type Choice, type Written } from './ui/talk';
@@ -482,11 +482,15 @@ async function boot(): Promise<void> {
       talk.lines.push(`Where to? It is ${SEASON_NAME[season].toLowerCase()} here.`);
     }
     const lines: (string | Written)[] = [...talk.lines];
-    // The snow report is chalked up from the sky as it is this minute.
-    if (standing.person.id === 'report') {
-      const conditions = { season, overcast: weather.overcast, falling: weather.snowing, watch, day: today };
-      lines.splice(0, lines.length, snowReport(conditions, world.lifts.length, new Set(world.trails.filter((t) => t.name && !t.area).map((t) => t.name)).size));
-    }
+    // Some boards are chalked up fresh each time they are read: from the sky as it is this
+    // minute, from the passport, from what is about on the mountain at this hour.
+    const chalked: Record<string, () => string> = {
+      report: () => snowReport({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }, world.lifts.length, game.trails.length),
+      trailboard: () => trailOfTheDay(game.trails, (name) => Boolean(game.save.trails[name]?.stamped), today, look.ride === 'bike'),
+      log: () => wildlifeLog(SPECIES, (id) => id in game.save.sightings, season, watch, today),
+    };
+    const chalk = chalked[standing.person.id];
+    if (chalk) lines.splice(0, lines.length, chalk());
     // A letter is read on the spot, in the hand it was written in.
     if (talk.letter) lines.push({ written: talk.letter.text, signed: talk.letter.signed });
     const board = talk.person.kind === 'board';

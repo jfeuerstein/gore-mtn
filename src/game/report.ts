@@ -1,5 +1,6 @@
 import type { Season } from '../look/season';
-import type { Watch } from './wildlife';
+import { DIFFICULTY_MARK, type Difficulty } from '../world/trails';
+import type { Species, Watch } from './wildlife';
 
 /**
  * The snow report chalked up by the Base Lodge door: the real season, sky and hour at Gore, as
@@ -73,4 +74,57 @@ export function snowReport(c: Conditions, lifts: number, trails: number): string
     `Lifts turning: ${lifts} of ${lifts}. Trails open: ${trails} of ${trails}. Closed: none, ever.`,
     NOTES[seed % NOTES.length] as string,
   ].join(' ');
+}
+
+/** A small repeatable number from a day. */
+function dayNumber(day: string): number {
+  let seed = 0;
+  for (let i = 0; i < day.length; i++) seed = (seed * 31 + day.charCodeAt(i)) >>> 0;
+  return seed;
+}
+
+/** Why today's trail is today's trail. */
+const REASONS: readonly string[] = [
+  'you have not skied it. That is the whole reason',
+  'Bram combed it specially',
+  'Otto gives it an eight',
+  'somebody has to',
+  'the view, about halfway down',
+  'it has been asking after you',
+];
+
+/**
+ * The trail board outside the Saddle Lodge: each day it picks one trail not yet stamped in the
+ * passport, so there is always somewhere new to go.
+ * @param stamped whether a trail is already in the passport
+ * @param riding true in the bike months, when it is the ride of the day
+ */
+export function trailOfTheDay(trails: readonly { name: string; difficulty: Difficulty; glade: boolean }[], stamped: (name: string) => boolean, day: string, riding = false): string {
+  const title = riding ? 'RIDE OF THE DAY' : 'TRAIL OF THE DAY';
+  const todo = trails.filter((t) => !stamped(t.name));
+  if (todo.length === 0) return `${title}: whichever you like. You have done every one of them. We checked the book. Twice.`;
+  const seed = dayNumber(day);
+  const pick = todo[seed % todo.length] as (typeof todo)[number];
+  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}. Why: ${REASONS[(seed >>> 3) % REASONS.length]}. ${todo.length} still to stamp.`;
+}
+
+const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime', dusk: 'last light', night: 'after dark' };
+
+/**
+ * The observer's log at the fire tower: what is about on the mountain this season at this hour,
+ * with whatever is not yet in the field guide first, and where to look for it.
+ * @param seen whether a species is already in the guide
+ */
+export function wildlifeLog(species: readonly Species[], seen: (id: string) => boolean, season: Season, watch: Watch, day: string): string {
+  // What keeps to one named spot is not for a general log, and nor is a cairn.
+  const about = species.filter((s) => s.kin !== 'curio' && !s.near && (!s.seasons || s.seasons.includes(season)) && (!s.watches || s.watches.includes(watch)));
+  if (about.length === 0) return `LOG, ${WATCH_NAME[watch]}. Nothing stirring. Even the ravens have gone in.`;
+  const seed = dayNumber(day + watch);
+  // Turn the list by the day, then put the unseen first.
+  const turned = about.map((_, i) => about[(i + seed) % about.length] as Species);
+  const fresh = turned.filter((s) => !seen(s.id));
+  const picks = [...fresh, ...turned.filter((s) => seen(s.id))].slice(0, 3);
+  const names = picks.map((s) => s.name.toLowerCase()).join(', ');
+  const lead = fresh[0];
+  return `LOG, ${WATCH_NAME[watch]}. About on the mountain: ${names}.${lead ? ` Not yet in your guide: ${lead.name.toLowerCase()}. ${lead.hint}` : ' All of them old friends of yours.'}`;
 }

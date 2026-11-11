@@ -595,6 +595,19 @@ try {
   await tp.tap('#talk-button');
   check('its notices are written out', (await tp.locator('#talk-sheet .line.written').count()) === 1);
   await shut();
+  // The boards that are chalked up fresh: the snow report reads the sky the tools have pinned.
+  await goTo(person('report').x + 0.8, person('report').z + 1.2);
+  check('the snow report by the Base Lodge door can be read', await invites('Read the snow report'));
+  await tp.tap('#talk-button');
+  const chalked = await tp.locator('#talk-sheet .line.written').textContent();
+  check('it reports a clear winter day, with every trail open', /SNOW REPORT/.test(chalked) && /bluebird/.test(chalked) && /Trails open: (\d+) of \1\./.test(chalked), chalked.slice(0, 90));
+  await shut();
+  await goTo(person('trailboard').x + 0.8, person('trailboard').z + 1.2);
+  await invites('Read the trail board');
+  await tp.tap('#talk-button');
+  const pick = await tp.locator('#talk-sheet .line.written').textContent();
+  check('the trail board picks a trail still to be stamped', /TRAIL OF THE DAY: \S+ [A-Z0-9' ()&-]+\./.test(pick) && /still to stamp/.test(pick), pick.slice(0, 80));
+  await shut();
   await goTo(person('pickles').x + 0.6, person('pickles').z + 0.6);
   check('the Mayor, who is a cat, can be petted', await invites('Pet Mayor Pickles'));
   await goTo(person('tom').x + 0.8, person('tom').z + 1.2);

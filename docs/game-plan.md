@@ -561,6 +561,12 @@ then models, a real town, sillier characters and a cohesive interface).
   outside the lodges in the snow months and picnic tables the rest of the year; snow guns down
   the edges of the wide trails in winter and spring; doors and chimneys on the town's houses;
   and the church strikes the real hour.
+- **Boards that know things.** A snow report by the Base Lodge door, chalked from the real sky
+  ("Trails open: 112 of 112. Closed: none, ever."); a trail of the day outside the Saddle Lodge,
+  always one not yet in the passport; and the observer's log at the fire tower, which says
+  what is about this season and hour and where to look for whatever is not in the guide yet.
+- **Four errands for the town**, and an errand is now asked once a day: turned down, its asker
+  has other things to say until tomorrow.
 - **Fixes from the review**: a faster bike; nights out of winter that can be seen in; a camera
   that pulls in rather than up when a roof gets in its way; nobody standing in a quarry pit.
 

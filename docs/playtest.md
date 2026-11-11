@@ -43,6 +43,9 @@ milestone 1 has had your thumbs on it, so expect rough edges and say where they 
   Marge at the Copperfield Inn has the day's rumour of a rare stone, June and Walt on Main
   Street have something new to eat, and Fenn at the Town Hall lends a book. Read the
   noticeboard. Greet the Mayor.
+- The three boards: the snow report by the Base Lodge door, the trail of the day outside the
+  Saddle Lodge, and the observer's log at the foot of the fire tower. They read the real sky,
+  your passport and your field guide.
 - The Snow Train at the depot, after dark, with its windows lit.
 - The old gondola's mid station, in the woods on the mountain. It is on no sign.
 - Tom, by the Ski Bowl lodge. Visit him in every season.

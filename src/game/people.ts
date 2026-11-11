@@ -443,6 +443,28 @@ export const PEOPLE: readonly Person[] = [
     chat: ['SNOW REPORT. Conditions: yes. Lifts: turning. Trails: open. Chalk: still missing.', 'SNOW REPORT. See yesterday. It was a good one.'],
   },
   {
+    // Picks, each day, a trail not yet in the passport (`trailOfTheDay`).
+    id: 'trailboard',
+    name: 'the trail board',
+    kind: 'board',
+    role: 'Outside the Saddle Lodge',
+    at: { place: 'saddle-lodge', aside: -10 },
+    look: { jacket: 0x8a6a3c, trousers: 0x8a6a3c, hat: 0x8a6a3c, style: 'beanie' },
+    hello: 'TRAIL OF THE DAY: to be announced. The person with the chalk is out skiing it.',
+    chat: ['TRAIL OF THE DAY: to be announced. The person with the chalk is out skiing it.', 'TRAIL OF THE DAY: all of them, in any order.'],
+  },
+  {
+    // What is about on the mountain this season and hour, the unseen first (`wildlifeLog`).
+    id: 'log',
+    name: 'the observer\'s log',
+    kind: 'board',
+    role: 'Pinned up at the foot of the fire tower',
+    at: { place: 'summit', aside: -7 },
+    look: { jacket: 0x8a6a3c, trousers: 0x8a6a3c, hat: 0x8a6a3c, style: 'beanie' },
+    hello: 'LOG. Weather: sky. Wildlife: some. Further entries when the pencil turns up.',
+    chat: ['LOG. Weather: sky. Wildlife: some. Further entries when the pencil turns up.', 'LOG. Ravens: forty. Same forty.'],
+  },
+  {
     id: 'biscuit',
     name: 'Biscuit',
     kind: 'dog',

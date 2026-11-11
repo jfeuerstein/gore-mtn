@@ -20,6 +20,7 @@ npm run build        # type-check and build to dist/
 npm run world        # regenerate public/world/ from USGS and OpenStreetMap (needs Python deps)
 node tools/shot.mjs out.png "at=summit&trees=20000"   # screenshot the built game (upright phone size)
 node tools/shot.mjs out.png "" 402 874 2 "document.getElementById('book-button').click()"   # ...after running a script in the page
+node tools/shot.mjs out.png "" 402 874 1 "<script>" "$(cat save.json)"                       # ...starting from a given book
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
@@ -271,6 +272,10 @@ beyond the pipeline's ground pictures, and nothing needs Blender yet.
 - Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted, and the
   `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
+- Three boards are chalked up fresh each time they are read (`src/game/report.ts`, pure, tested):
+  the snow report by the Base Lodge door (the real season, sky and hour), the trail board
+  outside the Saddle Lodge (each day, a trail not yet in the passport) and the observer's log at
+  the fire tower (what is about this season and hour, the unseen first, with where to look).
 - Someone whose whereabouts fall at one of the town's named places stands by its front door.
 - People remark on the moment (`moods`: snowing, raining, night, dawn, dusk) before small talk,
   and once a day on what the player has on (`wearing`, by gear id).
