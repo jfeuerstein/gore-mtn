@@ -162,7 +162,15 @@ export interface Bench extends Fixture {
 const WITH_BENCH: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'church', 'cafe', 'deli', 'tavern', 'store', 'cabin'];
 
 /** A sign's capitals as a name: "TOWN HALL & LIBRARY" to "Town Hall & Library". */
-const named = (text: string): string => text.toLowerCase().replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
+export const signName = (text: string): string =>
+  text
+    .toLowerCase()
+    .replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase())
+    // The little words in the middle of a name keep their small letters.
+    .replace(/ (On|Of|The|And|In|At) /g, (word) => word.toLowerCase());
+
+/** A name as it reads after "outside": "the Post Office", "the Inn on Gore", but "June's Bakery" as it is. */
+const withThe = (name: string): string => (/'s /.test(name) ? name : `the ${name.replace(/^The /, '')}`);
 
 /** A bench against the front wall of each place people wait at, to one side of the door, facing the street. */
 export function benches(places: readonly TownPlace[]): Bench[] {
@@ -170,7 +178,7 @@ export function benches(places: readonly TownPlace[]): Bench[] {
     .filter((p) => WITH_BENCH.includes(p.style))
     .map((p) => ({
       id: `bench:${p.id}`,
-      name: p.sign ? `Outside ${named(p.sign).replace(/^The /, 'the ')}` : p.style === 'church' ? 'By the church door' : 'By the door',
+      name: p.sign ? `Outside ${withThe(signName(p.sign))}` : p.style === 'church' ? 'By the church door' : 'By the door',
       ...fromLocal(p, -Math.min(p.w / 2 - 1.2, 3.6), p.d / 2 + (p.style === 'inn' || p.style === 'cabin' || p.style === 'tavern' ? 1.2 : 0.9)),
       turn: p.turn,
     }));

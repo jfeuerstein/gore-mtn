@@ -623,6 +623,23 @@ The questions still open from milestones 2 and 3 stand. To those, add:
 
 ## 12. Open questions
 
-1. The verdicts on everything since milestone 1 (see "What to judge" in the roadmap).
-2. Are Café Sarah and Izzy's Market & Deli the places you remember? The game has a baker and a sandwich maker on Main Street standing in for them, unnamed, until this is known.
-4. The fal key has not been needed so far: everything is built in code. If it is, it gets entered through a secure form or environment settings, never pasted into chat or committed.
+Decisions made while you were away that are yours to overrule. Each is easy to change.
+
+1. **The look of the interface.** Poster capitals, handwriting, paper and enamel. If it is not
+   the game you had in mind, say what is off; the colours and faces are variables at the top of
+   `src/style.css`.
+2. **The pictures.** Portraits and plates are gouache-and-pencil, as from an old field guide,
+   painted through fal (about $2.50 in all, most of it on a first model that was dropped).
+   One prompt sets the look for all of them, so restyling the lot is one edit and one run.
+3. **Boards and shingles on buildings.** On by default; Settings > For testing switches them
+   off. Tell me which you prefer on the phone.
+4. **June's Bakery and Walt's Deli** stand in for the bakery and the deli you remember, in two
+   real buildings on Main Street that I chose by where their keepers already stood. Say if they
+   should move, or be renamed. The inn is signed "Copperfield Inn", the market "Market".
+5. **The depot** now stands on the real station's plot along the rails, 29 m from where the map
+   has the museum's point, so that a train could stand at its platform.
+6. **The new neighbours**: a snowman, a weather prophet, a patroller, a cat who is mayor. Tell
+   me which are funny and which are too much. All of it is data in `src/game/people.ts`.
+7. **Frame rate.** Draw calls are over the cautious target (see the Performance budget in
+   CLAUDE.md). Settings > For testing > Run benchmark, pasted back, would say whether it matters.
+8. The verdicts on everything since milestone 1 (see "What to judge" in the roadmap).

@@ -66,7 +66,9 @@ describe('street furniture', () => {
   it('names every bench in town after the door it stands by', () => {
     const seats = benches(resolveTownPlaces(world));
     expect(new Set(seats.map((b) => b.id)).size).toBe(seats.length);
-    expect(seats.some((b) => b.name === 'Outside Post Office')).toBe(true);
+    expect(seats.some((b) => b.name === 'Outside the Post Office')).toBe(true);
+    expect(seats.some((b) => b.name === "Outside June's Bakery")).toBe(true);
+    expect(seats.some((b) => b.name === 'Outside the Inn on Gore')).toBe(true);
     for (const seat of seats) expect(seat.name).toMatch(/^(Outside|By) /);
   });
 

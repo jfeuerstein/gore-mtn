@@ -28,6 +28,7 @@ import { pushOut } from './player/collide';
 import { BIKE, fallLineYaw, SKI, SPRING_SKI } from './player/skiPhysics';
 import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
 import { Built } from './world/built';
+import { signName } from './world/streets';
 import { countryOf } from './world/country';
 import { Critters } from './world/critters';
 import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
@@ -83,9 +84,6 @@ window.__gore = {
   place: () => {},
   census: () => ({}),
 };
-
-/** A sign's capitals as a name: "TOWN HALL & LIBRARY" to "Town Hall & Library". */
-const titleCase = (text: string): string => text.toLowerCase().replace(/(^|[\s·(])([a-z])/g, (_, before: string, letter: string) => before + letter.toUpperCase());
 
 /**
  * The hint that marks the latest news as told. Change it when there is news again, and the
@@ -423,7 +421,7 @@ async function boot(): Promise<void> {
   });
   const folk = new Folk(standings, shadows, season);
   // On the map, a small square for each of the town's doors, named when tapped...
-  trailMap.spots = townPlaces.filter((p) => p.sign).map((p) => ({ x: p.x, z: p.z, label: titleCase(p.sign) }));
+  trailMap.spots = townPlaces.filter((p) => p.sign).map((p) => ({ x: p.x, z: p.z, label: signName(p.sign) }));
   // ...and a gold diamond for everyone with something for the player.
   trailMap.marks = () =>
     standings
