@@ -107,6 +107,12 @@ export const SPECIES_ART = {
  */
 const card = (what) => `a flat screen-printed landscape illustration of ${what}, in the manner of 1930s park service prints, a limited palette of five flat colours, bold simple shapes, strong silhouettes, the picture fills the whole frame edge to edge, there is no title, no caption and no lettering anywhere`;
 export const PLACE_ART = {
+  // What the town builds, once it is built.
+  'lean-to': card('a three-sided log lean-to shelter in a hardwood forest, with a small stone fire ring in front of it'),
+  'rabbit-dock': card('a small wooden dock reaching out over a still mountain pond ringed with fir trees'),
+  bandstand: card('a little white bandstand with a green roof beside a duck pond in a small mountain town'),
+  'burnt-ridge-hut': card('a small red warming hut with a smoking stove pipe at the top of a snowy ski hill, skis leaning against its wall'),
+  'reservoir-deck': card('a wooden lookout deck with a railing on a hillside above a blue reservoir among forested hills'),
   'fire-tower': card('a steel fire lookout tower with a little red-roofed cabin on top, on a snowy forested mountain summit'),
   'saddle-lodge': card('a cosy timber ski lodge with a snow-covered roof and a smoking stone chimney, high on a mountain among fir trees'),
   'base-lodge': card('a big timber ski lodge at the foot of a snowy mountain, with skis leaning in a rack outside'),

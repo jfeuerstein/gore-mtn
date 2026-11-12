@@ -25,6 +25,7 @@ import { insideBox, type WallBox } from './walls';
 import type { World } from './world';
 import { buildYards } from './yards';
 import { CABIN, CHIMNEY, cabinSite, type CabinSite } from './cabin';
+import { projectPlots, type ProjectPlot } from './projectPlots';
 
 /**
  * Everything people have built, apart from the lifts: the lodges and huts, North Creek's houses
@@ -42,6 +43,8 @@ export class Built {
   readonly benches: Bench[];
   /** Where the player's cabin stands, if the map has a plot for it. */
   readonly cabin: CabinSite | null;
+  /** Where each town project stands, whether or not it is built yet: a small clearing waits at each. */
+  readonly plots: ProjectPlot[];
   /** Everything solid, as boxes: the lodges and huts by their models' footprints, the town by its plots, and the train. */
   readonly walls: WallBox[];
   private readonly buildings: Buildings;
@@ -70,6 +73,7 @@ export class Built {
     this.group.name = 'built';
     const townPlaces = (this.townPlaces = resolveTownPlaces(world));
     const depot = (this.depot = depotSetting(world));
+    this.plots = projectPlots(world);
     // The player's cabin takes the plot of one of the map's buildings, and is built by itself.
     this.cabin = cabinSite(world.buildings, world.places, world.trails);
     const styled = new Set([...townPlaces.map((p) => p.building), depot?.building ?? -1, this.cabin?.building ?? -1]);
@@ -183,6 +187,16 @@ export class Built {
 
   /** True close to a lodge or a named place, or in front of its door: where trees should stand back. */
   near(x: number, z: number): boolean {
+    // What the town builds, or will build, has a clearing to stand in.
+    for (const plot of this.plots) {
+      const dx = x - plot.x;
+      const dz = z - plot.z;
+      if (Math.hypot(dx, dz) < 10) return true;
+      // ...and nothing grows in front of it, where it looks out.
+      const ahead = dx * Math.sin(plot.turn) + dz * Math.cos(plot.turn);
+      const aside = dx * Math.cos(plot.turn) - dz * Math.sin(plot.turn);
+      if (ahead > 0 && ahead < 26 && Math.abs(aside) < 6 + ahead * 0.3) return true;
+    }
     // The cabin stands in a clearing of its own, with room for its yard.
     if (this.cabin && Math.hypot(x - this.cabin.x, z - this.cabin.z) < 15) return true;
     // Nothing grows in front of a bench that was put there for the view.

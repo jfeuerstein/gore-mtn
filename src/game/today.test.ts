@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flyerDate, LEADS, personLead, pickLeads, placeLead, rumourLead, trailLead, type Lead } from './today';
+import { flyerDate, LEADS, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
 
 const trail = (name: string): Lead => trailLead({ name, difficulty: 'intermediate', glade: false }, 0, 0, '2026-11-11', false);
 const place = (id: string): Lead => placeLead({ id, name: id, x: 0, z: 0 }, '2026-11-11');
@@ -37,6 +37,17 @@ describe("today's flyer", () => {
       return ids.includes('rumour') ? 'rumour' : 'person';
     });
     expect(new Set(asked).size).toBe(2);
+  });
+
+  it('puts what the town is building where a place would go', () => {
+    const project = projectLead({ id: 'lean-to', name: 'The Hardwood Lean-to', ask: 'Otto wants a lean-to.', done: 'It is up.' }, false, 0, 0);
+    const ids = pickLeads([...everything, project], '2026-11-11');
+    expect(ids).toHaveLength(LEADS);
+    expect(ids).toContain('project:lean-to');
+    expect(ids.some((id) => id.startsWith('place:'))).toBe(false);
+    expect(ids.some((id) => id.startsWith('trail:'))).toBe(true);
+    expect(project.why).toMatch(/stake out the spot/);
+    expect(projectLead({ id: 'lean-to', name: 'x', ask: 'a', done: 'It is up.' }, true, 0, 0).head).toBe('Finished overnight');
   });
 
   it('makes up the number from what is left, and offers nothing when nothing is', () => {

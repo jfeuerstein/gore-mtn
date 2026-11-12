@@ -219,7 +219,8 @@ export class Book {
       if (day) card.appendChild(plate('places', place.id));
       else card.appendChild(el('span', 'badge', '?'));
       card.appendChild(el('b', '', place.name));
-      card.appendChild(el('small', '', day ? shortDay(day) : 'Pay a visit.'));
+      // What the town has not built yet cannot be visited: its card says so.
+      card.appendChild(el('small', '', day ? shortDay(day) : game.landmarkOpen(place.id, this.today()) ? 'Pay a visit.' : 'Not built yet.'));
       cards.appendChild(card);
     }
     out.push(cards);

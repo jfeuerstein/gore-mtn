@@ -525,7 +525,8 @@ Everything else is built in code from simple shapes.
   turn). The map's `Today` button brings it back. `flyer=1` puts it up for the tools.
 - It names three leads (`pickLeads`), each in a different part of the mountain: the trail of
   the day (the one the Saddle Lodge board has picked), a place with no postcard yet, and
-  either someone with something for the player or the inn's rumour, day about. The rumour's
+  either someone with something for the player or the inn's rumour, day about. When the
+  town has a project in hand, it takes the second place (see Town projects). The rumour's
   lead only says to ask Marge: where the stone lies is hers to tell. The three are chosen once
   and kept in the save (`leads`), so the flyer reads the same all day; one that has been done
   since is ticked and struck through.
@@ -533,7 +534,6 @@ Everything else is built in code from simple shapes.
   nothing is lost by ignoring it, there is no reward for doing all three, and tomorrow there
   are three more. Add a kind of lead by adding a builder beside `trailLead` and a place for it
   in `pickLeads`; its wording follows the rules for how people talk.
-- Not built yet, and the owner's to decide: town projects that add a place to the map.
 
 ## The cabin
 
@@ -558,6 +558,30 @@ Everything else is built in code from simple shapes.
 - Nothing about the cabin is a chore: a bare shelf is only bare, and an empty feeder only
   stays empty. The map marks it with a red house, and `window.__gore.teleport('home')` goes
   there.
+
+## Town projects
+
+- The third step of the daily loop: the town builds things, one after another, and each adds
+  a place to the mountain for good. `src/game/projects.ts` (pure, tested) lists them
+  (`PROJECTS`: a lean-to in the woods by the cabin, a dock on Rabbit Pond, a bandstand by the
+  Duck Pond, a warming hut at the top of Burnt Ridge, a lookout over the reservoir) and says
+  where each stands on a day: not yet proposed, wanting its spot staked out, being built, or
+  built.
+- The player's part is to go there. The flyer proposes the project in hand (it takes the place
+  of the day's "worth the trip"); on the spot the action button reads `Stake it out`; stakes and
+  lumber appear; and by the next calendar day it is built. Then the flyer says so, the map
+  marks it, and being there earns a postcard: every project is a landmark, shown in the Book
+  as not built yet until it is. While one is going up, the flyer's P.S. says it will be done
+  tomorrow. The next is proposed once the one before stands. Nothing is paid, carried or
+  timed, and a project never staked out simply waits.
+- `src/world/projectPlots.ts` (pure, tested) finds each plot from a description (along a
+  path, on a pond's shore, at the top of a lift): dry ground, level enough, off the trails,
+  turned to face the water or the way the ground falls away. `Built` keeps a clearing at
+  every plot from the start, and the view in front of it. `src/world/projectMesh.ts` builds
+  each from blocks, one mesh apiece. They are not solid.
+- What has been staked out is in the save (`projects`, the day each was). Add a project by
+  adding it to `PROJECTS`, a site for it in `projectPlots.ts`, a model in `projectMesh.ts` and
+  a postcard in the art manifest.
 
 ## Trail map
 

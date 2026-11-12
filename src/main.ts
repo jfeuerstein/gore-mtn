@@ -18,13 +18,15 @@ import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { letterWaiting } from './game/letters';
 import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
-import { flyerDate, personLead, pickLeads, placeLead, rumourLead, trailLead, type Lead } from './game/today';
+import { flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
 import { CabinSheet } from './ui/cabinSheet';
 import { artSlug } from './game/artNames';
 import { MINERALS } from './game/minerals';
 import { PATCHES } from './game/patches';
 import { cabinSpots } from './world/cabin';
+import { PROJECTS } from './game/projects';
+import { TownProjects } from './world/projectMesh';
 import { Cabin } from './world/cabinMesh';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
@@ -373,6 +375,7 @@ async function boot(): Promise<void> {
       country: countryOf(world),
       spots: namedSpots(world),
       benches: built.benches,
+      projects: built.plots,
       // Places a rumoured stone may lie: the lookouts, the ponds and the old workings, each resolved to ground that can be stood on.
       rumourSpots: [...world.spots.filter((sp) => sp.kind === 'viewpoint' || sp.kind === 'quarry'), ...world.ponds.filter((sp) => ['rabbit-pond', 'duck-pond', 'north-creek-reservoir'].includes(sp.id))].flatMap((sp) => {
         const at = locate(world, { spot: sp.id });
@@ -569,6 +572,12 @@ async function boot(): Promise<void> {
         guest: guest ? (SPECIES.find((sp) => sp.id === guest)?.name ?? null) : null,
       };
     });
+  // What the town builds: each project as it stands today, staked out or built.
+  const townProjects = new TownProjects(built.plots, new Map(PROJECTS.map((p) => [p.id, p.kind])), (x, z) => ground.heightAt(x, z), look.roof, shadows, cfg.siding);
+  scene.add(townProjects.group);
+  const showProjects = (): void => {
+    for (const p of PROJECTS) townProjects.set(p.id, game.projectState(p.id, today));
+  };
   /** True while whoever was at the feeder is still there for the player to look at, though the feeder is empty again. */
   let guestStays = false;
 
@@ -623,8 +632,13 @@ async function boot(): Promise<void> {
     ...game.peaks.map((p): MapPoint => ({ kind: 'summit', x: p.x, z: p.z, label: p.name, done: p.id in game.save.peaks, note: kept(game.save.peaks[p.id], 'stood on', 'not climbed yet') })),
     // A lodge that is also worth a postcard is marked as a lodge.
     ...game.landmarks
-      .filter((l) => !(l.id in MAP_LODGES) && !game.peaks.some((p) => p.id === l.id))
+      .filter((l) => !(l.id in MAP_LODGES) && !game.peaks.some((p) => p.id === l.id) && game.landmarkOpen(l.id, today))
       .map((l): MapPoint => ({ kind: 'landmark', x: l.x, z: l.z, label: l.name, done: l.id in game.save.landmarks, note: kept(game.save.landmarks[l.id], 'visited', 'no postcard yet') })),
+    // The spot the town wants staked out, or where the crew is at work.
+    ...built.plots.flatMap((plot): MapPoint[] => {
+      const inHand = game.projectInHand(today);
+      return inHand?.project.id === plot.id ? [{ kind: 'landmark', x: plot.x, z: plot.z, label: inHand.project.name, done: false, note: inHand.state === 'proposed' ? 'wants staking out' : 'being built' }] : [];
+    }),
     ...built.benches.map((b): MapPoint => ({ kind: 'bench', x: b.x, z: b.z, label: `Bench: ${b.name}`, done: b.id in game.save.benches, note: kept(game.save.benches[b.id], 'sat on', 'not sat on yet') })),
     ...standings.filter((st) => game.hasBusiness(st.person.id, season)).map((st): MapPoint => ({ kind: 'person', x: st.x, z: st.z, label: `${st.person.name} · ${st.person.role}` })),
   ];
@@ -834,6 +848,7 @@ async function boot(): Promise<void> {
           layKeepsakes();
           showFlag();
           setOut();
+          showProjects();
         }
         return Boolean(save);
       },
@@ -922,6 +937,7 @@ async function boot(): Promise<void> {
   // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
   let today = dayKey(new Date());
   book.today = () => today;
+  showProjects();
   announce(game.arrivedIn(season, today));
   if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
   /** The watch of the day, which decides what wildlife is about. */
@@ -935,11 +951,20 @@ async function boot(): Promise<void> {
       const line = world.trails.find((w) => w.name === t.name && !w.area);
       return line ? [{ lead: trailLead(t, line.pts[0] as number, line.pts[1] as number, today, riding), open: !game.save.trails[t.name]?.stamped }] : [];
     });
-    const places = game.landmarks.map((l) => ({ lead: placeLead(l, today), open: !(l.id in game.save.landmarks) }));
+    // A place the town has not built yet is nowhere to send anyone.
+    const places = game.landmarks.filter((l) => !PROJECTS.some((p) => p.id === l.id)).map((l) => ({ lead: placeLead(l, today), open: !(l.id in game.save.landmarks) }));
+    // What the town is building: the spot to stake out, or, once it stands, the new thing to go and see.
+    const projects = PROJECTS.flatMap((p) => {
+      const plot = built.plots.find((at) => at.id === p.id);
+      const state = game.projectState(p.id, today);
+      if (!plot || state === 'later') return [];
+      const isBuilt = state === 'built';
+      return [{ lead: projectLead(p, isBuilt, plot.x, plot.z), open: isBuilt ? !(p.id in game.save.landmarks) : state === 'proposed' }];
+    });
     const people = standings.filter((st) => (st.person.kind ?? 'person') !== 'board').map((st) => ({ lead: personLead(st.person, st.x, st.z), open: game.hasBusiness(st.person.id, season) }));
     const marge = standings.find((st) => st.person.id === 'marge');
     const rumour = marge && game.rumour(today) ? [{ lead: rumourLead(marge.person.name, marge.x, marge.z), open: !game.rumourFound(today) }] : [];
-    return [...trails, ...places, ...people, ...rumour];
+    return [...projects, ...trails, ...places, ...people, ...rumour];
   };
   const flyerPage = (): FlyerPage => {
     const all = leadsNow();
@@ -948,6 +973,8 @@ async function boot(): Promise<void> {
       return pickLeads(all.filter((l) => l.open).map((l) => l.lead), today, pick ? `trail:${pick.name}` : null);
     });
     const letter = letterWaiting(game.save, game.save.letters, today);
+    const inHand = game.projectInHand(today);
+    const building = inHand?.state === 'building' ? inHand.project : null;
     return {
       date: flyerDate(today),
       sky: `${SEASON_NAME[season]} · ${sky({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }).toLowerCase()}`,
@@ -955,8 +982,14 @@ async function boot(): Promise<void> {
         const found = all.find((l) => l.lead.id === id);
         return found ? [{ ...found.lead, done: !found.open }] : [];
       }),
-      // One line in pencil: whoever is at the feeder comes before the mail.
-      note: game.feederGuest(today, season, watch) ? "P.S. Somebody's at your feeder." : letter ? "P.S. There's a letter for you at the post office." : null,
+      // One line in pencil: whoever is at the feeder first, then what tomorrow brings, then the mail.
+      note: game.feederGuest(today, season, watch)
+        ? "P.S. Somebody's at your feeder."
+        : building
+          ? `P.S. ${building.name} will be up by tomorrow.`
+          : letter
+            ? "P.S. There's a letter for you at the post office."
+            : null,
       flagged: game.save.flag,
     };
   };
@@ -1011,6 +1044,7 @@ async function boot(): Promise<void> {
     // How many others are in the picture just now.
     flag: game.save.flag,
     flyer: flyer.isOpen,
+    projects: built.plots.map((p) => ({ id: p.id, x: p.x, z: p.z, turn: p.turn, state: game.projectState(p.id, today) })),
     cabin: home ? { ...game.save.cabin, door: home.door, feederAt: home.feeder, guest: cabin?.hasGuest ?? false, sheet: cabinSheet.isOpen } : null,
     zoom: follow.zoomNow,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
@@ -1218,6 +1252,10 @@ async function boot(): Promise<void> {
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
     // ...and a seat when standing by a bench.
     const seat = station || player.mode !== 'walk' ? null : (built.benches.find((b) => Math.hypot(b.x - px, b.z - pz) < 2.2) ?? null);
+    // ...and, on the spot the town wants to build on, the chance to stake it out.
+    const wanted = player.mode === 'lift' ? null : game.projectInHand(today);
+    const staking = wanted?.state === 'proposed' ? (built.plots.find((p) => p.id === wanted.project.id && Math.hypot(p.x - px, p.z - pz) < 9) ?? null) : null;
+    if (staking) hint('project', 'This is the spot', 'Tap Stake it out, and the crew builds it overnight.');
     if (station) {
       hud.setAction(`Ride ${station.lift.name ?? 'the lift'}`, () => {
         pitchAfterRide = follow.pitch;
@@ -1235,6 +1273,11 @@ async function boot(): Promise<void> {
         follow.yaw = seat.view ? seat.turn + Math.PI : seat.turn;
         sittingOn = seat;
         announce(game.sat(seat.id, today));
+      });
+    } else if (staking) {
+      hud.setAction('Stake it out', () => {
+        announce(game.stakeOut(staking.id, today));
+        showProjects();
       });
     } else if (home && player.mode === 'walk' && Math.hypot(home.door.x - px, home.door.z - pz) < 3.6) {
       hud.setAction('Home', openCabin);

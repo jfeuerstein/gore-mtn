@@ -73,6 +73,8 @@ export interface SaveData {
   rounds: string[];
   /** The flag the player has planted on the map, to find their way to; null when there is none. */
   flag: { x: number; z: number; label: string } | null;
+  /** Town projects the player has staked out, by id, with the day each was: it is built by the next. */
+  projects: Record<string, string>;
   /** The player's cabin: what is on its shelf and its board, and when its feeder was filled. */
   cabin: CabinSave;
   /** The last day the flyer was put in front of the player: it is shown once, on the day's first opening. */
@@ -114,6 +116,7 @@ export function emptySave(): SaveData {
     flyer: '',
     leads: { day: '', ids: [] },
     cabin: emptyCabin(),
+    projects: {},
   };
 }
 
@@ -206,6 +209,7 @@ export function parseSave(text: string | null | undefined): SaveData {
   if (isRecord(raw.round) && isDay(raw.round.day)) save.round = { day: raw.round.day, who: strings(raw.round.who) };
   save.rounds = strings(raw.rounds).filter(isDay);
   save.benches = days(raw.benches);
+  save.projects = days(raw.projects);
   if (isRecord(raw.cabin)) {
     // Each place on the shelf and the board is kept as it was; what is missing is bare.
     const places = (v: unknown, n: number): string[] => Array.from({ length: n }, (_, i) => (Array.isArray(v) && typeof v[i] === 'string' ? (v[i] as string) : ''));

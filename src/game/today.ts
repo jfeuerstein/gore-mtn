@@ -9,7 +9,7 @@ import { dayNumber, trailReason } from './report';
  *
  * A lead is never a chore: nothing is lost by ignoring it, and tomorrow there are three more.
  */
-export type LeadKind = 'trail' | 'place' | 'person' | 'rumour';
+export type LeadKind = 'trail' | 'place' | 'person' | 'rumour' | 'project';
 
 export interface Lead {
   /** Which lead this is, kept in the save for the day: "trail:Sunway", "place:fire-tower". */
@@ -60,6 +60,14 @@ export function rumourLead(innkeeper: string, x: number, z: number): Lead {
   return { id: 'rumour', kind: 'rumour', head: 'Heard at the inn', title: 'A stone, supposedly', why: `${innkeeper} knows where. Ask her.`, x, z, flag: `${innkeeper}, at the inn` };
 }
 
+/**
+ * What the town is building: a spot to go and stake out, or, the day after, something new to go and see.
+ * @param built true once it stands; false while it wants its spot
+ */
+export function projectLead(project: { id: string; name: string; ask: string; done: string }, built: boolean, x: number, z: number): Lead {
+  return { id: `project:${project.id}`, kind: 'project', head: built ? 'Finished overnight' : "The town's building", title: project.name, why: built ? project.done : `${project.ask} Go stake out the spot.`, x, z, flag: project.name };
+}
+
 /** How many leads a flyer carries. */
 export const LEADS = 3;
 
@@ -80,14 +88,15 @@ export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string
     if (lead && picked.length < LEADS && !picked.includes(lead)) picked.push(lead);
   };
   add(trails.find((l) => l.id === trailOfDay) ?? one(trails, 0));
-  add(one(of('place'), 5));
+  // What the town is building is a place to go, and comes before any other.
+  add(one(of('project'), 0) ?? one(of('place'), 5));
   // The rumour and the neighbours take turns, day about, when both are to be had.
   const people = of('person');
   const rumour = of('rumour');
   const askFirst = seed % 2 === 0 ? rumour : people;
   add(one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
   // Short of three, whatever else is open makes up the number.
-  for (const lead of [...of('place'), ...trails, ...people, ...rumour]) add(lead);
+  for (const lead of [...of('project'), ...of('place'), ...trails, ...people, ...rumour]) add(lead);
   return picked.map((l) => l.id);
 }
 

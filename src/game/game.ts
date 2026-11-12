@@ -21,6 +21,7 @@ import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROU
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 import { feederGuest, nextChoice } from './cabin';
+import { projectInHand, PROJECTS, projectState, type ProjectState } from './projects';
 
 /** Something the player has just earned, to announce. */
 export interface GameEvent {
@@ -125,6 +126,8 @@ export interface GameWorld extends Ground {
   openAt?(x: number, z: number): number;
   /** The benches that can be sat on, by id, with what the Book calls each. */
   benches?: readonly { id: string; name: string }[];
+  /** Where each town project stands, by its id: once built, being there earns its postcard. */
+  projects?: readonly { id: string; x: number; z: number }[];
   /** Named spots, each with ground to stand on, where the day's rumoured stone may lie. */
   rumourSpots?: readonly { name: string; x: number; z: number }[];
   /** The world as wildlife sees it. Without it there is nothing to spot. */
@@ -187,7 +190,14 @@ export class Game {
     this.paths = buildPathBook(world.paths ?? [], world.trails);
     this.pathIndex = new TrailIndex(this.paths);
     this.peaks = buildPeaks(world.places, world.lifts);
-    this.landmarks = buildLandmarks(world.places, world.spots ?? []);
+    this.landmarks = [
+      ...buildLandmarks(world.places, world.spots ?? []),
+      // What the town builds is worth a postcard too, once it is built.
+      ...(world.projects ?? []).flatMap((at) => {
+        const project = PROJECTS.find((p) => p.id === at.id);
+        return project ? [{ id: project.id, name: project.name, x: at.x, z: at.z, reach: 26 }] : [];
+      }),
+    ];
     // Start out in the plain red jacket and blue beanie.
     for (const id of [DEFAULT_GEAR.hat, DEFAULT_GEAR.jacket]) if (!this.save.gear.owned.includes(id)) this.save.gear.owned.unshift(id);
     if (!gearById(this.save.gear.hat)) this.save.gear.hat = DEFAULT_GEAR.hat;
@@ -238,6 +248,8 @@ export class Game {
       }
     }
     for (const mark of reached(this.landmarks, this.save.landmarks, x, z)) {
+      // Nobody gets a postcard of something that is not there yet.
+      if (!this.landmarkOpen(mark.id, day)) continue;
       this.save.landmarks[mark.id] = day;
       events.push({ kind: 'landmark', title: mark.name, detail: 'Landmark stamped', art: `places/${mark.id}` });
     }
@@ -713,6 +725,31 @@ export class Game {
     this.dirty = true;
     this.persist();
     return true;
+  }
+
+  /** Where a town project stands today: not yet proposed, wanting its spot staked out, being built, or built. */
+  projectState(id: string, day: string): ProjectState {
+    return projectState(id, this.save.projects, day);
+  }
+
+  /** The project the town has in hand today, if any. */
+  projectInHand(day: string): ReturnType<typeof projectInHand> {
+    return projectInHand(this.save.projects, day);
+  }
+
+  /** The player has staked out the spot for a project that wanted one: the crew builds it overnight. */
+  stakeOut(id: string, day: string): GameEvent[] {
+    if (this.projectState(id, day) !== 'proposed') return [];
+    this.save.projects[id] = day;
+    this.dirty = true;
+    this.persist();
+    const project = PROJECTS.find((p) => p.id === id);
+    return [{ kind: 'hint', title: 'Staked out', detail: `${project?.name ?? 'It'} goes up overnight.` }];
+  }
+
+  /** Whether a landmark is there to be visited: all are, but what the town has not yet built. */
+  landmarkOpen(id: string, day: string): boolean {
+    return !PROJECTS.some((p) => p.id === id) || this.projectState(id, day) === 'built';
   }
 
   /** The minerals the player has found, by id: what could go on the cabin's shelf. */

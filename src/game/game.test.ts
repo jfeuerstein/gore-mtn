@@ -55,6 +55,27 @@ describe('Game', () => {
     expect(s.mineralsTotal).toBe(12);
   });
 
+  it('builds a town project overnight once its spot is staked out, and only then gives its postcard', () => {
+    const store = memory();
+    const site = { id: 'lean-to', x: 5000, z: 5000 };
+    const game = new Game({ ...gameWorld, projects: [site] }, store);
+    expect(game.landmarks.some((l) => l.id === 'lean-to')).toBe(true);
+    expect(game.projectInHand(DAY)).toMatchObject({ state: 'proposed' });
+    // Standing on the spot earns nothing while there is nothing there.
+    expect(game.reachedAt(site.x, site.z, DAY, 'winter')).toEqual([]);
+    expect(game.stakeOut('rabbit-dock', DAY)).toEqual([]);
+    expect(game.stakeOut('lean-to', DAY)).toHaveLength(1);
+    expect(game.stakeOut('lean-to', DAY)).toEqual([]);
+    expect(game.projectState('lean-to', DAY)).toBe('building');
+    expect(game.reachedAt(site.x, site.z, DAY, 'winter')).toEqual([]);
+    const next = '2099-01-01';
+    expect(new Game({ ...gameWorld, projects: [site] }, store).projectState('lean-to', next)).toBe('built');
+    const events = game.reachedAt(site.x, site.z, next, 'winter');
+    expect(events.map((e) => e.title)).toEqual(['The Hardwood Lean-to']);
+    expect(game.save.landmarks['lean-to']).toBe(next);
+    expect(game.projectInHand(next)?.project.id).toBe('rabbit-dock');
+  });
+
   it('sets out on the cabin shelf only what has been found, and keeps it', () => {
     const store = memory();
     const game = new Game(gameWorld, store);

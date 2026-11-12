@@ -182,6 +182,19 @@ try {
     await page.evaluate(() => window.__gore.teleport('base-lodge'));
   }
 
+  // Town projects: the first wants its spot staked out; going there and saying so starts it.
+  const plots = (await page.evaluate(() => window.__gore.state())).projects;
+  check('the town has five projects, the first of them wanting its spot', plots.length === 5 && plots[0].state === 'proposed' && plots.slice(1).every((p) => p.state === 'later'), plots.map((p) => `${p.id}:${p.state}`).join(' '));
+  await page.evaluate(([x, z]) => window.__gore.place(x + 3, z + 3), [plots[0].x, plots[0].z]);
+  await page.waitForFunction(() => document.getElementById('action-button').textContent === 'Stake it out', null, { timeout: 15000 }).catch(() => {});
+  check('on the spot the action button reads Stake it out', (await page.locator('#action-button').textContent()) === 'Stake it out');
+  await page.tap('#action-button');
+  const staked = await page.evaluate(() => window.__gore.state());
+  check('staking it out starts the building, and says when it will be done', staked.projects[0].state === 'building' && /overnight/.test(staked.toast), staked.toast);
+  await page.waitForTimeout(600);
+  check('and there is nothing more to do there today', (await page.locator('#action-button').textContent()) !== 'Stake it out');
+  await page.evaluate(() => window.__gore.teleport('base-lodge'));
+
   // Trees are solid: walk straight at the nearest one and never end up inside its trunk.
   const tree = (await page.evaluate(() => window.__gore.state())).nearestTree;
   check('there is a tree nearby to walk into', tree !== null);
@@ -869,7 +882,7 @@ try {
     if (!localStorage.getItem('gore.book')) {
       localStorage.setItem(
         'gore.book',
-        JSON.stringify({ minerals: { quartz: { count: 1, best: 2, first: '2026-11-01' }, garnet: { count: 2, best: 3, first: '2026-11-01' } }, patches: { 'first-tracks': '2026-11-01' }, cabin: { shelf: ['', '', '', '', ''], wall: ['', '', ''], feeder: '2020-01-01' } }),
+        JSON.stringify({ minerals: { quartz: { count: 1, best: 2, first: '2026-11-01' }, garnet: { count: 2, best: 3, first: '2026-11-01' } }, patches: { 'first-tracks': '2026-11-01' }, cabin: { shelf: ['', '', '', '', ''], wall: ['', '', ''], feeder: '2020-01-01' }, projects: { 'lean-to': '2020-01-01' } }),
       );
     }
   });
@@ -898,6 +911,14 @@ try {
   const setOut = (await hp.evaluate(() => window.__gore.state())).cabin;
   check('stones go on the shelf and a patch on the board, no stone twice', setOut.shelf[0] !== '' && setOut.shelf[1] !== '' && setOut.shelf[0] !== setOut.shelf[1] && setOut.wall[0] === 'first-tracks', `${setOut.shelf.join(',')} | ${setOut.wall.join(',')}`);
   check('each shows as its patch, with its name', (await hp.locator('#cabin-sheet .place img').count()) === 3 && (await hp.locator('#cabin-sheet .place small').first().textContent()).length > 3);
+  // A project staked out on an earlier day is built, and being there earns its postcard; the next is proposed.
+  const raised = (await hp.evaluate(() => window.__gore.state())).projects;
+  check('what was staked out on an earlier day is built, and the next is proposed', raised[0].state === 'built' && raised[1].state === 'proposed');
+  const cardsWere = (await hp.evaluate(() => window.__gore.state())).book.landmarks;
+  await hp.evaluate(([x, z]) => window.__gore.place(x + 4, z + 4), [raised[0].x, raised[0].z]);
+  await hp.waitForFunction((n) => window.__gore.state().book.landmarks > n, cardsWere, { timeout: 20000 }).catch(() => {});
+  const seen = await hp.evaluate(() => window.__gore.state());
+  check('being there earns its postcard', seen.book.landmarks === cardsWere + 1 && /Lean-to/.test(seen.toast), seen.toast);
   await hp.waitForTimeout(1300);
   await hp.reload();
   await hp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });

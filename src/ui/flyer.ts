@@ -19,7 +19,7 @@ export interface FlyerPage {
 }
 
 /** The mark beside each kind of lead: the trail's own mark is in its title, so it has a ski pole's basket. */
-const MARK: Record<Lead['kind'], string> = { trail: '❄', place: '✉', person: '◆', rumour: '◆' };
+const MARK: Record<Lead['kind'], string> = { trail: '❄', place: '✉', person: '◆', rumour: '◆', project: '▲' };
 
 /**
  * The flyer: a sheet of paper pinned up over the lower part of the screen, the first time the

@@ -748,6 +748,9 @@ body {
 #flyer .lead-place > i {
   background: #2f6b4f;
 }
+#flyer .lead-project > i {
+  background: var(--red);
+}
 #flyer .lead-person > i,
 #flyer .lead-rumour > i {
   background: #c98f1f;
