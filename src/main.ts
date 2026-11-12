@@ -8,6 +8,7 @@ import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
+import { GROUND_SHEETS, MARK_SIZE, packSheets } from './look/groundMarks';
 import { despeckle, inkOrder, restyle, type WorldLook } from './look/worldLook';
 import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
@@ -66,6 +67,31 @@ import { Walls, type WallBox } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND, OPEN_WATER } from './world/world';
 import { lit, usePrint } from './look/material';
+
+/**
+ * The season's sheet of ground marks: the pictures of its kinds, read and packed a kind to a
+ * channel. Nothing, if any of them cannot be had: the ground is then printed without marks.
+ */
+async function loadMarks(season: Season, baseUrl: string): Promise<Uint8Array | null> {
+  try {
+    const pictures = await Promise.all(
+      GROUND_SHEETS[season].map(async (kind) => {
+        const image = new Image();
+        image.src = `${baseUrl}art/ground/${kind}.png`;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = MARK_SIZE;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) throw new Error('no canvas');
+        ctx.drawImage(image, 0, 0, MARK_SIZE, MARK_SIZE);
+        return ctx.getImageData(0, 0, MARK_SIZE, MARK_SIZE).data;
+      }),
+    );
+    return packSheets(pictures);
+  } catch {
+    return null;
+  }
+}
 
 /** A picture of the land as a print: the same picture, repainted on a canvas in the season's inks. */
 function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: { print: Print | null } | null = null): THREE.Texture {
@@ -297,7 +323,8 @@ async function boot(): Promise<void> {
   const snowPicture = repaint(snowTexture, cfg.look, season, underfoot);
   const canopyPicture = repaint(canopyTexture, cfg.look, season);
   // Near the camera the ground is drawn from the weights of its inks, with the season's marks printed on it.
-  const groundLook = underfoot.print && cfg.ground !== 'flat' ? new GroundLook(season, underfoot.print.order, cfg.ground === 'marks') : null;
+  const marks = underfoot.print && cfg.ground === 'marks' ? await loadMarks(season, import.meta.env.BASE_URL) : null;
+  const groundLook = underfoot.print && cfg.ground !== 'flat' ? new GroundLook(season, underfoot.print.order, marks) : null;
   const terrain = new Terrain(ground, snowPicture, canopyPicture, underfoot.print, groundLook);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   const beams = gateBeams(liftPaths);

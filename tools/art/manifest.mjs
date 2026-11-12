@@ -424,3 +424,22 @@ export const PATCH_SETS = {
   minerals: { border: 'slate grey-blue (#4d6168)', subjects: briefs(MINERAL_ART) },
   species: { border: 'leaf green (#4f8a3f)', subjects: briefs(SPECIES_ART) },
 };
+
+/**
+ * The small marks printed on the ground (src/look/groundMarks.ts): fallen leaves, tufts of
+ * grass, flower heads and the like. Each kind is asked for as a sheet of separate black
+ * shapes on white; make-ground.mjs cuts the shapes out, and scatters them over a sheet that
+ * repeats, one kind to a channel, for the game to print in the season's own inks. So the
+ * shapes are painted, and the colours and the flatness are the print's.
+ */
+export const GROUND_LOOK =
+  'Every one is a solid flat black silhouette with a clean simple outline, like a stencil cut for a screen print: no shading, no grey, no lines inside the shapes, no shadows. They are well separated, none touching, laid out in a neat grid of four rows and four columns on a plain pure white background. No text, no border, no frame.';
+export const GROUND_ART = {
+  leaves: 'A sheet of sixteen different fallen tree leaves seen flat from above: maple, oak, birch, beech and aspen leaves, each with a short stem',
+  tufts: 'A sheet of sixteen small tufts of grass seen from directly above, each a little rosette of short pointed blades fanning out from its middle like a star',
+  flowers: 'A sheet of sixteen small simple flower heads seen from directly above: daisies, buttercups and clover flowers, each just petals round a middle, with no stems',
+  ferns: 'A sheet of sixteen small fern fronds and sprigs of clover seen flat from above',
+  twigs: 'A sheet of sixteen small fallen twigs, sprigs of pine needles and little pine cones seen flat from above',
+  pebbles: 'A sheet of sixteen small smooth pebbles, each a simple rounded lumpy shape, all different',
+  strokes: 'A sheet of sixteen short thick horizontal brush strokes of ink, each a single straight dash with rough tapered ends, all lying level, all different lengths',
+};

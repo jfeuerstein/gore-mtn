@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { GROUND_MARKS, MARK_KINDS, MARK_REPEAT, MARK_SIZE, markSheet, type Mark } from '../look/groundMarks';
+import { GROUND_MARKS, GROUND_SHEETS, MARK_REPEAT, MARK_SIZE, type Mark } from '../look/groundMarks';
 import { litBy } from '../look/material';
 import type { Season } from '../look/season';
 import { MOST_INKS, type Weights } from '../look/worldLook';
@@ -18,8 +18,9 @@ export interface GroundTile {
  * with a shader of its own. For every pixel of the screen it reads how much each of the
  * season's inks weighs there (two small textures to a tile, from `weigh` in `worldLook.ts`),
  * takes the heaviest, and so draws an edge between two inks as a clean curve at any distance.
- * Then it prints the season's marks over that ink (`groundMarks.ts`): one sheet of them,
- * repeated over the ground by where a pixel is in the world.
+ * Then it prints the season's marks over that ink (`groundMarks.ts`): one sheet of painted
+ * shapes, repeated over the ground by where a pixel is in the world, each printed flat in one
+ * of the season's inks.
  *
  * `inkAt` in `worldLook.ts` is the same sum in plain numbers, with tests.
  *
@@ -35,12 +36,16 @@ export class GroundLook {
 
   /**
    * @param order every ink of the ground's picture, the commonest first (`inkOrder`)
-   * @param marks whether the season's marks are printed on it, or the inks left plain
+   * @param marks the season's sheet of marks (`packSheets`), or nothing to leave the inks plain
    */
-  constructor(season: Season, order: readonly number[], marks: boolean) {
+  constructor(
+    private readonly season: Season,
+    order: readonly number[],
+    marks: Uint8Array | null,
+  ) {
     this.inks = order.slice(0, MOST_INKS).map((ink) => ({ colour: new THREE.Color(ink), marks: marks ? (GROUND_MARKS[season][ink] ?? []) : [] }));
     if (marks && this.inks.some((ink) => ink.marks.length > 0)) {
-      this.sheet = new THREE.DataTexture(markSheet(), MARK_SIZE, MARK_SIZE, THREE.RGBAFormat);
+      this.sheet = new THREE.DataTexture(marks, MARK_SIZE, MARK_SIZE, THREE.RGBAFormat);
       this.sheet.wrapS = this.sheet.wrapT = THREE.RepeatWrapping;
       this.sheet.magFilter = THREE.LinearFilter;
       // Far off, a mark is less than a pixel: the sheet is read smaller and smaller, and the marks fade out of it.
@@ -83,8 +88,9 @@ export class GroundLook {
     const { inks, sheet, tint } = this;
     const rgb = (c: THREE.Color) => vec3(c.r, c.g, c.b);
     /** Which channel of the sheet a mark is in, as a vector to pick it out with. */
+    const kinds = GROUND_SHEETS[this.season];
     const pick = (mark: Mark | undefined) => {
-      const k = mark ? MARK_KINDS.indexOf(mark.kind) : -1;
+      const k = mark ? kinds.indexOf(mark.kind) : -1;
       return vec4(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0, k === 3 ? 1 : 0);
     };
     const markInk = (mark: Mark | undefined) => rgb(new THREE.Color(mark ? mark.ink : 0));

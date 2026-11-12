@@ -35,6 +35,7 @@ node tools/offline-check.mjs                          # with no network, the gam
 NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and title pictures (needs the fal key)
 NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
 NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the field guide's made models
+NODE_USE_ENV_PROXY=1 node tools/art/make-ground.mjs   # paint any missing sheets of ground marks, and lay them out (needs the fal key)
 node tools/art/make-icon.mjs                          # render the Home Screen icon from tools/art/icon.svg
 node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
 node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
@@ -150,7 +151,8 @@ moves between those with the real time of day and the real weather at Gore.
 
 Nearly everything in the game is built in code from simple shapes; the animals are made
 outside it. The only pictures the world is drawn with are the pipeline's ground pictures, the
-shop-sign sheet and the patches set out on the cabin's board.
+sheets of marks printed on the ground, the shop-sign sheet and the patches set out on the
+cabin's board.
 
 ### The park print
 
@@ -191,14 +193,19 @@ trying it beside the plain look. Four things make it, and anything new must take
   plain numbers. Two small textures a tile, a little over a megabyte, made over a few frames
   when the camera comes near and let go when it has left.
 - Over the inks the same shader prints the season's marks (`src/look/groundMarks.ts`, pure,
-  tested): one sheet, drawn in code, of four kinds of mark a few centimetres to a pixel
-  (dashes, leaves, tufts, dots), repeated over the ground every 24 m. `GROUND_MARKS` says
-  which kinds each ink of each season wears and in which of the season's inks: the groomer's
-  lines on the trails' snow, fallen leaves in fall, tussocks and daisies in a summer meadow.
-  Far off, a mark is less than a pixel and fades out by itself. The owner asked for detail
-  on the ground in place of more smoothing; which marks, how many and how big are theirs to
-  mark up. `ground=edges` draws the inks without the marks and `ground=flat` the far-off
-  picture alone, to set beside it (also in Settings).
+  tested): brush strokes on the trails' snow as the groomer leaves them, fallen leaves in
+  fall, tufts and flower heads in a summer meadow, ferns under the trees, twigs and cones.
+  The shapes are painted: the owner asked for fal in place of marks drawn in code.
+  `tools/art/make-ground.mjs` asks for a sheet of separate black shapes of each of seven
+  kinds (`GROUND_ART` in the art manifest) and `ground-sheet.py` cuts them out and scatters
+  them over a square that repeats every 16 m, `public/art/ground/<kind>.png`, a centimetre
+  and a half to a pixel. The colours are not painted, which is what keeps the marks part of
+  the print: each is printed flat in one of the season's own inks. `GROUND_SHEETS` says
+  which four kinds a season loads (a kind to a channel of one sheet) and `GROUND_MARKS`
+  which two at most each ink wears, and in which ink. Far off, a mark is less than a pixel
+  and fades out by itself. Which marks, how many and how big are the owner's to mark up:
+  sizes and numbers are `KINDS` in `ground-sheet.py`. `ground=edges` draws the inks without
+  the marks and `ground=flat` the far-off picture alone, to set beside it (also in Settings).
 - The boards and shingles on buildings (`siding()`) are flat with one hard line under each
   course, as a pen would draw clapboard.
 - `look=plain&models=blocks` in the address draws the game as it was before the print, for

@@ -1,5 +1,6 @@
+import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GROUND_MARKS, MARK_KINDS, markSheet } from './groundMarks';
+import { GROUND_MARKS, GROUND_SHEETS, MARK_KINDS, packSheets } from './groundMarks';
 import { SEASONS } from './season';
 import { INKS } from './worldLook';
 
@@ -13,10 +14,25 @@ describe('the marks printed on the ground', () => {
         for (const mark of marks) {
           expect(INKS[season], `${season} mark ${mark.ink.toString(16)}`).toContain(mark.ink);
           expect(mark.ink).not.toBe(Number(ink));
-          expect(MARK_KINDS).toContain(mark.kind);
         }
       }
     }
+  });
+
+  it('loads, for each season, the kinds its marks are of: four at most', () => {
+    for (const season of SEASONS) {
+      const sheets = GROUND_SHEETS[season];
+      expect(sheets.length).toBeLessThanOrEqual(4);
+      expect(new Set(sheets).size).toBe(sheets.length);
+      for (const marks of Object.values(GROUND_MARKS[season])) for (const mark of marks) expect(sheets, `${season} ${mark.kind}`).toContain(mark.kind);
+      // And nothing is loaded that is not printed.
+      const used = new Set(Object.values(GROUND_MARKS[season]).flatMap((marks) => marks.map((m) => m.kind)));
+      for (const kind of sheets) expect(used.has(kind), `${season} ${kind}`).toBe(true);
+    }
+  });
+
+  it('has a picture for every kind (tools/art/make-ground.mjs makes them)', () => {
+    for (const kind of MARK_KINDS) expect(existsSync(new URL(`../../public/art/ground/${kind}.png`, import.meta.url)), kind).toBe(true);
   });
 
   it('gives every season something on the ground there is most of', () => {
@@ -27,32 +43,10 @@ describe('the marks printed on the ground', () => {
     expect(GROUND_MARKS.fall[0x8c6a48]).toBeDefined();
   });
 
-  const size = 256;
-  const sheet = markSheet(size);
-
-  it('leaves most of the ground plain: a scatter, not a pattern all over', () => {
-    for (let channel = 0; channel < 4; channel++) {
-      let inked = 0;
-      for (let p = channel; p < sheet.length; p += 4) if ((sheet[p] as number) > 127) inked++;
-      const share = inked / (size * size);
-      expect(share, MARK_KINDS[channel]).toBeGreaterThan(0.003);
-      expect(share, MARK_KINDS[channel]).toBeLessThan(0.12);
-    }
-  });
-
-  it('joins up with itself: a mark that runs off one side comes back on the other', () => {
-    // Where a mark touches the last column or row, the first carries on with it.
-    let carried = 0;
-    for (let channel = 0; channel < 4; channel++) {
-      for (let i = 0; i < size; i++) {
-        if ((sheet[(i * size + size - 1) * 4 + channel] as number) > 60 && (sheet[i * size * 4 + channel] as number) > 0) carried++;
-        if ((sheet[((size - 1) * size + i) * 4 + channel] as number) > 60 && (sheet[i * 4 + channel] as number) > 0) carried++;
-      }
-    }
-    expect(carried).toBeGreaterThan(0);
-  });
-
-  it('is the same every time', () => {
-    expect([...markSheet(64)]).toEqual([...markSheet(64)]);
+  it('packs a season’s pictures into one sheet, a kind to a channel', () => {
+    const picture = (value: number): Uint8ClampedArray => new Uint8ClampedArray(2 * 2 * 4).fill(value);
+    const sheet = packSheets([picture(10), picture(20), picture(30)], 2);
+    expect([...sheet.slice(0, 4)]).toEqual([10, 20, 30, 0]);
+    expect([...sheet.slice(12, 16)]).toEqual([10, 20, 30, 0]);
   });
 });

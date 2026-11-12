@@ -145,7 +145,8 @@ everything in it.
   carry a dark outline.
 - **A banded sky.**
 - **The ground underfoot** is flat inks with clean curved edges, and a scatter of small
-  printed marks for the season: the groomer's lines, fallen leaves, tufts and daisies.
+  marks for the season, painted shapes printed in the season's inks: the groomer's lines,
+  fallen leaves, tufts and flower heads, ferns, twigs.
 - **Colour belongs to the light.** Models are flat and neutral; the hour and the weather
   colour them. The player's jacket is the most saturated thing on screen.
 - **The player is small**: about a twentieth of the screen's height, just below the middle,
@@ -177,8 +178,9 @@ map's legend with patches sewn on.
   picture of each is given a shape (FLUX and Trellis through fal for most; Tripo for the
   plants and the pets, which it makes a better job of), which a converter closes, cuts down
   to about a thousand triangles and prints in a few inks.
-- **Painted:** portraits, postcards, title pictures and shop-sign pictures (FLUX, through
-  fal); the Book's patches, a sheet at a time to one brief (Tripo's image model).
+- **Painted:** portraits, postcards, title pictures and the shapes of the marks printed on
+  the ground (FLUX, through fal); the shop-sign pictures and the Book's patches, a sheet at
+  a time to one brief (Tripo's image model).
 - **Keys** are secrets of the build environment. None is in the repository.
 
 ### Budget

@@ -24,8 +24,9 @@
 All of these were generated for this game from prompts kept in the repository. None names a
 real person, business or other game.
 
-- **Portraits, postcards and title pictures:** FLUX.1 [schnell] (Black Forest Labs) through
-  [fal](https://fal.ai), from `tools/art/manifest.mjs`.
+- **Portraits, postcards, title pictures and the shapes of the marks printed on the ground**
+  (leaves, tufts, flower heads, ferns, twigs, pebbles, brush strokes): FLUX.1 [schnell]
+  (Black Forest Labs) through [fal](https://fal.ai), from `tools/art/manifest.mjs`.
 - **The pictures on the shop signs, and every patch in the Book** (stamps, summits, conditions, lift pins, things to wear, food and
   books, minerals and the field guide): Tripo's image model, a sheet at a time, from the same
   manifest and `tools/art/make-patches.mjs`.
