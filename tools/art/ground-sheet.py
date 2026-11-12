@@ -29,10 +29,12 @@ KINDS = {
     'tufts': dict(long=(0.38, 0.6), squares=10, keep=0.7, turn=180, together=(1, 1)),
     'flowers': dict(long=(0.16, 0.27), squares=9, keep=0.65, turn=180, together=(2, 4)),
     'ferns': dict(long=(0.5, 0.8), squares=9, keep=0.65, turn=180, together=(1, 1)),
-    'twigs': dict(long=(0.5, 0.9), squares=8, keep=0.6, turn=180, together=(1, 1)),
+    # A cone is as long as it is broad, and would come out far bigger than a twig of the same length: `stout` shrinks what is.
+    'twigs': dict(long=(0.45, 0.8), squares=8, keep=0.6, turn=180, together=(1, 1), stout=0.5),
     'pebbles': dict(long=(0.14, 0.32), squares=10, keep=0.6, turn=180, together=(1, 3)),
     # Strokes lie east and west, as the groomer's lines and the wind's do on this mountain.
-    'strokes': dict(long=(0.8, 1.6), squares=10, keep=0.7, turn=6, together=(1, 2)),
+    # Thin and few: a field of snow is nearly all snow. `flat` presses a stroke thinner than it was painted.
+    'strokes': dict(long=(0.55, 1.1), squares=9, keep=0.7, turn=6, together=(1, 1), flat=0.5),
 }
 
 
@@ -63,6 +65,10 @@ def lay(kind, stamps, rng):
 
     def put(stamp, cx, cy):
         long = rng.uniform(*spec['long']) * PX
+        if max(stamp.size) < 1.6 * min(stamp.size):
+            long *= spec.get('stout', 1)
+        if 'flat' in spec:
+            stamp = stamp.resize((stamp.size[0], max(1, round(stamp.size[1] * spec['flat']))), Image.LANCZOS)
         turned = stamp.rotate(rng.uniform(-spec['turn'], spec['turn']), expand=True, resample=Image.BICUBIC)
         if rng.random() < 0.5:
             turned = turned.transpose(Image.FLIP_LEFT_RIGHT)
