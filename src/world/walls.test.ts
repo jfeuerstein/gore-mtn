@@ -73,3 +73,15 @@ describe('Walls', () => {
     }
   });
 });
+
+describe('walls that come and go', () => {
+  it('a box added is solid, and one taken away is not', () => {
+    const walls = new Walls([]);
+    const hut = { x: 100, z: -40, w: 5, d: 4, turn: 0.4 };
+    expect(walls.bumpAt(100, -40, 0.5)).toBeNull();
+    walls.add(hut);
+    expect(walls.bumpAt(100, -40, 0.5)).not.toBeNull();
+    walls.remove(hut);
+    expect(walls.bumpAt(100, -40, 0.5)).toBeNull();
+  });
+});

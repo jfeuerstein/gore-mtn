@@ -26,7 +26,7 @@ import { MINERALS } from './game/minerals';
 import { PATCHES } from './game/patches';
 import { cabinSpots } from './world/cabin';
 import { PROJECTS } from './game/projects';
-import { TownProjects } from './world/projectMesh';
+import { TownProjects, projectWalls as wallsOfProject } from './world/projectMesh';
 import { Cabin } from './world/cabinMesh';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
@@ -60,7 +60,7 @@ import { townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
 import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
-import { Walls } from './world/walls';
+import { Walls, type WallBox } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND } from './world/world';
 import { lit, usePrint } from './look/material';
@@ -575,8 +575,18 @@ async function boot(): Promise<void> {
   // What the town builds: each project as it stands today, staked out or built.
   const townProjects = new TownProjects(built.plots, new Map(PROJECTS.map((p) => [p.id, p.kind])), (x, z) => ground.heightAt(x, z), look.roof, shadows, cfg.siding);
   scene.add(townProjects.group);
+  /** What of each built project is solid, so that it can be taken away again if the book changes. */
+  const projectWalls = new Map<string, WallBox[]>();
   const showProjects = (): void => {
-    for (const p of PROJECTS) townProjects.set(p.id, game.projectState(p.id, today));
+    for (const p of PROJECTS) {
+      const state = game.projectState(p.id, today);
+      townProjects.set(p.id, state);
+      for (const box of projectWalls.get(p.id) ?? []) walls.remove(box);
+      const plot = built.plots.find((q) => q.id === p.id);
+      const solid = state === 'built' && plot ? wallsOfProject(p.kind, plot, ground.heightAt(plot.x, plot.z)) : [];
+      for (const box of solid) walls.add(box);
+      projectWalls.set(p.id, solid);
+    }
   };
   /** True while whoever was at the feeder is still there for the player to look at, though the feeder is empty again. */
   let guestStays = false;

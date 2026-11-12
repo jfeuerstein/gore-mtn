@@ -73,16 +73,34 @@ export class Walls {
   private readonly cells = new Map<number, WallBox[]>();
 
   constructor(boxes: readonly WallBox[]) {
-    for (const b of boxes) {
-      const reach = Math.hypot(b.w, b.d) / 2 + ROOF_MARGIN;
-      for (let cx = Math.floor((b.x - reach) / CELL); cx <= Math.floor((b.x + reach) / CELL); cx++) {
-        for (let cz = Math.floor((b.z - reach) / CELL); cz <= Math.floor((b.z + reach) / CELL); cz++) {
-          const key = cx * 100003 + cz;
-          const list = this.cells.get(key);
-          if (list) list.push(b);
-          else this.cells.set(key, [b]);
-        }
-      }
+    for (const b of boxes) this.add(b);
+  }
+
+  /** The cells a box may be met from. */
+  private keys(b: WallBox): number[] {
+    const keys: number[] = [];
+    const reach = Math.hypot(b.w, b.d) / 2 + ROOF_MARGIN;
+    for (let cx = Math.floor((b.x - reach) / CELL); cx <= Math.floor((b.x + reach) / CELL); cx++) {
+      for (let cz = Math.floor((b.z - reach) / CELL); cz <= Math.floor((b.z + reach) / CELL); cz++) keys.push(cx * 100003 + cz);
+    }
+    return keys;
+  }
+
+  /** Something new and solid: a thing the town has built since the game began. */
+  add(b: WallBox): void {
+    for (const key of this.keys(b)) {
+      const list = this.cells.get(key);
+      if (list) list.push(b);
+      else this.cells.set(key, [b]);
+    }
+  }
+
+  /** Take away a box that was added: the very same one. */
+  remove(b: WallBox): void {
+    for (const key of this.keys(b)) {
+      const list = this.cells.get(key);
+      const at = list ? list.indexOf(b) : -1;
+      if (list && at >= 0) list.splice(at, 1);
     }
   }
 

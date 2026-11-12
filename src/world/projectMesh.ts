@@ -3,6 +3,7 @@ import type { ProjectKind, ProjectState } from '../game/projects';
 import { lit } from '../look/material';
 import type { ProjectPlot } from './projectPlots';
 import { blocks, placed, roof, siding, type Block } from './shapes';
+import type { WallBox } from './walls';
 
 const LOG = 0x7a5236;
 const PLANK = 0x9a7b5c;
@@ -87,6 +88,31 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
     list.push({ size: [0.12, 1.0, 0.12], at: [1.2, 1.3, 2.6], colour: 0x3d4652 }, { size: [0.3, 0.26, 0.5], at: [1.2, 1.9, 2.65], colour: 0x2b62c9 });
   }
   return { list, extra };
+}
+
+/**
+ * What of each kind of thing is solid, in its own frame (x, z, width, depth, and how tall it
+ * stands, for keeping the camera out of a roof): the hut whole, the lean-to's three walls so
+ * that it can be walked into, the bandstand's floor. The dock and the lookout's deck are left
+ * open, to be walked out along.
+ */
+const SOLID: Record<ProjectKind, readonly (readonly [x: number, z: number, w: number, d: number, top?: number])[]> = {
+  leanto: [
+    [0, -1.65, 4.2, 0.3],
+    [-1.95, -0.4, 0.3, 2.8],
+    [1.95, -0.4, 0.3, 2.8],
+  ],
+  dock: [],
+  bandstand: [[0, 0, 5.4, 5.4, 5.6]],
+  hut: [[0, 0, 5.0, 3.8, 4.4]],
+  deck: [],
+};
+
+/** The walls of a built project, where its plot is. */
+export function projectWalls(kind: ProjectKind, plot: ProjectPlot, ground: number): WallBox[] {
+  const c = Math.cos(plot.turn);
+  const s = Math.sin(plot.turn);
+  return SOLID[kind].map(([x, z, w, d, top]) => ({ x: plot.x + x * c + z * s, z: plot.z - x * s + z * c, w, d, turn: plot.turn, ...(top === undefined ? {} : { top: ground + top }) }));
 }
 
 /**
