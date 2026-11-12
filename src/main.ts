@@ -17,13 +17,13 @@ import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { LAST_LETTER, letterWaiting } from './game/letters';
-import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
-import { dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
+import { dayNumber, sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
+import { patchLead, trailAgainLead, dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
 import { CabinSheet } from './ui/cabinSheet';
 import { artSlug } from './game/artNames';
 import { MINERALS } from './game/minerals';
-import { PATCHES } from './game/patches';
+import { KEEPSAKE, PATCHES } from './game/patches';
 import { cabinSpots } from './world/cabin';
 import { PROJECTS, townResting } from './game/projects';
 import { TownProjects } from './world/projectMesh';
@@ -584,7 +584,7 @@ async function boot(): Promise<void> {
         stoneArt: (id) => art('minerals', id),
         patchArt: (id) => art('patches', id),
         stoneName: (id) => MINERALS.find((m) => m.id === id)?.name ?? id,
-        patchName: (id) => PATCHES.find((p) => p.id === id)?.name ?? id,
+        patchName: (id) => (id === KEEPSAKE.id ? KEEPSAKE.name : (PATCHES.find((p) => p.id === id)?.name ?? id)),
         stoneChoices: game.shelfChoices(),
         patchChoices: game.wallChoices(),
         guest: guest ? (SPECIES.find((sp) => sp.id === guest)?.name ?? null) : null,
@@ -1033,8 +1033,22 @@ async function boot(): Promise<void> {
       .map(({ lead, open }) => ({ lead, open }));
     const people = standings.filter((st) => (st.person.kind ?? 'person') !== 'board').map((st) => ({ lead: personLead(st.person, st.x, st.z), open: game.hasBusiness(st.person.id, season) }));
     const marge = standings.find((st) => st.person.id === 'marge');
-    const rumour = marge && game.rumour(today) ? [{ lead: rumourLead(marge.person.name, marge.x, marge.z), open: !game.rumourFound(today) }] : [];
-    return [...projects, ...trails, ...places, ...people, ...rumour];
+    const rumour = marge && game.rumour(today) ? [{ lead: rumourLead(marge.person.name, marge.x, marge.z, today), open: !game.rumourFound(today) }] : [];
+    // With every trail stamped there is still a trail of the day, to go down again.
+    const again = trails.some((t) => t.open)
+      ? []
+      : (() => {
+          const lines = game.trails.flatMap((t) => {
+            const line = world.trails.find((w) => w.name === t.name && !w.area);
+            return line ? [{ t, line }] : [];
+          });
+          const pick = lines[dayNumber(today) % Math.max(1, lines.length)];
+          return pick ? [{ lead: trailAgainLead(pick.t, pick.line.pts[0] as number, pick.line.pts[1] as number, today, riding), open: true }] : [];
+        })();
+    // And for a book so nearly full that little else is left to point at: a patch still to earn, a different one each day.
+    const unearned = PATCHES.filter((p) => !(p.id in game.save.patches));
+    const still = unearned.length > 0 ? [{ lead: patchLead(unearned[dayNumber(today) % unearned.length] as (typeof PATCHES)[number]), open: true }] : [];
+    return [...projects, ...trails, ...again, ...places, ...people, ...rumour, ...still];
   };
   /**
    * Whoever a newcomer should meet first: until an errand has been done, the person nearest
@@ -1062,7 +1076,10 @@ async function boot(): Promise<void> {
       sky: `${SEASON_NAME[season]} · ${sky({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }).toLowerCase()}`,
       leads: ids.flatMap((id) => {
         const found = all.find((l) => l.lead.id === id);
-        return found ? [{ ...found.lead, done: !found.open }] : [];
+        if (found) return [{ ...found.lead, done: !found.open }];
+        // A patch that was on this morning's flyer and has been earned since is ticked.
+        const earned = id.startsWith('patch:') ? PATCHES.find((p) => `patch:${p.id}` === id) : undefined;
+        return earned ? [{ ...patchLead(earned), done: true }] : [];
       }),
       // One line in pencil: the last letter before anything; then whoever is at the feeder, what
       // tomorrow brings, the mail, and the town making up its mind.
@@ -1073,10 +1090,10 @@ async function boot(): Promise<void> {
             ? "P.S. Somebody's at your feeder."
             : building
               ? `P.S. ${building.name} will be up by tomorrow.`
-              : letter
-                ? "P.S. There's a letter for you at the post office."
-                : townResting(game.save.projects, today)
-                  ? "P.S. The town's thinking about what to build next."
+              : townResting(game.save.projects, today)
+                ? "P.S. The town's thinking about what to build next."
+                : letter
+                  ? "P.S. There's a letter for you at the post office."
                   : null,
       flagged: game.save.flag,
       riding: look.ride === 'bike',
@@ -1227,8 +1244,8 @@ async function boot(): Promise<void> {
       const wanted = floor !== null ? Math.max(0, floor - under) : WADE * wet;
       footing += (wanted - footing) * Math.min(1, dt * 12);
       // Under the bandstand's roof the camera would see only roof: it comes off while the player is on its floor.
-      const stand = built.plots.find((q) => q.id === 'bandstand');
-      townProjects.openRoof(stand && floor !== null && Math.hypot(stand.x - player.position.x, stand.z - player.position.z) < 4.2 ? 'bandstand' : null);
+      const roofed = floor === null ? null : (built.plots.find((q) => (q.id === 'bandstand' || q.id === 'lean-to') && Math.hypot(q.x - player.position.x, q.z - player.position.z) < 4.2) ?? null);
+      townProjects.openRoof(roofed?.id ?? null);
       if (Math.abs(footing) > 0.005) player.position.y = under + footing;
     } else footing = 0;
     // Skis leave their marks; anything else lifts them off the snow.

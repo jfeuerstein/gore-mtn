@@ -200,7 +200,7 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture, cut to six inks and gathered into patches (`calm`), with a dark outline hull. A
   test fails if any model has an open edge or a loose piece. The converter needs Python with
   trimesh, fast-simplification, scipy, scikit-image, pymeshfix and Pillow.
-- They are one small JSON file, `public/models/park.json` (43 models, about 750 KB), read by
+- They are one small JSON file, `public/models/park.json` (43 models, about 800 KB), read by
   `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
   same height. Nearly the whole field guide has one: the animals, the birds, the plants and
   mushrooms, the cairn and the snowman (the hare has two, for its two coats). The icicles and
@@ -429,7 +429,9 @@ Everything else is built in code from simple shapes.
   made model, filed in `park.json` under its id among the people, `biscuit` and `pickles`;
   with `models=blocks` they are built from blocks several times their size and brought back
   down, so that they still get the print's line: `fine()` in `folk.ts`), and the
-  `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
+  `snowman` is Tom, who is a snowman in winter (the field guide's own made model, in his top
+  hat, so there is one snowman on the mountain and not two), a heap in spring and a scarecrow
+  after that.
   What Tom has to say is shown as written notes signed `- Tom`.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
 - Three boards are chalked up fresh each time they are read (`src/game/report.ts`, pure, tested):
@@ -494,8 +496,15 @@ Everything else is built in code from simple shapes.
   from the very start until the loading card, the welcome and the flyer are out of the way
   (`Toasts.hold`), and Settings can put the welcome up again.
 - The last letter (`the-whole-town`) is sent, ahead of the queue, the day every patch has been
-  earned: the game's only ending, and it asks the player to come up anyway. The flyer's P.S.
-  says it is waiting before anything else, and Dot has a line of her own for it.
+  earned: the game's only ending, and it asks the player to come up anyway. The moment the
+  last patch is earned is announced ("Your Book is full"), the flyer's P.S. says the letter is
+  waiting before anything else, Dot has a line of her own for it, and it comes with one more
+  patch for the cabin's board (`KEEPSAKE` in `patches.ts`: not one of the Book's, and made as
+  a patch set of its own so the other sheets are cut as they were).
+- A full book still has a flyer. With every trail stamped there is a trail of the day to go
+  down again (`trailAgainLead`); with little else left, a patch still to earn is quoted, a
+  different one each day (`patchLead`, which has nowhere for a flag); and the rumour's wording
+  turns about.
 - If the game cannot load, `showFatal` says so kindly, offers `Try again`, and keeps what went
   wrong small underneath.
 - `src/game/patches.ts` lists the patches for finishing a whole kind of thing. They are checked
@@ -624,7 +633,8 @@ Everything else is built in code from simple shapes.
   as not built yet until it is. While one is going up, the flyer's P.S. says it will be done
   tomorrow. The next is proposed once the one before has stood a few days (`REST`), so five
   projects last a keen player about three weeks; meanwhile the P.S. says the town is thinking
-  about what to build next. A proposed plot has one ribboned stake on it, to walk toward.
+  about what to build next. A proposed plot has a post with a notice and a red pennant on it,
+  to walk toward.
   Nothing is paid, carried or timed, and a project never staked out simply waits.
 - `src/world/projectPlots.ts` (pure, tested) finds each plot from a description (along a
   path, on a pond's shore, at the top of a lift): dry ground, level enough, off the trails,
@@ -633,7 +643,9 @@ Everything else is built in code from simple shapes.
   each from blocks, one mesh apiece. The hut and the lean-to's walls are solid (`projectWalls`;
   `Walls.add` and `remove` let walls come and go after the game has begun). The dock, the
   bandstand, the lookout and the lean-to's floor are stood on (`projectFloors`, `floorAt`):
-  `main.ts` raises the player onto the boards.
+  `main.ts` raises the player onto the boards. The bandstand's roof and the lean-to's are
+  pieces of their own that come off while the player is under them (`TownProjects.openRoof`),
+  as the cabin's porch has none: the camera looks down from behind and would see only roof.
 - Whoever wanted a thing built says so once when it stands (`Project.said`), and writes about
   it (`letters.ts`).
 - What has been staked out is in the save (`projects`, the day each was). Add a project by

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayBefore, flyerDate, LEADS, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
+import { dayBefore, flyerDate, LEADS, patchLead, trailAgainLead, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
 
 const trail = (name: string): Lead => trailLead({ name, difficulty: 'intermediate', glade: false }, 0, 0, '2026-11-11', false);
 const place = (id: string): Lead => placeLead({ id, name: id, x: 0, z: 0 }, '2026-11-11');
@@ -65,6 +65,20 @@ describe("today's flyer", () => {
     for (const d of ['11', '12', '13', '14']) expect(pickLeads(everything, `2026-11-${d}`, null, 'person:hazel')).toContain('person:hazel');
     // Somebody who is not about is not offered.
     expect(pickLeads(everything, '2026-11-11', null, 'person:nobody')).toHaveLength(LEADS);
+  });
+
+  it('still has something to say to a full or nearly full book', () => {
+    // Every trail stamped: a trail to go down again, with no "you haven't been" about it.
+    const again = trailAgainLead({ name: 'Sunway', difficulty: 'easy', glade: false }, 0, 0, '2026-11-11', false);
+    expect(again.id).toBe('again:Sunway');
+    expect(again.why).not.toMatch(/haven't/);
+    // A patch still to earn is quoted, has nowhere for a flag, and only makes up the number.
+    const patch = patchLead({ id: 'whopper', name: 'The Whopper', how: 'Find a stone over twenty centimeters.' });
+    expect(patch.nowhere).toBe(true);
+    expect(pickLeads([again, rumourLead('Marge', 0, 0, '2026-11-11'), patch], '2026-11-11')).toEqual(['again:Sunway', 'rumour', 'patch:whopper']);
+    expect(pickLeads([...everything, patch], '2026-11-11')).not.toContain('patch:whopper');
+    // The rumour is not worded the same every day.
+    expect(new Set(['11', '12', '13', '14', '15', '16', '17', '18'].map((d) => rumourLead('Marge', 0, 0, `2026-11-${d}`).why)).size).toBeGreaterThan(1);
   });
 
   it('knows the day before a day, across a month and a year', () => {

@@ -9,7 +9,7 @@ import { dayNumber, trailReason } from './report';
  *
  * A lead is never a chore: nothing is lost by ignoring it, and tomorrow there are three more.
  */
-export type LeadKind = 'trail' | 'place' | 'person' | 'rumour' | 'project';
+export type LeadKind = 'trail' | 'place' | 'person' | 'rumour' | 'project' | 'patch';
 
 export interface Lead {
   /** Which lead this is, kept in the save for the day: "trail:Sunway", "place:fire-tower". */
@@ -25,6 +25,8 @@ export interface Lead {
   x: number;
   z: number;
   flag: string;
+  /** True for a lead that is not a place: there is nowhere to plant a flag. */
+  nowhere?: boolean;
 }
 
 /** A trail not yet stamped, flagged at its top. */
@@ -42,6 +44,19 @@ export function trailLead(trail: { name: string; difficulty: Difficulty; glade: 
   };
 }
 
+/** Why a trail already in the passport is worth another run. */
+const AGAIN_WHYS: readonly string[] = ['For the pleasure of it.', "You know every turn. That's the nice part.", "There's no stamp in it. Just a good run.", "It's different every time. A little."];
+
+/** With every trail stamped there is still a trail of the day: one to go down again. */
+export function trailAgainLead(trail: { name: string; difficulty: Difficulty; glade: boolean }, x: number, z: number, day: string, riding: boolean): Lead {
+  return { ...trailLead(trail, x, z, day, riding), id: `again:${trail.name}`, why: AGAIN_WHYS[(dayNumber(day) >>> 7) % AGAIN_WHYS.length] as string };
+}
+
+/** A patch not yet earned, with how it is earned: for a book so nearly full that nothing else is left to point at. */
+export function patchLead(patch: { id: string; name: string; how: string }): Lead {
+  return { id: `patch:${patch.id}`, kind: 'patch', head: 'Still to earn', title: patch.name, why: patch.how, x: 0, z: 0, flag: patch.name, nowhere: true };
+}
+
 /** Why a place is worth the trip, one a day, turn about. */
 const PLACE_WHYS: readonly string[] = ["You don't have the postcard yet.", "You haven't been. It's worth a look.", "There's a postcard in it for you.", 'Bring back a postcard.'];
 
@@ -56,8 +71,9 @@ export function personLead(person: { id: string; name: string; role: string }, x
 }
 
 /** The inn's rumour of a stone: the flyer only says to ask. Where it lies is the innkeeper's to tell. */
-export function rumourLead(innkeeper: string, x: number, z: number): Lead {
-  return { id: 'rumour', kind: 'rumour', head: 'Heard at the inn', title: 'A stone, supposedly', why: `${innkeeper} knows where. Ask her.`, x, z, flag: `${innkeeper}, at the inn` };
+const RUMOUR_WHYS: readonly string[] = ['knows where. Ask her.', 'heard it from somebody. Ask her.', 'has the details. Supposedly.', "will tell you where. She can't help it."];
+export function rumourLead(innkeeper: string, x: number, z: number, day = ''): Lead {
+  return { id: 'rumour', kind: 'rumour', head: 'Heard at the inn', title: 'A stone, supposedly', why: `${innkeeper} ${RUMOUR_WHYS[day ? (dayNumber(day) >>> 11) % RUMOUR_WHYS.length : 0]}`, x, z, flag: `${innkeeper}, at the inn` };
 }
 
 /**
@@ -102,7 +118,7 @@ export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string
   const askFirst = seed % 2 === 0 ? rumour : people;
   add(nextDoor ?? one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
   // Short of three, whatever else is open makes up the number.
-  for (const lead of [...of('project'), ...of('place'), ...trails, ...people, ...rumour]) add(lead);
+  for (const lead of [...of('project'), ...of('place'), ...trails, ...people, ...rumour, ...of('patch')]) add(lead);
   return picked.map((l) => l.id);
 }
 

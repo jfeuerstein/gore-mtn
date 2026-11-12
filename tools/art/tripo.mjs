@@ -21,10 +21,17 @@ export async function task(path, body, { timeoutMs = 900000 } = {}) {
   const start = await made.json().catch(() => ({}));
   if (!made.ok || start.code !== 0) throw new Error(`Tripo refused the task (${made.status}): ${JSON.stringify(start).slice(0, 300)}`);
   const id = start.data.task_id;
+  // Said aloud, so that a task already paid for can be found again if this run is cut short.
+  console.error(`Tripo task ${id} (${path}) started`);
   const began = Date.now();
   for (;;) {
     await sleep(3000);
-    const res = await fetch(`${API}/tasks/${id}`, { headers: headers() });
+    // A dropped connection while waiting is no reason to give the task up: it is still being made, and has been paid for.
+    const res = await fetch(`${API}/tasks/${id}`, { headers: headers() }).catch(() => null);
+    if (!res) {
+      if (Date.now() - began > timeoutMs) throw new Error(`Tripo task ${id} could not be asked after in time`);
+      continue;
+    }
     const now = (await res.json().catch(() => ({}))).data ?? {};
     if (now.status === 'success') return now;
     if (['failed', 'cancelled', 'banned', 'expired'].includes(now.status)) throw new Error(`Tripo task ${id} ${now.status}: ${now.error_message ?? ''}`);
@@ -34,8 +41,13 @@ export async function task(path, body, { timeoutMs = 900000 } = {}) {
 
 /** Download a file Tripo has made and save it. */
 export async function save(url, path) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`could not download ${url}: ${res.status}`);
+  // Tried a few times: what is being fetched has been paid for.
+  let res = null;
+  for (let tries = 0; tries < 4 && !res?.ok; tries++) {
+    if (tries) await sleep(4000);
+    res = await fetch(url).catch(() => null);
+  }
+  if (!res?.ok) throw new Error(`could not download ${url}: ${res?.status ?? 'no answer'}`);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, Buffer.from(await res.arrayBuffer()));
   return path;

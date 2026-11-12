@@ -56,6 +56,12 @@ export const PATCHES: readonly (Patch & { earned(t: Tally): boolean })[] = [
   { id: 'good-dog', name: 'Friend of Biscuit', how: 'Pet the dog on seven different days.', earned: (t) => t.save.pets.length >= 7 },
 ];
 
+/**
+ * What comes with the last letter, the day the Book is full: one more patch, which is not one
+ * of the Book's (it is not earned by doing a thing, and nothing waits on it), for the cabin's board.
+ */
+export const KEEPSAKE = { id: 'whole-book', name: 'The Whole Book' } as const;
+
 /** The patches a tally has earned, by id. */
 export function patchesEarned(tally: Tally): string[] {
   return PATCHES.filter((p) => p.earned(tally)).map((p) => p.id);

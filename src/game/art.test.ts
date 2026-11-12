@@ -10,7 +10,7 @@ import { artSlug } from './artNames';
 import { MINERALS } from './minerals';
 import { OFFERINGS } from './offerings';
 import { buildLandmarks, buildPeaks, CONDITIONS } from './passport';
-import { PATCHES } from './patches';
+import { KEEPSAKE, PATCHES } from './patches';
 import { PROJECTS } from './projects';
 import { GEAR, PEOPLE } from './people';
 import { SPECIES } from './wildlife';
@@ -46,7 +46,7 @@ describe('generated art', () => {
   it('has a picture for everything that can be had: patches, hats and jackets, bakes, sandwiches and books, conditions, summits and lift pins', () => {
     const world = loadTestWorld();
     const sets: [string, string[]][] = [
-      ['patches', PATCHES.map((p) => p.id)],
+      ['patches', [...PATCHES.map((p) => p.id), KEEPSAKE.id]],
       ['gear', GEAR.map((g) => g.id)],
       ['offerings', OFFERINGS.map((o) => o.id)],
       ['conditions', CONDITIONS.map((c) => c.id)],

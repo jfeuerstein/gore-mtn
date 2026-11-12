@@ -1,3 +1,4 @@
+import { KEEPSAKE, PATCHES } from './patches';
 import { describe, expect, it } from 'vitest';
 import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
@@ -113,6 +114,27 @@ describe('Game', () => {
     expect(game.save.cabin.shelf).toEqual(['garnet', '', '', '', '']);
     game.place('shelf', 0, '');
     expect(game.save.cabin.shelf.join('')).toBe('');
+  });
+
+  it('marks the day the Book is full, and gives a keepsake with the last letter', () => {
+    const game = new Game(gameWorld, memory());
+    // Every patch but one already in the book: the last one earned says the Book is full.
+    for (const p of PATCHES) game.save.patches[p.id] = DAY;
+    delete game.save.patches['first-tracks'];
+    game.save.trails.Sunway = { seen: '1', stamped: DAY };
+    const events = game.checkPatches(DAY);
+    expect(events.map((e) => e.title)).toContain('First Tracks');
+    expect(events[events.length - 1]?.title).toBe('Your Book is full');
+    expect(game.checkPatches(DAY)).toEqual([]);
+    // The keepsake is not on the board until the letter has been had.
+    expect(game.wallChoices()).not.toContain(KEEPSAKE.id);
+    game.save.letters.test = '2026-11-01';
+    const talk = game.talk('dot', '2026-11-20', 'winter');
+    expect(talk?.letter?.id).toBe('the-whole-town');
+    expect(talk?.events.map((e) => e.title)).toEqual(['A letter from everybody', KEEPSAKE.name]);
+    expect(game.wallChoices()).toContain(KEEPSAKE.id);
+    game.place('wall', 0, KEEPSAKE.id);
+    expect(game.save.cabin.wall[0]).toBe(KEEPSAKE.id);
   });
 
   it('says how far along a counting errand is', () => {

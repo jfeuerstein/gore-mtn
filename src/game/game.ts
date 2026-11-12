@@ -16,7 +16,7 @@ import {
 } from './passport';
 import { LAST_LETTER, letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
-import { PATCHES, patchesEarned, type Tally } from './patches';
+import { KEEPSAKE, PATCHES, patchesEarned, type Tally } from './patches';
 import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
@@ -451,7 +451,11 @@ export class Game {
       const patch = PATCHES.find((p) => p.id === id);
       events.push({ kind: 'patch', title: patch?.name ?? id, detail: 'A patch for your passport', art: `patches/${artSlug(id)}` });
     }
-    if (events.length > 0) this.dirty = true;
+    if (events.length > 0) {
+      this.dirty = true;
+      // The last patch is the Book full: say so, and say where to go.
+      if (Object.keys(this.save.patches).length >= PATCHES.length) events.push({ kind: 'patch', title: 'Your Book is full', detail: 'Every patch is sewn on. Dot has something for you.' });
+    }
     return events;
   }
 
@@ -627,6 +631,8 @@ export class Game {
               : "One for you today!\nI didn't read it. I did read the envelope.",
         );
         talk.events.push({ kind: 'item', title: last ? 'A letter from everybody' : `A letter from ${letter.from ? (personById(letter.from)?.name ?? 'someone') : 'somebody'}`, detail: 'Kept in your pack' });
+        // The last letter comes with one more patch, for the cabin's board.
+        if (last) talk.events.push({ kind: 'patch', title: KEEPSAKE.name, detail: 'One more patch, for the board by your door', art: `patches/${KEEPSAKE.id}` });
       }
     }
     // The innkeeper passes on the day's rumour, once.
@@ -815,7 +821,8 @@ export class Game {
 
   /** The patches the player has earned, by id: what could go on the cabin's board. */
   wallChoices(): string[] {
-    return PATCHES.filter((p) => p.id in this.save.patches).map((p) => p.id);
+    // What came with the last letter hangs with the rest.
+    return [...PATCHES.filter((p) => p.id in this.save.patches).map((p) => p.id), ...(LAST_LETTER in this.save.letters ? [KEEPSAKE.id] : [])];
   }
 
   /** A place on the cabin's shelf (or its board) has been tapped: it takes the next thing the player has, or goes bare. */

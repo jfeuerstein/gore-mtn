@@ -379,6 +379,9 @@ const only = (art, keep) => Object.fromEntries(Object.entries(art).filter(([id])
 /** Each set of patches: where its pictures go, the colour of its border, and what is sewn on each. */
 export const PATCH_SETS = {
   patches: { border: 'brick red (#c8402d)', subjects: briefs(PATCH_ART) },
+  // Not one of the Book's: it comes with the last letter, for the cabin's board (KEEPSAKE in src/game/patches.ts).
+  // A set of its own, so that the sheets already made for the others are cut as they were.
+  keepsake: { border: 'gold (#c98f1f)', subjects: briefs({ 'whole-book': patch('an open book with a snowy mountain rising out of its pages and one gold star above the peak') }), into: 'patches' },
   peaks: { border: 'pine green (#2f6b4f)', subjects: briefs(PEAK_ART) },
   conditions: { border: 'gold (#c98f1f)', subjects: briefs(CONDITION_ART) },
   pins: { border: 'blue (#2b62c9)', subjects: briefs(PIN_ART) },

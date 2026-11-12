@@ -35,7 +35,7 @@ export const LETTERS: readonly Letter[] = [
     from: null,
     signed: "-Everybody (Pip signed for Tom)",
     when: (save) => Object.keys(save.patches).length >= EVERY_PATCH,
-    text: "We passed your Book around the inn last night. It's all in there - every trail, every stone, every one of us. Dot checked twice. Nothing left to find! Come up anyway. The mountain's still the mountain, and Gus made chili.",
+    text: "We passed your Book around the inn last night. It's all in there - every trail, every stone, every one of us. Dot checked twice. Here's one more patch, for your wall. Come up anyway! Gus made chili.",
   },
   {
     id: 'test',

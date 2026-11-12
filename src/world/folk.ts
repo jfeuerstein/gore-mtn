@@ -125,6 +125,16 @@ function tomsScarf(y: number, width: number): Block[] {
   ];
 }
 
+/** Tom's top hat, with its band, sitting at a height. */
+function tomsHat(y: number): Block[] {
+  const black = 0x22262d;
+  return [
+    { size: [0.62, 0.05, 0.62], at: [0, y, 0], colour: black },
+    { size: [0.4, 0.36, 0.4], at: [0, y + 0.2, 0], colour: black },
+    { size: [0.42, 0.07, 0.42], at: [0, y + 0.07, 0], colour: 0xf4ead8 },
+  ];
+}
+
 /**
  * Tom. In winter a snowman in a top hat; in spring what is left of one; in summer and fall a
  * scarecrow in the same scarf, with a pumpkin for company once the leaves turn.
@@ -132,11 +142,7 @@ function tomsScarf(y: number, width: number): Block[] {
 function tom(season: Season): THREE.BufferGeometry {
   const snow = 0xf4f6fa;
   const black = 0x22262d;
-  const hat = (y: number): Block[] => [
-    { size: [0.62, 0.05, 0.62], at: [0, y, 0], colour: black },
-    { size: [0.4, 0.36, 0.4], at: [0, y + 0.2, 0], colour: black },
-    { size: [0.42, 0.07, 0.42], at: [0, y + 0.07, 0], colour: 0xf4ead8 },
-  ];
+  const hat = tomsHat;
   if (season === 'winter') {
     return fine([
       { size: [1.15, 0.85, 1.15], at: [0, 0.42, 0], colour: snow },
@@ -261,10 +267,17 @@ export class Folk {
       // The dog and the cat have models made outside the game, as the animals of the field guide
       // do, when those have been loaded: otherwise the ones built here from blocks.
       const file = kind === 'dog' || kind === 'cat' ? madeModel(standing.person.id) : undefined;
-      const pet = file ? modelGeometry(file, kind === 'dog' ? 1.4 : 1) : null;
+      // In winter Tom is the snowman of the field guide, in his own top hat: one snowman on the mountain, not two.
+      const snow = kind === 'snowman' && season === 'winter' ? madeModel('snowman') : undefined;
+      const pet = file ? modelGeometry(file, kind === 'dog' ? 1.4 : 1) : snow ? modelGeometry(snow, 1.95) : null;
       const geometry = pet ? pet.geometry : kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : kind === 'cat' ? cat() : kind === 'snowman' ? tom(season) : standingFigure(standing.person.look);
       const body = new THREE.Mesh(geometry, material);
       if (pet?.shell) body.add(new THREE.Mesh(pet.shell, ink));
+      if (snow) {
+        const hat = new THREE.Mesh(fine(tomsHat(0), 2), material);
+        hat.position.y = 1.9;
+        body.add(hat);
+      }
       body.scale.setScalar(kind === 'person' ? SCALE : kind === 'cat' ? 0.62 : 1);
       // Whatever stands beside them: one more mesh, shown and hidden with its owner.
       if (standing.prop && standing.person.prop) {

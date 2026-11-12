@@ -21,7 +21,7 @@ export interface FlyerPage {
 }
 
 /** The mark beside each kind of lead: the trail's own mark is in its title, so it has a ski pole's basket. */
-const MARK: Record<Lead['kind'], string> = { trail: '❄', place: '✉', person: '◆', rumour: '◆', project: '▲' };
+const MARK: Record<Lead['kind'], string> = { trail: '❄', place: '✉', person: '◆', rumour: '◆', project: '▲', patch: '★' };
 
 /**
  * The flyer: a sheet of paper pinned up over the lower part of the screen, the first time the
@@ -113,7 +113,7 @@ export class Flyer {
       why.textContent = lead.done ? 'Done. Nice.' : lead.why;
       words.append(head, title, why);
       row.append(mark, words);
-      if (!lead.done) {
+      if (!lead.done && !lead.nowhere) {
         const here = page.flagged !== null && Math.hypot(page.flagged.x - lead.x, page.flagged.z - lead.z) < 1;
         const flag = document.createElement('button');
         flag.type = 'button';

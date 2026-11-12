@@ -34,13 +34,19 @@ function site(): { list: Block[]; extra: THREE.BufferGeometry[] } {
   return { list, extra: [] };
 }
 
-/** A spot the town has its eye on: one tall stake with a ribbon, so there is something to walk toward. */
+/** A spot the town has its eye on: a post with a notice tacked to it and a red pennant, so there is something to walk toward. */
 function marker(): { list: Block[]; extra: THREE.BufferGeometry[] } {
   return {
     list: [
-      { size: [0.14, 2.3, 0.14], at: [0, 1.15, 0], colour: PALE },
-      { size: [0.05, 0.3, 0.7], at: [0, 2.1, 0.38], colour: RED },
-      { size: [0.05, 0.3, 0.5], at: [0, 1.76, 0.28], colour: RED, tip: 0.25 },
+      { size: [0.16, 1.9, 0.16], at: [0, 0.95, 0], colour: BARK },
+      // The notice, and the lines of writing on it.
+      { size: [0.9, 0.62, 0.07], at: [0, 1.35, 0.1], colour: WHITE },
+      { size: [0.6, 0.06, 0.02], at: [0, 1.5, 0.15], colour: 0x22304a },
+      { size: [0.6, 0.05, 0.02], at: [0, 1.36, 0.15], colour: 0x5e6670 },
+      { size: [0.44, 0.05, 0.02], at: [-0.08, 1.24, 0.15], colour: 0x5e6670 },
+      // A pennant at the top, out in the wind.
+      { size: [0.06, 0.42, 0.9], at: [0, 2.0, 0.5], colour: RED },
+      { size: [0.06, 0.26, 0.5], at: [0, 2.0, 1.15], colour: RED },
     ],
     extra: [],
   };
@@ -55,7 +61,8 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
   if (kind === 'leanto') {
     // An Adirondack lean-to: a floor, three log walls, a roof that slopes to the back, and a fire ring in front.
     list.push(sunk([4.2, 0.35, 2.8], [0, 0.18, -0.4], PLANK), { size: [4.2, 1.5, 0.3], at: [0, 1.1, -1.65], colour: LOG }, { size: [0.3, 1.9, 2.8], at: [-1.95, 1.3, -0.4], colour: LOG }, { size: [0.3, 1.9, 2.8], at: [1.95, 1.3, -0.4], colour: LOG });
-    list.push({ size: [4.8, 0.2, 3.7], at: [0, 2.35, -0.55], colour: roofColour, tip: -0.3 }, { size: [4.2, 0.28, 0.3], at: [0, 2.72, 0.95], colour: BARK });
+    // Its roof comes off while someone is inside, as the bandstand's does: the camera looks down from behind.
+    over = { list: [{ size: [4.8, 0.2, 3.7], at: [0, 2.35, -0.55], colour: roofColour, tip: -0.3 }, { size: [4.0, 0.24, 0.26], at: [0, 2.74, 0.95], colour: BARK }], extra: [] };
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
       list.push({ size: [0.4, 0.3, 0.32], at: [Math.cos(a) * 0.7, 0.12, 2.9 + Math.sin(a) * 0.7], colour: STONE, turn: -a });
