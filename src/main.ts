@@ -961,7 +961,7 @@ async function boot(): Promise<void> {
       board || notes ? lines.map((line) => (typeof line === 'string' ? { written: line, ...(notes ? { signed: '- Tom' } : {}) } : line)) : lines,
       choices,
       board ? null : `${import.meta.env.BASE_URL}art/people/${talk.person.id}.webp`,
-      'Bye',
+      'Goodbye',
       painting ? `${import.meta.env.BASE_URL}art/${painting}.webp` : null,
     );
     if (talk.events.some((e) => e.kind === 'gear')) player.setOutfit(game.outfit());
