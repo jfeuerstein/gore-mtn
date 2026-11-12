@@ -1,115 +1,99 @@
 # Playtest guide
 
-This is the game as it stands after being taken past the vertical slice. Nothing in it since
-milestone 1 has had your thumbs on it, so expect rough edges and say where they are.
-
-## New since your review
-
-In the order you will meet it:
-
-1. **The look of the interface**: poster lettering, paper and enamel, portraits when people talk,
-   plates in the Book. The bike is faster.
-2. **At the Base Lodge**: a snow report chalked up by the door, racks of skis, a name board at
-   the foot of each lift, a station over each lift's wheel, and faces on everybody.
-3. **On the mountain**: a sign at the top of every trail, snow guns down the wide ones, a
-   trail-of-the-day board at the Saddle, the observer's log at the fire tower, and benches at
-   the lookouts.
-4. **In North Creek** (by shuttle): named buildings with signs, lamps and smoke; the Snow Train
-   standing at a depot that now lies along the rails; a post office, an inn, a bakery, a deli
-   and a library that each have something for you every day; and a mayor.
-5. **In the Book**: postcards for landmarks, letters, a town round, tickets for what you have
-   tasted and read, benches, and more hats.
+What to try on the phone, and what only your thumbs and eyes can settle. The game as a whole
+is described in [game-plan.md](game-plan.md).
 
 ## Before you start
 
-- Open the game from the Home Screen icon as before. A new version arrives by itself. You will
-  get a few lines once: the welcome if your book has never seen it, otherwise a note of what is
-  new. Close it or read it through.
-- Your existing book carries over. Stamps earned before the seasons were told apart count as
-  winter's.
-- Sound starts with your first touch. The phone's silent mode may mute it; Settings > Sound
-  turns it off for good.
-- Today the calendar says winter. The other seasons are reached by the Snow Train (see below),
-  or straight away from Settings > For testing > Season.
+- Open the game from the Home Screen icon. A new version arrives by itself. A new player gets a
+  welcome; a returning one gets a short note of what is new, once.
+- Your existing book carries over. Settings can copy it out as a save code and restore it.
+- Sound starts with your first touch. The phone's silent switch may mute it; Settings turns it
+  off for good.
+- The season, the hour and the sky are the real ones at Gore. The other seasons are reached by
+  the Snow Train, or at once from Settings > For testing.
 
-## A first half hour
+## A first day
 
-1. **Ski.** Ride the Adirondack Express and ski Sunway to the bottom. Stones lie on the snow;
-   swerve for a few. Listen to the skis: a carve should hiss, a hockey stop should scrape.
-2. **Talk.** Hazel stands by the Base Lodge door with a gold mark over her head. Take her
-   errand. Otto is at the foot of the Express.
-3. **Look.** Slow down near the trees. Anything with a pale blue mark is not yet in your field
-   guide; come close to enter it. Deer and foxes bolt if you arrive fast.
-4. **Go to town.** The shuttle waits by the Base Lodge (a blue sign and a cream bus). Ride it to
-   North Creek. June the baker, a short way down Main Street, has a coffee that wants carrying.
-5. **Earn the Snow Train.** Conductor Bea at the depot asks for five stamps in your passport.
-   Then she will take you to any season. Try fall first.
-6. **Ride.** In summer and fall the Skis button reads Bike. Thumb up pedals, down brakes.
-7. **Open the Book** now and then. Four pages: Passport, Minerals, Guide, Pack.
+1. **Read the flyer.** It is pinned up the first time you open the game each day: what the
+   sky is doing and three leads. Tap `Flag` on one and a pennant stands there in the world,
+   with an arrow under the place name at the top of the screen. `Let's go` puts it away; the
+   map's `Today` button brings it back.
+2. **Look round your cabin.** You start in its yard. At the door, tap `Home`: set a stone on
+   the shelf and a patch on the board once you have some, and fill the feeder.
+3. **Walk to the Base Lodge**, a few minutes along Cedars Traverse (open the Map and tap `Me`
+   if you lose your way). Hazel is by the door with a gold mark over her head. Read the snow
+   report chalked up beside her.
+4. **Ski.** Ride the Adirondack Express, tap `Skis`, and come down Sunway. Stones lie on the
+   snow; swerve for a few. Left and right steer, up tucks, down is a hockey stop.
+5. **Look.** Slow down near the trees. Anything with a pale blue mark over it is not yet in
+   your field guide; come close to enter it. Deer and foxes bolt if you arrive fast.
+6. **Stake out the lean-to.** The flyer's middle lead is something the town wants to build.
+   Go to the spot, tap `Stake it out`, and come back tomorrow.
+7. **Go to town.** The shuttle waits by the Base Lodge. In North Creek, call at the post
+   office, the inn, the bakery, the deli and the library: each has something for you daily.
+8. **Open the Book** now and then. Four pages: Passport, Minerals, Guide, Pack.
+
+## The next days
+
+- **The feeder.** Fill it one day and somebody is at it the next, by day. Coming home puts
+  them in the field guide.
+- **The town's projects.** Each is built the day after you stake it out, and the next is
+  proposed once it stands: a lean-to, a dock, a bandstand, a warming hut, a lookout.
+- **The Snow Train.** Conductor Bea at the depot asks for five stamps in your passport, then
+  takes you to any season. In summer and fall the `Skis` button reads `Bike`.
+- **The map.** Drag it, zoom with `+` and `−` or a double tap, tap anything to name it and
+  see where it stands in the book, plant your flag anywhere. `To do` fades what you have.
+- **The camera.** Two fingers on the picture pinch it nearer or further, and it stays there.
 
 ## Things worth finding
 
-- The fire tower on Gore's summit, a short walk through the trees from the Straight Brook Quad.
-  Wren, the observer, is up there.
-- The old Garnet Quarry and Barton Mine, on the map as landmarks. The ground round them is thick
-  with garnets, big ones among them. Amos is at the quarry.
-- The four lookouts: Vermont Overlook, Twister Cliffs, Windy Hill Lookout, Scenic View.
+- The fire tower on Gore's summit, a short walk from the Straight Brook Quad. Wren, the
+  observer, is up there, and her log says what is about this hour.
+- The old Garnet Quarry and Barton Mine. The ground round them is thick with garnets.
+- The four lookouts, each with a bench. Sit at one at sunrise, at sunset and under the stars.
+  Sit still by day and see who turns up.
 - Rabbit Pond, and the paths through the woods, which are dotted lines on the map.
 - A summer night, for the fireflies. A fall day from the summit, for the colour.
 - Whatever it is that walks the woods near The Rumor at dusk. Go very gently.
-- North Creek on foot, door to door: Dot at the post office has a letter for you each day,
-  Marge at the Copperfield Inn has the day's rumour of a rare stone, June and Walt on Main
-  Street have something new to eat, and Fenn at the Town Hall lends a book. Read the
-  noticeboard. Greet the Mayor.
-- A bench. Walk up to one, tap Sit, and look at the view for a minute. The ones at the
-  lookouts and the fire tower face the best of it. Sit still and see who turns up.
-- The three boards: the snow report by the Base Lodge door, the trail of the day outside the
-  Saddle Lodge, and the observer's log at the foot of the fire tower. They read the real sky,
-  your passport and your field guide.
+- The trail of the day, on the board outside the Saddle Lodge.
 - The Snow Train at the depot, after dark, with its windows lit.
-- The old gondola's mid station, in the woods on the mountain. It is on no sign.
 - Tom, by the Ski Bowl lodge. Visit him in every season.
-- The Mineral Shop, out west past the summit, by shuttle: there is a garnet outside you cannot miss.
+- The Mayor.
 
-## What I could not check from here
+## What only the phone can show
 
-- **How it looks on your phone's WebGPU.** The tools here draw with the fallback renderer. The
-  stones and, out of winter, every tree take their colour per instance; if stones are all white,
-  or the fall forest is grey, that is the thing to tell me first.
-- **Frame rate.** There is far more on the mountain than when you last ran the benchmark, and
-  draw calls are over the cautious target in places. Settings > For testing > Run benchmark,
-  pasted back, would settle it. Try it in winter and once in fall.
-- **Sound on a real speaker.** I have only seen the numbers, not heard it.
-- **The live weather.** Still unverified from this side.
-- **Offline play.** After one launch with a signal, try opening the game in aeroplane mode.
-- **Smoke, signs, lamps and the train on WebGPU.** All new, all only seen here in the fallback
-  renderer. Smoke should be pale puffs over the inn's chimneys and the engine, not dark stones.
-- **The lettering.** The interface and every sign in the world use two bundled typefaces. If
-  signs show as blank boards, or the buttons fall back to a plain face, tell me.
-- **The town's houses and the trail signs on WebGPU.** The houses are coloured per instance and
-  the signs are one painted texture; both are new since you last looked.
+The tools here draw with the fallback renderer and cannot present WebGPU, so these are yours:
+
+- **The print on WebGPU.** Flat tones on every surface, a dark line round buildings, people,
+  animals and nearby trees, sharp-edged ground at your feet. Say if anything is unlit, black,
+  missing its line, or if the ground near you flickers between soft and sharp.
+- **Colour per thing.** Stones, the dressed trees out of winter, the town's houses and the
+  other skiers each take a colour of their own. All white or all grey is the thing to report.
+- **Frame rate.** Settings > For testing > Run benchmark, pasted back. Step 6 against step 13
+  says what the print costs.
+- **Heat and battery** over twenty minutes.
+- **Sound on a real speaker**, and whether it tires.
+- **Offline.** After a minute or two with a signal, try aeroplane mode: the game should open,
+  in any season, with every picture.
 
 ## What to tell me
 
-The full list is under "What to judge" in `docs/game-plan.md`. In short:
-
-- Is each season worth the train ride? Which looks wrong?
-- Is the bike fun?
-- Wildlife and people: pleasure or clutter? Too much talk, too little?
-- Does town feel like North Creek? I put June's bakery and Walt's deli in real buildings on Main
-  Street, but I chose which. Say if they should move, and what else the town is missing.
-- The new look of the menus and the Book, the portraits and the plates: right for the game?
-- Buildings now have courses of boards and shingles on them. Settings > For testing > "Boards
-  and shingles on buildings" switches them off. Which do you prefer on the phone?
-- The new people: funny, or too much?
-- Is the sound pleasant after twenty minutes?
+- Does the flyer make you want to go somewhere? Are three leads the right number?
+- Is the cabin worth coming home to? Do the shelf and the board feel like yours?
+- Did you come back the next day to see what the town built?
+- The people: is the talk the right length, in the right voice? Mark up any line.
+- Does each season feel like a different visit? Is the bike fun?
+- Does North Creek feel like a town you would walk through?
 - After a week of five-minute visits: does the book still pull you back?
 
 ## Known limits
 
 - Buildings have no insides. Everyone stands outside their door.
-- The river and ponds can be walked on.
-- Settings > Go to, and fast travel, earn stamps like arriving any other way. They are for
-  testing, and they will fill your book with things you did not earn.
-- A season pinned from Settings earns no conditions stamps. One reached by Snow Train does.
+- The river and ponds can be walked on, and the town's dock and lookout are walked through,
+  not onto.
+- Settings > For testing > Go to earns stamps like arriving any other way, and will fill your
+  book with things you did not earn.
+- A season or an hour pinned from Settings earns no condition patches. A season reached by
+  Snow Train does.
 - Restoring a save code replaces the whole book.

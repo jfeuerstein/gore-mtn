@@ -1442,5 +1442,13 @@ boot().catch((err: unknown) => showFatal(String((err as Error)?.stack ?? err)));
 // Keep a copy of the game for when there is no signal. Only where it is really installed: a
 // development server or a test would only be confused by an older copy.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => undefined));
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .then(() => navigator.serviceWorker.ready)
+      // Once the game has had a while to itself, have the rest of it kept too: the other
+      // seasons' ground and every picture, so a new season or patch can turn up with no signal.
+      .then((worker) => window.setTimeout(() => worker.active?.postMessage('keep-all'), 20000))
+      .catch(() => undefined);
+  });
 }

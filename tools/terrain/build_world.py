@@ -9,14 +9,16 @@ Outputs (committed, in public/world/):
   - height.bin.gz    uint16 little-endian heights, rows north to south, columns west to east,
                      stored as differences from the sample to the west (see pack_heights) and gzipped
   - trailmask.bin.gz uint8, 255 on a ski trail, 0 elsewhere, same grid, gzipped (what game logic reads)
-  - ground.png       colour of the snow up close, two texels per grid cell: bright groomed trails,
-                     cooler snow under the trees, a shaded band along each trail edge, bare rock
-  - canopy.png       colour of the mountain from afar, where trees are not drawn one by one: the
-                     forest as a dark mass with the trails cut through it
-  - world.json     grid metadata, trails, lifts, paths, places
+  - open.bin.gz      uint8, where no trees grow: roads, lots, paths and water, same grid, gzipped
+  - forest.bin.gz    uint8, how much of the forest is hardwood, same grid, gzipped
+  - ground-<season>.png  the ground up close for each season, two texels per grid cell: trails,
+                     forest floor and rock, with roads, paths and water painted in
+  - canopy-<season>.png  the mountain from afar for each season, where trees are not drawn one
+                     by one: the forest as a mass with the trails cut through it
+  - world.json       grid metadata, trails, lifts, paths, roads, buildings, ponds and named places
 
 Run:  python3 tools/terrain/build_world.py
-Deps: numpy pyproj tifffile imagecodecs pillow
+Deps: numpy pyproj tifffile imagecodecs pillow (see tools/requirements.txt)
 """
 from __future__ import annotations
 

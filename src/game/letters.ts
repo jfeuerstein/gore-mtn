@@ -217,8 +217,6 @@ export const LETTERS: readonly Letter[] = [
   },
 ];
 
-export const letterById = (id: string): Letter | undefined => LETTERS.find((l) => l.id === id);
-
 /**
  * The letter waiting today, if any: the first one not yet collected whose time has come. There is
  * at most one a day, so the post is worth a visit tomorrow as well.

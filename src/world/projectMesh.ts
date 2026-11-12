@@ -75,7 +75,7 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
     list.push({ size: [0.3, 1.6, 0.3], at: [1.6, 4.0, -0.6], colour: 0x3d4652 }, { size: [0.44, 0.1, 0.44], at: [1.6, 4.85, -0.6], colour: 0x3d4652 });
     list.push({ size: [1.9, 0.09, 0.42], at: [1.3, 0.55, 2.2], colour: PALE }, sunk([0.1, 0.5, 0.36], [0.5, 0.25, 2.2], BARK), sunk([0.1, 0.5, 0.36], [2.1, 0.25, 2.2], BARK));
     list.push({ size: [0.1, 1.8, 0.04], at: [-2.0, 0.95, 2.0], colour: 0xe3b03f, tip: -0.12 }, { size: [0.1, 1.8, 0.04], at: [-1.8, 0.95, 2.0], colour: 0xe3b03f, tip: -0.12 });
-  } else {
+  } else if (kind === 'deck') {
     // A lookout: a deck out over the slope on posts, railed on three sides, with a viewer on a post.
     list.push({ size: [5.0, 0.2, 3.6], at: [0, 0.7, 1.4], colour: PLANK }, sunk([1.6, 0.4, 1.0], [0, 0.3, -0.9], PALE));
     for (const x of [-2.3, 2.3]) for (const z of [-0.2, 3.0]) list.push(sunk([0.24, 1.9, 0.24], [x, 0.85, z], BARK));
@@ -85,6 +85,10 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
       [2.4, 1.4, 0.1, 3.5],
     ] as const) list.push({ size: [w, 0.1, d], at: [x, 1.75, z], colour: BARK }, { size: [w, 0.08, d], at: [x, 1.3, z], colour: BARK });
     list.push({ size: [0.12, 1.0, 0.12], at: [1.2, 1.3, 2.6], colour: 0x3d4652 }, { size: [0.3, 0.26, 0.5], at: [1.2, 1.9, 2.65], colour: 0x2b62c9 });
+  } else {
+    // A new kind of project must be given a model here: this line will not compile until it is.
+    const unbuilt: never = kind;
+    throw new Error(`no model for a ${String(unbuilt)}`);
   }
   return { list, extra };
 }

@@ -1,10 +1,14 @@
 // Every piece of generated art in the game, as the words it was made from. The pictures in
-// public/art/ come from this file and nowhere else: change a description here and run
-// `node tools/art/make-art.mjs` to make it again. Nothing here names the game or its owner.
+// public/art/ come from this file and nowhere else. Portraits, postcards, title pictures and
+// shop-sign pictures are painted one at a time (`node tools/art/make-art.mjs`); everything in
+// the Book that is had or found is an embroidered patch, made a sheet at a time
+// (`node tools/art/make-patches.mjs`) from what each entry here says is sewn on it. Change a
+// description and run the tool with `--redo` to make it again. Nothing here names the game or
+// its owner.
 
 /**
- * One model and one look for everything, so the pictures sit together. Several were tried; this
- * one keeps a plain paper background and draws the thing asked for, which the others did not.
+ * The model and the look for what is painted one at a time, so the pictures sit together.
+ * Several were tried; this one keeps a plain paper background and draws the thing asked for.
  */
 export const MODEL = 'fal-ai/flux/schnell';
 export const LOOK =
@@ -39,7 +43,7 @@ export const PEOPLE_ART = {
   amos: person('a very old retired miner with a long white beard, a weathered tan canvas jacket and a yellow miner hard hat with a lamp on the front'),
 };
 
-/** Mineral plates, 384 px: shown in the Book once found. */
+/** What is sewn on each mineral's patch. */
 export const MINERAL_ART = {
   garnet: stone('almandine garnet, several deep wine-red round faceted crystals embedded in a chunk of dark grey rock'),
   hornblende: stone('hornblende, a chunk of glossy black and very dark green blocky crystals'),
@@ -55,7 +59,7 @@ export const MINERAL_ART = {
   'gem-garnet': stone('one flawless cut gem garnet, clear deep red, with many small sparkling facets'),
 };
 
-/** Field guide plates, 384 px: shown in the Book once seen. */
+/** What is sewn on each patch of the field guide. */
 export const SPECIES_ART = {
   deer: creature('a white-tailed deer buck with antlers, plain grey-brown coat, standing alert with its white tail raised'),
   fox: creature('a red fox trotting, with black legs and a white-tipped bushy tail'),

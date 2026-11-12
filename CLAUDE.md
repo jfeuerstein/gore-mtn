@@ -1,7 +1,8 @@
 # Gore
 
 A cozy 3D collectathon on Gore Mountain and North Creek, NY. Web app for iPhone Safari,
-installed to the Home Screen and played upright with one thumb. The full design is in `docs/game-plan.md`; read it before design work.
+installed to the Home Screen and played upright with one thumb. The design as it stands is in `docs/game-plan.md`; read it before design work. `docs/history.md`
+is the plan it started from and a diary of how it was built: a record, not a description.
 
 The owner wants the feel of a cozy collecting game in the manner of Animal Crossing: soft,
 friendly, a pleasure to fill shelves in. The mountain's general geography and its trail map
@@ -30,6 +31,7 @@ node tools/shot.mjs out.png "" 402 874 1 "<script>" "$(cat save.json)"          
 node tools/touch-check.mjs                            # emulated-phone touch test of the built game
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
+node tools/offline-check.mjs                          # with no network, the game opens in a season it has never loaded
 NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and title pictures (needs the fal key)
 NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
 NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the animals being tried
@@ -138,7 +140,8 @@ moves between those with the real time of day and the real weather at Gore.
 ## Models
 
 Nearly everything in the game is built in code from simple shapes; the animals are made
-outside it. There are no texture files beyond the pipeline's ground pictures.
+outside it. The only pictures the world is drawn with are the pipeline's ground pictures, the
+shop-sign sheet and the patches set out on the cabin's board.
 
 ### The park print
 
@@ -215,8 +218,8 @@ Everything else is built in code from simple shapes.
 
 - `src/world/shapes.ts` joins coloured blocks and roofs into one geometry that draws in a single
   call and can be instanced. Lodges, huts, the depot and the fire tower (`src/world/buildings.ts`),
-  the houses of North Creek (`src/world/town.ts`: one house stretched to each real footprint,
-  painted per house),
+  the houses of North Creek (`src/world/houses.ts`: each built for what it is, to the size of
+  its plot),
   lift towers (`src/world/scenery.ts`) and chairs and cabins (`src/world/liftCars.ts`) are made
   this way. Windows are a separate unlit mesh whose colour follows the palette's `lamps`, so they
   glow after dark and in falling snow.
@@ -468,7 +471,11 @@ Everything else is built in code from simple shapes.
   once a second against a tally of the book. Add one as a line of data.
 - `public/sw.js` keeps a copy of the game for playing with no signal. It asks the network first
   and falls back to its copy, so a new push is never hidden by an old one. It is registered only
-  over https, so the dev server and the tools never see it.
+  over https, so the dev server and the tools never see it. Twenty seconds after the game
+  starts it is asked to keep the rest (`keep-all`): the build writes `files.json`, every file
+  with a mark of its contents (`vite.config.ts`), and the worker fetches whatever has changed
+  since it last looked, so a season not yet visited or a patch not yet earned can turn up
+  with no signal. `node tools/offline-check.mjs` checks that on the built game.
 - Settings lead with what a player wants (the save code and sound). Everything for testing is
   below the "For testing" line: places to go to, a season, an hour and a sky to pin, the
   renderer, how thick the forest is, sharpness, the frame-rate readout and how far is drawn.

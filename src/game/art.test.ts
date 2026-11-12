@@ -11,6 +11,7 @@ import { MINERALS } from './minerals';
 import { OFFERINGS } from './offerings';
 import { buildLandmarks, buildPeaks, CONDITIONS } from './passport';
 import { PATCHES } from './patches';
+import { PROJECTS } from './projects';
 import { GEAR, PEOPLE } from './people';
 import { SPECIES } from './wildlife';
 
@@ -35,6 +36,11 @@ describe('generated art', () => {
     expect(landmarks.length).toBeGreaterThanOrEqual(20);
     expect(landmarks.filter((l) => !existsSync(art('places', l.id))).map((l) => l.id)).toEqual([]);
     for (const l of landmarks) expect(statSync(art('places', l.id)).size, l.id).toBeLessThan(60000);
+  });
+
+  it('has a postcard for everything the town builds', () => {
+    expect(PROJECTS.filter((p) => !existsSync(art('places', p.id))).map((p) => p.id)).toEqual([]);
+    for (const p of PROJECTS) expect(statSync(art('places', p.id)).size, p.id).toBeLessThan(60000);
   });
 
   it('has a picture for everything that can be had: patches, hats and jackets, bakes, sandwiches and books, conditions, summits and lift pins', () => {

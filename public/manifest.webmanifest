@@ -1,13 +1,13 @@
 {
   "name": "Gore",
   "short_name": "Gore",
-  "description": "A cozy collectathon on Gore Mountain.",
+  "description": "A quiet mountain in your pocket: ski, wander and fill the Book on Gore Mountain and in North Creek.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#e6edf7",
-  "theme_color": "#e6edf7",
+  "background_color": "#f7f1e3",
+  "theme_color": "#f7f1e3",
   "icons": [
     { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }

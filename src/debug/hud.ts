@@ -313,11 +313,12 @@ export class Hud {
     const bench = add(row, 'button', 'Run benchmark (about 90 seconds)');
     bench.type = 'button';
     bench.addEventListener('click', () => startBench(this.cfg.benchSeconds));
-    add(this.menuEl, 'p', 'Changing a setting reloads the page. The benchmark tries nine settings by itself; leave the phone alone until it shows the results.');
+    add(this.menuEl, 'p', 'Changing a setting reloads the page. The benchmark steps through thirteen scenes by itself; leave the phone alone until it shows the results.');
 
     add(this.menuEl, 'h2', 'About');
     add(this.menuEl, 'p', 'Gore is a personal, non-commercial fan project, not affiliated with or endorsed by Gore Mountain or any business in North Creek.');
     add(this.menuEl, 'p', `${this.attribution} Weather: Open-Meteo. Drawn with three.js.`.trim());
+    add(this.menuEl, 'p', 'Lettering: Bebas Neue and Caveat. Portraits, postcards, patches and the field guide\'s models were made for this game with image and shape models; the people and their shops are invented.');
   }
 
   /** One line that can be pasted back into a Claude session. */

@@ -1,21 +1,59 @@
 # gore-mtn
 
-A cozy 3D collectathon set on the real Gore Mountain and in North Creek, NY. Ski and hike the mountain in every season, collect garnets and minerals, and fill a trail passport. Built for iPhone as a web app.
+A cozy 3D collectathon on the real Gore Mountain and in North Creek, NY, drawn like a park
+print. Built for an iPhone held upright and played with one thumb, as a web app on the Home
+Screen.
 
-**Status:** built through to a long playtest. The real mountain and North Creek at close to life size, in four seasons that follow the calendar, under the real time of day and weather at Gore. Ski it in winter and spring and ride it in summer and fall; ride every lift; pick up the day's scatter of garnets and minerals; spot wildlife for a field guide; run errands for the people of the mountain; and take the Snow Train from the depot to another season.
+![The cabin, the Base Lodge, Main Street and the summit](docs/screenshots/world.png)
 
-North Creek is a town to walk through: an inn, a post office with a letter for you every day, a bakery, a deli, a library, a church that strikes the real hour, lamps that come on at dusk, and a mayor who is a cat. Every trail has its sign, every lift its station, and three boards on the mountain read the real sky, your passport and your field guide.
+Open it and the day's flyer is pinned up: what the sky is doing over Gore right now, and three
+things worth going out for. Plant your flag on one and go. Ride a lift, ski a run you know by
+name, pick up the garnets lying on the snow, come gently on a fox at the edge of the woods,
+stamp your passport. Bring a stone home to the shelf by your cabin door and fill the feeder.
+Tomorrow somebody is at it, and the town has built the thing you staked out.
 
-- [Playtest guide](docs/playtest.md): what to try, and what to tell me
-- [Game plan](docs/game-plan.md): scope, art direction, tech stack, roadmap
+- The whole mountain and the town at close to life size, from USGS elevation and
+  OpenStreetMap: over ninety named trails, all fourteen lifts, four summits.
+- Four seasons that follow the calendar, under the real hour and the real weather. Skis on
+  snow, a mountain bike when it has gone, and a Snow Train to the other seasons.
+- A Book to fill: a passport of trails, lifts, summits and places; twelve minerals; a field
+  guide of forty-two animals, birds and plants; things to wear, letters, bakes and books.
+- A town to walk through, with twenty-five people, boards, a dog, a cat who is mayor and a
+  snowman to talk to, and thirty-one errands that are never timed.
+- A cabin of your own, a trail map to steer by, and five things the town builds because you
+  went and staked out the spot.
+- No timers, no fail states, nothing to buy. It works with no signal.
+
+![The flyer, the Book, the trail map and the cabin's sheet](docs/screenshots/sheets.png)
+
+## Documents
+
+- [Game plan](docs/game-plan.md): the game as it stands, and what is still open
+- [Playtest guide](docs/playtest.md): what to try on the phone, and what to report
 - [CLAUDE.md](CLAUDE.md): how the project is built and checked
-- [Credits](CREDITS.md): data sources and licenses
+- [History](docs/history.md): the plan it started from and a diary of each milestone
+- [Credits](CREDITS.md): data sources, licences, and what made the pictures and models
 
 ## Run it
 
 ```
 npm install
-npm run dev
+npm run dev          # local dev server
+npm test             # unit tests
+npm run build        # type-check and build to dist/
 ```
 
-Hold the phone upright. One thumb on the lower part of the screen moves; the camera follows. Drag the upper part of the screen, or use a second finger, to look around. Tap Skis (or Bike, once the snow has gone) to glide: left and right steer, up tucks or pedals, down brakes. At an orange gate at the foot of a lift, tap Ride. Walk up to someone with a gold mark to talk. Map opens the trail map and Book shows everything collected. Desktop: WASD, Shift to go fast, drag to look.
+Hold the phone upright. The lower third of the screen is a movement stick; drag the picture
+above it to look around, and pinch it to bring the camera nearer or further. `Skis` (or
+`Bike`, once the snow has gone) glides: left and right steer, up tucks or pedals, down brakes.
+At the orange gate at the foot of a lift, tap `Ride`. Walk up to someone with a gold mark to
+talk. `Map` opens the trail map and `Book` shows everything collected. On a desktop: WASD,
+Shift to go fast, drag to look, the wheel for the camera.
+
+## Tools
+
+The checks in `tools/` (screenshots, the touch test, the WebGPU smoke test, the benchmark)
+drive the built game in headless Chromium and need [Playwright](https://playwright.dev) with
+its Chromium available to Node. Regenerating the world or the made models needs Python with
+the packages in `tools/requirements.txt`. Making pictures and models calls outside services
+whose keys are secrets of the build environment; none is in the repository.

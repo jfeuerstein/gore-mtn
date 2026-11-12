@@ -1,0 +1,18 @@
+# Python packages for the tools that make things: `pip install -r tools/requirements.txt`.
+# The game itself, its tests and its build need none of them.
+
+# All three: the world (tools/terrain), the made models (tools/models), the patch sheets (tools/art)
+numpy
+pillow
+scipy
+
+# tools/terrain/build_world.py
+pyproj
+tifffile
+imagecodecs
+
+# tools/models/convert.py
+trimesh
+fast-simplification
+scikit-image
+pymeshfix

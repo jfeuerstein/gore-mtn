@@ -16,7 +16,6 @@
   --gold: #c98f1f;
   --plum: #7a4fa3;
   --kraft: #a9763f;
-  --accent: var(--red);
   /* Poster capitals for names and buttons; handwriting for dates and labels; a soft sans for reading. */
   --display: 'Bebas Neue', 'Arial Narrow', 'Helvetica Neue Condensed', sans-serif;
   /* How the display face is set: its weight, and whether words are put in capitals. The poster face is capitals by nature. */
@@ -1483,15 +1482,6 @@ body {
   border-style: dashed;
   box-shadow: none;
 }
-#book-sheet .wardrobe .swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--paper-deep);
-  border: 1.5px solid var(--ink);
-  margin-top: -2px;
-}
-
 /* --- Talk --------------------------------------------------------------------------------- */
 
 /* What someone says: their picture and name, a line at a time, and what there is to choose. */

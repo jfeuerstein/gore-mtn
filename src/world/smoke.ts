@@ -34,6 +34,7 @@ export class Smoke {
 
   constructor(private readonly flues: readonly Flue[]) {
     // Pale, and a little bright of its own, so the underside of a puff is not a dark stone in the sky.
+    // Smoke is the one thing in the air that is not printed: it is lit smoothly, not in steps, so a puff stays soft.
     this.material = new THREE.MeshLambertMaterial({ color: 0xf2f4f7, emissive: 0xaab0ba, emissiveIntensity: 0.6 });
     this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 1), this.material, Math.max(1, flues.length * PUFFS));
     this.mesh.name = 'smoke';
