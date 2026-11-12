@@ -566,7 +566,7 @@ try {
   await op.tap('#menu-button');
   await op.fill('#save-field', 'not a code');
   await op.locator('#save-restore').tap();
-  check('a wrong code is turned away', (await op.locator('#menu').textContent()).includes('That is not a save code'));
+  check('a wrong code is turned away', (await op.locator('#menu').textContent()).includes("doesn't look like a save code"));
   await op.fill('#save-field', code);
   await op.locator('#save-restore').tap();
   check('restoring asks before replacing the book', (await op.evaluate(() => window.__gore.state().book.trails)) === 0 && (await op.locator('#menu').textContent()).includes('Tap Restore again'));

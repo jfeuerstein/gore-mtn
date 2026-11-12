@@ -617,7 +617,15 @@ async function boot(): Promise<void> {
    * the ground, so someone crossing it wades. It is eased, so a step up is a step and not a jump.
    */
   let footing = 0;
-  const WADE = -0.5;
+  const WADE = -0.55;
+  /** Where the ground is asked about, round the player's feet, to tell the shallows from the middle. */
+  const SHALLOWS: readonly (readonly [number, number])[] = [
+    [0, 0],
+    [5, 0],
+    [-5, 0],
+    [0, 5],
+    [0, -5],
+  ];
   /** True while whoever was at the feeder is still there for the player to look at, though the feeder is empty again. */
   let guestStays = false;
 
@@ -1207,7 +1215,9 @@ async function boot(): Promise<void> {
     if (player.mode !== 'lift') {
       const under = ground.heightAt(player.position.x, player.position.z);
       const floor = floorAt(floors, player.position.x, player.position.z);
-      const wanted = floor !== null ? Math.max(0, floor - under) : season !== 'winter' && world.openAt(player.position.x, player.position.z) === OPEN_WATER ? WADE : 0;
+      // The water gets deeper going in: how much of the ground round about is water says how deep.
+      const wet = season === 'winter' ? 0 : SHALLOWS.reduce((n, [dx, dz]) => n + (world.openAt(player.position.x + dx, player.position.z + dz) === OPEN_WATER ? 1 : 0), 0) / SHALLOWS.length;
+      const wanted = floor !== null ? Math.max(0, floor - under) : WADE * wet;
       footing += (wanted - footing) * Math.min(1, dt * 12);
       if (Math.abs(footing) > 0.005) player.position.y = under + footing;
     } else footing = 0;
