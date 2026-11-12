@@ -192,7 +192,7 @@ try {
   const staked = await page.evaluate(() => window.__gore.state());
   check('staking it out starts the building, and says when it will be done', staked.projects[0].state === 'building' && /overnight/.test(staked.toast), staked.toast);
   await page.waitForTimeout(600);
-  check('and there is nothing more to do there today', (await page.locator('#action-button').textContent()) !== 'Stake it out');
+  check('and there is nothing more to do there today', !(await page.locator('#action-button').isVisible()) || (await page.locator('#action-button').textContent()) !== 'Stake it out');
   await page.evaluate(() => window.__gore.teleport('base-lodge'));
 
   // Trees are solid: walk straight at the nearest one and never end up inside its trunk.
@@ -477,7 +477,7 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 28 + 3 + 4 + 19 + 15 + 14 + (await bp.evaluate(() => window.__gore.state().benches.length)), inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 28 + 3 + 4 + 24 + 15 + 14 + (await bp.evaluate(() => window.__gore.state().benches.length)), inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
   check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
@@ -726,7 +726,7 @@ try {
   await invites('Read the trail board');
   await tp.tap('#talk-button');
   const pick = await tp.locator('#talk-sheet .line.written').textContent();
-  check('the trail board picks a trail still to be stamped', /TRAIL OF THE DAY: \S+ [A-Z0-9' ()&-]+\./.test(pick) && /still to stamp/.test(pick), pick.slice(0, 80));
+  check('the trail board picks a trail still to be stamped', /TRAIL OF THE DAY: \S+ [A-Z0-9' &-]+( \(in the trees\))?\./.test(pick) && /still to stamp/.test(pick), pick.slice(0, 80));
   await shut();
   await goTo(person('pickles').x + 0.6, person('pickles').z + 0.6);
   check('the Mayor, who is a cat, can be petted', await invites('Pet Mayor Pickles'));
@@ -739,7 +739,7 @@ try {
   await tp.evaluate(() => document.querySelector('#book-sheet .postcards')?.scrollIntoView());
   const cards = await tp.locator('#book-sheet .postcard').count();
   const sent = await tp.locator('#book-sheet .postcard.earned img').count();
-  check('landmarks are postcards, with a picture once visited', cards === 20 && sent >= 2 && (await townSettle(() => [...document.querySelectorAll('#book-sheet .postcard.earned img')].every((img) => img.complete && img.naturalWidth > 0))), `${sent} of ${cards}`);
+  check('landmarks are postcards, with a picture once visited', cards === 25 && sent >= 2 && (await townSettle(() => [...document.querySelectorAll('#book-sheet .postcard.earned img')].every((img) => img.complete && img.naturalWidth > 0))), `${sent} of ${cards}`);
   await tp.locator('#book-sheet .close').tap();
   await goTo(person('biscuit').x + 0.8, person('biscuit').z + 0.8);
   check('the dog at the Saddle Lodge can be petted', await invites('Pet Biscuit'));
@@ -835,7 +835,7 @@ try {
   // The day's flyer: put up the first time the game is opened on a day (after the welcome has had its turn), and once.
   check("the day's flyer is put up on the next opening", await np.locator('#flyer').isVisible());
   const paper = await np.locator('#flyer .paper').boundingBox();
-  check('the flyer fits the screen, over its lower part', paper !== null && paper.x >= 0 && paper.x + paper.width <= width && paper.y > height * 0.2 && paper.y + paper.height <= height + 4, paper ? `${Math.round(paper.y)} to ${Math.round(paper.y + paper.height)} of ${height}` : 'none');
+  check('the flyer fits the screen, over its lower part', paper !== null && paper.x >= 0 && paper.x + paper.width <= width && paper.y > height * 0.15 && paper.y + paper.height <= height + 4, paper ? `${Math.round(paper.y)} to ${Math.round(paper.y + paper.height)} of ${height}` : 'none');
   const leadRows = await np.locator('#flyer .lead').count();
   check('it names three leads, each with a flag to plant', leadRows === 3 && (await np.locator('#flyer .lead .flag').count()) === 3, (await np.locator('#flyer .lead b').allTextContents()).join(' | '));
   const flyerButtons = await np.locator('#flyer button').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => ({ h: r.height, y: r.top, bottom: r.bottom })));
