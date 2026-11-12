@@ -252,6 +252,11 @@ export function useMadeModels(models: Record<string, ModelFile>): void {
   cache.clear();
 }
 
+/** A model made outside the game, by id, if there is one: for things that are not species, such as the dog. */
+export function madeModel(id: string): ModelFile | undefined {
+  return made[id];
+}
+
 /** Whether a species has a model in the look that is on. */
 export function hasMadeModel(id: string): boolean {
   return id in made;

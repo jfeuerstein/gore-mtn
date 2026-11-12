@@ -1,38 +1,37 @@
 #!/usr/bin/env node
 // Make the game's generated 3D models from tools/models/manifest.mjs.
 //
-//   NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs [id ...] [--redo id,id] [--bump n] [--tripo id,id]
+//   NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs [id ...] [--redo id,id] [--bump n]
 //
-// For each model: a picture is painted (fal), a shape is made of the picture (fal), and
-// tools/models/convert.py turns the shape into each of the looks. The picture and the shape
-// are kept in tools/models/cache/ (not in the repository), so running this again costs nothing
-// and a change to the converter can be tried on every model at once. What the game loads is
-// one small file per look, public/models/<look>.json, holding every model in that look.
+// For each model: a picture is painted, a shape is made of the picture, and
+// tools/models/convert.py turns the shape into the game's look. Most are painted and shaped
+// through fal. A model marked `by: 'tripo'` in the manifest is painted and shaped by Tripo
+// instead, which makes a better job of plants and anything else made of thin things (about 40
+// credits each). The picture and the shape are kept in tools/models/cache/ (not in the
+// repository), so running this again costs nothing and a change to the converter can be tried
+// on every model at once. What the game loads is one small file, public/models/park.json,
+// holding every model.
 //
-// --tripo makes the named models a second way, to set beside the first: Tripo makes the shape
-// straight from the words, already low-poly and plainly coloured, and the converter only tidies
-// it (the toy look). Those stay in the cache, as toy.json: the game ships the park prints only. A shape costs Tripo credits, so only the ones named are made.
-//
-// Needs Python with trimesh, fast-simplification, scipy and Pillow for the converter.
+// Needs Python with the packages in tools/requirements.txt for the converter.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { run, save } from '../art/fal.mjs';
 import { save as saveTripo, task } from '../art/tripo.mjs';
-import { IMAGE_MODEL, LOOKS, MODELS, SHAPE_LOOK, SHAPE_MODEL, TRIPO_SHAPE } from './manifest.mjs';
+import { IMAGE_MODEL, LOOKS, MODELS, SHAPE_LOOK, SHAPE_MODEL, TRIPO } from './manifest.mjs';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const CACHE = `${ROOT}tools/models/cache`;
 const args = process.argv.slice(2);
 const redo = new Set((args.find((a, i) => args[i - 1] === '--redo') ?? '').split(',').filter(Boolean));
 const bump = Number(args.find((a, i) => args[i - 1] === '--bump') ?? '1');
-const tripo = (args.find((a, i) => args[i - 1] === '--tripo') ?? '').split(',').filter((id) => id in MODELS);
 const wanted = args.filter((a, i) => a in MODELS && !args[i - 1]?.startsWith('--'));
-// With only --tripo, nothing is asked of fal: the looks are just put together again from what is kept.
-const ids = wanted.length ? wanted : tripo.length ? [] : Object.keys(MODELS);
+const ids = wanted.length ? wanted : Object.keys(MODELS);
 mkdirSync(CACHE, { recursive: true });
 let made = 0;
+let spent = 0;
 
 async function shape(id) {
+  if (MODELS[id].by === 'tripo') return tripoShape(id);
   const picture = `${CACHE}/${id}.jpg`;
   const glb = `${CACHE}/${id}.glb`;
   if (redo.has(id) || !existsSync(glb) || !existsSync(picture)) {
@@ -50,23 +49,32 @@ async function shape(id) {
   }
 }
 
-/** The same animal as Tripo shapes it from the words alone. */
+/** A model made by Tripo: a chunky picture of the thing, then a shape of that picture. */
 async function tripoShape(id) {
-  const glb = `${CACHE}/tripo-${id}.glb`;
-  const picture = `${CACHE}/tripo-${id}.webp`;
-  if (redo.has(id) || !existsSync(glb)) {
-    const done = await task('generation/text-to-model', { prompt: `${MODELS[id].what}, ${TRIPO_SHAPE.words}`, ...TRIPO_SHAPE.ask });
-    await saveTripo(done.output.model_url ?? done.output.pbr_model_url, glb);
-    if (done.output.rendered_image_url) await saveTripo(done.output.rendered_image_url, picture);
-    console.log(`made ${id} with Tripo (${done.credits_consumed ?? '?'} credits)`);
+  const picture = `${CACHE}/t-${id}.png`;
+  const glb = `${CACHE}/t-${id}.glb`;
+  if (redo.has(id) || !existsSync(glb) || !existsSync(picture)) {
+    const painted = await task('generation/text-to-image', { prompt: `${MODELS[id].what}, ${TRIPO.look}`, model: TRIPO.image, size: '1024x1024', quality: 'medium', output_format: 'png' });
+    await saveTripo(painted.output.generated_image_url, picture);
+    // The shape is asked for by the picture's own task, so nothing has to be uploaded.
+    const shaped = await task('generation/image-to-model', { input: painted.task_id, model: TRIPO.shape, texture: true, pbr: false, texture_quality: 'standard', face_limit: 30000 });
+    await saveTripo(shaped.output.model_url ?? shaped.output.pbr_model_url, glb);
+    spent += (painted.credits_consumed ?? 0) + (shaped.credits_consumed ?? 0);
+    console.log(`made ${id} with Tripo`);
   }
-  execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/tripo-${id}.json`, '--look', 'toy', '--turn', String(MODELS[id].tripoTurn ?? TRIPO_SHAPE.turn), '--preview', `${CACHE}/tripo-${id}.png`]);
+  for (const look of LOOKS) {
+    execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, `${CACHE}/${id}.${look}.json`, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? TRIPO.turn), '--inks', MODELS[id].inks ?? 'animal', '--preview', `${CACHE}/${id}.${look}.png`]);
+  }
 }
 
 // A few at a time: a shape takes half a minute.
-for (let i = 0; i < ids.length; i += 4) {
-  await Promise.all(ids.slice(i, i + 4).map((id) => shape(id).catch((e) => console.error(`FAILED ${id}: ${e.message}`))));
+const theirs = ids.filter((id) => MODELS[id].by === 'tripo');
+const ours = ids.filter((id) => MODELS[id].by !== 'tripo');
+for (let i = 0; i < ours.length; i += 4) {
+  await Promise.all(ours.slice(i, i + 4).map((id) => shape(id).catch((e) => console.error(`FAILED ${id}: ${e.message}`))));
 }
+// Tripo's one at a time, as the account allows.
+for (const id of theirs) await shape(id).catch((e) => console.error(`FAILED ${id} with Tripo: ${e.message.slice(0, 300)}`));
 // One file for each look, with every model that has been made in it.
 mkdirSync(`${ROOT}public/models`, { recursive: true });
 for (const look of LOOKS) {
@@ -78,16 +86,4 @@ for (const look of LOOKS) {
   writeFileSync(`${ROOT}public/models/${look}.json`, JSON.stringify(all));
   console.log(`${look}: ${Object.keys(all).length} models`);
 }
-// Tripo's, one at a time, as the account allows; then the file of every one made so far.
-for (const id of tripo) await tripoShape(id).catch((e) => console.error(`FAILED ${id} with Tripo: ${e.message.slice(0, 300)}`));
-const theirs = {};
-for (const id of Object.keys(MODELS)) {
-  const file = `${CACHE}/tripo-${id}.json`;
-  if (existsSync(file)) theirs[id] = JSON.parse(readFileSync(file, 'utf8'));
-}
-if (Object.keys(theirs).length) {
-  // Kept out of the game: these are for setting beside the others, not for shipping.
-  writeFileSync(`${CACHE}/toy.json`, JSON.stringify(theirs));
-  console.log(`toy: ${Object.keys(theirs).length} models`);
-}
-console.log(`${made} new model(s) asked of fal`);
+console.log(`${made} new model(s) asked of fal${spent ? `, ${spent} Tripo credits spent` : ''}`);
