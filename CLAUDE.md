@@ -532,8 +532,13 @@ Everything else is built in code from simple shapes.
   each and the look a set shares; `make-art.mjs` asks for whatever is missing, trims it and
   saves a small WebP under `public/art/`. `--redo id,id --bump 1` paints one again with another
   seed. Portraits are gouache plates (`LOOK`); postcards are flat park-poster prints with no
-  lettering; the shop-sign pictures go onto one sheet (`public/art/shop-signs.webp`, with
-  `src/world/shopSignArt.ts` saying which is which).
+  lettering.
+- The pictures on the signs over shop doors are round painted signs, printed flat with a navy
+  ring, so that they belong to the world they hang in (the owner asked for this after seeing
+  the first ones, soft little models, on the phone). They are made a sheet at a time like the
+  patches, to a brief of their own (`SIGN_BRIEF`; `make-patches.mjs signs`, which keeps them
+  in the cache), and `make-art.mjs shops` lays them out on one sheet
+  (`public/art/shop-signs.webp`, with `src/world/shopSignArt.ts` saying which is which).
 - Everything in the Book that is had or found is an embroidered patch: stamps for finishing
   things, summit patches, conditions, lift pins, hats and jackets, bakes, sandwiches and books,
   minerals and the field guide. The owner asked for the patch and trail-map look throughout,
