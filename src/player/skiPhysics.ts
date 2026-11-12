@@ -106,8 +106,9 @@ export const SKI: SkiParams = {
   slipSkid: 0.8,
   brakeTurnRate: 7,
 
-  poleAccel: 3.5,
-  poleMaxSpeed: 6,
+  // Poling is a good pace along a flat runout, about as fast as a strong skier skates, and no way to race.
+  poleAccel: 4.2,
+  poleMaxSpeed: 11,
 };
 
 /**

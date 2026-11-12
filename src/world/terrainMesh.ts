@@ -1,7 +1,8 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from './heightfield';
 import { lit } from '../look/material';
-import { enlarge } from '../look/worldLook';
+import { soften, weigh, type Piece, type Weights } from '../look/worldLook';
+import type { GroundLook, GroundTile } from './groundMaterial';
 
 /** Terrain is drawn as square tiles this many cells across. */
 export const TILE_CELLS = 96;
@@ -43,29 +44,41 @@ interface Tile {
   close: Close | null;
 }
 
-/** A tile's own picture of its ground: the printed picture enlarged, with its inks kept apart. */
+/** A tile's ground as it is drawn near the camera: from the weights of its inks, and not from a picture. */
 interface Close {
-  pixels: ImageData;
-  /** Rows of it filled in so far: it is made a few at a time. */
+  /** The tile's piece of the printed picture, with its inks weighed pixel by pixel. Let go once the weights are whole. */
+  piece: Piece | null;
+  /** The weights at the tile's own grid of points, as they are filled in. */
+  weights: Weights | null;
+  /** Rows of points weighed so far: it is done a few at a time. */
   done: number;
-  canvas: HTMLCanvasElement;
-  material: THREE.MeshLambertMaterial | null;
+  /** What draws it, once the weights are whole. */
+  drawn: GroundTile | null;
 }
 
-/** The printed picture of the ground, as bytes, for enlarging parts of. */
+/** The printed picture of the ground, as bytes, for weighing parts of. */
 export interface Print {
   data: Uint8ClampedArray;
   width: number;
   height: number;
+  /** Every ink in it, the commonest first. */
+  order: readonly number[];
 }
 
-/** How big a tile's own picture is, in pixels a side: about a foot of ground to a pixel. */
-const CLOSE_SIZE = 1024;
-/** A tile has its own picture while the camera is within this of it, and keeps it until this far, in metres. */
-const CLOSE_RANGE = 50;
-const CLOSE_KEEP = 150;
-/** Rows of a tile's picture filled in each frame, so that making one never holds a frame up. */
-const CLOSE_ROWS = 192;
+/**
+ * A tile is drawn from the weights of its inks while the camera is within this of it, and
+ * until it is this far, in metres. The camera looks a long way down a trail, so this reaches
+ * well ahead: the tile the camera is over and those round it, about nine at once, a little
+ * over a megabyte each.
+ */
+const CLOSE_RANGE = 260;
+const CLOSE_KEEP = 380;
+/** Points weighed for every pixel of the printed picture, each way. */
+const CLOSE_POINTS = 2;
+/** How many points of the tiles' weights are filled in a frame. */
+const CLOSE_BUDGET = 40000;
+/** What weighing a tile's piece of the picture pixel by pixel counts for, against that. */
+const SOFTEN_COST = 30000;
 
 /**
  * A square of tiles that is drawn as one mesh while every tile in it is far enough off to be at
@@ -202,13 +215,14 @@ export class Terrain {
   private readonly canopyMaterial: THREE.MeshLambertMaterial;
 
   /**
-   * @param print the printed picture of the ground as bytes, if the ground is to be kept sharp up close
+   * @param print the printed picture of the ground as bytes, and `look` how it is drawn from them, if the ground is to be kept sharp up close
    */
   constructor(
     private readonly hf: Heightfield,
     snowTexture: THREE.Texture,
     canopyTexture: THREE.Texture,
     private readonly print: Print | null = null,
+    private readonly look: GroundLook | null = null,
   ) {
     this.group.name = 'terrain';
     for (const t of [snowTexture, canopyTexture]) {
@@ -259,19 +273,18 @@ export class Terrain {
   setTints(snow: number, canopy: number): void {
     this.snowMaterial.color.setHex(snow);
     this.canopyMaterial.color.setHex(canopy);
-    for (const tile of this.tiles) tile.close?.material?.color.setHex(snow);
+    this.look?.setTint(snow);
   }
 
   /**
-   * See to the tiles' own pictures: start one for a tile the camera has come to, fill in a few
-   * more rows of one that is being made, and let go of those left behind.
+   * See to the ground near the camera: begin weighing the inks of a tile the camera has come
+   * to, weigh a few more rows of one that is in hand, and let go of those left behind.
    * @param all finish whatever is wanted now, for the first frame and after a teleport
    */
   private sharpen(camX: number, camZ: number, all: boolean): void {
-    const print = this.print;
-    if (!print || typeof document === 'undefined') return;
-    const hf = this.hf;
-    let rows = all ? Infinity : CLOSE_ROWS;
+    const { print, look, hf } = this;
+    if (!print || !look) return;
+    let budget = all ? Infinity : CLOSE_BUDGET;
     for (const tile of this.tiles) {
       // How far the camera is from the tile's own square of ground.
       const x0 = hf.originX + tile.c0 * hf.cell;
@@ -281,38 +294,40 @@ export class Terrain {
       const away = Math.hypot(Math.max(x0 - camX, 0, camX - x1), Math.max(z0 - camZ, 0, camZ - z1));
       if (!tile.close) {
         if (away > CLOSE_RANGE) continue;
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = CLOSE_SIZE;
-        tile.close = { pixels: new ImageData(CLOSE_SIZE, CLOSE_SIZE), done: 0, canvas, material: null };
+        tile.close = { piece: null, weights: null, done: 0, drawn: null };
       } else if (away > CLOSE_KEEP) {
         const mesh = tile.snow[0];
         if (mesh) mesh.material = this.snowMaterial;
-        tile.close.material?.map?.dispose();
-        tile.close.material?.dispose();
+        tile.close.drawn?.dispose();
         tile.close = null;
         continue;
       }
       const close = tile.close;
-      if (close.material || rows <= 0) continue;
-      // The part of the printed picture that lies over this tile, in the picture's own pixels.
+      if (close.drawn || budget <= 0) continue;
+      // The part of the printed picture that lies over this tile: where its first and last points are, from 0 to 1.
       const u0 = (tile.c0 + 0.5) / hf.cols;
       const u1 = (tile.c1 + 0.5) / hf.cols;
       const v0 = (tile.r0 + 0.5) / hf.rows;
       const v1 = (tile.r1 + 0.5) / hf.rows;
-      const some = Math.min(rows, CLOSE_SIZE - close.done);
-      enlarge(print.data, print.width, print.height, u0 * print.width, v0 * print.height, (u1 - u0) * print.width, (v1 - v0) * print.height, close.pixels.data, CLOSE_SIZE, CLOSE_SIZE, close.done, some);
-      close.done += some;
-      rows -= some;
-      if (close.done < CLOSE_SIZE) continue;
-      close.canvas.getContext('2d')?.putImageData(close.pixels, 0, 0);
-      const texture = new THREE.CanvasTexture(close.canvas);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 4;
-      // The tile's corners carry their place in the whole picture; this brings them to their place in the tile's own.
-      texture.repeat.set(1 / (u1 - u0), 1 / (v1 - v0));
-      texture.offset.set(-u0 / (u1 - u0), -(1 - v1) / (v1 - v0));
-      close.material = lit({ map: texture, side: THREE.DoubleSide });
-      close.material.color.copy(this.snowMaterial.color);
+      const left = u0 * print.width;
+      const top = v0 * print.height;
+      const wide = (u1 - u0) * print.width;
+      const tall = (v1 - v0) * print.height;
+      if (!close.piece) {
+        close.piece = soften(print.data, print.width, print.height, left, top, wide, tall);
+        budget -= SOFTEN_COST;
+        if (budget <= 0) continue;
+      }
+      const across = Math.round(wide * CLOSE_POINTS) + 1;
+      const down = Math.round(tall * CLOSE_POINTS) + 1;
+      const rows = Math.min(Math.ceil(budget / across), down - close.done);
+      close.weights = weigh(close.piece, left, top, wide, tall, across, down, print.order, close.weights, close.done, rows);
+      close.done += rows;
+      budget -= rows * across;
+      if (close.done < down) continue;
+      close.drawn = look.tile(close.weights, u0, v0, u1, v1);
+      close.piece = null;
+      close.weights = null;
     }
   }
 
@@ -395,8 +410,8 @@ export class Terrain {
           const far = tile.canopy[l];
           if (snow) {
             snow.visible = !joined && l === tile.shownLevel && !tile.shownCanopy;
-            // At its finest, a tile wears its own sharper picture once that is ready.
-            if (l === 0) snow.material = tile.close?.material ?? this.snowMaterial;
+            // At its finest, a tile is drawn from the weights of its inks once they are ready.
+            if (l === 0) snow.material = tile.close?.drawn?.material ?? this.snowMaterial;
           }
           if (far) far.visible = !joined && l === tile.shownLevel && tile.shownCanopy;
         }

@@ -80,8 +80,8 @@ Open the game
 
 - **On foot:** the lower third of the screen is a movement stick; everything above turns the
   camera, which otherwise swings round behind. Two fingers pinch the camera nearer or further.
-- **Skiing:** left and right steer, up tucks (and poles from a standstill), down is a hockey
-  stop. Gentle turns carve; hard turns at speed drift. A tree is a bump, not a crash. The
+- **Skiing:** left and right steer, up tucks (and poles along the flat), down is a hockey
+  stop. A pole touches the snow on the inside of each new turn. Gentle turns carve; hard turns at speed drift. A tree is a bump, not a crash. The
   skier can always stop and always get going again.
 - **The bike** is the same simulation with other numbers, for when the snow has gone.
 - **Lifts:** all fourteen run. Board at the bottom, ride for up to a minute with the camera
@@ -143,7 +143,9 @@ everything in it.
 - **Light in steps.** A few flat tones to each surface, so a hillside breaks into shapes.
 - **A line round things.** Buildings, trees nearby, people, animals, stones and lift towers
   carry a dark outline.
-- **A banded sky**, and hard edges on the ground underfoot.
+- **A banded sky.**
+- **The ground underfoot** is flat inks with clean curved edges, and a scatter of small
+  printed marks for the season: the groomer's lines, fallen leaves, tufts and daisies.
 - **Colour belongs to the light.** Models are flat and neutral; the hour and the weather
   colour them. The player's jacket is the most saturated thing on screen.
 - **The player is small**: about a twentieth of the screen's height, just below the middle,

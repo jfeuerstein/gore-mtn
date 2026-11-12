@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type { Heightfield } from '../world/heightfield';
 import { deflect, type Bump } from './collide';
-import { mixPose, ridePose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
+import { mixPose, planted, polePose, ridePose, SEATED, skiPose, STANDING, walkPose, type Pose } from './pose';
 import { Skier, type Outfit } from './skier';
 import { boardingDistance, riderAlong, type LiftPath } from '../world/lifts';
 import {
@@ -38,6 +38,10 @@ const BODY_RADIUS = 0.35;
  * steers, tucks and brakes, and the slope does the rest (see skiPhysics.ts). The figure itself is
  * a Skier, posed here to suit what the player is doing.
  */
+/** A pole is planted for a turn begun faster than this, in m/s, and the touch lasts this long, in seconds. */
+const PLANT_SPEED = 3;
+const PLANT_TIME = 0.42;
+
 export class Player {
   readonly object = new THREE.Group();
   readonly position = this.object.position;
@@ -67,6 +71,12 @@ export class Player {
   private arrived: LiftPath | null = null;
   /** How far the pedals have gone round. */
   private pedal = 0;
+  /** Poling along the flat: how far through the stroke, and how much of the figure is given over to it. */
+  private stroke = 0;
+  private poling = 0;
+  /** The turn being made (-1 left, 1 right, 0 none), and the pole planted for it: which, and for how long so far. */
+  private turning = 0;
+  private plant: { side: number; time: number } | null = null;
 
   /**
    * @param glide what the player glides down on: skis on snow, a bike when the snow has gone
@@ -359,6 +369,28 @@ export class Player {
     }
     // Standing tall at rest, a skier's stance once moving, folding into a tuck or sitting back to stop.
     const moving = Math.min(1, ground / 2.5);
-    this.show(mixPose(STANDING, skiPose(input.tuck, ground > 0.5 ? input.brake : 0), Math.max(moving, input.tuck)), dt, true);
+    let pose = mixPose(STANDING, skiPose(input.tuck, ground > 0.5 ? input.brake : 0), Math.max(moving, input.tuck));
+    // Pushed forward below the speed the poles are good for, the skier poles, both together,
+    // and folds into the tuck as that speed comes up.
+    const top = this.tune.poleMaxSpeed;
+    const poles = input.tuck > 0 && input.brake < 0.3 ? Math.min(1, Math.max(0, (top * 0.9 - ground) / (top * 0.2))) * Math.min(1, input.tuck * 2) : 0;
+    this.poling += (poles - this.poling) * Math.min(1, dt * 6);
+    if (this.poling > 0.01) {
+      // A stroke a second or so, a little quicker as the skier gets going.
+      this.stroke += dt * (5.2 + ground * 0.25);
+      pose = mixPose(pose, polePose(this.stroke), this.poling);
+    } else this.stroke = 0;
+    // A new turn is marked with a touch of the pole on its inside.
+    const side = Math.abs(input.steer) > 0.35 ? Math.sign(input.steer) : Math.abs(input.steer) < 0.15 ? 0 : this.turning;
+    if (side !== this.turning) {
+      if (side !== 0 && ground > PLANT_SPEED && input.tuck < 0.5 && input.brake < 0.3) this.plant = { side, time: 0 };
+      this.turning = side;
+    }
+    if (this.plant) {
+      this.plant.time += dt;
+      if (this.plant.time >= PLANT_TIME) this.plant = null;
+      else pose = planted(pose, this.plant.side, Math.sin((this.plant.time / PLANT_TIME) * Math.PI));
+    }
+    this.show(pose, dt, true, 14);
   }
 }

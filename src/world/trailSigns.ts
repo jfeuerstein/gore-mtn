@@ -1,11 +1,14 @@
-import { DIFFICULTY_MARK, type Difficulty, type Lift, type Trail } from './trails';
+import type { Difficulty, Lift, Trail } from './trails';
 
 /**
  * Where the signs on the mountain stand, and what they say. No three.js here.
  *
- * Every named trail has a sign at its top, at the edge of the snow, as on the real mountain:
- * green circle, blue square, black diamond. Where several trails set off from the same spot
- * their boards share a post. Every lift has its name at the bottom station.
+ * Every named trail has a sign at its mouth: a few metres down from its top and at its own
+ * shoulder, so that it is seen by whoever is about to set off down it and can be taken for
+ * no other trail's. It carries the trail's mark (green circle, blue square, black diamond)
+ * large on a panel of its own, to be read from across the snow, and its name on a plank
+ * underneath. Where trails set off from the very same spot their planks share a post.
+ * Every lift has its name at the bottom station.
  */
 export interface Board {
   text: string;
@@ -21,11 +24,17 @@ export interface SignPost {
 }
 
 /** How far down from the top of a trail its sign stands, in metres. */
-const DOWN = 9;
+const DOWN = 12;
+/**
+ * The furthest a sign stands from the middle of its trail, in metres. Where the snow is wider
+ * than this (a summit, a junction), the sign stands on the snow at the trail's shoulder
+ * rather than away at the far edge, where it would mark nothing.
+ */
+export const SHOULDER = 8;
 /** Posts closer together than this share one post. */
-const SHARE = 9;
-/** The most boards one post carries. */
-const MOST = 5;
+const SHARE = 7;
+/** The most planks one post carries. */
+export const MOST = 3;
 
 /** The point a distance along a flat list of x, z pairs, and the direction of travel there. */
 function along(pts: readonly number[], metres: number): { x: number; z: number; dx: number; dz: number } {
@@ -72,14 +81,20 @@ export function trailSignPosts(
   }
   for (const [name, trail] of tops) {
     const at = along(trail.pts, DOWN);
-    // Off to the skier's right, a step past the edge of the snow.
+    // At the trail's shoulder: just past the edge of the snow on whichever side the edge is
+    // nearer, or, where the snow runs wide, on it, at arm's length from the trail's middle.
     const rx = -at.dz;
     const rz = at.dx;
-    let out = trail.glade ? 4 : 2;
-    while (out < 34 && onTrail(at.x + rx * out, at.z + rz * out)) out += 1.5;
-    out += 1;
-    // The boards face back up the hill, to whoever is about to set off.
-    add(at.x + rx * out, at.z + rz * out, Math.atan2(-at.dx, -at.dz), { text: `${DIFFICULTY_MARK[trail.difficulty]} ${name.toUpperCase()}`, difficulty: trail.difficulty });
+    const edge = (side: number): number => {
+      for (let out = 2; out <= SHOULDER; out += 1) if (!onTrail(at.x + rx * side * out, at.z + rz * side * out)) return out + 0.8;
+      return Infinity;
+    };
+    const right = trail.glade ? 3 : edge(1);
+    const left = trail.glade ? Infinity : edge(-1);
+    const side = left < right ? -1 : 1;
+    const out = Math.min(SHOULDER, Math.min(right, left));
+    // The sign faces back up the hill, to whoever is about to set off.
+    add(at.x + rx * side * out, at.z + rz * side * out, Math.atan2(-at.dx, -at.dz), { text: name.toUpperCase(), difficulty: trail.difficulty });
   }
 
   // Lifts: the name by the bottom station, to the left of the line, facing whoever walks up.
@@ -93,17 +108,13 @@ export function trailSignPosts(
   return posts;
 }
 
-/** Board and lettering colours, as on the mountain's own signs. */
-export const BOARD_COLOURS: Record<Board['difficulty'], { board: string; ink: string }> = {
-  easy: { board: '#2f8a4e', ink: '#fffdf7' },
-  intermediate: { board: '#2b5fb5', ink: '#fffdf7' },
-  advanced: { board: '#1d2026', ink: '#fffdf7' },
-  expert: { board: '#1d2026', ink: '#fffdf7' },
-  freeride: { board: '#d9822b', ink: '#1d2026' },
-  lift: { board: '#c8402d', ink: '#fffdf7' },
-};
+/** Every plank is the paper and ink of the rest of the game; what tells one trail from another is its mark. */
+export const BOARD_PAPER = '#f7f1e3';
+export const BOARD_INK = '#22304a';
 
 /** Heights of things on a post, in metres above the ground. */
-export const BOARD_HEIGHT = 0.5;
-export const BOARD_STEP = 0.58;
-export const LOWEST_BOARD = 1.7;
+export const BOARD_HEIGHT = 0.72;
+export const BOARD_STEP = 0.82;
+export const LOWEST_BOARD = 1.8;
+/** The panel that carries a trail's mark, above its name: a square this many metres a side. */
+export const MARK_PANEL = 1.5;

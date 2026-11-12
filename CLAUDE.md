@@ -59,10 +59,13 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   errors. The browser destroys its WebGPU device a moment after those frames; the check expects
   that and says how many frames were drawn first. Prefer plain
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
-  the owner when a change touches rendering so they look for breakage.
+  the owner when a change touches rendering so they look for breakage. The one material with
+  a shader of its own is the ground near the camera (`src/world/groundMaterial.ts`, in
+  three.js's shading language, which becomes WGSL or GLSL); `ground=flat` in the address, or
+  Settings, draws the ground without it.
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `look`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -175,13 +178,27 @@ trying it beside the plain look. Four things make it, and anything new must take
   a figure, which is how the people and the crowd get theirs. The animals bring their own.
   Nothing with a rim may be drawn two-sided: the rim would cover it.
 - **A banded sky.** Bands of flat colour near the horizon under one flat field (`Atmosphere`).
-- **Hard edges underfoot.** The ground's picture is about 1.7 m to a pixel, and stretched
-  over the ground at the player's feet its inks ran into one another. So the tiles nearest
-  the camera each wear a picture of their own (`Terrain.sharpen`): their part of the printed
-  ground enlarged to 1024 pixels a side by `enlarge()` in `worldLook.ts`, which gives every
-  new pixel one of the inks of the old pixels round it and never a blend. A tile's picture is
-  made a few rows a frame, worn once it is whole, and let go when the camera has left. About
-  four are alive at once, 4 MB each.
+- **Clean edges and small marks underfoot.** The ground's picture is about 1.7 m to a pixel.
+  Stretched over the ground at the player's feet its inks ran into one another, and its
+  pixels showed as stairs; a sharper picture of each tile was tried and, a foot to a pixel,
+  showed its pixels too. So the ground near the camera is not drawn from a picture. Each
+  tile within about 260 m is given, for a grid of points across it, how much each of the
+  season's inks weighs there (`soften` and `weigh` in `worldLook.ts`, pure, tested: a wide
+  bell, so a staircase in the picture is worn to a slope, with whatever is too narrow for
+  the bell, a path or a stream, kept as drawn). The ground's shader (`GroundLook` in
+  `src/world/groundMaterial.ts`) reads between the points and gives every pixel of the screen
+  the heaviest ink, so an edge is a clean curve at any distance; `inkAt` is the same sum in
+  plain numbers. Two small textures a tile, a little over a megabyte, made over a few frames
+  when the camera comes near and let go when it has left.
+- Over the inks the same shader prints the season's marks (`src/look/groundMarks.ts`, pure,
+  tested): one sheet, drawn in code, of four kinds of mark a few centimetres to a pixel
+  (dashes, leaves, tufts, dots), repeated over the ground every 24 m. `GROUND_MARKS` says
+  which kinds each ink of each season wears and in which of the season's inks: the groomer's
+  lines on the trails' snow, fallen leaves in fall, tussocks and daisies in a summer meadow.
+  Far off, a mark is less than a pixel and fades out by itself. The owner asked for detail
+  on the ground in place of more smoothing; which marks, how many and how big are theirs to
+  mark up. `ground=edges` draws the inks without the marks and `ground=flat` the far-off
+  picture alone, to set beside it (also in Settings).
 - The boards and shingles on buildings (`siding()`) are flat with one hard line under each
   course, as a pen would draw clapboard.
 - `look=plain&models=blocks` in the address draws the game as it was before the print, for
@@ -269,7 +286,15 @@ Everything else is built in code from simple shapes.
 - Every word in the world is painted by `src/world/signs.ts` onto one canvas and drawn as one
   mesh: shopfronts, the depot's name, the train's, and a board at the top of every named trail
   and the foot of every lift (`src/world/trailSigns.ts`, pure, tested; posts in `signPosts.ts`).
-  A sign is a `SignSpec`; give it a `width` for a board of a set size.
+  A sign is a `SignSpec`; give it a `width` for a board of a set size, and a `mark` for a
+  trail's mark painted beside its words, or large by itself on a board with none.
+- A trail's sign stands at its mouth: a few metres down from its top and at its own shoulder
+  (the nearer edge of its snow, or 8 m from its middle where the snow is wide), so it is seen
+  by whoever is about to set off and can be taken for no other trail's. It is two timber
+  posts with the name in navy capitals on a cream plank and, standing on top, a square
+  cream panel with the trail's mark large (green circle, blue square, black diamond, two
+  diamonds), to be read from across the snow. Trails that set off from the same spot share
+  a post, a plank each, with a panel for every different mark among them.
 - `TownPlaces` also takes the season, and dresses the doors for it: a wreath and a string of
   lights in winter (the lights are in the windows mesh, so they come on at dusk), tubs of
   flowers in spring and summer, pumpkins in fall. Lamps down Main Street, benches by the doors
@@ -303,7 +328,8 @@ Everything else is built in code from simple shapes.
   triangles, as the animals' are; `Skier.join` gives every face one normal. Small things
   (goggles, hair, an apron, hat brims) are still boxes.
   `src/player/pose.ts` (pure, tested) gives the joint angles for walking, a ski stance, a tuck, a
-  hockey stop and sitting on a chair; the player eases between them. Add a new action as a pose
+  hockey stop, poling, a pole planted for a turn and sitting on a chair; the player eases
+  between them. Add a new action as a pose
   there, not as keyframes.
 - Keep colours flat and neutral so the light does the colouring, and keep the skier's jacket the
   most saturated thing on screen.
@@ -322,6 +348,12 @@ Everything else is built in code from simple shapes.
   Skis put on pointing up the hill, or stepped off a lift on, are swung round the nearer way
   to point across it and a little down (`Player.offTheUphill`): at a standstill the poles
   lose to the slope, and a first run must not begin with nothing happening.
+- The poles are used. Pushed forward below the speed they are good for (`poleMaxSpeed`,
+  11 m/s: a flat runout is taken at about 9, the pace of a strong skier skating), the skier
+  poles, both together: `polePose` in `pose.ts` is the stroke, and it gives way to the tuck
+  as the speed comes up. And a turn begun at more than a walk is marked with a touch of the
+  pole on its inside (`planted`; `Player` starts one when the thumb goes over to a side).
+  The owner asked for both.
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - Open water is painted on the ground. Out of winter someone crossing it wades, to the knees
   (`footing` in `main.ts`); in winter it is ice and snow like anywhere else.
@@ -520,7 +552,8 @@ Everything else is built in code from simple shapes.
 - Settings lead with what a player wants (the save code, sound, the welcome again, and the
   credits). Everything for testing is
   below the "For testing" line: places to go to, a season, an hour and a sky to pin, the
-  renderer, how thick the forest is, sharpness, the frame-rate readout and how far is drawn.
+  renderer, how the ground is drawn up close, how thick the forest is, sharpness, the
+  frame-rate readout and how far is drawn.
   Shadows, boards and shingles, the other people and full terrain detail are simply on; they
   can still be turned off from the address (`shadows=0`, `siding=0`, `crowd=0`, `stride=2`),
   which the benchmark uses.

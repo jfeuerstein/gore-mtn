@@ -69,6 +69,16 @@ const OPTIONS: OptionGroup[] = [
     ],
   },
   {
+    title: 'Ground up close',
+    param: 'ground',
+    current: (c) => c.ground,
+    options: [
+      { label: 'Printed marks', value: 'marks' },
+      { label: 'Clean edges only', value: 'edges' },
+      { label: 'As far off', value: 'flat' },
+    ],
+  },
+  {
     title: 'Forest',
     param: 'trees',
     current: (c) => String(c.trees),

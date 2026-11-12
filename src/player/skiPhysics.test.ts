@@ -117,8 +117,11 @@ describe('standing still', () => {
 
   it('lets the skier pole across the flat but not race on it', () => {
     const poling = speedOf(run(FLAT, skierAt(0, 0, 0), TUCK, 20));
-    expect(poling).toBeGreaterThan(2.5);
+    // A good pace: a flat runout is not a trudge. But slower than any real slope.
+    expect(poling).toBeGreaterThan(7.5);
     expect(poling).toBeLessThan(SKI.poleMaxSpeed);
+    // And it gets there briskly: most of the way in the first four seconds.
+    expect(speedOf(run(FLAT, skierAt(0, 0, 0), TUCK, 4))).toBeGreaterThan(5.5);
     expect(speedOf(run(FLAT, moving(0, 6), NONE, 60))).toBe(0); // gliding alone comes to rest
   });
 });

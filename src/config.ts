@@ -22,6 +22,12 @@ export interface Config {
   siding: boolean;
   /** How the world is drawn: as a park print, which is the game's look, or plainly as it was before, to set beside it. */
   look: WorldLook;
+  /**
+   * How the ground near the camera is drawn: in clean-edged inks with the season's marks printed on
+   * them, which is the game's look; the same without the marks; or from the far-off picture alone,
+   * as it is drawn further away.
+   */
+  ground: Ground;
   /** Put up the day's flyer whether or not it has been seen today, to look at it. */
   flyer: boolean;
   /** Which models the animals are: the park prints made outside the game, or the game's own blocks, to set beside them. */
@@ -62,6 +68,9 @@ export interface Config {
   benchSeconds: number;
 }
 
+export const GROUNDS = ['marks', 'edges', 'flat'] as const;
+export type Ground = (typeof GROUNDS)[number];
+
 export const DEFAULTS: Config = {
   season: 'real',
   time: 'real',
@@ -75,6 +84,7 @@ export const DEFAULTS: Config = {
   siding: true,
   crowd: true,
   look: 'poster',
+  ground: 'marks',
   flyer: false,
   models: 'park',
   zoo: 0,
@@ -139,6 +149,7 @@ export function parseConfig(search: string): Config {
     zoo: q.get('zoo') === '2' ? 2 : q.get('zoo') === '1' ? 1 : 0,
     flyer: q.get('flyer') === '1',
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
+    ground: oneOf(q.get('ground'), GROUNDS) ?? d.ground,
     models: oneOf(q.get('models'), ['blocks', 'park'] as const) ?? d.models,
     stride: Math.round(num(q.get('stride'), d.stride, 1, 8)),
     viewDist: num(q.get('view'), d.viewDist, 100, 12000),

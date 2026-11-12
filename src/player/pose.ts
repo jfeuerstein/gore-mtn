@@ -21,6 +21,9 @@ export interface Pose {
   elbow: number;
   /** Which way the ski poles point: 0 straight down, negative trailing behind. */
   poles: number;
+  /** How far each pole is swung forward of that, to plant it in the snow beside a turn. */
+  plantL: number;
+  plantR: number;
   /** Extra height, for the bounce in a step. In model units. */
   bob: number;
 }
@@ -42,6 +45,8 @@ export const STANDING: Pose = {
   armsOut: 0.08,
   elbow: 0.25,
   poles: -0.2,
+  plantL: 0,
+  plantR: 0,
   bob: 0,
 };
 
@@ -67,6 +72,8 @@ export function walkPose(phase: number, amount: number): Pose {
     armsOut: STANDING.armsOut,
     elbow: lerp(STANDING.elbow, 0.5, a),
     poles: STANDING.poles,
+    plantL: 0,
+    plantR: 0,
     bob: Math.abs(Math.cos(phase)) * 0.05 * a,
   };
 }
@@ -94,8 +101,57 @@ export function skiPose(tuck: number, brake: number): Pose {
     armsOut: lerp(0.38, 0.06, t) + 0.4 * b,
     elbow: lerp(0.7, 1.5, t),
     poles: lerp(-0.45, -1.35, t),
+    plantL: 0,
+    plantR: 0,
     bob: 0,
   };
+}
+
+/**
+ * Poling along the flat, both poles together. The hands reach forward and plant the poles
+ * nearly upright; the body folds over them and pushes them through behind; then it stands
+ * and the arms swing forward again. `phase` runs on while the skier poles: 0 is the reach.
+ */
+export function polePose(phase: number): Pose {
+  // 1 with the hands reached forward, -1 with them pushed through behind.
+  const reach = Math.cos(phase);
+  // The push, from the reach to the follow-through: the body is lowest in the middle of it.
+  const push = Math.max(0, Math.sin(phase));
+  const knee = 0.42 + 0.4 * push;
+  return {
+    hipL: knee / 2,
+    hipR: knee / 2,
+    kneeL: knee,
+    kneeR: knee,
+    torso: 0.26 + 0.55 * push,
+    shoulderL: 0.45 + 0.95 * reach,
+    shoulderR: 0.45 + 0.95 * reach,
+    armsOut: 0.14,
+    elbow: 0.55 + 0.35 * reach,
+    poles: lerp(-1.15, -0.2, (1 + reach) / 2),
+    plantL: 0,
+    plantR: 0,
+    bob: 0,
+  };
+}
+
+/**
+ * A pole planted beside a turn: the arm on that side reaches forward and its pole swings
+ * ahead to touch the snow, as a skier marks the turn they are about to make.
+ * @param side -1 the left pole, 1 the right
+ * @param amount 0 not at all, 1 at the touch
+ */
+export function planted(pose: Pose, side: number, amount: number): Pose {
+  const a = clamp01(amount);
+  const out = { ...pose };
+  if (side < 0) {
+    out.shoulderL += 0.5 * a;
+    out.plantL = 0.8 * a;
+  } else {
+    out.shoulderR += 0.5 * a;
+    out.plantR = 0.8 * a;
+  }
+  return out;
 }
 
 /** Sitting on a chairlift: thighs level, shins hanging, hands in the lap. */
@@ -110,6 +166,8 @@ export const SEATED: Pose = {
   armsOut: 0.05,
   elbow: 0.95,
   poles: -1.2,
+  plantL: 0,
+  plantR: 0,
   bob: 0,
 };
 
@@ -140,6 +198,8 @@ export function ridePose(phase: number, pedalling: number, tuck: number, brake: 
     armsOut: 0.16,
     elbow: 0.3 + 0.55 * t,
     poles: -1.2,
+    plantL: 0,
+    plantR: 0,
     // The legs do not reach the ground: this lifts the rider to where the saddle is.
     bob: PEDAL_LOW + 0.1,
   };

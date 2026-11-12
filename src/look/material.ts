@@ -51,3 +51,17 @@ export function lit(params: THREE.MeshLambertMaterialParameters = {}): THREE.Mes
   const { flatShading: _flat, ...rest } = params;
   return new THREE.MeshToonMaterial({ ...(rest as THREE.MeshToonMaterialParameters), gradientMap: tones() }) as unknown as THREE.MeshLambertMaterial;
 }
+
+/**
+ * A lit material whose colour is worked out by a shader of our own, for the one thing that
+ * needs it: the ground near the camera (`groundMaterial.ts`). It is lit exactly as `lit()`'s
+ * are, in the print's steps or smoothly.
+ * @param colour the colour of each pixel before it is lit, as a node
+ */
+export function litBy(colour: NonNullable<THREE.NodeMaterial['colorNode']>, params: { side?: THREE.Side } = {}): THREE.Material {
+  const material = printed ? new THREE.MeshToonNodeMaterial() : new THREE.MeshLambertNodeMaterial();
+  if (printed) (material as THREE.MeshToonNodeMaterial).gradientMap = tones();
+  if (params.side !== undefined) material.side = params.side;
+  material.colorNode = colour;
+  return material;
+}

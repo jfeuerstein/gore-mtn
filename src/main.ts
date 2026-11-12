@@ -8,7 +8,7 @@ import { BenchRun, showBenchResults } from './debug/bench';
 import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
-import { restyle, type WorldLook } from './look/worldLook';
+import { despeckle, inkOrder, restyle, type WorldLook } from './look/worldLook';
 import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
@@ -56,6 +56,7 @@ import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain, type Print } from './world/terrainMesh';
+import { GroundLook } from './world/groundMaterial';
 import { fromLocal } from './world/footprints';
 import { townPlaceAt } from './world/townPlaces';
 import { SkiTracks } from './world/tracks';
@@ -78,9 +79,11 @@ function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: 
   ctx.drawImage(image, 0, 0);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   restyle(pixels.data, look, season);
+  // The ground is seen from close to, where a stray pixel is a square blot: those are taken out.
+  if (keep) despeckle(pixels.data, canvas.width, canvas.height);
   ctx.putImageData(pixels, 0, 0);
-  // The ground's bytes are kept: the terrain enlarges parts of them for the ground underfoot.
-  if (keep) keep.print = { data: pixels.data, width: canvas.width, height: canvas.height };
+  // The ground's bytes are kept: the terrain weighs the inks of parts of them, for the ground underfoot.
+  if (keep) keep.print = { data: pixels.data, width: canvas.width, height: canvas.height, order: inkOrder(pixels.data) };
   texture.dispose();
   return new THREE.CanvasTexture(canvas);
 }
@@ -293,7 +296,9 @@ async function boot(): Promise<void> {
   const underfoot: { print: Print | null } = { print: null };
   const snowPicture = repaint(snowTexture, cfg.look, season, underfoot);
   const canopyPicture = repaint(canopyTexture, cfg.look, season);
-  const terrain = new Terrain(ground, snowPicture, canopyPicture, underfoot.print);
+  // Near the camera the ground is drawn from the weights of its inks, with the season's marks printed on it.
+  const groundLook = underfoot.print && cfg.ground !== 'flat' ? new GroundLook(season, underfoot.print.order, cfg.ground === 'marks') : null;
+  const terrain = new Terrain(ground, snowPicture, canopyPicture, underfoot.print, groundLook);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
   const beams = gateBeams(liftPaths);
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.

@@ -69,6 +69,16 @@ The tools here draw with the fallback renderer and cannot present WebGPU, so the
 (The print, the outlines and the made models have been looked at on the phone and are right, and
 the benchmark of 2026-11-12 holds 60 fps at every step.)
 
+- **The ground at your feet.** It is drawn a new way: clean curved edges between its
+  colours, and small printed marks on it (lines on the trails' snow, leaves in fall, tufts
+  and daisies in summer). This is the one thing drawn by a shader of the game's own, so it
+  is the likeliest to look wrong on the phone: say if the ground is black, striped, or
+  flickers. Settings > For testing > Ground up close switches between the marks, clean
+  edges alone, and the ground as it was drawn far off, to compare. Are the marks the right
+  size and number? Too busy at speed?
+- **Poles.** On a flat stretch, push the thumb forward: the skier poles, both together, up
+  to a good pace, then folds into the tuck. Is it fast enough? And at speed each new turn
+  gets a touch of the pole on its inside: does it read, or is it fussy?
 - **The new ski start.** Skis put on while you face up a slope, or stepped off a lift on,
   are swung round to point across the hill and a little down. To try it: walk a few steps up
   any trail, stop facing uphill, and tap `Skis`; or tap `Skis` before you ride a lift and see

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BODY, hipHeight, mixPose, PEDAL_LOW, ridePose, SEATED, skiPose, STANDING, walkPose } from './pose';
+import { BODY, hipHeight, mixPose, PEDAL_LOW, planted, polePose, ridePose, SEATED, skiPose, STANDING, walkPose } from './pose';
 
 const LEG = BODY.thigh + BODY.shin + BODY.boot;
 
@@ -118,5 +118,48 @@ describe('mixPose', () => {
     expect(half.elbow).toBeCloseTo((STANDING.elbow + SEATED.elbow) / 2);
     expect(mixPose(STANDING, SEATED, 0)).toEqual(STANDING);
     expect(mixPose(STANDING, SEATED, 1)).toEqual(SEATED);
+  });
+});
+
+describe('poling along the flat', () => {
+  it('reaches forward, pushes through behind, and comes back to the reach', () => {
+    const reach = polePose(0);
+    const through = polePose(Math.PI);
+    expect(reach.shoulderL).toBeGreaterThan(1.2);
+    expect(through.shoulderL).toBeLessThan(-0.3);
+    expect(reach.shoulderL).toBe(reach.shoulderR); // both poles together
+    // Planted nearly upright; trailing at the end of the push.
+    expect(reach.poles).toBeGreaterThan(-0.35);
+    expect(through.poles).toBeLessThan(-1);
+    const again = polePose(Math.PI * 2);
+    for (const key of Object.keys(reach) as (keyof typeof reach)[]) expect(again[key], key).toBeCloseTo(reach[key]);
+  });
+
+  it('folds the body over the poles in the push, and stands up to swing them forward', () => {
+    const push = polePose(Math.PI / 2);
+    const swing = polePose((Math.PI * 3) / 2);
+    expect(push.torso).toBeGreaterThan(swing.torso + 0.4);
+    expect(hipHeight(push)).toBeLessThan(hipHeight(swing));
+    for (let phase = 0; phase < 7; phase += 0.3) {
+      const p = polePose(phase);
+      expect(p.kneeL).toBeGreaterThanOrEqual(0);
+      // The feet stay under the body: half the knee's bend at the hip.
+      expect(p.hipL).toBeCloseTo(p.kneeL / 2);
+    }
+  });
+});
+
+describe('a pole planted for a turn', () => {
+  it('swings one arm and its pole forward, and leaves the other alone', () => {
+    const stance = skiPose(0, 0);
+    const right = planted(stance, 1, 1);
+    expect(right.shoulderR).toBeGreaterThan(stance.shoulderR + 0.3);
+    expect(right.poles + right.plantR).toBeGreaterThan(0); // the tip ahead of the hand
+    expect(right.shoulderL).toBe(stance.shoulderL);
+    expect(right.plantL).toBe(0);
+    const left = planted(stance, -1, 1);
+    expect(left.shoulderL).toBeGreaterThan(stance.shoulderL + 0.3);
+    expect(left.plantR).toBe(0);
+    expect(planted(stance, 1, 0)).toEqual(stance);
   });
 });

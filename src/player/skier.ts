@@ -588,7 +588,7 @@ export class Skier {
       (this.shoulders[i] as THREE.Group).rotation.set(shoulder, 0, side * p.armsOut);
       (this.elbows[i] as THREE.Group).rotation.x = p.elbow;
       // Cancel the turns of the body and arm above it, so the pole points where the pose says.
-      (this.poles[i] as THREE.Object3D).rotation.x = p.poles - (shoulder + p.elbow - p.torso);
+      (this.poles[i] as THREE.Object3D).rotation.x = p.poles + (i === 0 ? p.plantL : p.plantR) - (shoulder + p.elbow - p.torso);
     }
     // Tipping forward is a negative turn about x for a part that points up.
     this.torso.rotation.x = -p.torso;
