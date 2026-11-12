@@ -31,7 +31,7 @@ KINDS = {
     'ferns': dict(long=(0.5, 0.8), squares=9, keep=0.65, turn=180, together=(1, 1)),
     # A cone is as long as it is broad, and would come out far bigger than a twig of the same length: `stout` shrinks what is.
     'twigs': dict(long=(0.45, 0.8), squares=8, keep=0.6, turn=180, together=(1, 1), stout=0.5),
-    'pebbles': dict(long=(0.14, 0.32), squares=10, keep=0.6, turn=180, together=(1, 3)),
+    'pebbles': dict(long=(0.14, 0.3), squares=9, keep=0.5, turn=180, together=(1, 3)),
     # Strokes lie east and west, as the groomer's lines and the wind's do on this mountain.
     # Thin and few: a field of snow is nearly all snow. `flat` presses a stroke thinner than it was painted.
     'strokes': dict(long=(0.55, 1.1), squares=9, keep=0.7, turn=6, together=(1, 1), flat=0.5),

@@ -133,7 +133,12 @@ export interface GliderNow {
   lean: number;
   /** 0..1: they grow from nothing at the top and shrink away at the bottom, so nobody pops in or out. */
   size: number;
+  /** The pole they are touching to the snow as one turn ends and the next begins: -1 their left, 1 their right, 0 neither. */
+  plant: number;
 }
+
+/** A pole is planted while a skier is within this much of the middle of their line, as a share of how far they swing. */
+const PLANT_NEAR = 0.38;
 
 /** Seconds over which someone arrives at the top of a run, or leaves the bottom. */
 const ARRIVE = 1.4;
@@ -170,6 +175,9 @@ export function gliderAt(run: Run, g: Glider, clock: number): GliderNow | null {
     // At the far right of a turn they are coming back left, and lean that way.
     lean: -0.34 * Math.sin(turn) * Math.min(1, g.swing / 4),
     size: Math.min(1, t / ARRIVE, (down - t) / ARRIVE),
+    // Crossing the middle of their line they are between turns. Going over to the right, the
+    // turn to come is back to the left, and it is the left pole that marks it.
+    plant: Math.abs(Math.sin(turn)) < PLANT_NEAR && g.swing > 1.5 ? (Math.cos(turn) > 0 ? -1 : 1) : 0,
   };
 }
 

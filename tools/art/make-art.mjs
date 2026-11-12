@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Make the game's generated art from tools/art/manifest.mjs.
 //
-//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|places|shops|title] [--redo id,id] [--bump n]
+//   NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs [people|places|shops] [--redo id,id] [--bump n]
+//
+// (The pictures on the way in are make-title.mjs's, and the marks on the ground make-ground.mjs's.)
 //
 // Each picture is asked of fal once and kept at full size in tools/art/cache/ (not in the
 // repository); the small copy the game loads goes to public/art/. Pictures already made are
@@ -19,8 +21,6 @@ const SETS = {
   // Everything in the Book that is a patch (stamps, pins, hats, bakes, minerals, the field guide) is made by make-patches.mjs.
   // The pictures for the shop signs go onto one sheet (see the end of this file), not into public/art one by one.
   shops: { art: manifest.SHOP_ART, size: 128, item: true, sheet: true },
-  // The picture on the way in: tall, and left as it was painted.
-  title: { art: manifest.TITLE_ART, size: 0, tall: true },
 };
 /** A file name for something whose name has spaces and marks in it. */
 const slug = (id) => id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -82,9 +82,35 @@ im.save(${JSON.stringify(out)}${sheet ? '' : ", 'WEBP', quality=84, method=6"})
     ]);
     return;
   }
+  if (set === 'people') {
+    // A portrait's paper differs from one to the next too, and one or two came back on white.
+    // Each is balanced so that its own paper, read along the top and down the sides above the
+    // shoulders, comes out the same cream as the rest.
+    execFileSync('python3', [
+      '-c',
+      `
+from PIL import Image
+import statistics
+im = Image.open(${JSON.stringify(raw)}).convert('RGB')
+w, h = im.size
+px = im.load()
+ring = [px[x, 3] for x in range(0, w, 7)] + [px[x, y] for y in range(0, h // 2, 7) for x in (3, w - 4)]
+bg = [statistics.median(c[i] for c in ring) for i in range(3)]
+paper = (251, 245, 228)
+luts = []
+for i in range(3):
+    g = paper[i] / max(bg[i], 1)
+    luts += [min(255, round(v * g)) for v in range(256)]
+im = im.point(luts)
+m = 0.04
+im.crop((int(w * m), int(h * m), int(w * (1 - m)), int(h * (1 - m)))).resize((${size}, ${size}), Image.LANCZOS).save(${JSON.stringify(out)}, 'WEBP', quality=82, method=6)
+`,
+    ]);
+    return;
+  }
   // Trim the margins, where the model likes to add a caption or a signature, and shrink to the
   // size the game shows it at. Pillow is already needed by the terrain pipeline.
-  const trim = set === 'people' ? 0.04 : 0.08;
+  const trim = 0.08;
   execFileSync('python3', [
     '-c',
     `from PIL import Image; im = Image.open(${JSON.stringify(raw)}).convert('RGB'); w, h = im.size; m = ${trim}; im.crop((int(w * m), int(h * m), int(w * (1 - m)), int(h * (1 - m)))).resize((${size}, ${size}), Image.LANCZOS).save(${JSON.stringify(out)}, 'WEBP', quality=82, method=6)`,

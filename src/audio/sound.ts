@@ -153,6 +153,10 @@ export class Sound {
       this.notes(j.notes, 0, j.gain * 0.1, 'triangle', 1.3, 0.5);
       return;
     }
+    if (j.voice === 'tick') {
+      this.burst(1400, 0.05, j.gain);
+      return;
+    }
     if (j.voice === 'thud') this.burst(180, 0.12, 0.5);
     this.notes(j.notes, j.gap, j.gain * 0.22, j.voice === 'pluck' ? 'triangle' : 'sine', j.voice === 'pluck' ? 0.18 : 0.7, j.voice === 'thud' ? 0.06 : 0);
   }

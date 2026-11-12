@@ -36,6 +36,7 @@ NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portra
 NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
 NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the field guide's made models
 NODE_USE_ENV_PROXY=1 node tools/art/make-ground.mjs   # paint any missing sheets of ground marks, and lay them out (needs the fal key)
+NODE_USE_ENV_PROXY=1 node tools/art/make-title.mjs    # the four posters on the way in, one sheet (needs the Tripo key)
 node tools/art/make-icon.mjs                          # render the Home Screen icon from tools/art/icon.svg
 node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
 node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
@@ -60,10 +61,11 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   errors. The browser destroys its WebGPU device a moment after those frames; the check expects
   that and says how many frames were drawn first. Prefer plain
   three.js materials (colour, map, vertex colours) that behave the same on both paths, and tell
-  the owner when a change touches rendering so they look for breakage. The one material with
-  a shader of its own is the ground near the camera (`src/world/groundMaterial.ts`, in
-  three.js's shading language, which becomes WGSL or GLSL); `ground=flat` in the address, or
-  Settings, draws the ground without it.
+  the owner when a change touches rendering so they look for breakage. Two things have a
+  shader of the game's own, both in three.js's shading language, which becomes WGSL or GLSL:
+  the ground near the camera (`src/world/groundMaterial.ts`; `ground=flat` in the address, or
+  Settings, draws the ground without it) and the edge of a shadow (`src/look/printShadow.ts`;
+  `look=plain` or `shadows=0` goes without).
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
   `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
@@ -180,6 +182,10 @@ trying it beside the plain look. Four things make it, and anything new must take
   a figure, which is how the people and the crowd get theirs. The animals bring their own.
   Nothing with a rim may be drawn two-sided: the rim would cover it.
 - **A banded sky.** Bands of flat colour near the horizon under one flat field (`Atmosphere`).
+- **Shadows with a clean edge.** three.js's own shadow has a soft, grainy edge; in a print a
+  shadow is one flat tone. `printShadow()` in `src/look/printShadow.ts` is given to the sun's
+  shadow as its filter: it reads the shadow's picture at the same nine places round every
+  pixel, which gives an even slope from light to shade, and cuts the slope at its middle.
 - **Clean edges and small marks underfoot.** The ground's picture is about 1.7 m to a pixel.
   Stretched over the ground at the player's feet its inks ran into one another, and its
   pixels showed as stairs; a sharper picture of each tile was tried and, a foot to a pixel,
@@ -206,8 +212,14 @@ trying it beside the plain look. Four things make it, and anything new must take
   and fades out by itself. Which marks, how many and how big are the owner's to mark up:
   sizes and numbers are `KINDS` in `ground-sheet.py`. `ground=edges` draws the inks without
   the marks and `ground=flat` the far-off picture alone, to set beside it (also in Settings).
+- In winter the water is ice. The pipeline paints winter's ponds and rivers as snow, so
+  `freeze()` in `worldLook.ts` prints them in an ink of their own (`ICE`) when the pictures
+  are repainted, from the map of where the water lies, and the marks give it the scratches
+  of skates and drifted snow.
 - The boards and shingles on buildings (`siding()`) are flat with one hard line under each
-  course, as a pen would draw clapboard.
+  course, as a pen would draw clapboard. Snow on a roof has none: it reads the texture half
+  way up a course (`SMOOTH` in `shapes.ts`; at the foot of one, where it once read, is the
+  line, which turned every winter roof grey).
 - `look=plain&models=blocks` in the address draws the game as it was before the print, for
   setting one beside the other and for the benchmark's last step. It is not in Settings.
 - The print costs about three draw calls and 130,000 to 300,000 triangles in a view (the rims),
@@ -273,6 +285,11 @@ Everything else is built in code from simple shapes.
   `buildKerbside` in `streetFurniture.ts` stands parked cars, utility poles and their wires,
   hydrants (in hats, in winter) and the town's tree along it; the car parks at the Base Lodge
   fill from the lodge outward. Cars are solid. Trees keep out of the street and the car parks.
+  A car is one of three kinds (a saloon, a wagon, a pickup): a body with a bonnet lower than
+  its cabin, glass all round under a roof of its own paint, hubs, bumpers and lamps; snow on
+  it in winter, and skis on a wagon's rack. The street's surface is marked by a small texture
+  of its own (`streetMarks`): the joints of the sidewalk's slabs, and places to park along
+  the kerbs of the high street.
 - The lodges are each their own building (`buildings.ts`): the Base Lodge has a great hall
   with a clock, a sun deck on posts on the mountain side, ticket windows and flags; the Saddle
   Lodge is low and all windows, with a terrace of chairs; the Ski Bowl's is a green town-park
@@ -288,6 +305,9 @@ Everything else is built in code from simple shapes.
   and gives it a door; `src/world/townKit.ts` builds each from a kit by style (inn, store, post
   office, church, hall, barn, cafe, deli, mill, cabin and so on) with its front at its own +z.
   All of them are joined into two meshes, walls and windows. Add a place by adding a listing.
+  The inn is dressed as an old hotel: green shutters, white boards at the corners and
+  between the floors, a rail along the porch roof, and a gabled front over the door. The
+  depot's platform has benches, a baggage cart with a trunk and a milk can, and an order mast.
 - If the signs do not all fit on their sheet at full size, `signs.ts` draws them all a little
   smaller until they do. No board is left bare.
 - Every word in the world is painted by `src/world/signs.ts` onto one canvas and drawn as one
@@ -355,12 +375,14 @@ Everything else is built in code from simple shapes.
   Skis put on pointing up the hill, or stepped off a lift on, are swung round the nearer way
   to point across it and a little down (`Player.offTheUphill`): at a standstill the poles
   lose to the slope, and a first run must not begin with nothing happening.
+- On a bike, coasting down faster than `STAND_SPEED`, the rider stands on the pedals
+  (`ridePose`'s `standing`).
 - The poles are used. Pushed forward below the speed they are good for (`poleMaxSpeed`,
   11 m/s: a flat runout is taken at about 9, the pace of a strong skier skating), the skier
   poles, both together: `polePose` in `pose.ts` is the stroke, and it gives way to the tuck
   as the speed comes up. And a turn begun at more than a walk is marked with a touch of the
   pole on its inside (`planted`; `Player` starts one when the thumb goes over to a side).
-  The owner asked for both.
+  The owner asked for both. Each makes a small dry tick (`jingleFor('pole')`, the `tick` voice).
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - Open water is painted on the ground. Out of winter someone crossing it wades, to the knees
   (`footing` in `main.ts`); in winter it is ice and snow like anywhere else.
@@ -509,9 +531,11 @@ Everything else is built in code from simple shapes.
   arithmetic and nothing is kept.
 - They are nobody in particular: no names, nothing to say, nothing to collect. Anyone worth
   talking to belongs in `people.ts`.
-- `src/world/crowdMesh.ts` draws them. Skiers are three instanced meshes (three outfits) and
-  chair riders one, each figure washed with a pale colour of its own so a few outfits look like
-  a crowd; that is four draw calls for the mountain, seven with shadows. A walker is a mesh
+- `src/world/crowdMesh.ts` draws them. On skis each of three outfits is held three ways
+  (skiing, and touching the left pole or the right to the snow between turns: `plant` in
+  `gliderAt`), an instanced mesh to each; on bikes one way. Chair riders are one mesh. Each
+  figure is washed with a pale colour of its own so a few outfits look like a crowd. That is
+  ten draw calls for the mountain in the snow months, nineteen with shadows. A walker is a mesh
   each, stepped through six pictures of a stride, and stops and looks at the player if the
   player stands in the way. `src/world/figure.ts` makes a figure in a pose as one geometry, for
   them and for `folk.ts`.
@@ -533,8 +557,12 @@ Everything else is built in code from simple shapes.
   each thing comes up. `intro=0` turns both off; the tools set it. Announcements are held back
   from the very start until the loading card, the welcome and the flyer are out of the way
   (`Toasts.hold`), and Settings can put the welcome up again.
-- The last letter (`the-whole-town`) is sent, ahead of the queue, the day every patch has been
-  earned: the game's only ending, and it asks the player to come up anyway. The moment the
+- The last letter (`the-whole-town`) is sent, ahead of the queue, the day the Book is full:
+  every patch earned but the one that waits on the real sky (`sky` in `patches.ts`,
+  `bookFull`), which could take most of a year however keen the player. It is the game's
+  only ending, and it asks the player to come up anyway. Once it has been had the town
+  strings flags down Main Street, lamp to lamp, and leaves them up (`Built.celebrate`,
+  `buntingSpans`). If the weather's patch is earned afterwards, Wren writes (`wren-sky`). The moment the
   last patch is earned is announced ("Your Book is full"), the flyer's P.S. says the letter is
   waiting before anything else, Dot has a line of her own for it, and it comes with one more
   patch for the cabin's board (`KEEPSAKE` in `patches.ts`: not one of the Book's, and made as
@@ -567,12 +595,17 @@ Everything else is built in code from simple shapes.
 
 ## Pictures and lettering
 
-- The portraits on the talk sheet, the postcards, the shop-sign pictures and the title pictures
-  are painted by an image model through fal (`tools/art/`): `manifest.mjs` holds one prompt
-  each and the look a set shares; `make-art.mjs` asks for whatever is missing, trims it and
-  saves a small WebP under `public/art/`. `--redo id,id --bump 1` paints one again with another
-  seed. Portraits are gouache plates (`LOOK`); postcards are flat park-poster prints with no
-  lettering.
+- The portraits on the talk sheet and the postcards are painted by an image model through
+  fal (`tools/art/`): `manifest.mjs` holds one prompt each and the look a set shares;
+  `make-art.mjs` asks for whatever is missing, trims it and saves a small WebP under
+  `public/art/`. `--redo id,id --bump 1` paints one again with another seed. Portraits are
+  gouache plates (`LOOK`), each balanced to the same cream paper; postcards are flat
+  park-poster prints with no lettering.
+- The four pictures on the way in, which are also the seasons' stamps, are park posters too:
+  the same village and mountain in each season's inks. They were soft storybook paintings,
+  the one thing in the game that was not a print. `make-title.mjs` asks Tripo's image model
+  (`chat_image_2.5_sunburst`, which the owner asked for) for all four on one sheet, so that
+  they are one place seen four times, and cuts it. About 10 credits.
 - The pictures on the signs over shop doors are round painted signs, printed flat with a navy
   ring, so that they belong to the world they hang in (the owner asked for this after seeing
   the first ones, soft little models, on the phone). They are made a sheet at a time like the

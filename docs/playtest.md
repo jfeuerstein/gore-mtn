@@ -76,6 +76,12 @@ the benchmark of 2026-11-12 holds 60 fps at every step.)
   flickers. Settings > For testing > Ground up close switches between the marks, clean
   edges alone, and the ground as it was drawn far off, to compare. Are the marks the right
   size and number? Too busy at speed?
+- **Shadows.** They are now one flat tone with a clean edge, by the game's other shader.
+  Say if any shadow is missing, speckled, or crawls as you move.
+- **Winter.** Roofs carry snow now, and ponds and the river are ice. Cars, the inn, the
+  depot's platform and Main Street's sidewalks and parking places have all been dressed.
+- **The other skiers** touch a pole to the snow between turns; on the bike, coast downhill
+  fast and the rider stands on the pedals. A pole going in makes a small tick.
 - **Poles.** On a flat stretch, push the thumb forward: the skier poles, both together, up
   to a good pace, then folds into the tuck. Is it fast enough? And at speed each new turn
   gets a touch of the pole on its inside: does it read, or is it fussy?

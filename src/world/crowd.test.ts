@@ -144,3 +144,27 @@ describe('the people out walking', () => {
     expect(routePoint(r, -5)).toEqual({ x: 0, z: 0 });
   });
 });
+
+describe('the other skiers and their poles', () => {
+  const runs = buildRuns(world.trails, (x, z) => world.source.heightAt(x, z));
+  const gliders = buildGliders(runs);
+  it('touches a pole to the snow between turns, now the left and now the right, and not all the way down', () => {
+    let left = 0;
+    let right = 0;
+    let none = 0;
+    for (const g of gliders.slice(0, 12)) {
+      const run = runs[g.run] as (typeof runs)[number];
+      for (let clock = 0; clock < 120; clock += 0.25) {
+        const now = gliderAt(run, g, clock);
+        if (!now) continue;
+        if (now.plant < 0) left++;
+        else if (now.plant > 0) right++;
+        else none++;
+      }
+    }
+    expect(left).toBeGreaterThan(20);
+    expect(right).toBeGreaterThan(20);
+    // Mostly they are simply skiing.
+    expect(none).toBeGreaterThan(left + right);
+  });
+});

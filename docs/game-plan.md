@@ -71,8 +71,9 @@ Open the game
 - **The town's daily round.** A letter at the post office, the inn's rumour, a new bake, a new
   sandwich, a new library book; five doors called at in a day is a punch on a card.
 - **The Snow Train**, once its pass is earned, carries the player to another season.
-- **An ending, of a kind.** The day every patch is earned, one last letter comes from the
-  whole town. It says there is nothing left to find, and to come up anyway.
+- **An ending, of a kind.** The day the Book is full (every patch but the one that waits on
+  the weather), one last letter comes from the whole town. It says there is nothing left to
+  find, and to come up anyway; and the town strings flags down Main Street.
 
 ## 3. What there is to do
 
@@ -143,7 +144,7 @@ everything in it.
 - **Light in steps.** A few flat tones to each surface, so a hillside breaks into shapes.
 - **A line round things.** Buildings, trees nearby, people, animals, stones and lift towers
   carry a dark outline.
-- **A banded sky.**
+- **A banded sky**, and shadows that are one flat tone with a clean edge.
 - **The ground underfoot** is flat inks with clean curved edges, and a scatter of small
   marks for the season, painted shapes printed in the season's inks: the groomer's lines,
   fallen leaves, tufts and flower heads, ferns, twigs.
@@ -178,9 +179,9 @@ map's legend with patches sewn on.
   picture of each is given a shape (FLUX and Trellis through fal for most; Tripo for the
   plants and the pets, which it makes a better job of), which a converter closes, cuts down
   to about a thousand triangles and prints in a few inks.
-- **Painted:** portraits, postcards, title pictures and the shapes of the marks printed on
-  the ground (FLUX, through fal); the shop-sign pictures and the Book's patches, a sheet at
-  a time to one brief (Tripo's image model).
+- **Painted:** portraits, postcards and the shapes of the marks printed on the ground
+  (FLUX, through fal); the four posters on the way in, the shop-sign pictures and the
+  Book's patches, a sheet at a time to one brief (Tripo's image model).
 - **Keys** are secrets of the build environment. None is in the repository.
 
 ### Budget

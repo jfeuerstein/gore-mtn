@@ -1397,6 +1397,9 @@ async function boot(): Promise<void> {
       announce(game.checkPatches(today));
       game.persist();
     }
+    // A pole going into the snow: a small dry tick.
+    const tick = player.takeTick();
+    if (tick) sound.play('pole', tick);
     // The sound of where the player is and what they are doing.
     sound.update(
       dt,

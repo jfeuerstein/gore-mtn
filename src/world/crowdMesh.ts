@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu';
 import type { Season } from '../look/season';
-import { ridePose, SEATED, skiPose, STANDING, walkPose } from '../player/pose';
+import { planted, ridePose, SEATED, skiPose, STANDING, walkPose, type Pose } from '../player/pose';
 import type { Outfit } from '../player/skier';
 import { buildGliders, buildRuns, buildSeats, buildWalkers, gliderAt, routePoint, streetSide, walkerAt, type Glider, type Route, type Run, type Seat, type Walker } from './crowd';
 import { figureGeometry } from './figure';
@@ -66,6 +66,8 @@ export class Crowd {
   private readonly gliders: Glider[];
   private readonly seats: Seat[];
   private readonly skiers: THREE.InstancedMesh[] = [];
+  /** How many ways each outfit on the trails is held: a mesh to each. */
+  private readonly ways: number;
   private readonly riders: THREE.InstancedMesh[] = [];
   private readonly street: Route | null;
   private readonly strolling: Strolling[] = [];
@@ -101,9 +103,13 @@ export class Crowd {
     // Fewer are out on bikes than on skis.
     this.gliders = buildGliders(this.runs).filter((g) => ride === 'skis' || g.keen < 0.5);
     this.seats = buildSeats(paths);
-    const fleet = (wear: readonly Outfit[], cast: boolean, count: (k: number) => number, make: (o: Outfit) => THREE.BufferGeometry): THREE.InstancedMesh[] =>
-      wear.map((outfit, k) => {
-        const mesh = new THREE.InstancedMesh(make(outfit), material, Math.max(1, count(k)));
+    // On skis each outfit is held in three ways (skiing, and touching the left pole or the right
+    // to the snow between turns), a mesh to each, so the hill is not all one statue. A bike has one.
+    const held: readonly ((stance: Pose) => Pose)[] = ride === 'bike' ? [(p) => p] : [(p) => p, (p) => planted(p, -1, 1), (p) => planted(p, 1, 1)];
+    this.ways = held.length;
+    const fleet = (wear: readonly Outfit[], cast: boolean, count: (k: number) => number, make: (o: Outfit, way: number) => THREE.BufferGeometry, ways = 1): THREE.InstancedMesh[] =>
+      wear.flatMap((outfit, k) => Array.from({ length: ways }, (_, way) => ({ outfit, k, way }))).map(({ outfit, k, way }) => {
+        const mesh = new THREE.InstancedMesh(make(outfit, way), material, Math.max(1, count(k)));
         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         // Its instances are all over the mountain; there is nothing to be gained by testing the one box round them.
         mesh.frustumCulled = false;
@@ -119,7 +125,8 @@ export class Crowd {
       SLOPE_WEAR,
       shadows,
       (k) => this.gliders.filter((g) => pick(g.wears, SLOPE_WEAR.length) === k).length,
-      (o) => (ride === 'bike' ? figureGeometry(o, ridePose(0.9, 0, 0.15, 0), 'bike') : figureGeometry(o, skiPose(0.12, 0), 'skis', true)),
+      (o, way) => (ride === 'bike' ? figureGeometry(o, ridePose(0.9, 0, 0.15, 0), 'bike') : figureGeometry(o, (held[way] as (stance: Pose) => Pose)(skiPose(0.12, 0)), 'skis', true)),
+      held.length,
     );
     // Whoever rides up in the snow months has their skis on; a bike goes up on the back of the chair, out of sight.
     const onSnow = season === 'winter' || season === 'spring';
@@ -174,7 +181,8 @@ export class Crowd {
       const now = gliderAt(run, g, clock);
       if (!now || now.size <= 0) continue;
       if (Math.abs(now.x - player.x) > SKIER_RANGE || Math.abs(now.z - player.z) > SKIER_RANGE) continue;
-      const k = pick(g.wears, this.skiers.length);
+      // Their outfit, and how they are holding themselves just now.
+      const k = pick(g.wears, this.skiers.length / this.ways) * this.ways + (this.ways > 1 ? (now.plant < 0 ? 1 : now.plant > 0 ? 2 : 0) : 0);
       this.q.setFromAxisAngle(this.up, now.yaw);
       // Tipped into the turn, about the way they are facing.
       this.q.multiply(this.lean.setFromAxisAngle(this.ahead, -now.lean));

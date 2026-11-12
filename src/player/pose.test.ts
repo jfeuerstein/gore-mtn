@@ -163,3 +163,15 @@ describe('a pole planted for a turn', () => {
     expect(planted(stance, 1, 0)).toEqual(stance);
   });
 });
+
+describe('standing on the pedals', () => {
+  it('lifts the rider off the saddle with straighter legs, and not in a tuck', () => {
+    const sat = ridePose(0, 0, 0, 0);
+    const up = ridePose(0, 0, 0, 0, 1);
+    expect(hipHeight(up)).toBeGreaterThan(hipHeight(sat) + 0.15);
+    expect(up.kneeL).toBeLessThan(sat.kneeL - 0.5);
+    expect(ridePose(0, 0, 0, 0, 0)).toEqual(sat);
+    // Tucked right down there is no standing up.
+    expect(hipHeight(ridePose(0, 0, 1, 0, 1))).toBeCloseTo(hipHeight(ridePose(0, 0, 1, 0)));
+  });
+});

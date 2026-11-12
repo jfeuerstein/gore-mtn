@@ -333,14 +333,23 @@ export const SHOP_ART = {
  * The picture on the way in, one for each season: tall, for an upright phone. A place like this
  * one, not this one.
  */
-const poster = (what) =>
-  `a cosy storybook illustration of ${what}, soft rounded shapes, warm cheerful pastel colours, gouache and coloured pencil, gentle light, plenty of open sky at the top, no people in the foreground, no text, no letters`;
-export const TITLE_ART = {
-  winter: poster('a little snowy mountain village at the foot of a ski hill, timber lodge with smoke from its chimney, a chairlift going up among snowy fir trees, lamps lit, early evening'),
-  spring: poster('a little mountain village in early spring, patches of melting snow, crocuses, a chairlift going up a hill with ribbons of snow, budding trees, morning'),
-  summer: poster('a little mountain village in summer, green hills, wildflowers, a chairlift carrying bicycles up a green mountain, blue sky with puffy clouds'),
-  fall: poster('a little mountain village in autumn, hills of red, orange and gold trees, pumpkins on porches, a chairlift going up a mountain, golden afternoon'),
-};
+/**
+ * The pictures on the way in, one for each season, which are also the seasons' stamps in the
+ * Book. They were soft storybook paintings once, and the first thing seen of a game that is a
+ * flat print; now they are park posters like the postcards, in each season's own inks. All
+ * four are asked for on one sheet (make-title.mjs), side by side, so that they are one place
+ * seen four times and not four places.
+ */
+export const TITLE_MODEL = 'chat_image_2.5_sunburst';
+export const TITLE_SEASONS = ['winter', 'spring', 'summer', 'fall'];
+export const TITLE_BRIEF = `Four tall travel posters side by side in one image, in a single row. Each is exactly one quarter of the width and the full height, with a thin plain cream gutter between them.
+All four are flat screen prints in the manner of 1930s park service posters: five or six flat inks each, bold simple shapes with hard clean edges, no gradients, no outlines, no paper texture, no lettering, no titles, no captions, no borders, no frames.
+All four show the same little mountain village at the foot of a ski hill, from the same spot: a timber lodge with a stone chimney at the lower left, a chairlift whose towers and chairs climb the middle of a broad mountain, ski trails cut as pale ribbons through the forest, the summit in the upper third, a sky in two or three flat bands. They differ only in season and in ink.
+First, far left, WINTER: cream snow, pale blue and slate blue shade, dark spruce green firs with snow on them, navy for the darkest shapes, smoke from the chimney, one small skier in a red jacket.
+Second, SPRING: umber brown bare woods, the trails still ribbons of cream snow, khaki and olive meadows at the bottom, a few bud green trees, a pale blue sky.
+Third, SUMMER: the trails meadow green, deep forest greens, cream dots of wildflowers in the foreground, a small blue pond, a bicycle hung from one chair of the lift, a warm cream sky.
+Fourth, far right, FALL: the trails tan, the hardwoods in gold, orange, rust and maroon with dark pines among them, pumpkins by the lodge door, a golden cream sky.
+Each poster is composed for its tall narrow shape, the picture reaching every edge of its panel.`;
 
 /**
  * The Book's patches, as they are made now: in sheets of up to sixteen, by an image model that

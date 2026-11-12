@@ -178,25 +178,29 @@ export const PEDAL_LOW = 0.12;
  * Riding a bike: sat on the saddle, leaning to the bars, feet on the pedals. The legs go round
  * with `phase` when pedalling; coasting, they hold level. A tuck drops the chest to the bars and
  * braking sits the rider back.
+ * Coasting downhill at a good speed the rider stands on the pedals, off the saddle, knees and
+ * elbows loose, as anyone does when the ground gets rough.
  * @param pedalling 0 coasting, 1 pedalling
+ * @param standing 0 in the saddle, 1 up on the pedals
  */
-export function ridePose(phase: number, pedalling: number, tuck: number, brake: number): Pose {
+export function ridePose(phase: number, pedalling: number, tuck: number, brake: number, standing = 0): Pose {
   const t = clamp01(tuck);
   const b = clamp01(brake) * (1 - t);
+  const up = clamp01(standing) * (1 - t);
   const turn = Math.sin(phase) * clamp01(pedalling);
-  // One knee comes up as the other goes down; level pedals when coasting.
-  const hip = (s: number): number => 1.0 + s * 0.28;
-  const knee = (s: number): number => 1.36 + s * 0.42;
+  // One knee comes up as the other goes down; level pedals when coasting. Standing, the legs are nearly straight.
+  const hip = (s: number): number => lerp(1.0, 0.5, up) + s * 0.28;
+  const knee = (s: number): number => lerp(1.36, 0.62, up) + s * 0.42;
   return {
     hipL: hip(turn),
     hipR: hip(-turn),
     kneeL: knee(turn),
     kneeR: knee(-turn),
-    torso: 0.62 + 0.4 * t - 0.2 * b,
-    shoulderL: 1.25 + 0.15 * t - 0.15 * b,
-    shoulderR: 1.25 + 0.15 * t - 0.15 * b,
-    armsOut: 0.16,
-    elbow: 0.3 + 0.55 * t,
+    torso: 0.62 + 0.4 * t - 0.2 * b + 0.3 * up,
+    shoulderL: 1.25 + 0.15 * t - 0.15 * b - 0.2 * up,
+    shoulderR: 1.25 + 0.15 * t - 0.15 * b - 0.2 * up,
+    armsOut: 0.16 + 0.12 * up,
+    elbow: 0.3 + 0.55 * t + 0.3 * up,
     poles: -1.2,
     plantL: 0,
     plantR: 0,

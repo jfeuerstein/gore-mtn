@@ -40,6 +40,8 @@ const BODY_RADIUS = 0.35;
  */
 /** A pole is planted for a turn begun faster than this, in m/s, and the touch lasts this long, in seconds. */
 const PLANT_SPEED = 3;
+/** On a bike, coasting faster than this, the rider stands on the pedals, in m/s. */
+const STAND_SPEED = 7;
 const PLANT_TIME = 0.42;
 
 export class Player {
@@ -74,6 +76,10 @@ export class Player {
   /** Poling along the flat: how far through the stroke, and how much of the figure is given over to it. */
   private stroke = 0;
   private poling = 0;
+  /** How far the rider is up out of the saddle, 0..1. */
+  private standing = 0;
+  /** A pole has just gone into the snow: both, pushing along, or one, for a turn. Taken by whoever makes the sound. */
+  private tick: 'push' | 'turn' | null = null;
   /** The turn being made (-1 left, 1 right, 0 none), and the pole planted for it: which, and for how long so far. */
   private turning = 0;
   private plant: { side: number; time: number } | null = null;
@@ -105,6 +111,13 @@ export class Player {
   private show(target: Pose, dt: number, flatFeet: boolean, rate = 10): void {
     this.shown = mixPose(this.shown, target, Math.min(1, dt * rate));
     this.skier.pose(this.shown, flatFeet);
+  }
+
+  /** Whether a pole has gone into the snow since this was last asked, and how: for the sound of it. */
+  takeTick(): 'push' | 'turn' | null {
+    const tick = this.tick;
+    this.tick = null;
+    return tick;
   }
 
   /** The way the skis point, as a yaw. */
@@ -364,7 +377,10 @@ export class Player {
       const pedalling = input.tuck > 0 && ground < this.tune.poleMaxSpeed ? 1 : 0;
       this.pedal += dt * (4 + ground * 0.9) * pedalling;
       this.skier.rollWheels((this.speed * dt) / PLAYER_SCALE);
-      this.show(ridePose(this.pedal, pedalling, input.tuck, ground > 0.5 ? input.brake : 0), dt, true);
+      // Coasting down at a good speed, they stand on the pedals.
+      const up = pedalling === 0 && ground > STAND_SPEED && input.tuck < 0.3 ? 1 : 0;
+      this.standing += (up - this.standing) * Math.min(1, dt * 4);
+      this.show(ridePose(this.pedal, pedalling, input.tuck, ground > 0.5 ? input.brake : 0, this.standing), dt, true);
       return;
     }
     // Standing tall at rest, a skier's stance once moving, folding into a tuck or sitting back to stop.
@@ -377,7 +393,10 @@ export class Player {
     this.poling += (poles - this.poling) * Math.min(1, dt * 6);
     if (this.poling > 0.01) {
       // A stroke a second or so, a little quicker as the skier gets going.
+      const before = this.stroke;
       this.stroke += dt * (5.2 + ground * 0.25);
+      // The poles go in at the reach, once a stroke.
+      if (this.poling > 0.5 && Math.floor(this.stroke / (Math.PI * 2)) !== Math.floor(before / (Math.PI * 2))) this.tick = 'push';
       pose = mixPose(pose, polePose(this.stroke), this.poling);
     } else this.stroke = 0;
     // A new turn is marked with a touch of the pole on its inside.
@@ -387,6 +406,7 @@ export class Player {
       this.turning = side;
     }
     if (this.plant) {
+      if (this.plant.time < PLANT_TIME * 0.4 && this.plant.time + dt >= PLANT_TIME * 0.4) this.tick = 'turn';
       this.plant.time += dt;
       if (this.plant.time >= PLANT_TIME) this.plant = null;
       else pose = planted(pose, this.plant.side, Math.sin((this.plant.time / PLANT_TIME) * Math.PI));

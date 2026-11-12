@@ -78,3 +78,14 @@ describe('jingleFor', () => {
     expect(jingleFor('patch')?.notes.length).toBeGreaterThan(jingleFor('trail')?.notes.length ?? 0);
   });
 });
+
+describe('a pole in the snow', () => {
+  it('is a small dry tick with no notes, a little firmer for a push than for a turn', () => {
+    const push = jingleFor('pole', 'push');
+    const turn = jingleFor('pole', 'turn');
+    expect(push?.voice).toBe('tick');
+    expect(push?.notes).toEqual([]);
+    expect(push?.gain ?? 0).toBeGreaterThan(turn?.gain ?? 1);
+    expect(push?.gain ?? 1).toBeLessThan(0.3);
+  });
+});
