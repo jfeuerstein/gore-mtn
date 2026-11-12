@@ -633,7 +633,8 @@ try {
   check('handing it over finishes the errand and earns his hat', thanked.errands.length === 0 && thanked.items.length === 0 && thanked.wearing.owned.includes('hat-trapper') && thanked.book.errands === 1, JSON.stringify(thanked.wearing));
   await tp.tap('#book-button');
   await tp.tap('#book-sheet [data-tab=pack]');
-  check('the pack shows the errand done and the hat in the wardrobe', (await tp.locator('#book-sheet .errand.earned').count()) === 1 && (await tp.locator('#book-sheet .wardrobe button:not(.locked)').count()) === 3);
+  check('the pack shows the errand done and the hat in the wardrobe', (await tp.locator('#book-sheet .errand.earned').count()) === 1 && (await tp.locator('#book-sheet .wardrobe button:not(.locked)').count()) === 8);
+  // (Eight: the hat and jacket the player starts in, what they start with in five more kinds of thing, and Otto's hat.)
   await tp.locator('#book-sheet .wardrobe button', { hasText: 'trapper' }).tap();
   check('tapping the hat puts it on', (await townState()).wearing.hat === 'hat-trapper' && (await tp.locator('#book-sheet .wardrobe button.on', { hasText: 'trapper' }).count()) === 1);
   await tp.locator('#book-sheet .close').tap();
