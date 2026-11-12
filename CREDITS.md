@@ -36,6 +36,12 @@ real person, business or other game.
   eleven (nine plants, the dog and the cat) are a picture and a shape from
   [Tripo](https://www.tripo3d.ai). All are then closed, cut down and coloured by
   `tools/models/convert.py`.
+- **The painter's paintings** (`public/art/paintings/`) and the patches for things found on
+  the mountain: OpenAI's GPT Image 1.5 through fal, a sheet at a time
+  (`tools/art/make-paintings.mjs`, `tools/art/make-patches.mjs`). The pictures of the locked
+  rooms are FLUX.1 [schnell], as the postcards are.
+- **The pets** (a fox kit, a duckling, a kitten and a toad) are made models like the field
+  guide's: FLUX.1 [schnell] and TRELLIS through fal.
 - **Everything else in the world** (terrain, trees, buildings, lifts, people, signs) is built
   in code.
 

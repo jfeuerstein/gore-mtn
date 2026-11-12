@@ -40,6 +40,12 @@ export const PEOPLE_ART = {
   ivy: person('a calm capable ski patrol woman with a dark braid, a red ski patrol jacket with a white cross and a red ski helmet with goggles pushed up, holding a green thermos'),
   pickles: 'head and shoulders portrait of a fat, solemn orange tabby cat wearing a tiny gold mayoral chain of office, sitting very upright, looking unimpressed',
   biscuit: 'head and shoulders portrait of a big friendly Saint Bernard mountain dog with a little wooden barrel on its collar, tongue out, snow on its nose',
+  nell: person('an elderly woman painter with white hair in a bun, round glasses, a dark red beret, a grey smock with a smear of blue paint on it, a paintbrush tucked behind her ear'),
+  ro: person('a cheerful bearded camper in his fifties with a brown beard, a moss green wool jacket and a wide straw hat, a tin mug in his hand'),
+  fitch: person('a shy thin man with a dark moustache, a navy jacket and a brown flat cap, holding a fiddle under his chin'),
+  hattie: person('a big laughing woman with curly red-brown hair, a rust red jacket and a mustard knit hat, holding a brass horn'),
+  bo: person('an old man with a white beard and round glasses, a tan jacket and a green brimmed hat, holding a banjo'),
+  sal: person('an elderly woman with long white hair, a dark red jacket, a yellow shawl and a black cap, holding a small red accordion'),
   amos: person('a very old retired miner with a long white beard, a weathered tan canvas jacket and a yellow miner hard hat with a lamp on the front'),
 };
 
@@ -512,3 +518,22 @@ export const GROUND_ART = {
   pebbles: 'A sheet of sixteen small smooth pebbles, each a simple rounded lumpy shape, all different',
   strokes: 'A sheet of sixteen short thick horizontal brush strokes of ink, each a single straight dash with rough tapered ends, all lying level, all different lengths',
 };
+
+/**
+ * The painter's pictures: each of her views, painted in every season. A view's four are asked
+ * for on one sheet, so that they are the same place seen four times, and cut apart
+ * (make-paintings.mjs). `PAINTINGS` is each view by the id it has among her haunts in
+ * src/game/wanderers.ts, with what there is to see from it.
+ */
+export const PAINTING_MODEL = 'fal-ai/gpt-image-1.5';
+export const PAINTING_SEASONS = ['winter', 'spring', 'summer', 'fall'];
+export const PAINTINGS = {
+  cliffs: 'from the top of a rocky cliff, looking out over a wide forested valley to a long ridge',
+  vermont: 'from a high mountain overlook, range after range of far blue hills going back to the horizon',
+  'windy-hill': 'a bare windy hilltop with one bent pine and a wooden bench, a valley beyond',
+  reservoir: 'a still mountain reservoir ringed with fir trees, a round wooded hill behind it',
+  'rabbit-pond': 'a small round pond deep in the woods, a fallen birch lying out into the water',
+  tower: 'a steel fire tower with a little cabin on top, standing on a bare rocky mountain summit',
+};
+export const paintingBrief = (scene) =>
+  `One sheet of paper with four small landscape paintings on it in a two by two grid, a wide plain white gutter between them and round the edge. All four are exactly the same view from the same spot, painted outdoors in gouache by the same hand: ${scene}. Top left, deep winter: snow on everything, blue and violet shadows. Top right, early spring: bare brown woods, patches of old snow, pale green buds. Bottom left, high summer: everything full green. Bottom right, peak fall: red, orange and gold hardwoods among dark green firs. Loose, confident brush strokes, flat shapes of muted colour and a limited palette of cream, navy, slate blue, forest green, rust and gold, like a vintage national park print done by hand in gouache. Each painting is a neat rectangle a little wider than it is tall, painted to its edges. No people, no lettering, no signature, no frames.`;

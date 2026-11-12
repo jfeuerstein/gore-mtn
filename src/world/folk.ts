@@ -245,6 +245,75 @@ function flag(colour: number): THREE.Mesh {
   return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colour, side: THREE.DoubleSide }));
 }
 
+/** A painter's easel: three legs, a board, and whatever is on the board today. */
+function easel(): THREE.BufferGeometry {
+  const wood = 0xa9763f;
+  return fine(
+    [
+      { size: [0.07, 1.7, 0.07], at: [-0.34, 0.82, 0.02], colour: wood, tip: -0.12 },
+      { size: [0.07, 1.7, 0.07], at: [0.34, 0.82, 0.02], colour: wood, tip: -0.12 },
+      { size: [0.07, 1.7, 0.07], at: [0, 0.8, -0.42], colour: wood, tip: 0.3 },
+      { size: [0.9, 0.06, 0.12], at: [0, 0.8, 0.12], colour: wood },
+      // The picture: sky, a far ridge, a near one.
+      { size: [0.8, 0.62, 0.05], at: [0, 1.16, 0.12], colour: 0xfbf8ee, tip: -0.12 },
+      { size: [0.7, 0.2, 0.02], at: [0, 1.34, 0.19], colour: 0x9fc0d8, tip: -0.12 },
+      { size: [0.7, 0.16, 0.02], at: [0, 1.16, 0.17], colour: 0x5e7f9a, tip: -0.12 },
+      { size: [0.7, 0.16, 0.02], at: [0, 1.0, 0.15], colour: 0x4f8a3f, tip: -0.12 },
+      // A stool, and a box of paints on it.
+      { size: [0.5, 0.06, 0.4], at: [0.95, 0.5, 0.2], colour: wood },
+      { size: [0.06, 0.5, 0.06], at: [0.75, 0.25, 0.05], colour: wood },
+      { size: [0.06, 0.5, 0.06], at: [1.15, 0.25, 0.05], colour: wood },
+      { size: [0.06, 0.5, 0.06], at: [0.95, 0.25, 0.36], colour: wood },
+      { size: [0.34, 0.1, 0.24], at: [0.95, 0.58, 0.2], colour: 0x2a2e36 },
+      { size: [0.07, 0.03, 0.07], at: [0.85, 0.64, 0.2], colour: 0xc8402d },
+      { size: [0.07, 0.03, 0.07], at: [0.95, 0.64, 0.2], colour: 0xf2d16b },
+      { size: [0.07, 0.03, 0.07], at: [1.05, 0.64, 0.2], colour: 0x2b62c9 },
+    ],
+    2.4,
+  );
+}
+
+/** A camp: a small tent, a ring of stones with a fire in it, a log to sit on, a pot. */
+function camp(): THREE.BufferGeometry {
+  const canvas = 0xd9c9a0;
+  const list: Block[] = [
+    // The tent, to one side of the fire with its door toward it: two sloping sides that meet in a ridge, a groundsheet, a dark doorway.
+    { size: [2.5, 0.07, 1.75], at: [-3.0, 0.72, -0.14], colour: canvas, tip: 1.0 },
+    { size: [2.5, 0.07, 1.75], at: [-3.0, 0.72, -1.06], colour: canvas, tip: -1.0 },
+    { size: [2.6, 0.1, 0.16], at: [-3.0, 1.46, -0.6], colour: 0xb3472d },
+    { size: [2.3, 0.06, 1.7], at: [-3.0, 0.04, -0.6], colour: 0x7c8794 },
+    { size: [0.06, 0.95, 0.75], at: [-1.76, 0.5, -0.6], colour: 0x4a3326 },
+    { size: [0.06, 0.5, 0.36], at: [-1.75, 1.1, -0.6], colour: 0x4a3326 },
+    // The fire: stones in a ring, three logs, and the fire itself.
+    ...Array.from({ length: 8 }, (_, i): Block => ({ size: [0.3, 0.22, 0.3], at: [Math.sin((i / 8) * Math.PI * 2) * 0.62, 0.1, Math.cos((i / 8) * Math.PI * 2) * 0.62], colour: i % 2 ? 0x7c8794 : 0xa9b3c0, turn: i })),
+    { size: [0.16, 0.16, 0.8], at: [0, 0.14, 0], colour: 0x4a3326, turn: 0.5 },
+    { size: [0.16, 0.16, 0.8], at: [0, 0.2, 0], colour: 0x4a3326, turn: -0.7 },
+    { size: [0.3, 0.42, 0.3], at: [0, 0.42, 0], colour: 0xe8742a, turn: 0.78 },
+    { size: [0.18, 0.3, 0.18], at: [0.03, 0.7, 0.02], colour: 0xf2d16b, turn: 0.3 },
+    // A log to sit on, and the coffee.
+    { size: [1.7, 0.4, 0.42], at: [0.2, 0.2, 1.5], colour: 0x6b4a33, turn: 0.2 },
+    { size: [0.26, 0.3, 0.26], at: [0.95, 0.15, 0.3], colour: 0x2a2e36 },
+    { size: [0.08, 0.06, 0.2], at: [1.12, 0.22, 0.3], colour: 0x2a2e36 },
+  ];
+  return fine(list, 1.6);
+}
+
+/** A music stand, with the tune on it. */
+function musicStand(): THREE.BufferGeometry {
+  return fine(
+    [
+      { size: [0.05, 1.15, 0.05], at: [0, 0.58, 0], colour: 0x2a2e36 },
+      { size: [0.5, 0.04, 0.05], at: [0, 0.03, 0], colour: 0x2a2e36 },
+      { size: [0.05, 0.04, 0.5], at: [0, 0.03, 0], colour: 0x2a2e36 },
+      { size: [0.56, 0.4, 0.04], at: [0, 1.28, 0.04], colour: 0x2a2e36, tip: -0.35 },
+      { size: [0.46, 0.32, 0.03], at: [0, 1.29, 0.07], colour: 0xfbf8ee, tip: -0.35 },
+    ],
+    3,
+  );
+}
+
+const PROPS: Record<NonNullable<Person['prop']>, () => THREE.BufferGeometry> = { snowcat, sled, easel, camp, stand: musicStand };
+
 /**
  * The people of the mountain and the town, each standing at their post in their own colours. They
  * are the same jointed figure as the player. One turns to watch the player come up, and carries a
@@ -254,6 +323,8 @@ export class Folk {
   readonly group = new THREE.Group();
   private readonly figures: { standing: Standing; body: THREE.Mesh; mark: THREE.Mesh; yaw: number }[] = [];
   private readonly props = new Map<string, THREE.Mesh>();
+  /** Whoever is not about just now: not drawn, and not to be talked to. */
+  private readonly away = new Set<string>();
   private time = 0;
 
   /** @param season some of them dress for it, and one of them is made of it */
@@ -281,12 +352,10 @@ export class Folk {
       body.scale.setScalar(kind === 'person' ? SCALE : kind === 'cat' ? 0.62 : 1);
       // Whatever stands beside them: one more mesh, shown and hidden with its owner.
       if (standing.prop && standing.person.prop) {
-        const prop = new THREE.Mesh(standing.person.prop === 'snowcat' ? snowcat() : sled(), material);
+        const prop = new THREE.Mesh(PROPS[standing.person.prop](), material);
         prop.position.set(standing.prop.x, standing.prop.y, standing.prop.z);
         prop.rotation.y = standing.prop.turn;
         prop.castShadow = castShadow;
-        prop.matrixAutoUpdate = false;
-        prop.updateMatrix();
         this.group.add(prop);
         this.props.set(standing.person.id, prop);
       }
@@ -306,6 +375,7 @@ export class Folk {
     let best: Standing | null = null;
     let bestDist = reach;
     for (const f of this.figures) {
+      if (this.away.has(f.standing.person.id)) continue;
       const d = Math.hypot(f.standing.x - x, f.standing.z - z);
       if (d < bestDist) {
         bestDist = d;
@@ -316,6 +386,38 @@ export class Folk {
   }
 
   /**
+   * Stand someone somewhere else, with whatever stands beside them; or, given nothing, send
+   * them home: they are not drawn and cannot be talked to until they are stood somewhere again.
+   */
+  move(id: string, to: { x: number; y: number; z: number; prop?: { x: number; y: number; z: number; turn: number } } | null): void {
+    const f = this.figures.find((g) => g.standing.person.id === id);
+    if (!f) return;
+    const prop = this.props.get(id);
+    if (!to) {
+      this.away.add(id);
+      f.body.visible = false;
+      f.mark.visible = false;
+      if (prop) prop.visible = false;
+      return;
+    }
+    this.away.delete(id);
+    f.standing.x = to.x;
+    f.standing.y = to.y;
+    f.standing.z = to.z;
+    f.body.position.set(to.x, to.y, to.z);
+    if (prop && to.prop) {
+      prop.position.set(to.prop.x, to.prop.y, to.prop.z);
+      prop.rotation.y = to.prop.turn;
+      f.standing.prop = to.prop;
+    }
+  }
+
+  /** True if someone is about: stood somewhere, to be seen and talked to. */
+  about(id: string): boolean {
+    return !this.away.has(id) && this.figures.some((f) => f.standing.person.id === id);
+  }
+
+  /**
    * @param hasBusiness whether a person has something for the player, by id
    * @param cameraYaw so the marks face the camera
    */
@@ -323,6 +425,7 @@ export class Folk {
     this.time += dt;
     for (const f of this.figures) {
       const { standing, body, mark } = f;
+      if (this.away.has(standing.person.id)) continue;
       const dx = player.x - standing.x;
       const dz = player.z - standing.z;
       const dist = Math.hypot(dx, dz);

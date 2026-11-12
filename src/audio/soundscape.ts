@@ -88,6 +88,21 @@ export interface Jingle {
 // A pentatonic scale on D, so any run of notes sounds settled.
 const D = [293.66, 329.63, 369.99, 440, 493.88, 587.33, 659.25, 739.99, 880, 987.77, 1174.66, 1318.51, 1479.98, 1760];
 
+/**
+ * What the band plays: a few bars each, as steps of the scale. One is played by whoever is
+ * asked for their tune; on the bandstand they are taken in turn.
+ */
+const BARS: readonly (readonly number[])[] = [
+  [5, 7, 8, 10, 8, 7, 5, 3, 5, 7, 8, 7, 5],
+  [8, 10, 11, 10, 8, 7, 8, 5, 7, 8, 10, 8],
+  [3, 5, 7, 5, 8, 7, 5, 3, 2, 3, 5, 3, 0],
+  [10, 8, 7, 8, 10, 11, 12, 11, 10, 8, 7, 5],
+];
+/** A few bars of the band's music, in Hz: the same bars for the same number. */
+export function phraseFor(bar: number): number[] {
+  return (BARS[((bar % BARS.length) + BARS.length) % BARS.length] as readonly number[]).map((step) => D[step] as number);
+}
+
 /** The jingle for a kind of event, or null for ones that pass in silence. */
 export function jingleFor(kind: string, detail = ''): Jingle | null {
   switch (kind) {

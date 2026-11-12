@@ -40,6 +40,8 @@ NODE_USE_ENV_PROXY=1 node tools/art/make-title.mjs    # the four posters on the 
 node tools/art/make-icon.mjs                          # render the Home Screen icon from tools/art/icon.svg
 node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
 node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
+node tools/tour.mjs out "me=0" secret:den roamer:nell run:run-1                    # ...of a secret, of someone who roams, of the top of an unmarked run
+NODE_USE_ENV_PROXY=1 node tools/art/make-paintings.mjs  # the painter's views, four seasons to a sheet (needs the fal key)
 ```
 
 Run `npm test`, `npm run build`, `node tools/touch-check.mjs` and `node tools/webgpu-smoke.mjs`
@@ -68,7 +70,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   `look=plain` or `shadows=0` goes without).
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `sky`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -761,8 +763,77 @@ Everything else is built in code from simple shapes.
   in (`TUNE_VOICES`), and company (a pet). `Game.outfit()` is what the figure wears and
   `Game.flourish()` the rest. Their patches are made a sheet at a time like the others, by
   the same family of model through fal (`gear:found` in `PATCH_SETS`, `by: 'fal'`).
+- **Things to follow.** A secret may have a `lead`: in the seasons it names, something is
+  set down from the nearest trail to it (`leadLine` in `src/world/unmarked.ts`, pure, tested).
+  A fox's prints in the winter snow go to a den, which is asleep then and hands over a kit
+  in spring or summer (`turns`: what a secret is in a particular season); buckets on the
+  maples in spring go to a sugar shack, which is boiling then and shut otherwise. A secret
+  may keep to seasons (`seasons`: a nest by the Duck Pond) or to the dark (`nightly`), and
+  may be `shy`: come upon faster than `GENTLE_SPEED` it is gone until the player has been
+  well away (`SecretThings.about`). The lantern at the old quarry is both: lit only at
+  night, out for anyone who hurries, and under it the key to the last locked door.
+- **Unmarked runs** (`unmarkedRuns`, the same file): the three longest ways down through
+  forest that set off beside one trail and come out on another, found from the ground.
+  Trees are kept back along each (`runCorridor`), a birch with an orange ribbon stands at
+  the top (a secret, `kind: 'ribbon'`) and a smaller one every 160 m. Finding one pencils
+  it onto the map; coming down it top to bottom counts it (`Game.ranRun`, `runAlong` in
+  `main.ts`).
+- **Found things are pencilled on the player's own map**: a small cross at each secret
+  found (`PointKind` `secret`), the unmarked runs as pencil lines, and worn ground as dots
+  (`TrailMap.pencilled`).
+- **The right moment** (`src/game/sky.ts`, pure, tested; `src/world/skyShow.ts`). Cloud
+  lying in the valleys on a morning of fog or low cloud (`Weather.low`, from the service's
+  fog codes and low cloud cover): from above `CLOUD_TOP` it is a flat pale sea with the
+  ridges standing out of it, and underneath it is an overcast day. Shooting stars on the
+  nights of the year's real showers (`SHOWERS`), and the northern lights about one clear
+  night in six from September to March (`auroraOn`), drawn as curtains whose colour runs
+  from green to the sky's own, so nothing is see-through. All three are kept only under
+  the real calendar, clock and sky (`Game.saw`). `weather=fog`, `sky=meteors` and
+  `sky=aurora` in the address show them for the tools; the flyer's P.S. says when a shower
+  is tonight.
+- **Marks the player leaves.** Besides the cairns and the bell: ground worn by walking
+  (`src/game/worn.ts`, pure, tested; `src/world/wornMesh.ts`). Off the trails and roads,
+  each six-metre square remembers being crossed on foot; at three crossings it shows, as a
+  patch of packed snow or bare earth, and enough of them are a path (`PATH_FOR_LEAF`). At
+  most `WORN_MOST` squares are kept: what was never gone back to grows over.
 - The wording of every register, plaque and room is the owner's to mark up, and follows the
   rules for how people talk.
+
+## People who roam
+
+- `src/game/wanderers.ts` (pure, tested) is the people who are somewhere different every
+  day, and on no map or flyer (`roams` on a `Person`). Each has a list of haunts and takes
+  them in turn, never the same two days running; a haunt is placed as a secret is
+  (`placeAt` in `secretSites.ts`), and trees keep clear of every haunt from the start.
+  `placeRoamers` in `main.ts` stands them (`Folk.move`) at the start, at midnight and when
+  the hour turns, never moving anyone from under the player's nose.
+- **Nell, the painter**, is at a view by day with her easel, and hands over that view's
+  painting for the season: six views by four seasons, `public/art/paintings/`. A view's
+  four are painted on one sheet so that they are one place seen four times
+  (`tools/art/make-paintings.mjs`, through fal). They are kept in the Book under Paintings.
+- **Ro, the camper**, pitches somewhere out of the way each morning. His smoke
+  (`src/world/plume.ts`) stands 85 m over the trees and is drawn from any distance: it is
+  how he is found. He has something for the first three days he is found.
+- **The band.** Four players practise alone around the mountain once the bandstand is
+  built; each teaches a tune (a voice for the player's own jingles). With all four heard,
+  they play on the bandstand on Saturdays from dusk (`concertOn`), and the first concert
+  comes with the band's jacket.
+- **Pip hides.** Once she has been met and wants nothing of the player, she is somewhere
+  else every day (`PIP_HAUNTS`), and the first two people in town asked that day say which
+  way she went (`hints`: vague, and true). Found three times she gives up her racing skis;
+  five, a paper crown.
+- Their lines follow the rules for how people talk, each with a softener of their own
+  (Nell `sort of`, Ro `I figure`, Fitch `maybe`, Bo `more or less`, Sal `well`; Hattie
+  none), and are the owner's to mark up.
+
+## Company
+
+- A pet comes along (`src/world/companion.ts`): the fox kit from the den, the duckling from
+  the nest, the kitten from the power house, the toad from the cellar hole, and a chickadee
+  once four different guests have been seen at the cabin's feeder (`GUESTS_FOR_BIRD`). On
+  foot it keeps at the player's side, hopping to catch up; on skis, a bike or a lift it
+  rides on the pack; the chickadee keeps about the player's head. The four that are not
+  field-guide animals are made models of their own (`pet-*` in `tools/models/manifest.mjs`).
 
 ## Trail map
 

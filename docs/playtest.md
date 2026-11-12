@@ -63,6 +63,30 @@ is described in [game-plan.md](game-plan.md).
 - Tom, by the Ski Bowl lodge. Visit him in every season.
 - The Mayor.
 
+## Things that are on no map
+
+Nothing points at these. They are found by going and looking, and the Book lists one (under
+Field notes, on the Pack page) only once it has been found. Whatever is found is pencilled
+onto your own map.
+
+- Tin boxes on posts at the far ends of things, each with a logbook to sign.
+- Brass plaques beside trails that say why the trail is called that. None of it is true.
+- The old adit at the mine, a cellar hole in the woods, the rope tow's engine. Keys lie in
+  them. Some doors in town and at the mine are locked.
+- A cairn on each summit takes one stone a day. The bell on Gore is heard in town.
+- In winter, a line of prints leaves a trail high on the mountain. Follow it. Go back in spring.
+- In spring, buckets hang on the maples somewhere in the woods. Follow those.
+- A column of smoke over the trees, in a different place every day. Somebody is camping.
+- A painter at one of the views, a different one each day, by daylight.
+- Orange ribbon tied round a birch beside a trail: the top of a way down that has no name.
+- A light at the old quarry after dark. Walk.
+- Once the bandstand is built: music in the woods, and then on Saturday evenings.
+- Pip, once she has no more errands, hides somewhere new each day. Ask in town.
+- On a real foggy morning, go up. On the nights of the real meteor showers (the Leonids are
+  16 to 18 November), look up. The northern lights are out some clear nights from fall to spring.
+- Walk the same way through the woods a few times and look at the ground.
+- `weather=fog`, `sky=meteors` and `sky=aurora` in the address show the last three without waiting.
+
 ## What only the phone can show
 
 The tools here draw with the fallback renderer and cannot present WebGPU, so these are yours.

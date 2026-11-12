@@ -2163,3 +2163,12 @@ body {
   border: 2px dashed var(--kraft);
   border-radius: 50%;
 }
+
+/* The painter's pictures: two to a row, each the shape it was painted. */
+#book-sheet .postcards.paintings {
+  grid-template-columns: repeat(2, 1fr);
+}
+#book-sheet .postcards.paintings .stamp.postcard .plate {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}

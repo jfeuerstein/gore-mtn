@@ -21,7 +21,10 @@ import { DEFAULT_GEAR, ERRANDS, errandById, GEAR_SLOTS, gearById, personById, SL
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 import { feederGuest, nextChoice } from './cabin';
-import { addStone, BELL_HEARD, bellRemark, discover, KEYS, ringBell, type Found, type SecretKind } from './secrets';
+import { sawSight, SIGHTS, type Sight } from './sky';
+import { tread } from './worn';
+import { HINTS_A_DAY, PIP_WATCHERS, pipHiding, pipHint, wandererTurn, wandererWaits } from './wanderers';
+import { addStone, BELL_HEARD, bellRemark, discover, KEYS, ringBell, secretById, skiedRun, type Found, type SecretKind } from './secrets';
 
 /** What an announcement says under the name of a secret, the first time it is found. */
 const SECRET_SAID: Record<SecretKind, string> = {
@@ -31,6 +34,11 @@ const SECRET_SAID: Record<SecretKind, string> = {
   room: 'The key fit',
   cairn: 'A cairn',
   bell: 'It carries all the way to town',
+  den: 'At the end of the tracks',
+  nest: 'In the reeds',
+  shack: 'At the end of the buckets',
+  ribbon: 'Pencilled onto your map',
+  light: 'Still lit',
 };
 import { projectInHand, PROJECTS, projectState, type ProjectState } from './projects';
 
@@ -58,6 +66,8 @@ export interface Talk {
   train: boolean;
   /** A letter they have handed over, to be read. */
   letter?: Letter;
+  /** A tune they play on the spot, by its voice. */
+  tune?: string;
 }
 
 /** Today's rumour: a rare stone said to be lying at a named spot. */
@@ -153,6 +163,9 @@ export interface GameWorld extends Ground {
  * No DOM or three.js here; the caller says where the player is and what they are doing, and gets
  * back whatever that earned.
  */
+/** How many different guests, seen at the cabin's feeder, before a chickadee comes along with the player. */
+export const GUESTS_FOR_BIRD = 4;
+
 export class Game {
   save: SaveData;
   readonly trails: TrailEntry[];
@@ -180,6 +193,8 @@ export class Game {
   private rumourTold = '';
   /** The day the postmaster last said the box was empty, so it is said once a day. */
   private emptyBox = '';
+  /** Who has said, today, which way Pip went. */
+  private hinted: { day: string; who: string[] } = { day: '', who: [] };
   /** The day each person last handed over their offering, so a second visit the same day is small talk. */
   private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
@@ -598,18 +613,47 @@ export class Game {
     return this.nextErrand(personId, season) !== undefined;
   }
 
+  /** True while Pip is out hiding somewhere on the mountain: met, wanting nothing of the player, and not found yet today. */
+  pipHides(day: string, season: Season): boolean {
+    const busy = this.activeErrands().some((e) => e.from === 'pip' || e.to === 'pip') || this.nextErrand('pip', season) !== undefined;
+    return pipHiding(this.save, day, busy);
+  }
+
+  /** True if this is somebody who will say, just now, which way Pip went. */
+  private hintsAt(personId: string, day: string, season: Season): boolean {
+    if (!PIP_WATCHERS.includes(personId) || !this.pipHides(day, season)) return false;
+    const today = this.hinted.day === day ? this.hinted.who : [];
+    return today.length < HINTS_A_DAY && !today.includes(personId);
+  }
+
+  /** True when one of the people who roam has something for the player. */
+  roamerWaits(personId: string, day: string, season: Season, watch: Watch): boolean {
+    return wandererWaits(this.save, personId, day, season, watch);
+  }
+
   /**
    * Talk to someone. They greet, thank, hand over, remind or ask, as the case may be.
    * @param mood something about the moment they might remark on
    */
-  talk(personId: string, day: string, season: Season, mood: Mood | null = null): Talk | null {
+  talk(personId: string, day: string, season: Season, mood: Mood | null = null, watch: Watch = 'day'): Talk | null {
     const person = personById(personId);
     if (!person) return null;
     const save = this.save;
     const talk: Talk = { person, lines: [], events: [], train: false };
+    // Pip, come upon where she is hiding, is found before anything else is said.
+    const hiding = personId === 'pip' && this.pipHides(day, season);
     if (!(personId in save.met)) {
       save.met[personId] = day;
       talk.lines.push(person.hello);
+    }
+    // The people who are somewhere different every day: a painting, a gift, a tune, a find.
+    const turn = wandererTurn(save, personId, day, season, watch, hiding);
+    if (turn) {
+      talk.lines.push(...turn.lines);
+      if (turn.painting) talk.events.push({ kind: 'item', title: turn.painting.name, detail: 'A painting · kept in the Book', art: `paintings/${turn.painting.id}` });
+      if (hiding) talk.events.push({ kind: 'secret', title: 'Found Pip', detail: save.hide.finds === 1 ? 'She will hide somewhere else tomorrow' : `${save.hide.finds} times now` });
+      for (const gear of turn.gear) talk.events.push(...this.give(gear));
+      if (turn.tune) talk.tune = turn.tune;
     }
     // Errands this person is waiting on.
     for (const e of this.activeErrands()) {
@@ -708,6 +752,11 @@ export class Game {
         // They have something to say about what the player has on. Once a day is enough.
         this.noticed.set(personId, day);
         talk.lines.push((person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket]) as string);
+      } else if (talk.lines.length === 0 && this.hintsAt(personId, day, season)) {
+        // Pip is out hiding, and this is somebody who saw which way she went.
+        if (this.hinted.day !== day) this.hinted = { day, who: [] };
+        talk.lines.push(pipHint(day, this.hinted.who.length));
+        this.hinted.who.push(personId);
       } else if (talk.lines.length === 0 && (bellRemark(save, personId, day) ?? '') !== '') {
         // The day after the summit bell was rung, whoever heard it says so, once.
         talk.lines.push(BELL_HEARD[personId] as string);
@@ -738,8 +787,8 @@ export class Game {
    * Come upon one of the mountain's secrets and do what is done there: read it, look inside,
    * try the door. Says what there is to read and what came of it.
    */
-  secret(id: string, day: string): { found: Found; events: GameEvent[] } | null {
-    const found = discover(this.save, id, day);
+  secret(id: string, day: string, season?: Season): { found: Found; events: GameEvent[] } | null {
+    const found = discover(this.save, id, day, season);
     if (!found) return null;
     const events: GameEvent[] = [];
     if (found.first && found.open) events.push({ kind: 'secret', title: found.secret.kind === 'plaque' ? `Why it's called ${found.secret.name}` : found.secret.name, detail: SECRET_SAID[found.secret.kind] });
@@ -747,6 +796,36 @@ export class Game {
     for (const gear of found.gear) events.push(...this.give(gear));
     if (found.open) this.dirty = true;
     return { found, events };
+  }
+
+  /** An unmarked run has been taken from its ribbon to the trail it comes out on. */
+  ranRun(id: string, day: string): GameEvent[] {
+    const ran = skiedRun(this.save, id, day);
+    if (!ran) return [];
+    this.dirty = true;
+    return [{ kind: 'secret', title: secretById(id)?.name ?? 'An unmarked run', detail: ran.done >= ran.of ? 'Top to bottom · that is all of them' : 'Top to bottom, and on no map but yours' }, ...ran.gear.flatMap((g) => this.give(g))];
+  }
+
+  /**
+   * Something in the sky has been seen, under the real sky: a sea of cloud from above it,
+   * shooting stars, the northern lights. Kept the first time.
+   * @param meteors how many shooting stars have just been watched
+   */
+  saw(id: Sight['id'], day: string, meteors = 0): GameEvent[] {
+    const had = this.save.meteors;
+    this.save.meteors += meteors;
+    const seen = sawSight(this.save, id, day);
+    if (!seen.first && seen.gear.length === 0 && this.save.meteors === had) return [];
+    this.dirty = true;
+    const sight = SIGHTS.find((s) => s.id === id);
+    return [...(seen.first && sight ? [{ kind: 'secret', title: sight.name, detail: sight.note } satisfies GameEvent] : []), ...seen.gear.flatMap((g) => this.give(g))];
+  }
+
+  /** The player has walked into a square of open ground. True if it has just become worn enough to show. */
+  trod(key: string): { shows: boolean; events: GameEvent[] } {
+    const stepped = tread(this.save, key);
+    this.dirty = true;
+    return { shows: stepped.shows, events: stepped.gear.flatMap((g) => [{ kind: 'secret', title: 'A path of your own', detail: 'Worn by walking it. It is on your map now.' } satisfies GameEvent, ...this.give(g)]) };
   }
 
   /** Put a stone on a cairn: one a day, to each. */
@@ -951,6 +1030,9 @@ export class Game {
     if (!guest) return [];
     this.save.cabin.feeder = '';
     const events = this.visitedBy(guest, day);
+    // Four different guests seen at the feeder, and one of the chickadees has decided to come along.
+    if (!this.save.guests.includes(guest)) this.save.guests.push(guest);
+    if (this.save.guests.length >= GUESTS_FOR_BIRD && !this.save.gear.owned.includes('pet-chickadee')) events.push(...this.give('pet-chickadee'));
     this.persist();
     return events;
   }

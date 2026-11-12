@@ -292,6 +292,8 @@ export function clearPalette(elevationDeg: number): Palette {
 export interface Weather {
   overcast: number;
   snowing: number;
+  /** How much cloud is lying low, in the valleys, 0..1: fog, or cloud under a clear sky. None if not given. */
+  low?: number;
 }
 
 /**

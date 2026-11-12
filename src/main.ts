@@ -58,8 +58,17 @@ import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain, type Print } from './world/terrainMesh';
 import { SecretThings } from './world/secretMesh';
-import { secretSites } from './world/secretSites';
-import type { Secret } from './game/secrets';
+import { placeAt, secretSites, setting } from './world/secretSites';
+import { alongRun, leadLine } from './world/unmarked';
+import { Plume } from './world/plume';
+import { SkyShow } from './world/skyShow';
+import { Companion } from './world/companion';
+import { WornGround } from './world/wornMesh';
+import { wornCells, wornKey } from './game/worn';
+import { auroraOn, CLOUD_CLEAR, CLOUD_TOP, cloudSea, showerOn } from './game/sky';
+import { Smoke } from './world/smoke';
+import { BAND, bandAbout, bandWhole, CAMPER_HAUNTS, camperToday, concertOn, PAINTER_HAUNTS, painterToday, PIP_HAUNTS, pipToday, weekday, type Haunt } from './game/wanderers';
+import { SECRETS, type Secret } from './game/secrets';
 import { GroundLook } from './world/groundMaterial';
 import { fromLocal } from './world/footprints';
 import { townPlaceAt } from './world/townPlaces';
@@ -71,6 +80,9 @@ import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND, OPEN_WATER } from './world/world';
 import { printShadow } from './look/printShadow';
 import { lit, usePrint } from './look/material';
+
+/** The mountain's height from the river to the summit, in game metres. */
+const RELIEF = 990;
 
 /**
  * The season's sheet of ground marks: the pictures of its kinds, read and packed a kind to a
@@ -352,14 +364,41 @@ async function boot(): Promise<void> {
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
   // The mountain's secrets: registers, plaques, cairns, old workings. Nothing points at them.
-  const secretThings = new SecretThings(secretSites(world, townPlaces), (x, z) => ground.heightAt(x, z), season, shadows);
+  const secretSetting = setting(world, townPlaces);
+  const secretPlaces = secretSites(world, townPlaces, secretSetting);
+  // What leads to some of them from the nearest trail, in the season it does: prints in the snow, buckets on the maples.
+  const leads = new Map<string, number[]>();
+  for (const secret of SECRETS) {
+    const site = secret.lead?.seasons.includes(season) ? secretPlaces.find((at) => at.id === secret.id) : undefined;
+    if (site) leads.set(secret.id, leadLine(world, site.x, site.z));
+  }
+  const secretThings = new SecretThings(secretPlaces, (x, z) => ground.heightAt(x, z), season, shadows, { runs: secretSetting.runs, leads });
   scene.add(secretThings.group);
+  // Steam from the sugar shack when it is boiling, and the camper's smoke, which is there to be seen from across the valley.
+  const steam = new Smoke(secretThings.flues);
+  const plume = new Plume();
+  scene.add(steam.mesh, plume.mesh);
+  // What is in the sky only at the right moment: cloud in the valleys, shooting stars, the northern lights.
+  const cloudTop = RELIEF * CLOUD_TOP;
+  const skyShow = new SkyShow(cloudTop, ground.maxX - ground.minX);
+  scene.add(skyShow.group);
+  // Wherever somebody might be standing on some day (the painter, the camper, the band, Pip), there is room to stand.
+  const hauntSpots = [
+    ...PAINTER_HAUNTS.map((h) => ['nell', h, 6] as const),
+    ...CAMPER_HAUNTS.map((h) => ['ro', h, 9] as const),
+    ...BAND.map((b) => [b.who, b.haunt, 5] as const),
+    ...PIP_HAUNTS.map((h) => ['pip', h, 3] as const),
+  ].flatMap(([who, haunt, room]) => {
+    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0);
+    return site ? [{ x: site.x, z: site.z, room }] : [];
+  });
+  const hauntClear = (x: number, z: number): boolean => hauntSpots.some((h) => Math.abs(h.x - x) < h.room && Math.abs(h.z - z) < h.room && Math.hypot(h.x - x, h.z - z) < h.room);
   const trees = new Forest(
     ground,
     world,
     cfg.trees,
     shadows,
-    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || built.near(x, z) || secretThings.clears(x, z),
+    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || built.near(x, z) || secretThings.clears(x, z) || hauntClear(x, z),
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
   const liftCars = new LiftCars(liftPaths, shadows);
@@ -700,6 +739,8 @@ async function boot(): Promise<void> {
   // a step to one side, and the next to arrive stands on the other.
   const atDoor = new Map<string, number>();
   const standings = PEOPLE.flatMap((person): Standing[] => {
+    // Whoever is somewhere different every day is stood there once the day is known.
+    if (person.roams) return [];
     const described = 'spot' in person.at || 'road' in person.at ? locate(world, person.at) : null;
     const keeps = described && townPlaceAt(townPlaces, described.x, described.z);
     if (keeps) {
@@ -716,7 +757,9 @@ async function boot(): Promise<void> {
     const beside = person.prop === 'snowcat' ? standAt(person.at, 9, 6) : person.prop === 'sled' ? standAt(person.at, 1.6, -0.6) : null;
     return [{ person, ...at, ...(beside ? { prop: { ...beside, turn: person.prop === 'snowcat' ? 2.5 : 0.4 } } : {}) }];
   });
-  const folk = new Folk(standings, shadows, season);
+  // The people who roam: a painter, a camper, the band. Each begins nowhere, and is stood wherever today finds them.
+  const roamers = PEOPLE.filter((person) => person.roams).map((person): Standing => ({ person, x: 0, y: -1000, z: 0, ...(person.prop ? { prop: { x: 0, y: -1000, z: 0, turn: 0 } } : {}) }));
+  const folk = new Folk([...standings, ...roamers], shadows, season);
   // What the map marks: the lodges and the town, the four summits, every place worth a postcard,
   // every bench, the town's doors, and whoever has something for the player. Things that go in
   // the book say whether they are in it yet.
@@ -741,7 +784,15 @@ async function boot(): Promise<void> {
     }),
     ...built.benches.map((b): MapPoint => ({ kind: 'bench', x: b.x, z: b.z, label: `Bench: ${b.name}`, done: b.id in game.save.benches, note: kept(game.save.benches[b.id], 'sat on', 'not sat on yet') })),
     ...standings.filter((st) => game.hasBusiness(st.person.id, season)).map((st): MapPoint => ({ kind: 'person', x: st.x, z: st.z, label: `${st.person.name} · ${st.person.role}` })),
+    // What the player has found that is on no map is on theirs, in pencil. (A room is a door in town, and is marked as one.)
+    ...secretPlaces.flatMap((at): MapPoint[] => {
+      const secret = SECRETS.find((sec) => sec.id === at.id);
+      const day = game.save.secrets[at.id];
+      return secret && day && secret.kind !== 'room' ? [{ kind: 'secret', x: at.x, z: at.z, label: secret.kind === 'plaque' ? `Why it's called ${secret.name}` : secret.name, note: `found ${shortDay(day)}` }] : [];
+    }),
   ];
+  // In pencil: the unmarked runs that have been found, and the ground the player has worn into paths (a dot to each square).
+  trailMap.pencilled = () => [...secretSetting.runs.filter((run) => run.id in game.save.secrets).map((run) => run.pts), ...wornCells(game.save).map((cell) => [cell.x, cell.z, cell.x + 0.5, cell.z])];
   trailMap.progress = (kind, name) => {
     if (kind === 'lift') return { done: name in game.save.lifts, note: kept(game.save.lifts[name], 'ridden', 'not ridden yet') };
     const entry = (kind === 'trail' ? game.save.trails : game.save.paths)[name];
@@ -855,8 +906,12 @@ async function boot(): Promise<void> {
   };
 
   const talkTo = (standing: Standing): void => {
-    const talk = game.talk(standing.person.id, today, season, moodNow());
+    const talk = game.talk(standing.person.id, today, season, moodNow(), watch);
     if (!talk) return;
+    // A tune, played on the spot.
+    if (talk.tune) sound.phrase(talk.tune);
+    // A painting is held up as it is handed over.
+    const painting = talk.events.find((e) => e.art?.startsWith('paintings/'))?.art ?? null;
     // A dog is not talked to. He is petted, and once a day it counts.
     if (standing.person.kind === 'dog' && game.pet(today)) talk.events.push({ kind: 'sighting', title: standing.person.name, detail: 'Good dog' });
     announce(talk.events);
@@ -906,7 +961,10 @@ async function boot(): Promise<void> {
       board || notes ? lines.map((line) => (typeof line === 'string' ? { written: line, ...(notes ? { signed: '- Tom' } : {}) } : line)) : lines,
       choices,
       board ? null : `${import.meta.env.BASE_URL}art/people/${talk.person.id}.webp`,
+      'Bye',
+      painting ? `${import.meta.env.BASE_URL}art/${painting}.webp` : null,
     );
+    if (talk.events.some((e) => e.kind === 'gear')) player.setOutfit(game.outfit());
   };
 
   const rideShuttle = (from: Stop): void => {
@@ -1018,7 +1076,17 @@ async function boot(): Promise<void> {
     refreshWeather();
     window.setInterval(refreshWeather, 20 * 60000);
   }
-  const weatherWanted = (): Weather => (cfg.weather === 'real' ? (realWeather ?? inventedWeather(skyTime())) : NAMED_WEATHER[cfg.weather]);
+  const weatherAbout = (): Weather => (cfg.weather === 'real' ? (realWeather ?? inventedWeather(skyTime())) : NAMED_WEATHER[cfg.weather]);
+  /** True when cloud is lying in the valleys: a pinned fog is there at any hour, to be looked at. */
+  const seaNow = (w: Weather): boolean => (cfg.weather === 'fog' ? true : cloudSea(w.low ?? 0, w.snowing, hourAtGore(skyTime())));
+  /** The weather as it is where the camera is: with cloud in the valleys, grey underneath it and clear above. */
+  const weatherWanted = (): Weather => {
+    const w = weatherAbout();
+    if (!seaNow(w)) return w;
+    return camera.position.y > cloudTop + 12 ? { ...w, overcast: Math.min(w.overcast, 0.12) } : { ...w, overcast: 1 };
+  };
+  /** The evening a night belongs to: the small hours are still last night. */
+  const nightOf = (): string => dayKey(new Date(Date.now() - 12 * 3600000));
   let weather = weatherWanted();
   let sunNow = sunPosition(skyTime());
   let viewDist = cfg.viewDist;
@@ -1031,6 +1099,8 @@ async function boot(): Promise<void> {
     // Stars on a clear night: out once the sun is well down, and hidden by cloud.
     const starlight = Math.min(1, Math.max(0, (-sunDeg - 5) / 7)) * (1 - weather.overcast);
     atmosphere.apply(palette, sunNow, starlight);
+    const starry = starlight > 0.5;
+    skyShow.set(seaNow(weatherAbout()), starry && (cfg.sky === 'meteors' || (cfg.sky === 'real' && showerOn(nightOf()) !== null)), starry && (cfg.sky === 'aurora' || (cfg.sky === 'real' && auroraOn(nightOf()))), palette.skyTop);
     terrain.setTints(palette.snowTint, palette.canopyTint);
     // The mark the skis leave: the season's own, or a line the player has come by.
     tracks.setColour(game.flourish().track || palette.track);
@@ -1039,6 +1109,8 @@ async function boot(): Promise<void> {
     snowfall.setKind(air.kind);
     snowfall.setAmount(air.amount);
     built.setLamps(palette.lamps);
+    steam.setDaylight(1 - palette.lamps);
+    plume.setDaylight(1 - palette.lamps);
     cabin?.setLamps(palette.lamps);
     viewDist = Math.min(cfg.viewDist, palette.fogFar);
   };
@@ -1050,6 +1122,13 @@ async function boot(): Promise<void> {
   book.today = () => today;
   // The stones the player has put on the cairns, as they were left.
   secretThings.setStones((id) => game.stones(id));
+  // The ground the player has worn by walking it, and whoever has come along with them.
+  const wornGround = new WornGround(season);
+  wornGround.set(wornCells(game.save), (x, z) => ground.heightAt(x, z));
+  const companion = new Companion(shadows);
+  companion.set(game.flourish().pet);
+  scene.add(wornGround.mesh, companion.group);
+  let wornAt = '';
   /** Where the player stood to read whatever is on the talk sheet that nobody is saying: a plaque, a register, a room. */
   let reading: { x: number; z: number } | null = null;
   /** Do what is done at one of the mountain's secrets: add the stone, ring the bell, or read what there is to read. */
@@ -1067,7 +1146,7 @@ async function boot(): Promise<void> {
       if (game.ring(today)) toasts.show({ kind: 'secret', title: 'The summit bell', detail: first ? 'It carries all the way to town' : 'They heard that in town' });
       return;
     }
-    const result = game.secret(secret.id, today);
+    const result = game.secret(secret.id, today, season);
     if (!result) return;
     const { found, events } = result;
     const subtitle = secret.kind === 'plaque' ? 'A brass plaque' : secret.kind === 'register' ? 'A tin box on a post' : secret.kind === 'room' ? (found.open ? 'Unlocked' : 'Locked') : 'Not on any map';
@@ -1083,6 +1162,83 @@ async function boot(): Promise<void> {
     reading = { x: player.position.x, z: player.position.z };
     announce(events);
     player.setOutfit(game.outfit());
+  };
+  /** Where a haunt is in the world: worked out as a secret's place is, and the same every time. */
+  const hauntAt = (who: string, haunt: Haunt): { x: number; y: number; z: number; turn: number } | null => {
+    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0);
+    return site ? { x: site.x, y: ground.heightAt(site.x, site.z), z: site.z, turn: site.turn } : null;
+  };
+  /** Something stood a step or two from a person, on the side they face. */
+  const beside = (at: { x: number; z: number; turn: number }, ahead: number, across: number): { x: number; y: number; z: number; turn: number } => {
+    const x = at.x + Math.sin(at.turn) * ahead + Math.cos(at.turn) * across;
+    const z = at.z + Math.cos(at.turn) * ahead - Math.sin(at.turn) * across;
+    return { x, y: ground.heightAt(x, z), z, turn: at.turn };
+  };
+  let bar = 0;
+  let wasAt = { x: 0, z: 0 };
+  /**
+   * Stand the people who roam wherever this day and this hour find them, and Pip wherever she
+   * is hiding. Nobody is moved from under the player's nose: someone near stays put until the
+   * next time.
+   * @param first at the start, when everyone is stood wherever they should be
+   * @param newDay midnight has passed: Pip, who hides for the day, hides again
+   */
+  const placeRoamers = (first: boolean, newDay = false): void => {
+    const px = player.position.x;
+    const pz = player.position.z;
+    secretThings.setNight(watch === 'night');
+    for (const st of roamers) {
+      if (!first && folk.about(st.person.id) && Math.hypot(st.x - px, st.z - pz) < 120) continue;
+      let at: { x: number; y: number; z: number; turn: number } | null = null;
+      let prop: { x: number; y: number; z: number; turn: number } | undefined;
+      if (st.person.roams === 'painter') {
+        // Out while there is light to paint by.
+        at = watch === 'night' ? null : hauntAt('nell', painterToday(today));
+        if (at) prop = beside(at, 0.2, -1.3);
+      } else if (st.person.roams === 'camper') {
+        at = hauntAt('ro', camperToday(today));
+        if (at) {
+          prop = beside(at, 2.6, 0.4);
+          plume.set({ x: prop.x, y: prop.y, z: prop.z });
+        }
+      } else if (st.person.roams === 'band' && bandAbout(game.save, today)) {
+        const n = BAND.findIndex((b) => b.who === st.person.id);
+        const stand = built.plots.find((plot) => plot.id === 'bandstand');
+        if (stand && concertOn(game.save, today, watch)) {
+          // All four on the bandstand, in a row across it, facing out.
+          const spot = beside({ x: stand.x, z: stand.z, turn: stand.turn }, -0.4, (n - 1.5) * 1.15);
+          at = { ...spot, y: floorAt(floors, spot.x, spot.z) ?? spot.y };
+        } else at = hauntAt(st.person.id, (BAND[n] as (typeof BAND)[number]).haunt);
+        if (at) prop = { ...beside(at, 0.75, 0.25), y: at.y };
+      }
+      folk.move(st.person.id, at ? { ...at, ...(prop ? { prop } : {}) } : null);
+    }
+    // Pip, when she is out hiding, is wherever today's hiding place is.
+    const pip = standings.find((st) => st.person.id === 'pip');
+    if (pip && (first || newDay) && game.pipHides(today, season) && (first || Math.hypot(pip.x - px, pip.z - pz) > 120)) {
+      const at = hauntAt('pip', pipToday(today));
+      if (at) folk.move('pip', at);
+    }
+  };
+  /** How much of each unmarked run has been come down: tenths of it passed, since the game was opened. */
+  const runTenths = new Map<string, Set<number>>();
+  /** The player is somewhere: if that is on an unmarked run, note how far down it; at the bottom, with most of it behind them, it is done. */
+  const runAlong = (px: number, pz: number): void => {
+    if (player.mode === 'lift') return;
+    for (const run of secretSetting.runs) {
+      if (run.id in game.save.runs) continue;
+      if (Math.abs((run.pts[0] as number) - px) > 1300 || Math.abs((run.pts[1] as number) - pz) > 1300) continue;
+      const { share, off } = alongRun(run, px, pz);
+      if (off > 14) continue;
+      const tenths = runTenths.get(run.id) ?? new Set<number>();
+      runTenths.set(run.id, tenths);
+      tenths.add(Math.min(9, Math.floor(share * 10)));
+      if (share < 0.97 || tenths.size < 8) continue;
+      // Somebody who came down it without stopping at the ribbon has found it all the same.
+      if (!(run.id in game.save.secrets)) announce(game.secret(run.id, today, season)?.events ?? []);
+      announce(game.ranRun(run.id, today));
+      book.refresh();
+    }
   };
   showProjects();
   announce(game.arrivedIn(season, today));
@@ -1105,6 +1261,7 @@ async function boot(): Promise<void> {
   const sheetOpen = (): boolean => document.querySelector('#talk-sheet:not([hidden]), #book-sheet:not([hidden]), #map-sheet:not([hidden]), #cabin-sheet:not([hidden]), #menu:not([hidden]), #flyer:not([hidden])') !== null;
   /** The watch of the day, which decides what wildlife is about. */
   let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+  placeRoamers(true);
   // --- Today's flyer ---------------------------------------------------------------------------
   // Every lead there could be, with whether it is still open: a trail without its stamp, a place
   // without its postcard, someone with something for the player, and the inn's rumour.
@@ -1184,6 +1341,10 @@ async function boot(): Promise<void> {
       note:
         letter?.id === LAST_LETTER
           ? "P.S. There's a letter at the post office. It's from everybody."
+          : showerOn(today) && season === seasonFor(new Date())
+            ? `P.S. Shooting stars tonight, if it's clear. It's ${showerOn(today)?.name}.`
+          : weekday(today) === 6 && bandAbout(game.save, today) && bandWhole(game.save)
+            ? "P.S. The band's on the bandstand tonight, once it's dark."
           : game.feederGuest(today, season, watch)
             ? "P.S. Somebody's at your feeder."
             : building
@@ -1192,7 +1353,9 @@ async function boot(): Promise<void> {
                 ? "P.S. The town's thinking about what to build next."
                 : letter
                   ? "P.S. There's a letter for you at the post office."
-                  : null,
+                  : game.pipHides(today, season)
+                    ? "P.S. Pip's hiding somewhere. Somebody in town saw which way she went."
+                    : null,
       flagged: game.save.flag,
       riding: look.ride === 'bike',
     };
@@ -1253,6 +1416,11 @@ async function boot(): Promise<void> {
     zoom: follow.zoomNow,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
+    sky: skyShow.now(),
+    // For the tools: where the secrets stand, who is roaming and where, and the unmarked runs from top to bottom.
+    secrets: secretPlaces.map((at) => ({ id: at.id, x: at.x, z: at.z, turn: at.turn, found: at.id in game.save.secrets })),
+    roamers: roamers.map((st) => ({ id: st.person.id, x: st.x, z: st.z, about: folk.about(st.person.id), waits: game.roamerWaits(st.person.id, today, season, watch) })),
+    runs: secretSetting.runs.map((run) => ({ id: run.id, length: run.length, top: [run.pts[0], run.pts[1]], bottom: [run.pts.at(-2), run.pts.at(-1)], way: run.pts.filter((_, i) => Math.floor(i / 2) % 5 === 0), done: run.id in game.save.runs })),
     // The benches, and whether the player is sitting on one.
     benches: built.benches.map((b) => ({ id: b.id, x: b.x, z: b.z, turn: b.turn })),
     seated: player.seated,
@@ -1424,13 +1592,29 @@ async function boot(): Promise<void> {
         // there is a new flyer to put up when nothing else is in the way.
         today = now;
         showProjects();
+        placeRoamers(false, true);
         flyerWaits = true;
       }
       if (flyerWaits && cfg.intro && cfg.hud && !bench && cfg.bench === null && !sheetOpen() && player.mode !== 'lift') {
         flyerWaits = false;
         if (game.flyerDue(today)) flyer.open(flyerPage);
       }
+      const before = watch;
       watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+      // The hour has turned: the painter packs up at night, the band gathers at dusk, the lantern is lit.
+      if (watch !== before) placeRoamers(false);
+      // On a Saturday night with the band on the bandstand, there is music for anyone near enough to hear it.
+      const stand = built.plots.find((plot) => plot.id === 'bandstand');
+      if (stand && concertOn(game.save, today, watch) && Math.hypot(stand.x - px, stand.z - pz) < 90) sound.phrase((BAND[bar++ % BAND.length] as (typeof BAND)[number]).tune.replace(/^tune-/, ''), bar);
+      // What is in the sky only now and then is kept, under the real sky, by whoever is out under it.
+      const crossed = skyShow.takeCrossed();
+      if (honestSky && player.mode !== 'lift') {
+        const w = weatherAbout();
+        if (cloudSea(w.low ?? 0, w.snowing, hourAtGore(new Date())) && player.position.y > cloudTop + CLOUD_CLEAR) announce(game.saw('sky-cloud', today));
+        const starry = sunNow.elevation < -0.2 && weather.overcast < 0.3;
+        if (starry && auroraOn(nightOf())) announce(game.saw('sky-aurora', today));
+        if (starry && crossed > 0 && showerOn(nightOf())) announce(game.saw('sky-meteors', today, crossed));
+      }
       // Sitting on a bench with a view, under the real sky, earns the stamps that are for sitting.
       if (honestSky && player.seated && sittingOn?.view) {
         announce(game.skiedIn(benchConditionsNow((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI, weather), today));
@@ -1468,7 +1652,33 @@ async function boot(): Promise<void> {
     );
     if (player.mode === 'ski') hint(look.ride === 'bike' ? 'bike' : 'skis', look.ride === 'bike' ? 'On the bike' : 'On skis', look.ride === 'bike' ? 'Left and right steer. Thumb up pedals, thumb down brakes.' : 'Left and right steer. Thumb up tucks, thumb down stops.');
     // People turn to watch the player come; lost property waits to be picked up.
-    folk.update(dt, player.position, (id) => game.hasBusiness(id, season), follow.yaw);
+    folk.update(dt, player.position, (id) => (roamers.some((r) => r.person.id === id) ? game.roamerWaits(id, today, season, watch) : game.hasBusiness(id, season)), follow.yaw);
+    // The secrets that are shy: a lantern that goes out, a nest that empties, for anyone in a hurry.
+    // (Set down somewhere by a lift, the shuttle or a tool, the player has not come in a hurry.)
+    const carried = player.mode === 'lift' || Math.hypot(px - wasAt.x, pz - wasAt.z) > 12;
+    wasAt = { x: px, z: pz };
+    const startled = secretThings.about(px, pz, carried ? 0 : player.speed, liftClock);
+    if (startled) toasts.show({ kind: 'hint', title: startled.kind === 'light' ? 'A light went out' : 'Something slipped into the reeds', detail: 'Whatever it was, it wants a slow approach' });
+    // (The camera looks along -z at yaw 0, and turns left as yaw grows: in front of it is the way it faces, as x and z.)
+    skyShow.update(dt, camera.position, liftClock, Math.atan2(-Math.sin(follow.yaw), -Math.cos(follow.yaw)));
+    // Whoever is along keeps up on foot and is carried otherwise.
+    companion.set(game.flourish().pet);
+    companion.update(dt, liftClock, { x: px, y: player.position.y, z: pz, heading: player.skiHeading, speed: player.speed }, player.mode !== 'walk', !player.object.visible, (x, z) => floorAt(floors, x, z) ?? ground.heightAt(x, z));
+    // Open ground, walked over, wears: a square crossed a few times shows, and enough of them are a path.
+    if (player.mode === 'walk' && !player.seated && !carried) {
+      const key = wornKey(px, pz);
+      if (key !== wornAt) {
+        wornAt = key;
+        if (world.openAt(px, pz) === 0 && world.trailDistance(px, pz) > 5 && !built.near(px, pz) && floorAt(floors, px, pz) === null) {
+          const stepped = game.trod(key);
+          if (stepped.shows) wornGround.set(wornCells(game.save), (x, z) => ground.heightAt(x, z));
+          announce(stepped.events);
+        }
+      }
+    }
+    steam.update(liftClock, px, pz);
+    plume.update(liftClock);
+    runAlong(px, pz);
     keepsakes.update(dt, follow.yaw);
     if (player.mode !== 'lift') {
       const found = keepsakes.near(px, pz, COLLECT_REACH);

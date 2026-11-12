@@ -64,7 +64,12 @@ export interface Person {
   /** Not everyone is a person: a noticeboard is read, a dog or a cat is petted, and a snowman is, well, talked to. A person if not given. */
   kind?: 'person' | 'board' | 'dog' | 'cat' | 'snowman';
   /** Something that stands beside them: the groomer's snowcat, the patroller's sled. */
-  prop?: 'snowcat' | 'sled';
+  prop?: 'snowcat' | 'sled' | 'easel' | 'camp' | 'stand';
+  /**
+   * Someone who is somewhere different every day, or not about at all (see `wanderers.ts`):
+   * `at` is then only where they were first seen. They are on no map and no flyer.
+   */
+  roams?: 'painter' | 'camper' | 'band';
   /** A few words on who they are, shown under the name. */
   role: string;
   at: Whereabouts;
@@ -667,6 +672,130 @@ export const PEOPLE: readonly Person[] = [
       raining: ["(The Mayor is under the eaves.\nHe'd rather not discuss it.)"],
       night: ["(The Mayor is out late.\nHe's busy. With what, nobody's sure.)"],
     },
+  },
+  {
+    id: 'nell',
+    name: 'Nell',
+    role: 'Painter, wherever the view is',
+    roams: 'painter',
+    prop: 'easel',
+    at: { spot: 'twister-cliffs' },
+    look: { jacket: 0x7c8794, trousers: 0x4a3326, hat: 0x7a3340, style: 'beret', features: { hair: 0xe8e4dc, hairStyle: 'bun', apron: 0xf1e9cf, glasses: true } },
+    wearing: {
+      'hat-beret': "Oh, the beret! It sort of suits you.\nIt never suited me. I wear it anyway.",
+      'pack-satchel': "That's my old satchel. There's sort of a blue stain in the bottom.\nThat's Tuesday. Don't ask.",
+    },
+    hello: "Oh! Hello. You found me.\nI paint a different view every day. I sort of have to. The light won't sit still.",
+    chat: [
+      "I've painted this mountain for thirty years.\nI've sort of gotten the shape right. Twice.",
+      "The trick is to squint. Everything's simpler when you squint.\nPeople, too.",
+      "I'll be somewhere else tomorrow.\nI don't know where. Wherever looks good from the car.",
+      "The trees are the hard part. There's so many.\nI paint about nine and let you imagine the rest.",
+      "Somebody asked if I sell them. I sort of don't.\nI give them to whoever walks all the way out here.",
+    ],
+    moods: {
+      snowing: ["Snow's hard to paint. It's white, and the paper's white.\nSo I'm sort of just sitting here."],
+      dawn: ["This light lasts about ten minutes.\nShh. I'm sort of racing it."],
+      dusk: ["Look at that pink. You can't mix that.\nI've tried. It comes out ham."],
+    },
+    seasonal: {
+      winter: ['Blue shadows on snow. Nobody believes it until they look.\nLook.'],
+      fall: ["Fall's cheating. You just put down orange and everybody claps."],
+    },
+  },
+  {
+    id: 'ro',
+    name: 'Ro',
+    role: 'Camper, out past the trails',
+    roams: 'camper',
+    prop: 'camp',
+    at: { spot: 'upper-dam-pond' },
+    look: { jacket: 0x4f8a3f, trousers: 0x5a4636, hat: 0xe2c99a, style: 'straw', features: { beard: 0x7a4a2a, hair: 0x7a4a2a, girth: 1.05 } },
+    wearing: {
+      'jacket-moss': "Hey, my old green! Fits you better.\nI figure it shrank. Or I didn't.",
+      'hat-straw': 'Nice hat. Keeps the sun off and the rain... mostly off.',
+    },
+    hello: "Well, hey. You saw the smoke, huh?\nI'm Ro. I move camp every morning. I figure a place should only have to put up with me for a day.",
+    chat: [
+      "I've slept in every corner of this mountain.\nI figure the northeast one's the best. Don't tell the others.",
+      'Coffee? It is mostly grounds.\nI call it chewy coffee.',
+      "An owl sat on my tent last night. The whole night.\nI figure we're friends now. I didn't ask the owl.",
+      "I had a house once. It had a lot of corners.\nOut here there's only the one, and I'm in it.",
+      "Tomorrow I'll be somewhere else. Look for the smoke.\nIf there isn't any, I overslept.",
+    ],
+    moods: {
+      snowing: ["Snow on a tent sounds like somebody whispering.\nI figure it's saying 'go back to sleep'."],
+      raining: ['Rain on a tent is the best sound there is.\nRain IN a tent is the worst. Ask me how I know.'],
+      night: ["Pull up a log. The fire's good and the stars are free."],
+    },
+  },
+  {
+    id: 'fitch',
+    name: 'Fitch',
+    role: 'Fiddle, practicing',
+    roams: 'band',
+    prop: 'stand',
+    at: { spot: 'rabbit-pond' },
+    look: { jacket: 0x22304a, trousers: 0x3a3430, hat: 0x5a4636, style: 'cap', features: { hair: 0x2a2e36, moustache: 0x2a2e36 } },
+    hello: "Oh. Um. Hi. I didn't think anybody could hear me out here.\nI'm Fitch. I play the fiddle. Maybe.",
+    chat: [
+      "I practice out here so nobody hears the bad parts.\nThe frogs hear. They've been okay about it.",
+      "Marge wants a band for the bandstand. There's maybe four of us.\nWe've never all been in the same place.",
+      "I know one fast tune and one slow one.\nMaybe they're the same tune. I play it both ways.",
+      'My fingers get cold. Then everything comes out... sideways.',
+    ],
+    moods: { night: ["It sounds better at night. Maybe everything does."] },
+  },
+  {
+    id: 'hattie',
+    name: 'Hattie',
+    role: 'Horn, practicing',
+    roams: 'band',
+    prop: 'stand',
+    at: { lift: 'Burnt Ridge Quad', along: 1 },
+    look: { jacket: 0xb3472d, trousers: 0x22262d, hat: 0xc98f1f, style: 'beanie', features: { hair: 0x9a5a2c, hairStyle: 'curls', girth: 1.08 } },
+    hello: "HELLO! Sorry. Horn voice. I'm Hattie.\nI practice up here because of the neighbors. All of them. In every direction.",
+    chat: [
+      "A horn's supposed to be loud. That's the point of a horn.\nMy landlord and I disagree about that.",
+      "From up here you can hear it bounce off Gore and come back.\nIt comes back flat. That's the mountain, not me.",
+      "I was in a marching band once. I marched the wrong way.\nI was louder than everybody, so they followed me.",
+      'Bo says I rush. Bo is slow. Somebody has to rush.',
+    ],
+    moods: { snowing: ["Snow gets in the bell. Then it comes out the front.\nIt's the best part of winter."] },
+  },
+  {
+    id: 'bo',
+    name: 'Bo',
+    role: 'Banjo, practicing',
+    roams: 'band',
+    prop: 'stand',
+    at: { spot: 'scenic-view' },
+    look: { jacket: 0xe2c99a, trousers: 0x3f6fb5, hat: 0x4f8a3f, style: 'ranger', features: { beard: 0xe8e4dc, hair: 0xe8e4dc, glasses: true } },
+    hello: "Afternoon. More or less. I'm Bo.\nI'd shake hands, but I've got picks on. You came up for the view? It's behind me. I've seen it.",
+    chat: [
+      "A banjo's more or less a drum you can argue with.",
+      "I've been working on this one tune since March.\nIt's more or less done. It was more done in April.",
+      'Hattie says I drag. I say she rushes.\nSal says we should both listen. Nobody listens to Sal.',
+      "You can't play a sad song on a banjo. I've tried.\nPeople start clapping.",
+    ],
+    moods: { dusk: ["This is the hour for it. The light's gold, more or less, and nobody's mowing anything."] },
+  },
+  {
+    id: 'sal',
+    name: 'Sal',
+    role: 'Squeezebox, practicing',
+    roams: 'band',
+    prop: 'stand',
+    at: { place: 'ski-bowl-lodge', aside: 30 },
+    look: { jacket: 0x8f2f2a, trousers: 0x22262d, hat: 0x22262d, style: 'cap', features: { hair: 0xe8e4dc, hairStyle: 'long', shawl: 0xf2d16b } },
+    hello: "Well! An audience. I'm Sal.\nThis is a squeezebox. It was my mother's. It only knows old songs, and so do I.",
+    chat: [
+      "Well, the thing about a squeezebox is, it breathes.\nYou're mostly just keeping it company.",
+      'I keep the beat for the other three. Well. I try.\nIt keeps getting away.',
+      "My mother played this at every wedding in Johnsburg.\nWell, and a few funerals. Same tunes, slower.",
+      "We sound better together than apart. Well, that's most people.",
+    ],
+    moods: { night: ["Well, it's late. One more, and then one more after that."] },
   },
 ];
 

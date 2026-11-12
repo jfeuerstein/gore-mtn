@@ -78,4 +78,9 @@ export const MODELS = {
   // Not of the field guide: the dog at the Saddle Lodge and the cat who is mayor, by the id each has among the people.
   biscuit: { what: 'a big fluffy mountain rescue dog sitting upright, white with large brown patches and brown ears, a small wooden barrel hanging from its collar', turn: 0, by: 'tripo' },
   pickles: { what: 'a fat orange tabby cat sitting very upright and dignified, with a cream chest, wearing a gold chain of office with a round medallion', inks: 'plant', turn: 0, by: 'tripo' }, // the plants' inks have the orange a ginger cat wants
+  // What comes along with the player, by the id each has in the wardrobe: small, round and young.
+  'pet-kit': { what: 'a baby red fox cub standing on all fours, chubby, big head, big pointed ears, orange fur, white chest, bushy tail with a white tip', inks: 'plant' },
+  'pet-duckling': { what: 'a fluffy yellow duckling standing, round body, big head, orange beak and feet', inks: 'bird' },
+  'pet-kitten': { what: 'a small grey tabby kitten sitting upright, round head, big ears, white paws and chest' },
+  'pet-toad': { what: 'a fat brown toad sitting, bumpy back, cream belly, wide mouth', inks: 'plant' },
 };

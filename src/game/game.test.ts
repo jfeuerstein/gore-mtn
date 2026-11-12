@@ -4,6 +4,8 @@ import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
 import { COLLECT_REACH, Game, type GameWorld, type SaveStore } from './game';
 import { MINERALS } from './minerals';
+import { ERRANDS } from './people';
+import { pipHint } from './wanderers';
 import { parseSave } from './save';
 
 const world = loadTestWorld();
@@ -114,6 +116,53 @@ describe('Game', () => {
     expect(game.save.cabin.shelf).toEqual(['garnet', '', '', '', '']);
     game.place('shelf', 0, '');
     expect(game.save.cabin.shelf.join('')).toBe('');
+  });
+
+  it('has the town say which way Pip went while she is hiding: two of them a day, and then she is found', () => {
+    const game = new Game(gameWorld, memory());
+    // Pip has been met and all her errands are behind her.
+    // (Nobody else has anything to ask, either: an errand comes before talk of Pip.)
+    for (const e of ERRANDS) game.save.errands[e.id] = { taken: DAY, done: DAY };
+    for (const id of ['pip', 'hazel', 'otto', 'gus']) game.save.met[id] = DAY;
+    expect(game.pipHides(DAY, 'winter')).toBe(true);
+    const said = ['hazel', 'otto', 'gus'].map((id) => game.talk(id, DAY, 'winter')?.lines.join(' ') ?? '');
+    expect(said[0]).toBe(pipHint(DAY, 0));
+    expect(said[1]).toBe(pipHint(DAY, 1));
+    expect(said[2]).not.toBe(pipHint(DAY, 0));
+    // Found: she says so, it is counted, and nobody has anything more to say about it today.
+    const found = game.talk('pip', DAY, 'winter');
+    expect(found?.events.some((e) => e.title === 'Found Pip')).toBe(true);
+    expect(game.save.hide).toEqual({ day: DAY, finds: 1 });
+    expect(game.pipHides(DAY, 'winter')).toBe(false);
+  });
+
+  it('takes a painting from the painter and a tune from a fiddler, and says who has something waiting', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.roamerWaits('nell', DAY, 'winter', 'day')).toBe(true);
+    const talk = game.talk('nell', DAY, 'winter');
+    expect(talk?.events.find((e) => e.art?.startsWith('paintings/'))).toBeDefined();
+    expect(game.roamerWaits('nell', DAY, 'winter', 'day')).toBe(false);
+    const tune = game.talk('fitch', DAY, 'winter');
+    expect(tune?.tune).toBe('fiddle');
+    expect(game.save.gear.owned).toContain('tune-fiddle');
+  });
+
+  it('keeps what is seen in the sky, the ground that is worn, and the guests at the feeder', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.saw('sky-cloud', DAY).map((e) => e.kind)).toEqual(['secret', 'gear']);
+    expect(game.saw('sky-cloud', DAY)).toEqual([]);
+    expect(game.saw('sky-meteors', DAY, 2).length).toBe(1);
+    expect(game.save.meteors).toBe(2);
+    // Three crossings of a square, and it shows.
+    expect([1, 2, 3].map(() => game.trod('4,4').shows)).toEqual([false, false, true]);
+    // Four different guests at the feeder, and a chickadee comes along.
+    game.save.guests = ['bluejay', 'squirrel', 'grayjay'];
+    game.save.cabin.feeder = '2026-11-01';
+    const guest = game.feederGuest(DAY, 'winter', 'day');
+    expect(guest).not.toBeNull();
+    const events = game.metGuest(DAY, 'winter', 'day');
+    expect(game.save.gear.owned.includes('pet-chickadee')).toBe(!['bluejay', 'squirrel', 'grayjay'].includes(guest as string));
+    expect(events.length).toBeGreaterThan(0);
   });
 
   it('counts the Book full without the patch that waits on the sky, and owns up to it', () => {

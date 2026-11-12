@@ -1,6 +1,7 @@
 import { buildPeaks } from '../game/passport';
 import type { Whereabouts } from '../game/people';
-import { SECRETS, type Secret } from '../game/secrets';
+import { SECRETS, type SecretWhere } from '../game/secrets';
+import { unmarkedRuns, type Run } from './unmarked';
 import { resolveTownPlaces, type TownPlace } from './townPlaces';
 import { locate } from './whereabouts';
 import { OPEN_WATER, type World } from './world';
@@ -80,9 +81,23 @@ function along(pts: readonly number[], share: number): { x: number; z: number } 
 /** A number from a name, the same every time: for choosing which side of a place a thing stands on. */
 const hash = (text: string): number => [...text].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7);
 
-/** The place a secret is described as being at, before it is stood off from it. */
-function base(world: World, secret: Secret, wilds: readonly { x: number; z: number }[], town: readonly TownPlace[]): { x: number; z: number } | null {
-  const where = secret.where;
+/** How many places deep in the woods are found: the secrets and the camper share them out by number. */
+export const WILDS = 5;
+
+/** What a place is worked out against: the map, the town's doors, the wild places and the unmarked runs. Made once. */
+export interface Setting {
+  world: World;
+  town: readonly TownPlace[];
+  wilds: readonly { x: number; z: number }[];
+  runs: readonly Run[];
+}
+
+export function setting(world: World, town: readonly TownPlace[] = resolveTownPlaces(world)): Setting {
+  return { world, town, wilds: wildPlaces(world, WILDS), runs: unmarkedRuns(world) };
+}
+
+/** The place something is described as being at, before it is stood off from it. */
+function base({ world, town, wilds, runs }: Setting, where: SecretWhere): { x: number; z: number } | null {
   if ('peak' in where) return buildPeaks(world.places, world.lifts).find((p) => p.id === where.peak) ?? null;
   if ('path' in where) {
     const piece = world.paths.filter((p) => p.name === where.path).sort((a, b) => b.pts.length - a.pts.length)[0];
@@ -90,56 +105,95 @@ function base(world: World, secret: Secret, wilds: readonly { x: number; z: numb
   }
   if ('wild' in where) return wilds[where.wild] ?? null;
   if ('door' in where) return town.find((p) => p.id === where.door)?.door ?? null;
+  if ('shore' in where) {
+    const pond = world.ponds.find((p) => p.id === where.shore);
+    if (!pond) return null;
+    // Out from the middle of the water, every way round, to the first dry ground: the best is the one with the least built near it.
+    let best: { x: number; z: number } | null = null;
+    let most = -Infinity;
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2;
+      for (let r = 2; r < 120; r += 1.5) {
+        const x = pond.x + Math.sin(a) * r;
+        const z = pond.z + Math.cos(a) * r;
+        if (world.openAt(x, z) === OPEN_WATER) continue;
+        const px = pond.x + Math.sin(a) * (r + 1.2);
+        const pz = pond.z + Math.cos(a) * (r + 1.2);
+        const built = Math.min(60, ...world.buildings.map((b) => Math.hypot(b.x - px, b.z - pz)), ...town.map((t) => Math.hypot(t.x - px, t.z - pz)));
+        const score = built + (world.openAt(px, pz) === 0 ? 25 : 0) - world.source.slopeDegAt(px, pz);
+        if (r > 3 && score > most) {
+          most = score;
+          best = { x: px, z: pz };
+        }
+        break;
+      }
+    }
+    return best;
+  }
+  if ('run' in where) {
+    const run = runs[where.run];
+    return run ? { x: run.pts[0] as number, z: run.pts[1] as number } : null;
+  }
   return locate(world, where as Whereabouts);
 }
 
+/**
+ * Where something described as being at a place, or a little way off from it, stands: on dry,
+ * level ground, on its own side of the place, off the trails, and clear of whatever is
+ * standing there already. Null if the place is not on the map.
+ */
+export function placeAt(set: Setting, id: string, where: SecretWhere, off: number, taken: readonly { x: number; z: number }[] = []): SecretSite | null {
+  const { world, town } = set;
+  const at = base(set, where);
+  if (!at) return null;
+  let { x, z } = at;
+  if (off > 0) {
+    const side = ((hash(id) % 360) / 180) * Math.PI;
+    let best = -Infinity;
+    for (let i = 0; i < 16; i++) {
+      const a = side + (i / 16) * Math.PI * 2;
+      for (const r of [off, off * 0.75, off * 1.25]) {
+        const px = at.x + Math.sin(a) * r;
+        const pz = at.z + Math.cos(a) * r;
+        if (!dry(world, px, pz) || taken.some((o) => Math.hypot(o.x - px, o.z - pz) < 7)) continue;
+        // Not up against a wall: nothing stands within a few steps of a building.
+        if (world.buildings.some((b) => Math.hypot(b.x - px, b.z - pz) < 12) || town.some((t) => Math.hypot(t.x - px, t.z - pz) < Math.max(t.w, t.d) / 2 + 5)) continue;
+        // Nearer its own side is better; so is being off the trail; so is level ground.
+        const turned = Math.min(i, 16 - i) / 8;
+        const score = Math.min(40, world.trailDistance(px, pz)) * 0.05 - (world.trailDistance(px, pz) < 1 ? 3 : 0) - turned - world.source.slopeDegAt(px, pz) * 0.06 - Math.abs(r - off) * 0.02;
+        if (score > best) {
+          best = score;
+          x = px;
+          z = pz;
+        }
+      }
+    }
+  }
+  // It faces the way it was come to: back toward the place it is by, or else toward the nearest trail.
+  let turn = 0;
+  if (off > 0) turn = Math.atan2(at.x - x, at.z - z);
+  else {
+    let near = Infinity;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const d = world.trailDistance(x + Math.sin(a) * 6, z + Math.cos(a) * 6);
+      if (d < near) {
+        near = d;
+        turn = a;
+      }
+    }
+    // At a door, it is the door; it has no model of its own to turn.
+    if ('door' in where) turn = town.find((p) => p.id === where.door)?.turn ?? 0;
+  }
+  return { id, x, z, turn };
+}
+
 /** Every secret's place in the world. One that cannot be placed (the thing it is by is not on the map) is left out. */
-export function secretSites(world: World, town: readonly TownPlace[] = resolveTownPlaces(world)): SecretSite[] {
-  const wilds = wildPlaces(world, 4);
+export function secretSites(world: World, town: readonly TownPlace[] = resolveTownPlaces(world), set: Setting = setting(world, town)): SecretSite[] {
   const out: SecretSite[] = [];
   for (const secret of SECRETS) {
-    const at = base(world, secret, wilds, town);
-    if (!at) continue;
-    let { x, z } = at;
-    const off = secret.off ?? 0;
-    if (off > 0) {
-      // Stood off from the place: on dry, level ground, toward its own side of it, and away from the trails rather than on them.
-      const side = ((hash(secret.id) % 360) / 180) * Math.PI;
-      let best = -Infinity;
-      for (let i = 0; i < 16; i++) {
-        const a = side + (i / 16) * Math.PI * 2;
-        for (const r of [off, off * 0.75, off * 1.25]) {
-          const px = at.x + Math.sin(a) * r;
-          const pz = at.z + Math.cos(a) * r;
-          if (!dry(world, px, pz) || out.some((o) => Math.hypot(o.x - px, o.z - pz) < 7)) continue;
-          // Nearer its own side is better; so is being off the trail; so is level ground.
-          const turned = Math.min(i, 16 - i) / 8;
-          const score = Math.min(40, world.trailDistance(px, pz)) * 0.05 - turned - world.source.slopeDegAt(px, pz) * 0.06 - Math.abs(r - off) * 0.02;
-          if (score > best) {
-            best = score;
-            x = px;
-            z = pz;
-          }
-        }
-      }
-    }
-    // It faces the way it was come to: back toward the place it is by, or else toward the nearest trail.
-    let turn = 0;
-    if (off > 0) turn = Math.atan2(at.x - x, at.z - z);
-    else {
-      let near = Infinity;
-      for (let i = 0; i < 16; i++) {
-        const a = (i / 16) * Math.PI * 2;
-        const d = world.trailDistance(x + Math.sin(a) * 6, z + Math.cos(a) * 6);
-        if (d < near) {
-          near = d;
-          turn = a;
-        }
-      }
-      // At a door, it is the door; it has no model of its own to turn.
-      if ('door' in secret.where) turn = town.find((p) => 'door' in secret.where && p.id === secret.where.door)?.turn ?? 0;
-    }
-    out.push({ id: secret.id, x, z, turn });
+    const site = placeAt(set, secret.id, secret.where, secret.off ?? 0, out);
+    if (site) out.push(site);
   }
   return out;
 }

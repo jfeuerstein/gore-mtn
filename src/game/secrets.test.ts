@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TUNE_VOICES } from '../audio/soundscape';
 import { emptySave } from './save';
-import { addStone, BELL_HEARD, bellRemark, dayAfter, discover, foundOf, monthDay, PLAQUES_FOR_LINE, ringBell, SECRETS, STONES_FOR_GOLD } from './secrets';
+import { addStone, BELL_HEARD, bellRemark, dayAfter, discover, foundOf, monthDay, PLAQUES_FOR_LINE, ringBell, RUN_IDS, secretById, SECRETS, skiedRun, STONES_FOR_GOLD, thereNow } from './secrets';
 import { GEAR, PEOPLE } from './people';
 
 const DAY = '2026-11-12';
@@ -109,5 +109,55 @@ describe('the cairns and the bell', () => {
   it('writes a day as a register would', () => {
     expect(monthDay('2026-03-04')).toBe('March 4');
     expect(dayAfter('2026-12-31')).toBe('2027-01-01');
+  });
+});
+
+describe('things to follow, and things that are only there sometimes', () => {
+  it('finds the den asleep in winter, and brings a kit away from it once the snow has gone', () => {
+    const save = emptySave();
+    const winter = discover(save, 'den', DAY, 'winter');
+    expect(winter?.first).toBe(true);
+    expect(winter?.gear).toEqual([]);
+    const spring = discover(save, 'den', '2027-04-20', 'spring');
+    expect(spring?.first).toBe(false);
+    expect(spring?.gear).toEqual(['pet-kit']);
+    expect(spring?.pages).not.toEqual(winter?.pages);
+    expect(discover(save, 'den', '2027-10-01', 'fall')?.gear).toEqual([]);
+  });
+
+  it('has the sugarmaker\'s cap in the shack only while the sap is running', () => {
+    const save = emptySave();
+    expect(discover(save, 'shack', DAY, 'winter')?.gear).toEqual([]);
+    expect(discover(save, 'shack', '2027-03-20', 'spring')?.gear).toEqual(['hat-sugar']);
+  });
+
+  it('has a nest only in spring and summer, and a lantern only after dark', () => {
+    const nest = secretById('nest');
+    const light = secretById('light');
+    expect(nest && light).toBeTruthy();
+    if (!nest || !light) return;
+    expect(thereNow(nest, 'spring', false)).toBe(true);
+    expect(thereNow(nest, 'winter', false)).toBe(false);
+    expect(thereNow(light, 'winter', false)).toBe(false);
+    expect(thereNow(light, 'winter', true)).toBe(true);
+    // Both are shy: they are walked up to.
+    expect(nest.shy && light.shy).toBe(true);
+    // The lantern has the key to the last locked door.
+    expect(SECRETS.some((s) => s.needs === light.key)).toBe(true);
+  });
+
+  it('counts an unmarked run once it has been found and come down: amber lenses for the first, birch skis for them all', () => {
+    const save = emptySave();
+    expect(RUN_IDS.length).toBe(3);
+    expect(skiedRun(save, RUN_IDS[0] as string, DAY)).toBeNull();
+    const got: string[] = [];
+    for (const id of RUN_IDS) {
+      discover(save, id, DAY);
+      const ran = skiedRun(save, id, DAY);
+      got.push(...(ran?.gear ?? []));
+      save.gear.owned.push(...(ran?.gear ?? []));
+      expect(skiedRun(save, id, DAY)).toBeNull();
+    }
+    expect(got).toEqual(['goggles-amber', 'skis-birch']);
   });
 });

@@ -9,13 +9,15 @@ import type { Weather } from './palette';
 const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /** The settled kinds of weather that can be chosen in place of the real one. */
-export const WEATHERS = ['clear', 'cloudy', 'snow'] as const;
+export const WEATHERS = ['clear', 'cloudy', 'snow', 'fog'] as const;
 export type WeatherName = (typeof WEATHERS)[number];
 
 export const NAMED_WEATHER: Record<WeatherName, Weather> = {
   clear: { overcast: 0, snowing: 0 },
   cloudy: { overcast: 1, snowing: 0 },
   snow: { overcast: 1, snowing: 1 },
+  // Cloud lying in the valleys under a clear sky: from the summits, a sea of it.
+  fog: { overcast: 0.1, snowing: 0, low: 1 },
 };
 
 /**
@@ -34,7 +36,11 @@ export function weatherFromForecast(reply: unknown): Weather | null {
   const snowing = falling > 0 ? clamp01(0.35 + falling * 0.65) : 0;
   // A broken sky still reads as a clear day; only a mostly grey one flattens the light.
   const overcast = clamp01((current.cloud_cover - 40) / 50);
-  return { overcast: Math.max(overcast, snowing), snowing };
+  // Fog (the service's codes 45 and 48), or a sky whose cloud is nearly all low cloud, lies in the valleys: the summits may stand clear of it.
+  const lowCover = typeof current.cloud_cover_low === 'number' ? current.cloud_cover_low : 0;
+  const upper = Math.max(typeof current.cloud_cover_mid === 'number' ? current.cloud_cover_mid : 0, typeof current.cloud_cover_high === 'number' ? current.cloud_cover_high : 0);
+  const low = snowing === 0 && (current.weather_code === 45 || current.weather_code === 48 || (lowCover >= 80 && upper <= 30)) ? 1 : 0;
+  return low > 0 ? { overcast: Math.max(overcast, snowing), snowing, low } : { overcast: Math.max(overcast, snowing), snowing };
 }
 
 /** A repeatable number in 0..1 for a whole number. */
@@ -70,12 +76,13 @@ export function inventedWeather(when: Date): Weather {
 /** Move the weather a step toward a target, so a change of weather rolls in rather than snapping. */
 export function easeWeather(now: Weather, target: Weather, dt: number, perSecond = 0.12): Weather {
   const step = (a: number, b: number): number => a + Math.max(-perSecond * dt, Math.min(perSecond * dt, b - a));
-  return { overcast: step(now.overcast, target.overcast), snowing: step(now.snowing, target.snowing) };
+  const low = step(now.low ?? 0, target.low ?? 0);
+  return { overcast: step(now.overcast, target.overcast), snowing: step(now.snowing, target.snowing), ...(low > 0 ? { low } : {}) };
 }
 
 export const FORECAST_URL =
   `https://api.open-meteo.com/v1/forecast?latitude=${GORE.latitude}&longitude=${GORE.longitude}` +
-  '&current=cloud_cover,snowfall,precipitation,weather_code,temperature_2m';
+  '&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,snowfall,precipitation,weather_code,temperature_2m';
 
 /**
  * The real weather at Gore right now, or null if it cannot be had (offline, or the service is

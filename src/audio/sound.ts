@@ -1,4 +1,4 @@
-import { jingleFor, levelsFor, TUNE_VOICES, type Jingle, type Scene } from './soundscape';
+import { jingleFor, levelsFor, phraseFor, TUNE_VOICES, type Jingle, type Scene } from './soundscape';
 
 /** Where the player's choice of sound on or off is kept. */
 const PREF_KEY = 'gore.sound';
@@ -147,6 +147,12 @@ export class Sound {
   /** Play the player's tunes in another voice. The church bell and the summit bell are always bells. */
   setTune(voice: string): void {
     this.tune = voice in TUNE_VOICES ? voice : 'bells';
+  }
+
+  /** A few bars in one of the band's voices: what a player plays when asked for their tune, and what the band plays together. */
+  phrase(voice: string, bar = 0): void {
+    const v = TUNE_VOICES[voice];
+    if (v) this.notes(phraseFor(bar).map((f) => f * v.pitch), 0.2, 0.13 * v.gain, v.wave, v.ring + 0.1);
   }
 
   play(kind: string, detail = ''): void {

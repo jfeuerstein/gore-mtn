@@ -6,7 +6,9 @@
 //
 // A `place:` is one of the town's named places (seen from across the street), a `person:` is
 // someone to talk to (seen face on, from the south: add me=0 to the query so the player's own
-// figure is not in the way), and a `pos:` is x,z,yaw.
+// figure is not in the way), a `secret:` is one of the mountain's secrets by id (seen from in
+// front), a `roamer:` is someone who is somewhere different every day, a `run:` is the top of
+// an unmarked run (run-1), and a `pos:` is x,z,yaw.
 // Pictures are saved as <out-prefix>-<n>.png, 402 x 600, with the HUD off.
 import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
@@ -43,6 +45,13 @@ for (const stop of stops) {
         // Just behind them, with the camera to their south: with me=0 the picture is of them, face on.
         g.place(p.x, p.z - 0.45);
         g.face(0);
+      } else if (kind === 'secret' || kind === 'roamer' || kind === 'run') {
+        // One of the mountain's secrets, seen from in front of it; someone who roams, from a few steps south; the top of an unmarked run.
+        const p = kind === 'run' ? state.runs.map((r) => ({ id: r.id, x: r.top[0], z: r.top[1] })).find((t) => t.id === what) : (kind === 'secret' ? state.secrets : state.roamers).find((t) => t.id === what);
+        if (!p) return false;
+        const turn = p.turn ?? 0;
+        const back = kind === 'roamer' ? 6 : 9;
+        lookAt(p.x + Math.sin(turn) * back, p.z + Math.cos(turn) * back, p.x, p.z);
       } else {
         const [x, z, yaw] = what.split(',').map(Number);
         g.place(x, z);

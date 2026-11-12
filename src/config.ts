@@ -30,6 +30,8 @@ export interface Config {
   ground: Ground;
   /** Put up the day's flyer whether or not it has been seen today, to look at it. */
   flyer: boolean;
+  /** What is in the night sky: whatever the real calendar brings, or shooting stars or the northern lights, to look at them. */
+  sky: 'real' | 'meteors' | 'aurora';
   /** Which models the animals are: the park prints made outside the game, or the game's own blocks, to set beside them. */
   models: 'blocks' | 'park';
   /** Line the made models up in front of the player, to look at them: 1 for the animals, 2 for the birds, plants and the rest. */
@@ -86,6 +88,7 @@ export const DEFAULTS: Config = {
   look: 'poster',
   ground: 'marks',
   flyer: false,
+  sky: 'real',
   models: 'park',
   zoo: 0,
   stride: 1,
@@ -148,6 +151,7 @@ export function parseConfig(search: string): Config {
     crowd: q.has('crowd') ? q.get('crowd') === '1' : d.crowd,
     zoo: q.get('zoo') === '2' ? 2 : q.get('zoo') === '1' ? 1 : 0,
     flyer: q.get('flyer') === '1',
+    sky: oneOf(q.get('sky'), ['meteors', 'aurora'] as const) ?? d.sky,
     look: oneOf(q.get('look'), WORLD_LOOKS) ?? d.look,
     ground: oneOf(q.get('ground'), GROUNDS) ?? d.ground,
     models: oneOf(q.get('models'), ['blocks', 'park'] as const) ?? d.models,

@@ -1,3 +1,4 @@
+import type { Season } from '../look/season';
 import type { Whereabouts } from './people';
 import type { SaveData } from './save';
 
@@ -21,9 +22,13 @@ export type SecretWhere =
   /** Deep in the woods, far from any trail: the first, second, third remotest such place. */
   | { wild: number }
   /** At the door of one of the town's named places. */
-  | { door: string };
+  | { door: string }
+  /** At the top of one of the unmarked runs: the first, second, third longest. */
+  | { run: number }
+  /** At the water's edge of a pond, by its id, on the side with the least built on it. */
+  | { shore: string };
 
-export type SecretKind = 'register' | 'plaque' | 'working' | 'room' | 'cairn' | 'bell';
+export type SecretKind = 'register' | 'plaque' | 'working' | 'room' | 'cairn' | 'bell' | 'den' | 'nest' | 'shack' | 'ribbon' | 'light';
 
 export interface Secret {
   id: string;
@@ -44,6 +49,15 @@ export interface Secret {
   needs?: string;
   locked?: string;
   art?: string;
+  /** Only there in these seasons (a nest), and only after dark (a lantern). All year and all day if not given. */
+  seasons?: readonly Season[];
+  nightly?: true;
+  /** What leads to it from the nearest trail, and in which seasons it does. */
+  lead?: { marks: 'tracks' | 'buckets'; seasons: readonly Season[] };
+  /** What is found there in a particular season, in place of `pages` and `gear`. */
+  turns?: Partial<Record<Season, { pages: Secret['pages']; gear?: string }>>;
+  /** Gone, come upon in a hurry: it is walked up to. */
+  shy?: true;
 }
 
 /** The keys, by id: what each is called. Where one lies and what it opens is in `SECRETS`. */
@@ -254,7 +268,118 @@ export const SECRETS: readonly Secret[] = [
     action: 'Ring the bell',
     pages: [{ text: "A ship's bell on a timber frame, green with weather. The rope's new. Somebody keeps it up." }],
   },
+
+  // --- Things to follow: prints in the snow, buckets on the maples. ---
+  {
+    id: 'den',
+    kind: 'den',
+    name: 'The fox den',
+    where: { trail: 'Foxlair', along: 0.45 },
+    off: 150,
+    action: 'Look in',
+    lead: { marks: 'tracks', seasons: ['winter'] },
+    pages: [{ text: "A hole under the roots of a tipped-over birch. It's quiet. Somebody lives here, and they're out." }],
+    turns: {
+      winter: { pages: [{ text: "The tracks go in under the roots of a tipped-over birch. None come out.\nSomebody's home, and asleep. Better come back when the snow's gone." }] },
+      spring: {
+        pages: [{ text: "Three kits, tumbling over each other in last year's leaves. They stop. They look at you.\nTwo go back in. One doesn't. One follows you a little way, and then the rest of the way." }],
+        gear: 'pet-kit',
+      },
+      summer: {
+        pages: [{ text: "The kits are half grown and all legs. They've dug the door wider.\nOne trots over like it knows you. It's decided it does." }],
+        gear: 'pet-kit',
+      },
+    },
+  },
+  {
+    id: 'nest',
+    kind: 'nest',
+    name: 'The nest in the reeds',
+    where: { shore: 'duck-pond' },
+    action: 'Look closer',
+    seasons: ['spring', 'summer'],
+    shy: true,
+    pages: [
+      { text: "A nest in the reeds, lined with down. Five ducklings, and one egg that's late.\nIt hatches while you're standing there. It looks at you first. That's that, with ducks." },
+    ],
+    gear: 'pet-duckling',
+  },
+  {
+    id: 'shack',
+    kind: 'shack',
+    name: 'The sugar shack',
+    where: { wild: 4 },
+    action: 'Go in',
+    lead: { marks: 'buckets', seasons: ['spring'] },
+    pages: [{ text: "A shack in the maples, shut up tight. There's a note on the door." }, { text: "Back when the sap runs.\nMarch, if it's cold nights and warm days. April, if I oversleep.", signed: '-S.' }],
+    turns: {
+      spring: {
+        pages: [
+          { text: "It's warm in here and the windows are running. A pan as long as a bed, boiling. The whole shack smells like pancakes.\nNobody's in. There's a cap on a nail, and a note under it." },
+          { text: "Gone to empty buckets. Stir it if it climbs.\nIf you found this place you followed forty buckets to do it, so you've earned the cap. Take a candy too.", signed: '-S.' },
+        ],
+        gear: 'hat-sugar',
+      },
+    },
+  },
+
+  // --- The unmarked runs: a ribbon at the top, and a way down that is on no map. ---
+  ...["Nobody's", 'The Pencil Line', 'Hush'].map(
+    (name, n): Secret => ({
+      id: `run-${n + 1}`,
+      kind: 'ribbon',
+      name,
+      where: { run: n },
+      action: 'Look at the ribbon',
+      pages: [
+        { text: "A strip of orange ribbon, tied round a birch. Past it there's a way down through the trees. It isn't on the map.\nSomebody's written on the ribbon, very small." },
+        { text: [`"Nobody's." Tell nobody.`, '"The Pencil Line." You never saw this.', '"Hush." Shh.'][n] as string, signed: ['-B.', '-H.', '-I.'][n] as string },
+        { text: 'You pencil it onto your own map. Lightly.' },
+      ],
+    }),
+  ),
+
+  // --- The light at the quarry: after dark, and only for somebody who walks. ---
+  {
+    id: 'light',
+    kind: 'light',
+    name: 'The quarry lantern',
+    where: { spot: 'garnet-quarry' },
+    off: 42,
+    action: 'Look at the lantern',
+    nightly: true,
+    shy: true,
+    pages: [
+      { text: "A lantern on an iron hook in the quarry wall. Lit. The wick's trimmed and the glass is clean.\nUnder it, on a nail: a pair of blue goggles, and a key gone green." },
+      { text: "For whoever walks up slow enough to see it.\nI light it for the night shift. There hasn't been one since 1983. I light it anyway.", signed: '-A.' },
+    ],
+    gear: 'goggles-mirror',
+    key: 'key-copper',
+  },
 ];
+
+/** The unmarked runs, by the id of the ribbon at the top of each. */
+export const RUN_IDS: readonly string[] = SECRETS.filter((s) => s.kind === 'ribbon').map((s) => s.id);
+
+/**
+ * An unmarked run has been skied (or ridden, or walked) from its ribbon to the trail it comes
+ * out on. Kept the first time, with what it earns: amber lenses for the first, birch skis
+ * for all of them. Null if it has not been found, or has been done before.
+ */
+export function skiedRun(save: SaveData, id: string, day: string): { gear: string[]; done: number; of: number } | null {
+  if (!RUN_IDS.includes(id) || !(id in save.secrets) || id in save.runs) return null;
+  save.runs[id] = day;
+  const done = RUN_IDS.filter((r) => r in save.runs).length;
+  const gear: string[] = [];
+  if (!save.gear.owned.includes('goggles-amber')) gear.push('goggles-amber');
+  if (done >= RUN_IDS.length && !save.gear.owned.includes('skis-birch')) gear.push('skis-birch');
+  return { gear, done, of: RUN_IDS.length };
+}
+
+/** True if a secret is there to be come upon just now: in its season, and after dark if it keeps to the dark. */
+export function thereNow(secret: Secret, season: Season, night: boolean): boolean {
+  return (!secret.seasons || secret.seasons.includes(season)) && (!secret.nightly || night);
+}
 
 /**
  * How each thing to wear, carry or bring along is come by, when it is not given for an errand
@@ -343,15 +468,17 @@ export function stonesLaid(save: SaveData): number {
  * found, picks up what was lying there, and says what there is to read. A room without its
  * key is not found: it only says that it is locked.
  */
-export function discover(save: SaveData, id: string, day: string): Found | null {
+export function discover(save: SaveData, id: string, day: string, season?: Season): Found | null {
   const secret = secretById(id);
   if (!secret || secret.kind === 'cairn') return null;
+  const turn = season ? secret.turns?.[season] : undefined;
   if (secret.needs && !save.keys.includes(secret.needs)) return { secret, first: false, open: false, pages: [{ text: secret.locked ?? 'Locked.' }], gear: [], key: null };
   const first = !(id in save.secrets);
   if (first) save.secrets[id] = day;
   const gear: string[] = [];
   let key: string | null = null;
-  if (secret.gear && !save.gear.owned.includes(secret.gear)) gear.push(secret.gear);
+  const lying = turn ? turn.gear : secret.gear;
+  if (lying && !save.gear.owned.includes(lying)) gear.push(lying);
   if (secret.key && !save.keys.includes(secret.key)) {
     save.keys.push(secret.key);
     key = secret.key;
@@ -361,7 +488,7 @@ export function discover(save: SaveData, id: string, day: string): Found | null 
   if (secret.kind === 'register' && registers.every((s) => s.id in save.secrets) && !save.gear.owned.includes('trail-sky')) gear.push('trail-sky');
   if (secret.kind === 'plaque' && foundOf(save, 'plaque') >= PLAQUES_FOR_LINE && !save.gear.owned.includes('trail-garnet')) gear.push('trail-garnet');
   // A register has a line for whoever opens it: theirs, with the day.
-  const pages = secret.kind === 'register' ? [...secret.pages, { text: 'There is a pencil on a string. You sign it.', signed: `-you, ${monthDay(save.secrets[id] as string)}` }] : secret.pages;
+  const pages = secret.kind === 'register' ? [...secret.pages, { text: 'There is a pencil on a string. You sign it.', signed: `-you, ${monthDay(save.secrets[id] as string)}` }] : (turn?.pages ?? secret.pages);
   return { secret, first, open: true, pages, gear, key };
 }
 

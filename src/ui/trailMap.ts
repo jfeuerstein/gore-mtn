@@ -15,12 +15,14 @@ const PATH_COLOUR = '#f4e4b8';
 const INK = '#1f2a3a';
 const PAPER = '#f7f1e3';
 const GOLD = '#ffb02e';
+/** What the player has pencilled in themselves. */
+const PENCIL = '#4a4e57';
 const FLAG = '#c8402d';
 /** What something already in the book is drawn in, when the map is showing what is left to do. */
 const DONE = 'rgba(247, 241, 227, 0.55)';
 
 /** The kinds of thing marked on the map with a sign of their own. */
-export type PointKind = 'home' | 'lodge' | 'summit' | 'landmark' | 'bench' | 'place' | 'person';
+export type PointKind = 'home' | 'lodge' | 'summit' | 'landmark' | 'bench' | 'place' | 'person' | 'secret';
 
 /** Something marked on the map. */
 export interface MapPoint {
@@ -68,11 +70,11 @@ const LAYERS: readonly { id: Layer; label: string; marks: readonly (readonly [st
 ];
 
 /** Which kinds of point belong to which layer. */
-const LAYER_OF: Record<PointKind, Layer> = { home: 'places', lodge: 'places', summit: 'places', landmark: 'places', bench: 'places', place: 'places', person: 'people' };
+const LAYER_OF: Record<PointKind, Layer> = { home: 'places', lodge: 'places', summit: 'places', landmark: 'places', bench: 'places', place: 'places', person: 'people', secret: 'places' };
 /** How far in the map must be before each kind of point is drawn, and before its name is written beside it. */
-const SHOWN_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 1, landmark: 1.6, bench: 2.4, place: 1, person: 1 };
+const SHOWN_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 1, landmark: 1.6, bench: 2.4, place: 1, person: 1, secret: 1.6 };
 // A bench is never named on the map itself: there are many, and its name is a sentence. Tap it.
-const NAMED_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 2, landmark: 3.4, bench: Infinity, place: 5, person: 3.4 };
+const NAMED_FROM: Record<PointKind, number> = { home: 1, lodge: 1, summit: 2, landmark: 3.4, bench: Infinity, place: 5, person: 3.4, secret: 4.2 };
 /** How far in before trails and lifts have their names written along them. */
 const LINES_NAMED_FROM = 2.6;
 /** How far in before the close picture of the ground takes over from the far one. */
@@ -130,6 +132,8 @@ export class TrailMap {
 
   /** Everything marked with a sign of its own. Asked for each time the map is drawn. */
   points: () => MapPoint[] = () => [];
+  /** What the player has pencilled on themselves: the unmarked runs they have found, as lines of x, z pairs. */
+  pencilled: () => readonly (readonly number[])[] = () => [];
   /** What the book says of a trail, path or lift, by name. */
   progress: (kind: 'trail' | 'path' | 'lift', name: string) => MapProgress | null = () => null;
   /** The player's flag, if one is planted. */
@@ -446,6 +450,18 @@ export class TrailMap {
       ctx.setLineDash([]);
     }
 
+    // What the player has pencilled in: a thin grey line, a little shaky, as a pencil's is.
+    if (!this.hidden.has('trails')) {
+      for (const line of this.pencilled()) {
+        trace(line);
+        ctx.setLineDash([5, 2, 1, 2]);
+        ctx.strokeStyle = PENCIL;
+        ctx.lineWidth = 1.5 * thick;
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
     // Trails, easiest first so the harder ones sit on top where they cross.
     if (!this.hidden.has('trails')) {
       const order: Difficulty[] = ['easy', 'freeride', 'intermediate', 'advanced', 'expert'];
@@ -500,7 +516,7 @@ export class TrailMap {
 
     // Points, the least of them first, so that a lodge sits over a bench and a person over both.
     const points = this.points().filter((p) => this.shows(p.kind));
-    const rank: PointKind[] = ['place', 'bench', 'landmark', 'summit', 'lodge', 'home', 'person'];
+    const rank: PointKind[] = ['place', 'bench', 'secret', 'landmark', 'summit', 'lodge', 'home', 'person'];
     points.sort((a, b) => rank.indexOf(a.kind) - rank.indexOf(b.kind));
     for (const point of points) {
       const p = view.toMap(point.x, point.z);
@@ -684,6 +700,18 @@ export class TrailMap {
         ctx.rect(u - s, v - s, s * 2, s * 2);
         ctx.fillStyle = PAPER;
         ctx.lineWidth = 1;
+        break;
+      }
+      case 'secret': {
+        // A pencil cross: something of the player's own finding.
+        const s = 3.4 * big;
+        ctx.moveTo(u - s, v - s);
+        ctx.lineTo(u + s, v + s);
+        ctx.moveTo(u + s, v - s);
+        ctx.lineTo(u - s, v + s);
+        ctx.strokeStyle = PENCIL;
+        ctx.lineWidth = 1.8;
+        ctx.fillStyle = 'rgba(0,0,0,0)';
         break;
       }
       case 'person': {

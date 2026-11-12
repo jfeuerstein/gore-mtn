@@ -99,7 +99,7 @@ earned, so every shelf shows what there is to look for.
 | Passport | A stamp for every named trail (over ninety) and woodland path, skied or walked past nine in ten of its checkpoints; a pin for each of the 14 lifts; a patch for each of 4 summits in each season; 25 postcards for places (five of them built by the town); 15 conditions earned under the real sky; every bench sat on; 28 patches for finishing whole kinds of thing |
 | Minerals | 12 minerals of the Adirondacks, garnet first, found as stones on the groomed snow, beside the trails, in bare rock, in deep woods and thick round the old quarries. The day's scatter is new at midnight. Each keeps its best size. |
 | Guide | 42 animals, birds, plants and curiosities, each with its ground, its seasons and its hours. Shy ones bolt if come upon fast. |
-| Pack | Hats and jackets to wear (22), letters (35), what has been tasted and read (33), the town round |
+| Pack | Things to wear and bring along, in eight kinds (hats, jackets, goggles, skis, packs, the line the skis leave, the voice of the player's tunes, a pet: 62 in all), letters, what has been tasted and read (33), the town round, field notes on what has been found that is on no map, and the painter's paintings |
 
 ### People
 
@@ -110,6 +110,23 @@ small worries and each other. Three boards are chalked fresh each time they are 
 report, the trail of the day, and the observer's log at the fire tower.
 
 Others ski the trails, ride the chairs and walk Main Street. They are nobody in particular.
+
+Six more are on no map and somewhere different every day: a painter who gives away the day's
+painting (six views in four seasons), a camper whose smoke can be seen across the valley, and
+the four players of a band that gathers on the bandstand on Saturday evenings once the town
+has built one. Pip, when she has run out of errands, hides, and the town says which way she went.
+
+### Secrets
+
+The owner asked for reasons to explore that are not one more thing for a shelf. The mountain
+has things that nothing points at and the Book does not count: registers to sign, plaques
+that explain trail names, old workings with keys in them and locked rooms the keys open,
+cairns that grow by a stone a day, a bell the town hears, prints in the snow that lead to a
+den, sap buckets that lead to a sugar shack, three unmarked runs with a ribbon at the top, a
+lantern at the quarry that goes out for anyone in a hurry, a sea of cloud on foggy mornings,
+shooting stars on the real showers' nights, the northern lights now and then, and ground
+that wears into a path where the player keeps walking. What they hand over is something to
+wear or somebody to bring along; the finding is the point.
 
 ### Seasons, the hour and the weather
 

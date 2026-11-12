@@ -6,6 +6,8 @@ import { LETTERS } from '../game/letters';
 import { OFFERINGS } from '../game/offerings';
 import { PATCHES } from '../game/patches';
 import { KEYS, SECRETS } from '../game/secrets';
+import { SIGHTS } from '../game/sky';
+import { PAINTER_HAUNTS, paintingId } from '../game/wanderers';
 import { ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
@@ -36,7 +38,7 @@ const SEASON_WORDS = (s: Species): string => (s.seasons ? s.seasons.map((q) => S
 const WATCH_WORDS = (s: Species): string => (s.watches ? s.watches.join(', ') : '');
 
 /** A picture from the game's generated art: a mineral's or a species' plate. Left out if it cannot be had. */
-function plate(set: 'minerals' | 'species' | 'places', id: string): HTMLImageElement {
+function plate(set: 'minerals' | 'species' | 'places' | 'paintings', id: string): HTMLImageElement {
   const img = document.createElement('img');
   img.className = 'plate';
   img.alt = '';
@@ -360,7 +362,13 @@ export class Book {
       const of = (kind: string): typeof notes => notes.filter((sec) => sec.kind === kind);
       if (of('register').length > 0) said(`Registers signed · ${of('register').length}`, of('register').map((sec) => sec.name.replace(/^The /, '').replace(/ register$/, '')).join(' · '));
       if (of('plaque').length > 0) said(`Why it's called that · ${of('plaque').length}`, of('plaque').map((sec) => sec.name).join(' · '));
-      for (const sec of [...of('working'), ...of('room')]) said(sec.name, `Found ${shortDay(game.save.secrets[sec.id] as string)}`);
+      for (const sec of [...of('working'), ...of('room'), ...of('den'), ...of('nest'), ...of('shack'), ...of('light')]) said(sec.name, `Found ${shortDay(game.save.secrets[sec.id] as string)}`);
+      // The unmarked runs: pencilled on the map when found, and said to be done once come down.
+      for (const sec of of('ribbon')) said(`${sec.name} · an unmarked run`, game.save.runs[sec.id] ? `Top to bottom ${shortDay(game.save.runs[sec.id] as string)}` : "Pencilled on your map. You haven't been down it yet.");
+      if (game.save.hide.finds > 0) said(`Hide-and-seek · ${game.save.hide.finds}`, `Pip, found ${game.save.hide.finds === 1 ? 'once' : `${game.save.hide.finds} times`}. She hides somewhere new every day.`);
+      if (game.save.camper.days > 0) said(`Ro's camps · ${game.save.camper.days}`, 'He moves every morning. Look for the smoke.');
+      if (game.save.meteors > 0) said(`Shooting stars · ${game.save.meteors}`, 'Counted on nights when there were some.');
+      for (const sight of SIGHTS) if (sight.id in game.save.secrets) said(sight.name, `${sight.note} · ${shortDay(game.save.secrets[sight.id] as string)}`);
       const stones = Object.values(game.save.cairns).reduce((sum, c) => sum + c.stones, 0);
       if (stones > 0) said(`Cairns · ${stones} stone${stones === 1 ? '' : 's'}`, 'One a day, on each summit you stand on.');
       if ('bell' in game.save.secrets) said('The summit bell', game.save.bell.rang ? `Last rung ${shortDay(game.save.bell.rang)}` : 'Found');
@@ -369,6 +377,29 @@ export class Book {
         said('Keys', game.save.keys.map((key) => `${KEYS[key] ?? 'A key'}${opened(key) ? ' (used)' : ''}`).join(' · '));
       }
       out.push(list2);
+    }
+
+    // The painter's pictures: only the ones she has handed over.
+    const paintings = Object.keys(game.save.paintings);
+    if (paintings.length > 0) {
+      const h = el('h3', '', 'Paintings');
+      h.appendChild(el('span', '', `${paintings.length}`));
+      out.push(h);
+      out.push(el('p', 'note', 'Nell paints a different view every day, and gives it to whoever walks out to her.'));
+      const cards = el('div', 'stamps postcards paintings');
+      for (const haunt of PAINTER_HAUNTS) {
+        for (const season of SEASONS) {
+          const id = paintingId(haunt.id, season);
+          const day = game.save.paintings[id];
+          if (!day) continue;
+          const card = el('div', 'stamp landmark postcard earned');
+          card.appendChild(plate('paintings', id));
+          card.appendChild(el('b', '', haunt.name.replace(/^the /, '')));
+          card.appendChild(el('small', '', `${SEASON_NAME[season]} · ${shortDay(day)}`));
+          cards.appendChild(card);
+        }
+      }
+      out.push(cards);
     }
 
     const owned = GEAR.filter((g) => game.save.gear.owned.includes(g.id));

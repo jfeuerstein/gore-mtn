@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { GEAR, gearById } from '../game/people';
 import { KEYS, SECRETS, secretById } from '../game/secrets';
-import { secretSites, wildPlaces } from './secretSites';
+import { BAND, CAMPER_HAUNTS, PAINTER_HAUNTS, PIP_HAUNTS } from '../game/wanderers';
+import { placeAt, secretSites, setting, wildPlaces } from './secretSites';
 import { loadTestWorld } from './testWorld';
 import { distToPolyline } from './trails';
 import { OPEN_WATER } from './world';
@@ -64,5 +65,54 @@ describe('what the secrets hand over', () => {
     }
     for (const key of lying) expect(SECRETS.some((s) => s.needs === key), key).toBe(true);
     expect(secretById('bell')?.kind).toBe('bell');
+  });
+});
+
+describe('where the things to follow and the people who roam are', () => {
+  const set = setting(world);
+
+  it('puts the nest at the water\'s edge, with nothing built beside it', () => {
+    const nest = at('nest');
+    expect(nest).toBeDefined();
+    if (!nest) return;
+    expect(world.openAt(nest.x, nest.z)).not.toBe(OPEN_WATER);
+    let wet = false;
+    for (let a = 0; a < 16; a++) if (world.openAt(nest.x + Math.sin((a / 8) * Math.PI) * 6, nest.z + Math.cos((a / 8) * Math.PI) * 6) === OPEN_WATER) wet = true;
+    expect(wet).toBe(true);
+    expect(Math.min(...world.buildings.map((b) => Math.hypot(b.x - nest.x, b.z - nest.z)))).toBeGreaterThan(12);
+  });
+
+  it('puts the den and the sugar shack in the woods, a walk from a trail', () => {
+    for (const id of ['den', 'shack']) {
+      const site = at(id);
+      expect(site, id).toBeDefined();
+      if (!site) continue;
+      expect(world.trailDistance(site.x, site.z), id).toBeGreaterThan(60);
+      expect(world.openAt(site.x, site.z), id).toBe(0);
+    }
+  });
+
+  it('puts a ribbon at the top of each unmarked run', () => {
+    set.runs.forEach((run, n) => {
+      const site = at(`run-${n + 1}`);
+      expect(site?.x).toBe(run.pts[0]);
+      expect(site?.z).toBe(run.pts[1]);
+    });
+  });
+
+  it('finds somewhere to stand at every haunt: dry, on the map, off the trails where it can be, and no two of one person\'s in the same place', () => {
+    const all: [string, typeof PAINTER_HAUNTS][] = [['nell', PAINTER_HAUNTS], ['ro', CAMPER_HAUNTS], ['pip', PIP_HAUNTS], ...BAND.map((b): [string, typeof PAINTER_HAUNTS] => [b.who, [b.haunt]])];
+    for (const [who, haunts] of all) {
+      const spots = haunts.map((h) => ({ h, site: placeAt(set, `${who}-${h.id}`, h.where, h.off ?? 0) }));
+      for (const { h, site } of spots) {
+        expect(site, `${who} at ${h.id}`).not.toBeNull();
+        if (!site) continue;
+        expect(world.openAt(site.x, site.z), `${who} at ${h.id}`).not.toBe(OPEN_WATER);
+        // (Round a lodge there may be nothing but snow that is skied on: behind the Saddle Lodge is still behind the Saddle Lodge.)
+        if (!('place' in h.where)) expect(world.onTrail(site.x, site.z), `${who} at ${h.id}`).toBe(false);
+        expect(world.source.slopeDegAt(site.x, site.z), `${who} at ${h.id}`).toBeLessThan(22);
+      }
+      for (const a of spots) for (const b of spots) if (a !== b && a.site && b.site) expect(Math.hypot(a.site.x - b.site.x, a.site.z - b.site.z), `${who}: ${a.h.id} and ${b.h.id}`).toBeGreaterThan(60);
+    }
   });
 });

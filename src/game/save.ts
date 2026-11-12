@@ -83,6 +83,20 @@ export interface SaveData {
   cairns: Record<string, { stones: number; day: string }>;
   /** The summit bell: the day it was last rung, and who in town has said they heard it. */
   bell: { rang: string; told: string[] };
+  /** Hide-and-seek: the day Pip was last found, and how many times she has been. */
+  hide: { day: string; finds: number };
+  /** Paintings the painter has handed over, by view and season, with the day each was. */
+  paintings: Record<string, string>;
+  /** The camper: on how many different days he has been found, and the last of them. */
+  camper: { days: number; day: string };
+  /** Unmarked runs skied top to bottom, by id, with the day each first was. */
+  runs: Record<string, string>;
+  /** Shooting stars watched, on nights when there were some. */
+  meteors: number;
+  /** Who has come to the cabin's feeder and been seen there, by species. */
+  guests: string[];
+  /** Ground worn by walking it: how many times each six-metre square off the trails has been crossed. */
+  worn: Record<string, number>;
   /** The player's cabin: what is on its shelf and its board, and when its feeder was filled. */
   cabin: CabinSave;
   /** The last day the flyer was put in front of the player: it is shown once, on the day's first opening. */
@@ -90,6 +104,10 @@ export interface SaveData {
   /** The leads on today's flyer, by id, chosen once so that they are the same all day. */
   leads: { day: string; ids: string[] };
 }
+
+/** How many squares of worn ground are kept, and how worn one can get. */
+export const WORN_MOST = 600;
+export const WORN_FULL = 9;
 
 export function emptySave(): SaveData {
   return {
@@ -129,6 +147,13 @@ export function emptySave(): SaveData {
     keys: [],
     cairns: {},
     bell: { rang: '', told: [] },
+    hide: { day: '', finds: 0 },
+    paintings: {},
+    camper: { days: 0, day: '' },
+    runs: {},
+    meteors: 0,
+    guests: [],
+    worn: {},
   };
 }
 
@@ -234,6 +259,19 @@ export function parseSave(text: string | null | undefined): SaveData {
     }
   }
   if (isRecord(raw.bell) && isDay(raw.bell.rang)) save.bell = { rang: raw.bell.rang, told: strings(raw.bell.told) };
+  const whole = (v: unknown, most: number): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.min(most, Math.floor(v)) : 0);
+  if (isRecord(raw.hide)) save.hide = { day: isDay(raw.hide.day) ? raw.hide.day : '', finds: whole(raw.hide.finds, 9999) };
+  save.paintings = days(raw.paintings);
+  if (isRecord(raw.camper)) save.camper = { days: whole(raw.camper.days, 9999), day: isDay(raw.camper.day) ? raw.camper.day : '' };
+  save.runs = days(raw.runs);
+  save.meteors = whole(raw.meteors, 9999);
+  save.guests = strings(raw.guests);
+  if (isRecord(raw.worn)) {
+    for (const [cell, n] of Object.entries(raw.worn)) {
+      if (Object.keys(save.worn).length >= WORN_MOST) break;
+      if (/^-?\d+,-?\d+$/.test(cell) && whole(n, WORN_FULL) > 0) save.worn[cell] = whole(n, WORN_FULL);
+    }
+  }
   if (isDay(raw.flyer)) save.flyer = raw.flyer;
   if (isRecord(raw.leads) && isDay(raw.leads.day)) save.leads = { day: raw.leads.day, ids: strings(raw.leads.ids).slice(0, 6) };
   if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {

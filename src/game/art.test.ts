@@ -1,4 +1,5 @@
 import { existsSync, statSync } from 'node:fs';
+import { PAINTER_HAUNTS, paintingId } from './wanderers';
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import { namedSpots } from '../world/whereabouts';
@@ -41,6 +42,12 @@ describe('generated art', () => {
   it('has a postcard for everything the town builds', () => {
     expect(PROJECTS.filter((p) => !existsSync(art('places', p.id))).map((p) => p.id)).toEqual([]);
     for (const p of PROJECTS) expect(statSync(art('places', p.id)).size, p.id).toBeLessThan(60000);
+  });
+
+  it('has a painting of every one of the painter\'s views, in every season', () => {
+    const ids = PAINTER_HAUNTS.flatMap((h) => SEASONS.map((season) => paintingId(h.id, season)));
+    expect(ids.filter((id) => !existsSync(art('paintings', id)))).toEqual([]);
+    for (const id of ids) expect(statSync(art('paintings', id)).size, id).toBeLessThan(70000);
   });
 
   it('has a picture for everything that can be had: patches, hats and jackets, bakes, sandwiches and books, conditions, summits and lift pins', () => {
