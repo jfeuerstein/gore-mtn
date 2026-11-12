@@ -17,7 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { run, save } from '../art/fal.mjs';
 import { save as saveTripo, task } from '../art/tripo.mjs';
-import { IMAGE_MODEL, LOOKS, MODELS, SHAPE_LOOK, SHAPE_MODEL, TRIPO } from './manifest.mjs';
+import { FAL_TRIPO, IMAGE_MODEL, LOOKS, MODELS, SHAPE_LOOK, SHAPE_MODEL, TRIPO } from './manifest.mjs';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const CACHE = `${ROOT}tools/models/cache`;
@@ -32,6 +32,7 @@ let spent = 0;
 
 async function shape(id) {
   if (MODELS[id].by === 'tripo') return tripoShape(id);
+  if (MODELS[id].by === 'fal-tripo') return falTripoShape(id);
   const picture = `${CACHE}/${id}.jpg`;
   const glb = `${CACHE}/${id}.glb`;
   if (redo.has(id) || !existsSync(glb) || !existsSync(picture)) {
@@ -67,9 +68,41 @@ async function tripoShape(id) {
   }
 }
 
+/** A made thing: a chunky picture of it painted through fal, and a shape of the picture from Tripo's model, also through fal. */
+async function falTripoShape(id) {
+  const picture = `${CACHE}/ft-${id}.png`;
+  const glb = `${CACHE}/ft-${id}.glb`;
+  const look = MODELS[id].against ? FAL_TRIPO.look.replace('plain white background', `plain ${MODELS[id].against} background`) : FAL_TRIPO.look;
+  if (redo.has(id) || !existsSync(glb) || !existsSync(picture)) {
+    let url = null;
+    if (redo.has(id) || !existsSync(picture) || !existsSync(`${picture}.url`)) {
+      const painted = await run(FAL_TRIPO.image, { prompt: `${MODELS[id].what}, ${look}`, image_size: '1024x1024', quality: 'medium', background: 'opaque', output_format: 'png', num_images: 1 });
+      url = painted.images[0].url;
+      await save(url, picture);
+      writeFileSync(`${picture}.url`, url);
+    } else url = readFileSync(`${picture}.url`, 'utf8');
+    const shaped = await run(FAL_TRIPO.shape, { image_url: url, texture: true, pbr: false, texture_quality: 'standard', geometry_quality: 'standard', face_limit: 30000, ...(redo.has(id) ? { model_seed: bump } : {}) }, { timeoutMs: 900000 });
+    await save((shaped.model_mesh ?? shaped.base_model ?? shaped.pbr_model).url, glb);
+    made++;
+    console.log(`made ${id} with Tripo, through fal`);
+  }
+  for (const look of LOOKS) {
+    const out = `${CACHE}/${id}.${look}.json`;
+    execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, out, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? FAL_TRIPO.turn), '--inks', MODELS[id].inks ?? 'made', '--faces', String(MODELS[id].faces ?? 1200), '--preview', `${CACHE}/${id}.${look}.png`]);
+    // An ink that came out wrong for what the thing is made of (brass that printed as paper) is put right by name.
+    const inks = MODELS[id].reink;
+    if (inks) {
+      const model = JSON.parse(readFileSync(out, 'utf8'));
+      model.p = model.p.map((ink) => inks[ink] ?? ink);
+      writeFileSync(out, JSON.stringify(model));
+    }
+  }
+}
+
 // A few at a time: a shape takes half a minute.
 const theirs = ids.filter((id) => MODELS[id].by === 'tripo');
 const ours = ids.filter((id) => MODELS[id].by !== 'tripo');
+// (Those shaped by Tripo through fal go with the rest: fal takes several at once.)
 for (let i = 0; i < ours.length; i += 4) {
   await Promise.all(ours.slice(i, i + 4).map((id) => shape(id).catch((e) => console.error(`FAILED ${id}: ${e.message}`))));
 }

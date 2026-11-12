@@ -363,6 +363,9 @@ async function boot(): Promise<void> {
   // Trees keep out of lift corridors and stand back from buildings...
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
+  // The animals, and the things people have made out on the mountain, may be the game's own blocks or models made
+  // outside it. They are fetched before anything that stands one of them up is built.
+  if (cfg.models !== 'blocks') useMadeModels(await loadModels(cfg.models, import.meta.env.BASE_URL));
   // The mountain's secrets: registers, plaques, cairns, old workings. Nothing points at them.
   const secretSetting = setting(world, townPlaces);
   const secretPlaces = secretSites(world, townPlaces, secretSetting);
@@ -424,8 +427,6 @@ async function boot(): Promise<void> {
   // A bike's wheels run in one line; skis side by side.
   const tracks = new SkiTracks(undefined, look.ride === 'bike' ? 0 : undefined);
   const glints = new Glints(shadows);
-  // The animals may be the game's own blocks, or models made outside it, in a look being tried.
-  if (cfg.models !== 'blocks') useMadeModels(await loadModels(cfg.models, import.meta.env.BASE_URL));
   const critters = new Critters(season, shadows);
   // For comparing looks: every animal that has a made model, in a row a few steps in front of the player.
   const zoo = new THREE.Group();

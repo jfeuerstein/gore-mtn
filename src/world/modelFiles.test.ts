@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { INKS } from '../look/print';
 import type { ModelFile } from './modelFiles';
 
 const read = (look: string): Record<string, ModelFile> => JSON.parse(readFileSync(new URL(`../../public/models/${look}.json`, import.meta.url), 'utf8')) as Record<string, ModelFile>;
@@ -41,4 +42,23 @@ describe('made models', () => {
       }
     });
   }
+});
+
+describe('the things people have made', () => {
+  const models = read('park');
+  const source = (file: string): string => readFileSync(new URL(file, import.meta.url), 'utf8');
+  // Every model the secrets and the roamers' props ask for by name.
+  const asked = [...new Set([...source('./secretMesh.ts').matchAll(/'(thing-[a-z-]+)'/g), ...source('./folk.ts').matchAll(/'(thing-[a-z-]+)'/g)].map((m) => m[1] as string))];
+
+  it('has a made model for every one that is asked for by name', () => {
+    expect(asked.length).toBeGreaterThanOrEqual(16);
+    expect(asked.filter((id) => !(id in models))).toEqual([]);
+  });
+
+  it("prints them in the game's own inks, so that a shack that was modelled sits beside a lodge that was built", () => {
+    const inks = new Set(INKS.map((ink) => `#${ink.toString(16).padStart(6, '0')}`));
+    for (const id of Object.keys(models).filter((k) => k.startsWith('thing-'))) {
+      expect((models[id] as ModelFile).p.filter((ink) => !inks.has(ink)), id).toEqual([]);
+    }
+  });
 });

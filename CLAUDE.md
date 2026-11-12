@@ -238,7 +238,7 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture, cut to six inks and gathered into patches (`calm`), with a dark outline hull. A
   test fails if any model has an open edge or a loose piece. The converter needs Python with
   trimesh, fast-simplification, scipy, scikit-image, pymeshfix and Pillow.
-- They are one small JSON file, `public/models/park.json` (43 models, about 800 KB), read by
+- They are one small JSON file, `public/models/park.json` (65 models, about 1.3 MB), read by
   `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
   same height. Nearly the whole field guide has one: the animals, the birds, the plants and
   mushrooms, the cairn and the snowman (the hare has two, for its two coats). The icicles and
@@ -257,6 +257,27 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture. Something white is painted `against` a colour: white on white comes back from the
   shape model as a wall. When a shape comes back wrong (a box behind it, lying flat), make it
   again with `--redo id --bump n`.
+- **Things people have made** that stand out on the mountain are made models too
+  (`thing-*` in the manifest, `by: 'fal-tripo'`): the secrets' register, plaque, bell, adit,
+  cellar hole, rope tow engine, den (and its winter self), nest, sugar shack (and its winter
+  self), ribbon stump, lantern and bucketed maple, and the roamers' easel, tent, campfire and
+  music stand. The owner found the same things built from blocks too blocky beside the
+  animals. A picture of each is painted through fal as the same chunky toy (`FAL_TRIPO.look`),
+  Tripo's model as fal serves it makes the shape, and the converter prints it in the game's
+  own inks (`--inks made`: `MADE` in `convert.py` is `INKS` in `print.ts`, with a toy's
+  orange wood weathered to the game's timber first) at a triangle count of its own
+  (`faces`). The picture is painted three-quarters on, so a model comes back facing any of
+  four ways: `turn` in the manifest is set by looking at its preview
+  (`tools/models/cache/<id>.park.png`: front at the left of the side view and the top of the
+  view from above). `reink` puts right an ink that printed wrong, by name.
+- `madeFor` in `secretMesh.ts` says which model each secret is and how tall it stands; each
+  is a mesh of its own, drawn only within `SEEN_FROM` of the player, and one model stood in
+  many places (the maples, the ribbons down a run) is an instanced mesh and its outline. The
+  blocks they replaced are still there, and are what is drawn with `models=blocks`. The made
+  models are fetched before the secrets are built. `madeProp` in `folk.ts` does the same for
+  what stands beside the people who roam. The lantern's light is its own glass, drawn unlit
+  after dark (`glassOf`).
+- The pets (`pet-*`) are made the first way, like the animals.
 - The converter can make other looks from the same shape (faceted, smooth); the owner tried
   those and chose the park print, so they do not ship.
 

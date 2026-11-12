@@ -22,6 +22,19 @@ export const TRIPO = {
   turn: 180,
 };
 
+/**
+ * The way the things people have made are modelled (a shack, a tent, a lantern on a post):
+ * the same chunky picture, painted through fal, and a shape of it from Tripo's model as fal
+ * serves it. A model asks for it with `by: 'fal-tripo'`. The owner asked for these after
+ * finding the same things built from blocks too blocky beside the animals.
+ */
+export const FAL_TRIPO = {
+  image: 'fal-ai/gpt-image-1.5',
+  shape: 'tripo3d/h3.1/image-to-3d',
+  look: 'as a chunky low poly toy model: a few thick, stout, solid shapes joined into one piece, nothing thin or spindly, every post and leg fat, flat matte colours with no gradients and no texture, seen from the front and a little to one side and above, the whole thing in view with space round it, standing on nothing, on a plain white background, soft even light, no shadow, no text, no lettering',
+  turn: 180,
+};
+
 /** The looks each model is converted into: see tools/models/convert.py, which can make others (faceted, smooth) to try. */
 export const LOOKS = ['park'];
 
@@ -78,6 +91,26 @@ export const MODELS = {
   // Not of the field guide: the dog at the Saddle Lodge and the cat who is mayor, by the id each has among the people.
   biscuit: { what: 'a big fluffy mountain rescue dog sitting upright, white with large brown patches and brown ears, a small wooden barrel hanging from its collar', turn: 0, by: 'tripo' },
   pickles: { what: 'a fat orange tabby cat sitting very upright and dignified, with a cream chest, wearing a gold chain of office with a round medallion', inks: 'plant', turn: 0, by: 'tripo' }, // the plants' inks have the orange a ginger cat wants
+  // Things people have made, out on the mountain: the secrets, and what stands beside the people who roam.
+  // They are printed in the game's own inks (`made`, the default for these), and cut down to `faces` triangles: more for a building, fewer for a post.
+  'thing-register': { what: 'a trail register: a grey tin box with a sloping dark lid, mounted on top of a short thick wooden post, a small white paper label on the front of the box', faces: 600, by: 'fal-tripo' },
+  'thing-plaque': { what: 'a trailside plaque: a thick rectangular plate of bright golden yellow brass with three dark engraved lines across it, tilted back like a lectern on top of a short thick dark brown wooden post', faces: 900, turn: 90, by: 'fal-tripo' },
+  'thing-bell': { what: "an old green-bronze ship's bell hanging in a sturdy timber frame of two thick posts and a crossbeam, a short thick rope hanging down from inside the bell", faces: 1100, turn: 90, by: 'fal-tripo' },
+  'thing-adit': { what: 'the entrance to an old mine tunnel set into a mound of grey rock: a dark opening framed by two thick timber posts and a lintel, a small rusty ore cart full of dark red stones on short rails in front of it', faces: 1800, turn: 90, by: 'fal-tripo' },
+  'thing-cellar': { what: 'an old cellar hole: a low square ruin of four thick fieldstone walls, open to the sky, with a gap in the front wall where the door was, green moss on the stones, and a small gnarled apple tree with a few red apples growing at one corner', faces: 1800, by: 'fal-tripo' },
+  'thing-rope-tow': { what: 'an old ski rope tow engine: a rusty red truck engine mounted on a sled of two thick timbers, with one big dark iron pulley wheel standing upright on its side and a thick rope round the wheel', faces: 1600, by: 'fal-tripo' },
+  'thing-den': { what: 'a fox den: a rounded mound of brown earth and green moss with a dark round burrow hole in its front, and a fallen white birch log with black marks lying across the top of the mound, its roots sticking up at one end', faces: 1400, turn: 90, by: 'fal-tripo' },
+  'thing-den-snow': { what: 'a fox den in winter: a rounded mound covered in thick white snow with a dark round burrow hole in its front, and a fallen white birch log with black marks lying across the top of the mound, its dark roots sticking up at one end', against: 'sky blue', faces: 1400, turn: 90, by: 'fal-tripo' },
+  'thing-nest': { what: "a duck's nest on a small mound of mud: a round bowl of woven dry reeds lined with white down, three pale eggs in it, with a clump of thick green reeds and two brown cattails standing behind it", faces: 1200, turn: 90, by: 'fal-tripo' },
+  'thing-shack': { what: 'a small maple sugar shack: brown plank walls, a plank door and one square window in the front, a pitched grey tin roof with a raised steam vent along its ridge, a short black stovepipe, and a neat stack of firewood against one side wall', faces: 2000, turn: 90, by: 'fal-tripo' },
+  'thing-shack-snow': { what: 'a small maple sugar shack in winter: brown plank walls, a plank door and one square window in the front, a pitched roof under thick white snow with a raised steam vent along its ridge, a short black stovepipe, and a neat stack of firewood with snow on top against one side wall', against: 'sky blue', faces: 2000, turn: 90, by: 'fal-tripo' },
+  'thing-ribbon': { what: 'the lower trunk of a white birch tree with black marks, sawn off flat at the top, with a wide bright orange ribbon tied round its middle in a knot, the two ends of the ribbon hanging down', against: 'sky blue', faces: 500, by: 'fal-tripo' },
+  'thing-lantern': { what: 'an old black iron lantern with warm yellow glass sides, hanging from the curved arm at the top of a thick black iron post', faces: 1000, by: 'fal-tripo' },
+  'thing-maple': { what: 'the thick grey-brown trunk of a bare sugar maple tree with three short stubby branch stumps near the top, and a grey metal sap bucket with a lid hanging on the trunk at waist height', faces: 700, turn: 90, by: 'fal-tripo' },
+  'thing-easel': { what: "a painter's wooden easel holding a small landscape painting of blue hills and green woods, with a little three-legged wooden stool beside it and an open box of paints on the stool", faces: 1200, turn: 90, by: 'fal-tripo' },
+  'thing-tent': { what: 'a small old-fashioned canvas A-frame tent, cream coloured with a red ridge pole, its front door flaps tied open showing the dark inside', faces: 900, turn: 270, by: 'fal-tripo' },
+  'thing-campfire': { what: 'a campfire: a ring of round grey stones with crossed logs and chunky orange and yellow flames in the middle, a short thick log to sit on beside it, and a black coffee pot standing by the stones', faces: 1300, by: 'fal-tripo' },
+  'thing-stand': { what: 'a black music stand with a thick post and a wide three-footed base, holding an open book of sheet music', faces: 700, turn: 270, by: 'fal-tripo' },
   // What comes along with the player, by the id each has in the wardrobe: small, round and young.
   'pet-kit': { what: 'a baby red fox cub standing on all fours, chubby, big head, big pointed ears, orange fur, white chest, bushy tail with a white tip', inks: 'plant' },
   'pet-duckling': { what: 'a fluffy yellow duckling standing, round body, big head, orange beak and feet', inks: 'bird' },

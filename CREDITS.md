@@ -42,6 +42,10 @@ real person, business or other game.
   rooms are FLUX.1 [schnell], as the postcards are.
 - **The pets** (a fox kit, a duckling, a kitten and a toad) are made models like the field
   guide's: FLUX.1 [schnell] and TRELLIS through fal.
+- **The things people have made out on the mountain** (the den, the sugar shack, the
+  lantern, the tent and the rest: `thing-*` in `tools/models/manifest.mjs`): a picture from
+  OpenAI's GPT Image 1.5 and a shape from [Tripo](https://www.tripo3d.ai)'s H3.1 model, both
+  through fal, then printed by `tools/models/convert.py` like the animals.
 - **Everything else in the world** (terrain, trees, buildings, lifts, people, signs) is built
   in code.
 

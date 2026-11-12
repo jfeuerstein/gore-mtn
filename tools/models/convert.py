@@ -48,11 +48,34 @@ PLANT_MORE = [
     (0xE8, 0x8F, 0xB0), (0xC2, 0x4F, 0x86), (0x7A, 0x4F, 0xA3), (0x3D, 0x4F, 0x8F), (0x8F, 0x2F, 0x2A),
 ]
 
+# What a made thing is printed in: the game's own inks (INKS in src/look/print.ts), which the
+# buildings and everything else built in code are coloured from, so that a shack that was
+# modelled sits beside a lodge that was built.
+MADE = [
+    (0xF2, 0xF5, 0xFA), (0xFB, 0xF8, 0xEE), (0xF1, 0xE9, 0xCF), (0xE2, 0xC9, 0x9A),
+    (0xD3, 0xDA, 0xE4), (0xA9, 0xB3, 0xC0), (0x7C, 0x87, 0x94), (0x5E, 0x66, 0x70), (0x3D, 0x46, 0x52), (0x2A, 0x2E, 0x36), (0x22, 0x30, 0x4A),
+    (0x2B, 0x62, 0xC9),
+    (0xA9, 0xC9, 0x8A), (0x6F, 0xA3, 0x5C), (0x4F, 0x8A, 0x3F), (0x2F, 0x6B, 0x4F),
+    (0xF2, 0xD1, 0x6B), (0xE3, 0xB0, 0x3F), (0xC9, 0x8F, 0x1F), (0xD9, 0x77, 0x2B),
+    (0xC8, 0x40, 0x2D), (0x8F, 0x2F, 0x2A),
+    (0xC9, 0xA3, 0x6B), (0xA9, 0x76, 0x3F), (0x9A, 0x7B, 0x5C), (0x7A, 0x52, 0x36), (0x5A, 0x3F, 0x2C), (0x4A, 0x33, 0x26),
+]
+
 PARK = [
     (0xF4, 0xEC, 0xD6), (0xE2, 0xC9, 0x9A), (0xC9, 0x8F, 0x4A), (0xA8, 0x5A, 0x32), (0x7A, 0x3F, 0x2A),
     (0x4A, 0x33, 0x26), (0x2A, 0x26, 0x24), (0x9A, 0x7B, 0x5C), (0x5E, 0x66, 0x70), (0x7F, 0xA9, 0xB8),
     (0x2B, 0x4A, 0x5E), (0x8A, 0x8F, 0x96), (0xD9, 0xA4, 0x41), (0xB5, 0x3A, 0x2A), (0xFA, 0xFA, 0xF6),
 ]
+
+
+def seasoned(colour):
+    """A toy's wood is orange; the game's timber is brown. Wood (an orange that is not bright) is weathered before it is matched to an ink."""
+    import colorsys
+    h, s, v = colorsys.rgb_to_hsv(*(min(255, max(0, c)) / 255 for c in colour))
+    if 8 / 360 <= h <= 30 / 360 and v < 0.86 and s > 0.45:
+        s *= 0.62
+        v *= 0.94
+    return [c * 255 for c in colorsys.hsv_to_rgb(h, s, v)]
 
 
 def load(path):
@@ -150,8 +173,10 @@ def calm(mesh, label, rounds=3):
     return label
 
 
-def convert(source, look, turn, picture=None, which='animal'):
-    spec = LOOKS[look]
+def convert(source, look, turn, picture=None, which='animal', faces=None):
+    spec = dict(LOOKS[look])
+    if faces:
+        spec['faces'] = faces
     full, colours = load(source)
     if picture:
         colours = like(colours, picture)
@@ -183,9 +208,13 @@ def convert(source, look, turn, picture=None, which='animal'):
     face_colour = colours[where]
     # A handful of colours: the same ones every time the tool is run.
     # A flower has more colours to it than a fox.
-    k = min(spec['colours'] + (2 if which == 'plant' else 0), len(np.unique(face_colour.round(), axis=0)))
+    k = min(spec['colours'] + (2 if which in ('plant', 'made') else 0), len(np.unique(face_colour.round(), axis=0)))
     centres, label = kmeans2(face_colour, k, minit='++', seed=7)
-    if spec['palette'] == 'park':
+    if spec['palette'] == 'park' and which == 'made':
+        # A made thing takes the nearest of the game's own inks, whatever it is: iron is black, tin is grey.
+        inks = np.array(MADE, dtype=np.float64)
+        centres = inks[((np.array([seasoned(c) for c in centres])[:, None, :] - inks[None, :, :]) ** 2).sum(axis=2).argmin(axis=1)]
+    elif spec['palette'] == 'park':
         inks = np.array(PARK + (BIRD_MORE if which != 'animal' else []) + (PLANT_MORE if which == 'plant' else []), dtype=np.float64)
         far = ((centres[:, None, :] - inks[None, :, :]) ** 2).sum(axis=2)
         # A dark coat is black or brown, not navy, unless it is plainly blue.
@@ -237,10 +266,11 @@ if __name__ == '__main__':
     ap.add_argument('--look', choices=list(LOOKS), default='facet')
     ap.add_argument('--turn', type=float, default=180, help='degrees about upright; generated models come facing +z, so half a turn by default')
     ap.add_argument('--like', help='the picture the model was made from, to grade its colours to')
-    ap.add_argument('--inks', choices=['animal', 'bird', 'plant'], default='animal', help='which inks the park print may use')
+    ap.add_argument('--inks', choices=['animal', 'bird', 'plant', 'made'], default='animal', help='which inks the park print may use')
+    ap.add_argument('--faces', type=int, help='how many triangles to cut it down to, if not the look\'s own number')
     ap.add_argument('--preview')
     args = ap.parse_args()
-    data, mesh, cols = convert(args.source, args.look, args.turn, args.like, args.inks)
+    data, mesh, cols = convert(args.source, args.look, args.turn, args.like, args.inks, args.faces)
     with open(args.out, 'w') as f:
         json.dump(data, f, separators=(',', ':'))
     if args.preview:

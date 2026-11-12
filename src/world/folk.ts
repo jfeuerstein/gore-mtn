@@ -5,7 +5,7 @@ import { STANDING } from '../player/pose';
 import type { Outfit } from '../player/skier';
 import { madeModel } from './critterModels';
 import { figureGeometry } from './figure';
-import { modelGeometry } from './modelFiles';
+import { joinModels, modelGeometry, type ModelFile } from './modelFiles';
 import { blocks, type Block } from './shapes';
 import { lit } from '../look/material';
 
@@ -315,6 +315,32 @@ function musicStand(): THREE.BufferGeometry {
 const PROPS: Record<NonNullable<Person['prop']>, () => THREE.BufferGeometry> = { snowcat, sled, easel, camp, stand: musicStand };
 
 /**
+ * What stands beside one of the people who roam, as models made outside the game (`thing-*` in
+ * tools/models/manifest.mjs): an easel, a camp, a music stand. Each is set down with its front
+ * at its own +z, as the ones built from blocks are. Null when the made models are not loaded,
+ * and the blocks are used.
+ */
+function madeProp(kind: NonNullable<Person['prop']>): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } | null {
+  const has = (id: string): ModelFile | null => madeModel(id) ?? null;
+  // (A made model faces its own -z: half a turn brings its front to +z.)
+  if (kind === 'easel') {
+    const easel = has('thing-easel');
+    return easel ? joinModels([{ file: easel, tall: 1.9, turn: Math.PI }]) : null;
+  }
+  if (kind === 'stand') {
+    const stand = has('thing-stand');
+    return stand ? joinModels([{ file: stand, tall: 1.35, turn: Math.PI }]) : null;
+  }
+  if (kind === 'camp') {
+    const tent = has('thing-tent');
+    const fire = has('thing-campfire');
+    // The fire where the camp is said to be, and the tent to one side of it with its door toward the fire.
+    return tent && fire ? joinModels([{ file: fire, tall: 0.95, turn: Math.PI }, { file: tent, tall: 1.9, x: -3.3, z: -0.4, turn: -Math.PI / 2 }]) : null;
+  }
+  return null;
+}
+
+/**
  * The people of the mountain and the town, each standing at their post in their own colours. They
  * are the same jointed figure as the player. One turns to watch the player come up, and carries a
  * mark overhead while they have something to ask, hand over or say thanks for.
@@ -352,7 +378,9 @@ export class Folk {
       body.scale.setScalar(kind === 'person' ? SCALE : kind === 'cat' ? 0.62 : 1);
       // Whatever stands beside them: one more mesh, shown and hidden with its owner.
       if (standing.prop && standing.person.prop) {
-        const prop = new THREE.Mesh(PROPS[standing.person.prop](), material);
+        const made = madeProp(standing.person.prop);
+        const prop = new THREE.Mesh(made ? made.geometry : PROPS[standing.person.prop](), material);
+        if (made?.shell) prop.add(new THREE.Mesh(made.shell, ink));
         prop.position.set(standing.prop.x, standing.prop.y, standing.prop.z);
         prop.rotation.y = standing.prop.turn;
         prop.castShadow = castShadow;

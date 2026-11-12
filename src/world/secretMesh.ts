@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { CAIRN_TALL, secretById, type Secret, type SecretKind } from '../game/secrets';
 import { GENTLE_SPEED } from '../game/wildlife';
 import { madeModel } from './critterModels';
-import { modelGeometry } from './modelFiles';
+import { modelGeometry, type ModelFile } from './modelFiles';
 import type { Flue } from './smoke';
 import { runCorridor, type Run } from './unmarked';
 import { lit } from '../look/material';
@@ -143,7 +143,7 @@ function ribboned(tall: number): Block[] {
 }
 
 /** What leads to something in the trees, set down along the way to it: a fox's prints in the snow, or buckets on the maples. */
-function leadPieces(marks: 'tracks' | 'buckets', pts: readonly number[], heightAt: (x: number, z: number) => number, trunks: { x: number; z: number }[]): THREE.BufferGeometry[] {
+function leadPieces(marks: 'tracks' | 'buckets', pts: readonly number[], heightAt: (x: number, z: number) => number, trunks: { x: number; z: number; turn?: number; tall?: number }[], made = false): THREE.BufferGeometry[] {
   const pieces: THREE.BufferGeometry[] = [];
   let gone = 0;
   let next = marks === 'tracks' ? 2 : 9;
@@ -171,9 +171,10 @@ function leadPieces(marks: 'tracks' | 'buckets', pts: readonly number[], heightA
         const tall = 6.5 + (n % 3) * 0.9;
         const list: Block[] = [sunk([0.5, tall, 0.5], [0, tall / 2, 0], 0x6b5a4a), { size: [0.36, 0.42, 0.34], at: [0, 1.25, 0.42], colour: TIN }, { size: [0.44, 0.05, 0.44], at: [0, 1.5, 0.44], colour: DARK, tip: 0.25 }, { size: [0.05, 0.05, 0.2], at: [0, 1.52, 0.3], colour: DARK }];
         for (const [y, a, len] of [[tall * 0.62, 0.8, 2.2], [tall * 0.78, -1.9, 1.8], [tall * 0.9, 2.6, 1.4], [tall, 0.2, 1.3]] as const) list.push({ size: [0.16, len, 0.16], at: [Math.sin(a) * 0.55, y + len * 0.3, Math.cos(a) * 0.55], colour: 0x6b5a4a, tip: 0.75, turn: a });
-        // The bucket faces the way that is walked.
-        pieces.push(placed(blocks(list, [], SMOOTH), x, heightAt(x, z), z, Math.atan2(-(-dz / seg) * side, -(dx / seg) * side)));
-        trunks.push({ x, z });
+        // The bucket faces the way that is walked. (A made maple is stood there by whoever asked; this is the one built from blocks.)
+        const turn = Math.atan2(-(-dz / seg) * side, -(dx / seg) * side);
+        if (!made) pieces.push(placed(blocks(list, [], SMOOTH), x, heightAt(x, z), z, turn));
+        trunks.push({ x, z, turn, tall });
         next += 8.5;
       }
       n++;
@@ -182,6 +183,73 @@ function leadPieces(marks: 'tracks' | 'buckets', pts: readonly number[], heightA
   }
   return pieces;
 }
+
+/**
+ * The model each secret has that was made outside the game (see `thing-*` in
+ * tools/models/manifest.mjs), and how tall it stands, in metres. The owner found the same
+ * things built from blocks too blocky beside the animals; the blocks above are what is drawn
+ * when the made models are not loaded (`models=blocks`).
+ */
+function madeFor(secret: Secret, season: Season): { id: string; tall: number } | null {
+  switch (secret.kind) {
+    case 'register':
+      return { id: 'thing-register', tall: 1.7 };
+    case 'plaque':
+      return { id: 'thing-plaque', tall: 1.15 };
+    case 'bell':
+      return { id: 'thing-bell', tall: 2.6 };
+    case 'den':
+      return { id: season === 'winter' ? 'thing-den-snow' : 'thing-den', tall: 2.2 };
+    case 'nest':
+      return { id: 'thing-nest', tall: 1.5 };
+    case 'shack':
+      return season === 'winter' ? { id: 'thing-shack-snow', tall: 3.9 } : { id: 'thing-shack', tall: 4.2 };
+    case 'ribbon':
+      // (A birch stump, as it came out: about as wide as it is tall.)
+      return { id: 'thing-ribbon', tall: 1.7 };
+    case 'light':
+      return { id: 'thing-lantern', tall: 3.5 };
+    case 'working':
+      return secret.id === 'working-adit' ? { id: 'thing-adit', tall: 3.6 } : secret.id === 'working-cellar' ? { id: 'thing-cellar', tall: 3.2 } : secret.id === 'working-rope-tow' ? { id: 'thing-rope-tow', tall: 2.2 } : null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * The glass of a made lantern, as a shape of its own: whatever of the model is yellow, stood a
+ * finger's width proud of it, to be drawn unlit after dark so that the panes themselves burn.
+ * Null if none of it is yellow.
+ */
+function glassOf(file: ModelFile, tall: number): THREE.BufferGeometry | null {
+  const yellow = file.p.map((hex) => {
+    const c = new THREE.Color(hex);
+    return c.r > 0.75 && c.g > 0.55 && c.b < 0.6;
+  });
+  const k = tall / 1000;
+  const positions: number[] = [];
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  const corner = (i: number, into: THREE.Vector3): THREE.Vector3 => into.set((file.v[i * 3] as number) * k, (file.v[i * 3 + 1] as number) * k, (file.v[i * 3 + 2] as number) * k);
+  for (let t = 0; t < file.f.length; t += 3) {
+    if (!yellow[file.c[t / 3] as number]) continue;
+    corner(file.f[t] as number, a);
+    corner(file.f[t + 1] as number, b);
+    corner(file.f[t + 2] as number, c);
+    n.copy(b).sub(a).cross(c.clone().sub(a)).normalize().multiplyScalar(0.03);
+    for (const p of [a, b, c]) positions.push(p.x + n.x, p.y + n.y, p.z + n.z);
+  }
+  if (positions.length === 0) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/** How far off a made thing is still drawn, in metres. */
+const SEEN_FROM = 420;
 
 /** How close the player must come to a secret for it to be offered, by kind, in metres. */
 const REACH: Record<SecretKind, number> = { register: 3, plaque: 3, working: 6.5, room: 3.6, cairn: 3.2, bell: 3, den: 4.5, nest: 3.6, shack: 5.2, ribbon: 3.4, light: 3.6 };
@@ -213,7 +281,9 @@ export class SecretThings {
   private readonly lamps = new THREE.Group();
   private readonly gone = new Set<string>();
   private night = false;
-  private readonly trunks: { x: number; z: number }[] = [];
+  private readonly trunks: { x: number; z: number; turn?: number; tall?: number }[] = [];
+  /** The made things, each a mesh of its own, drawn only when the player is near enough to see it. */
+  private readonly made: { x: number; z: number; mesh: THREE.Object3D }[] = [];
   private readonly inRun: (x: number, z: number) => boolean;
   /** Small animals at home: the kits at the den, the ducklings at the nest. */
   private readonly young: { id: string; mesh: THREE.Object3D; x: number; z: number; y: number; seed: number }[] = [];
@@ -225,6 +295,31 @@ export class SecretThings {
     const pieces: THREE.BufferGeometry[] = [];
     const material = lit({ vertexColors: true, flatShading: true });
     const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
+    // A made model is shared by every secret that looks like it: twenty-eight plaques are one geometry.
+    const shapes = new Map<string, { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null }>();
+    const shapeOf = (id: string, tall: number): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } | null => {
+      const file = madeModel(id);
+      if (!file) return null;
+      const key = `${id}:${tall}`;
+      const shape = shapes.get(key) ?? modelGeometry(file, tall);
+      shapes.set(key, shape);
+      return shape;
+    };
+    /** Stand a made model somewhere, its front (its own -z) turned to face along `turn`. */
+    const stand = (id: string, tall: number, x: number, y: number, z: number, turn: number): boolean => {
+      const shape = shapeOf(id, tall);
+      if (!shape) return false;
+      const mesh = new THREE.Mesh(shape.geometry, material);
+      if (shape.shell) mesh.add(new THREE.Mesh(shape.shell, ink));
+      mesh.position.set(x, y, z);
+      mesh.rotation.y = turn + Math.PI;
+      mesh.castShadow = shadows;
+      mesh.receiveShadow = true;
+      mesh.visible = false;
+      this.group.add(mesh);
+      this.made.push({ x, z, mesh });
+      return true;
+    };
     for (const site of sites) {
       const secret = secretById(site.id);
       // Something that keeps to a season is simply not there in the others.
@@ -235,12 +330,22 @@ export class SecretThings {
       const cos = Math.cos(site.turn);
       /** A point of the thing's own, front at +z, as a place in the world. */
       const out = (lx: number, lz: number): { x: number; z: number } => ({ x: site.x + lx * cos + lz * sin, z: site.z - lx * sin + lz * cos });
+      const cast = madeFor(secret, season);
+      const stood = cast !== null && stand(cast.id, cast.tall, site.x, y - 0.04, site.z, site.turn);
       if (secret.kind === 'shack' && season === 'spring') this.flues.push({ ...out(0, 0), y: y + 4.2, size: 1.7 });
       if (secret.kind === 'light') {
-        const flame = new THREE.Mesh(new THREE.OctahedronGeometry(0.36, 0), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
-        const at = out(0.95, 0);
-        flame.position.set(at.x, y + 2.48, at.z);
-        flame.scale.set(0.7, 1, 0.7);
+        // In a made lantern it is the glass itself that burns; in the one built from blocks, a flame in the open frame.
+        const file = stood && cast ? madeModel(cast.id) : undefined;
+        const glass = file && cast ? glassOf(file, cast.tall) : null;
+        const flame = new THREE.Mesh(glass ?? new THREE.OctahedronGeometry(0.36, 0), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+        if (glass) {
+          flame.position.set(site.x, y - 0.04, site.z);
+          flame.rotation.y = site.turn + Math.PI;
+        } else {
+          const at = out(0.95, 0);
+          flame.position.set(at.x, y + 2.48, at.z);
+          flame.scale.set(0.7, 1, 0.7);
+        }
         flame.name = secret.id;
         this.lamps.add(flame);
       }
@@ -267,12 +372,22 @@ export class SecretThings {
         }
       }
       const lead = secret.lead?.seasons.includes(season) ? extras.leads?.get(secret.id) : undefined;
-      if (secret.lead && lead && lead.length >= 4) pieces.push(...leadPieces(secret.lead.marks, lead, heightAt, this.trunks));
+      if (secret.lead && lead && lead.length >= 4) {
+        const from = this.trunks.length;
+        // (A made maple is a stout sawn-off trunk, not a whole tree: a little over head height.)
+        const maple = secret.lead.marks === 'buckets' ? shapeOf('thing-maple', 3.3) : null;
+        pieces.push(...leadPieces(secret.lead.marks, lead, heightAt, this.trunks, maple !== null));
+        // The maples with buckets on them, when they are made models: the one model, stood again and again, in two draw calls.
+        if (maple) this.rows(maple, this.trunks.slice(from).map((t) => ({ x: t.x, y: heightAt(t.x, t.z) - 0.05, z: t.z, turn: (t.turn ?? 0) + Math.PI, scale: (t.tall ?? 7) / 7 })), material, ink, shadows);
+      }
       if (secret.kind === 'cairn') this.cairns.push({ id: secret.id, x: site.x, y, z: site.z, count: 0 });
+      if (stood) continue;
       const { list, extra } = model(secret, season);
       if (list.length + extra.length > 0) pieces.push(placed(blocks(list, extra, SMOOTH), site.x, y, site.z, site.turn));
     }
     // A ribbon on a birch every so often down each unmarked run, at its edge, to say that this is still the way.
+    const birch = shapeOf('thing-ribbon', 1.1);
+    const ribbons: { x: number; y: number; z: number; turn: number; scale: number }[] = [];
     for (const run of runs) {
       for (let i = 20; i + 12 < run.pts.length; i += 20) {
         const dx = (run.pts[i + 2] as number) - (run.pts[i] as number);
@@ -281,10 +396,12 @@ export class SecretThings {
         const side = (i / 20) % 2 ? 1 : -1;
         const x = (run.pts[i] as number) + (-dz / len) * side * 5.6;
         const z = (run.pts[i + 1] as number) + (dx / len) * side * 5.6;
-        pieces.push(placed(blocks(ribboned(2.4), [], SMOOTH), x, heightAt(x, z), z, i));
+        if (birch) ribbons.push({ x, y: heightAt(x, z) - 0.04, z, turn: i, scale: 1 });
+        else pieces.push(placed(blocks(ribboned(2.4), [], SMOOTH), x, heightAt(x, z), z, i));
         this.trunks.push({ x, z });
       }
     }
+    if (birch && ribbons.length > 0) this.rows(birch, ribbons, material, ink, shadows);
     this.lamps.visible = false;
     this.group.add(this.lamps);
     const mesh = new THREE.Mesh(blocks([], pieces, SMOOTH), material);
@@ -300,6 +417,24 @@ export class SecretThings {
     this.stones.castShadow = shadows;
     this.stones.frustumCulled = false;
     this.group.add(this.stones);
+  }
+
+  /** One made model stood in many places: an instanced mesh, and another for its outline. */
+  private rows(shape: { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null }, at: readonly { x: number; y: number; z: number; turn: number; scale: number }[], material: THREE.Material, ink: THREE.Material, shadows: boolean): void {
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const up = new THREE.Vector3(0, 1, 0);
+    const p = new THREE.Vector3();
+    const s = new THREE.Vector3();
+    for (const [geometry, mat] of [[shape.geometry, material], [shape.shell, ink]] as const) {
+      if (!geometry) continue;
+      const mesh = new THREE.InstancedMesh(geometry, mat, at.length);
+      at.forEach((spot, i) => mesh.setMatrixAt(i, m.compose(p.set(spot.x, spot.y, spot.z), q.setFromAxisAngle(up, spot.turn), s.setScalar(spot.scale))));
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.castShadow = shadows && mat === material;
+      mesh.computeBoundingSphere();
+      this.group.add(mesh);
+    }
   }
 
   /** The secret within reach of a point, the nearest if there are two. */
@@ -339,6 +474,8 @@ export class SecretThings {
    */
   about(x: number, z: number, speed: number, time: number): Secret | null {
     let startled: Secret | null = null;
+    // A made thing is drawn while the player is near enough to see it, and not otherwise.
+    for (const thing of this.made) thing.mesh.visible = Math.abs(thing.x - x) < SEEN_FROM && Math.abs(thing.z - z) < SEEN_FROM;
     for (const at of this.placedAt) {
       if (!at.secret.shy) continue;
       const d = Math.hypot(at.site.x - x, at.site.z - z);

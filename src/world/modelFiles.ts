@@ -110,3 +110,40 @@ export function modelGeometry(file: ModelFile, height: number): { geometry: THRE
   }
   return { geometry, shell: hull };
 }
+
+/**
+ * Several made models as one: each stood at a place of its own and turned. For things that
+ * are set down together and never move apart (a tent and the fire in front of it).
+ */
+export function joinModels(parts: readonly { file: ModelFile; tall: number; x?: number; y?: number; z?: number; turn?: number }[]): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } {
+  const made = parts.map((part) => {
+    const one = modelGeometry(part.file, part.tall);
+    for (const geo of [one.geometry, one.shell]) {
+      if (!geo) continue;
+      if (part.turn) geo.rotateY(part.turn);
+      geo.translate(part.x ?? 0, part.y ?? 0, part.z ?? 0);
+    }
+    return one;
+  });
+  const join = (name: string, list: readonly THREE.BufferGeometry[]): THREE.Float32BufferAttribute => {
+    const all = new Float32Array(list.reduce((n, geo) => n + geo.getAttribute(name).array.length, 0));
+    let at = 0;
+    for (const geo of list) {
+      all.set(geo.getAttribute(name).array as Float32Array, at);
+      at += geo.getAttribute(name).array.length;
+    }
+    return new THREE.Float32BufferAttribute(all, 3);
+  };
+  const geometry = new THREE.BufferGeometry();
+  for (const name of ['position', 'color', 'normal']) geometry.setAttribute(name, join(name, made.map((m) => m.geometry)));
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  const shells = made.flatMap((m) => (m.shell ? [m.shell] : []));
+  let shell: THREE.BufferGeometry | null = null;
+  if (shells.length > 0) {
+    shell = new THREE.BufferGeometry();
+    shell.setAttribute('position', join('position', shells));
+    shell.computeBoundingSphere();
+  }
+  return { geometry, shell };
+}
