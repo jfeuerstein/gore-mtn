@@ -43,9 +43,30 @@ export function projectState(id: string, begun: Readonly<Record<string, string>>
   const mine = begun[id];
   // Staked out one day, built by the next.
   if (mine !== undefined) return mine < day ? 'built' : 'building';
-  // The town takes them one at a time: the next is proposed once the one before is built.
+  // The town takes them one at a time, and takes its time: the next is proposed once the one
+  // before has stood a few days, so that there is something new on the mountain for weeks.
   const before = PROJECTS[at - 1];
-  return before === undefined || projectState(before.id, begun, day) === 'built' ? 'proposed' : 'later';
+  if (before === undefined) return 'proposed';
+  const stood = begun[before.id];
+  return stood !== undefined && daysBetween(stood, day) > REST ? 'proposed' : 'later';
+}
+
+/** How many days a thing stands before the town proposes the next: staked out on a Monday and built on the Tuesday, the next is on Friday's flyer. */
+export const REST = 3;
+
+/** Whole days from one day to a later one. */
+export function daysBetween(from: string, to: string): number {
+  const at = (day: string): number => {
+    const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((at(to) - at(from)) / 86400000);
+}
+
+/** True while the last thing built is new and the town has not yet said what is next. */
+export function townResting(begun: Readonly<Record<string, string>>, day: string): boolean {
+  if (projectInHand(begun, day)) return false;
+  return PROJECTS.some((p, i) => projectState(p.id, begun, day) === 'built' && PROJECTS[i + 1] !== undefined && begun[(PROJECTS[i + 1] as Project).id] === undefined);
 }
 
 /** The project the town has in hand today, if any: the one wanting its spot, or the one being built. */

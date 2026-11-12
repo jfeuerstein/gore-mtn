@@ -40,8 +40,8 @@ export class Toasts {
     (document.getElementById('app') ?? document.body).appendChild(this.el);
   }
 
-  /** True while announcements are kept back: under the loading card, and while the welcome is being read. */
-  private held = false;
+  /** True while announcements are kept back: under the loading card (so from the very start), and while the welcome or the flyer is up. */
+  private held = true;
 
   /** Keep announcements back, or let those that were waiting out. Safe to call every frame. */
   hold(on: boolean): void {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayNumber, GENTLE_UNTIL, snowReport, trailOfTheDay, trailPick, wildlifeLog, type Conditions } from './report';
+import { dayNumber, GENTLE_UNTIL, snowReport, trailOfTheDay, trailPick, trailReason, wildlifeLog, type Conditions } from './report';
 import { SPECIES } from './wildlife';
 
 const fair: Conditions = { season: 'winter', overcast: 0, falling: 0, watch: 'day', day: '2026-11-11' };
@@ -62,6 +62,13 @@ describe('the trail of the day', () => {
     // With half a dozen trails in the passport, the board picks from everything that is left.
     const done = new Set(hill.slice(0, GENTLE_UNTIL).map((t) => t.name));
     expect(new Set(days.map((day) => trailPick(hill, (name) => done.has(name), day)?.name)).size).toBeGreaterThan(2);
+  });
+
+  it('never gives the reason it gave yesterday', () => {
+    for (let d = 1; d < 60; d++) {
+      const day = (n: number): string => new Date(Date.UTC(2026, 10, n, 12)).toISOString().slice(0, 10);
+      expect(trailReason(day(d + 1)), day(d + 1)).not.toBe(trailReason(day(d)));
+    }
   });
 
   it('does not walk down the list from one day to the next', () => {

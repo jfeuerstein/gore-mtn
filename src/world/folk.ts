@@ -3,7 +3,9 @@ import type { Person } from '../game/people';
 import type { Season } from '../look/season';
 import { STANDING } from '../player/pose';
 import type { Outfit } from '../player/skier';
+import { madeModel } from './critterModels';
 import { figureGeometry } from './figure';
+import { modelGeometry } from './modelFiles';
 import { blocks, type Block } from './shapes';
 import { lit } from '../look/material';
 
@@ -252,10 +254,17 @@ export class Folk {
   constructor(people: readonly Standing[], castShadow: boolean, season: Season = 'winter') {
     this.group.name = 'folk';
     const material = lit({ vertexColors: true, flatShading: true });
+    // The line round a made model: its own shape a little larger, inside out, in ink.
+    const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
     for (const standing of people) {
       const kind = standing.person.kind ?? 'person';
-      const geometry = kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : kind === 'cat' ? cat() : kind === 'snowman' ? tom(season) : standingFigure(standing.person.look);
+      // The dog and the cat have models made outside the game, as the animals of the field guide
+      // do, when those have been loaded: otherwise the ones built here from blocks.
+      const file = kind === 'dog' || kind === 'cat' ? madeModel(standing.person.id) : undefined;
+      const pet = file ? modelGeometry(file, kind === 'dog' ? 1.4 : 1) : null;
+      const geometry = pet ? pet.geometry : kind === 'board' ? noticeboard() : kind === 'dog' ? dog() : kind === 'cat' ? cat() : kind === 'snowman' ? tom(season) : standingFigure(standing.person.look);
       const body = new THREE.Mesh(geometry, material);
+      if (pet?.shell) body.add(new THREE.Mesh(pet.shell, ink));
       body.scale.setScalar(kind === 'person' ? SCALE : kind === 'cat' ? 0.62 : 1);
       // Whatever stands beside them: one more mesh, shown and hidden with its owner.
       if (standing.prop && standing.person.prop) {

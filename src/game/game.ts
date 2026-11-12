@@ -14,7 +14,7 @@ import {
   type Spot,
   type TrailEntry,
 } from './passport';
-import { letterWaiting, LETTERS, type Letter } from './letters';
+import { LAST_LETTER, letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
 import { PATCHES, patchesEarned, type Tally } from './patches';
 import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
@@ -618,8 +618,15 @@ export class Game {
       if (letter) {
         save.letters[letter.id] = day;
         talk.letter = letter;
-        talk.lines.push(letter.from === 'dot' ? 'Here - the first piece of mail in your box!\nI wrote it myself, just to make sure the box works.' : "One for you today!\nI didn't read it. I did read the envelope.");
-        talk.events.push({ kind: 'item', title: `A letter from ${letter.from ? (personById(letter.from)?.name ?? 'someone') : 'somebody'}`, detail: 'Kept in your pack' });
+        const last = letter.id === LAST_LETTER;
+        talk.lines.push(
+          last
+            ? "Oh! This one's from everybody. We all signed it.\nI'm not supposed to say what's in it. It's good."
+            : letter.from === 'dot'
+              ? 'Here - the first piece of mail in your box!\nI wrote it myself, just to make sure the box works.'
+              : "One for you today!\nI didn't read it. I did read the envelope.",
+        );
+        talk.events.push({ kind: 'item', title: last ? 'A letter from everybody' : `A letter from ${letter.from ? (personById(letter.from)?.name ?? 'someone') : 'somebody'}`, detail: 'Kept in your pack' });
       }
     }
     // The innkeeper passes on the day's rumour, once.

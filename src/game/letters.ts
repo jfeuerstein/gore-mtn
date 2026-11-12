@@ -25,10 +25,13 @@ const built = (project: string, who: string) => (save: SaveData) => project in s
 /** How many patches there are to earn. Kept here as a number so the post need not read the patch rules; a test holds the two together. */
 export const EVERY_PATCH = 28;
 
+/** The letter that closes a full book. */
+export const LAST_LETTER = 'the-whole-town';
+
 export const LETTERS: readonly Letter[] = [
   // The last letter, which goes to the head of the queue the day the book is full.
   {
-    id: 'the-whole-town',
+    id: LAST_LETTER,
     from: null,
     signed: "-Everybody (Pip signed for Tom)",
     when: (save) => Object.keys(save.patches).length >= EVERY_PATCH,
@@ -100,7 +103,7 @@ export const LETTERS: readonly Letter[] = [
     from: 'june',
     signed: "-June",
     when: met('june'),
-    text: "New this week: the Double Diamond (two kinds of chocolate), the Bunny Hill (it's a carrot muffin) and the Yard Sale (everything). Come by! I'll save you one.",
+    text: "New this week: the Black Diamond brownie (it's really, really dark), the Mud Season muffin (double chocolate) and the Summit sticky bun (tall). Come by! I'll save you one.",
   },
   {
     id: 'wren-dawn',

@@ -34,6 +34,18 @@ function site(): { list: Block[]; extra: THREE.BufferGeometry[] } {
   return { list, extra: [] };
 }
 
+/** A spot the town has its eye on: one tall stake with a ribbon, so there is something to walk toward. */
+function marker(): { list: Block[]; extra: THREE.BufferGeometry[] } {
+  return {
+    list: [
+      { size: [0.14, 2.3, 0.14], at: [0, 1.15, 0], colour: PALE },
+      { size: [0.05, 0.3, 0.7], at: [0, 2.1, 0.38], colour: RED },
+      { size: [0.05, 0.3, 0.5], at: [0, 1.76, 0.28], colour: RED, tip: 0.25 },
+    ],
+    extra: [],
+  };
+}
+
 /** What each kind of thing is made of, with its front at its own +z. */
 function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: THREE.BufferGeometry[] } {
   const list: Block[] = [];
@@ -124,8 +136,8 @@ export class TownProjects {
     }
     const plot = this.plots.find((p) => p.id === id);
     const kind = this.kinds.get(id);
-    if (!plot || !kind || state === 'later' || state === 'proposed') return;
-    const { list, extra } = state === 'built' ? model(kind, this.roofColour) : site();
+    if (!plot || !kind || state === 'later') return;
+    const { list, extra } = state === 'built' ? model(kind, this.roofColour) : state === 'building' ? site() : marker();
     const mesh = new THREE.Mesh(blocks(list, extra), this.material);
     mesh.position.set(plot.x, this.heightAt(plot.x, plot.z), plot.z);
     mesh.rotation.y = plot.turn;

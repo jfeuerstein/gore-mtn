@@ -63,7 +63,7 @@ export const MODELS = {
   trillium: { what: 'a red trillium plant growing from a small mound of earth: three broad green leaves and one dark red flower with three petals', inks: 'plant', by: 'tripo' },
   troutlily: { what: 'a trout lily plant growing from a small mound of earth: two green leaves mottled with brown and one nodding yellow flower', inks: 'plant', by: 'tripo' },
   fiddlehead: { what: 'a clump of fiddlehead ferns growing from a small mound of earth: five thick green fern shoots curled into spirals at the top', inks: 'plant', by: 'tripo' },
-  ladyslipper: { what: "a pink lady's slipper orchid growing from a small mound of earth: two broad green leaves and one pink pouch-shaped flower on a stem", inks: 'plant' },
+  ladyslipper: { what: "a pink lady's slipper orchid growing from a small mound of earth: two broad green leaves and one pink pouch-shaped flower on a stem", inks: 'plant', by: 'tripo' },
   daisy: { what: 'a clump of oxeye daisies growing from a small mound of grass: white petals, yellow centres, green stems and leaves', inks: 'plant' },
   blueberry: { what: 'a low wild blueberry bush, a rounded mound of small green leaves with clusters of dark blue berries', inks: 'plant', by: 'tripo' },
   cattail: { what: 'a clump of cattails growing from a small mound of mud: tall green reed leaves and four brown sausage-shaped seed heads', inks: 'plant', by: 'tripo' },
@@ -71,8 +71,11 @@ export const MODELS = {
   chanterelle: { what: 'a cluster of three golden-orange chanterelle mushrooms with wavy caps, growing from a small mound of green moss', inks: 'plant' },
   flyagaric: { what: 'two fly agaric mushrooms, one tall and one small, bright red caps with white spots, thick white stems, on a small mound of earth', inks: 'plant' },
   mapleleaf: { what: 'one large red and orange maple leaf with a little curl to it, lying on a small flat mound of earth', inks: 'plant' },
-  balsamcone: { what: 'a short bough of balsam fir with green needles and three purple cones standing upright on it', inks: 'plant' },
+  balsamcone: { what: 'a short bough of balsam fir with green needles and three purple cones standing upright on it', inks: 'plant', by: 'tripo' },
   birchbark: { what: 'a thick curl of white birch bark with black marks, peeled from a log, lying on the ground', by: 'tripo' },
   cairn: { what: "a hiker's cairn: a neat stack of six flat grey stones, largest at the bottom, smallest on top" },
   snowman: { what: 'a small friendly snowman of three snowballs with stick arms, a carrot nose, coal eyes and a red scarf', inks: 'plant' },
+  // Not of the field guide: the dog at the Saddle Lodge and the cat who is mayor, by the id each has among the people.
+  biscuit: { what: 'a big fluffy mountain rescue dog sitting upright, white with large brown patches and brown ears, a small wooden barrel hanging from its collar', by: 'tripo' },
+  pickles: { what: 'a fat orange tabby cat sitting very upright and dignified, with a cream chest, wearing a gold chain of office with a round medallion', by: 'tripo' },
 };

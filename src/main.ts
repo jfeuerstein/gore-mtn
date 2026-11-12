@@ -16,7 +16,7 @@ import { FrameStats } from './debug/perf';
 import { COLLECT_REACH, Game, type GameEvent } from './game/game';
 import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
-import { letterWaiting } from './game/letters';
+import { LAST_LETTER, letterWaiting } from './game/letters';
 import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
 import { dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
@@ -25,7 +25,7 @@ import { artSlug } from './game/artNames';
 import { MINERALS } from './game/minerals';
 import { PATCHES } from './game/patches';
 import { cabinSpots } from './world/cabin';
-import { PROJECTS } from './game/projects';
+import { PROJECTS, townResting } from './game/projects';
 import { TownProjects } from './world/projectMesh';
 import { floorAt, projectFloors, projectWalls as wallsOfProject, type Floor } from './world/projectPlots';
 import { Cabin } from './world/cabinMesh';
@@ -1063,14 +1063,20 @@ async function boot(): Promise<void> {
         const found = all.find((l) => l.lead.id === id);
         return found ? [{ ...found.lead, done: !found.open }] : [];
       }),
-      // One line in pencil: whoever is at the feeder first, then what tomorrow brings, then the mail.
-      note: game.feederGuest(today, season, watch)
-        ? "P.S. Somebody's at your feeder."
-        : building
-          ? `P.S. ${building.name} will be up by tomorrow.`
-          : letter
-            ? "P.S. There's a letter for you at the post office."
-            : null,
+      // One line in pencil: the last letter before anything; then whoever is at the feeder, what
+      // tomorrow brings, the mail, and the town making up its mind.
+      note:
+        letter?.id === LAST_LETTER
+          ? "P.S. There's a letter at the post office. It's from everybody."
+          : game.feederGuest(today, season, watch)
+            ? "P.S. Somebody's at your feeder."
+            : building
+              ? `P.S. ${building.name} will be up by tomorrow.`
+              : letter
+                ? "P.S. There's a letter for you at the post office."
+                : townResting(game.save.projects, today)
+                  ? "P.S. The town's thinking about what to build next."
+                  : null,
       flagged: game.save.flag,
       riding: look.ride === 'bike',
     };
@@ -1275,7 +1281,7 @@ async function boot(): Promise<void> {
     // creature come upon at speed bolts first. From a lift everything below can be watched at ease.
     const looked = game.lookAbout(px, pz, player.mode === 'lift' ? 0 : player.speed, today, season, watch);
     // The first time something not yet in the guide is near, say what its mark means and how to see it.
-    if (player.mode !== 'lift' && game.sightingsNear(px, pz, today, season, watch).some((s) => !(s.species.id in game.save.sightings) && Math.hypot(s.x - px, s.z - pz) < 45)) {
+    if (player.mode !== 'lift' && window.__gore.ready && !sheetOpen() && game.sightingsNear(px, pz, today, season, watch).some((s) => !(s.species.id in game.save.sightings) && Math.hypot(s.x - px, s.z - pz) < 45)) {
       hint('guide', 'Something for the field guide', 'The pale blue mark is over it. Come close, gently.');
     }
     for (const { sighting, event } of looked.seen) {
@@ -1355,7 +1361,8 @@ async function boot(): Promise<void> {
       // The welcome has been read: now the day's flyer, as on any other day.
       flyerWaits = true;
     }
-    toasts.hold(!window.__gore.ready || welcomed);
+    // Nothing is announced under the loading card, the welcome or the flyer: it waits its turn.
+    toasts.hold(!window.__gore.ready || welcomed || flyerWaits || flyer.isOpen);
     const someone = player.mode === 'lift' ? null : folk.nearest(px, pz, 7);
     const stop = player.mode === 'lift' || someone ? null : (stops.find((st) => Math.hypot(st.x - px, st.z - pz) < 9) ?? null);
     if (talkSheet.isOpen && !someone && !stop && !welcomed) talkSheet.close();

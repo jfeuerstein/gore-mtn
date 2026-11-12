@@ -103,6 +103,10 @@ const REASONS: readonly string[] = [
   'somebody should',
   "there's a good view about halfway down",
   "no reason. It's just a nice one",
+  'Hazel says the snow is good on it',
+  "it's quiet over there today",
+  'Biscuit likes to watch people come down it',
+  'the sun gets to it early',
 ];
 
 /**
@@ -138,7 +142,11 @@ export function trailPick<T extends { name: string; difficulty?: string; glade?:
 
 /** Why today's trail is today's trail. */
 export function trailReason(day: string): string {
-  return REASONS[(dayNumber(day) >>> 3) % REASONS.length] as string;
+  // Stepped through three at a time, so that no reason comes round again for ten days, with
+  // each month starting somewhere of its own. It can never be the reason given yesterday.
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  const count = Math.round(Date.UTC(y, m - 1, d) / 86400000);
+  return REASONS[(count * 3 + (dayNumber(day.slice(0, 7)) % 3)) % REASONS.length] as string;
 }
 
 const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime', dusk: 'last light', night: 'after dark' };

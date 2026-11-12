@@ -6,7 +6,7 @@ import { Skier, type Outfit } from './skier';
 import { boardingDistance, riderAlong, type LiftPath } from '../world/lifts';
 import {
   advanceSki,
-  descentAlong,
+  descentAlong, fallLineYaw,
   skierAt,
   slipAngle,
   speedOf,
@@ -49,6 +49,8 @@ export class Player {
   /** Direction of travel as a yaw, in the same convention as the camera. */
   travelHeading = 0;
   private heading = 0;
+  /** The ground last stood on, for things that happen between frames (clipping into skis). */
+  private ground: Heightfield | null = null;
   /** Velocity and lean while on skis. */
   private skiState: SkiState = skierAt(0, 0, 0);
   private lean = 0;
@@ -156,6 +158,25 @@ export class Player {
     return path;
   }
 
+  /**
+   * Skis that go on pointing up the hill would leave the player stuck: at a standstill the
+   * poles lose to the slope. So skis put on that way, or stepped off a lift on, are swung
+   * round the nearer way to point across the hill and a little down it, where the hill
+   * starts them moving and the thumb can steer.
+   */
+  private offTheUphill(): void {
+    const hf = this.ground;
+    if (!hf) return;
+    const { x, z } = this.position;
+    if (descentAlong(hf, x, z, this.heading) > -0.03) return;
+    const fall = fallLineYaw(hf, x, z);
+    let off = this.heading - fall;
+    while (off > Math.PI) off -= Math.PI * 2;
+    while (off < -Math.PI) off += Math.PI * 2;
+    this.heading = fall + (off >= 0 ? 1 : -1) * 1.1;
+    this.object.rotation.y = this.heading;
+  }
+
   /** Clip into or out of skis. Either way the player starts from a standstill. On a lift, it takes effect at the top. */
   setMode(mode: 'walk' | 'ski'): void {
     this.seat = null;
@@ -167,6 +188,7 @@ export class Player {
       return;
     }
     this.mode = mode;
+    if (mode === 'ski') this.offTheUphill();
     this.stop();
     this.travelHeading = this.heading;
     if (mode === 'walk') {
@@ -218,6 +240,7 @@ export class Player {
     bumpAt: (x: number, z: number, radius: number) => Bump | null = () => null,
     clock = 0,
   ): void {
+    this.ground = hf;
     if (this.mode === 'lift') this.rideLift(dt, clock);
     else if (this.mode === 'ski') this.ski(dt, stickToSki(moveX, moveY), hf, groomedAt, bumpAt);
     else this.walk(dt, moveX, moveY, camYaw, fast, hf, bumpAt);

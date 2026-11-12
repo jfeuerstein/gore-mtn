@@ -206,6 +206,11 @@ trying it beside the plain look. Four things make it, and anything new must take
   mushrooms, the cairn and the snowman (the hare has two, for its two coats). The icicles and
   the Rumor are still blocks. `zoo=1` lines the animals up in front of the player and `zoo=2`
   the rest.
+- The first way makes a poor job of anything made of thin things: a clump of stems comes back
+  as shards. A model marked `by: 'tripo'` in the manifest is made the other way: Tripo's image
+  model paints it as a chunky toy (`TRIPO.look`) and Tripo makes a shape of that picture, by
+  the picture's own task id, so nothing is uploaded. It is then printed like the rest. About
+  40 credits each; the owner has said Tripo may be used for models and pictures.
 - A model says which inks it may be printed in (`inks` in the manifest): an animal's earths,
   a bird's (which add blue, red and yellow) or a plant's (which add greens and the colours of
   flowers). A plant is asked for growing from a little mound, so that it stands as one piece.
@@ -214,9 +219,8 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture. Something white is painted `against` a colour: white on white comes back from the
   shape model as a wall. When a shape comes back wrong (a box behind it, lying flat), make it
   again with `--redo id --bump n`.
-- The converter can make other looks from the same shape (faceted, smooth), and `--tripo
-  id,id` has Tripo make a shape straight from the words (about 30 credits each); the owner
-  tried those and chose the park print, so neither ships.
+- The converter can make other looks from the same shape (faceted, smooth); the owner tried
+  those and chose the park print, so they do not ship.
 
 ### Built in code
 
@@ -315,6 +319,9 @@ Everything else is built in code from simple shapes.
   real trails and prints length, time and speed for each. Use it to judge a tuning change before
   the owner tries it.
 - One thumb: left and right steer, up tucks (and poles from a standstill), down is a hockey stop.
+  Skis put on pointing up the hill, or stepped off a lift on, are swung round the nearer way
+  to point across it and a little down (`Player.offTheUphill`): at a standstill the poles
+  lose to the slope, and a first run must not begin with nothing happening.
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - Open water is painted on the ground. Out of winter someone crossing it wades, to the knees
   (`footing` in `main.ts`); in winter it is ice and snow like anywhere else.
@@ -483,10 +490,11 @@ Everything else is built in code from simple shapes.
   movement feel like movement.
 - `Game.hint(id)` is true once. `main.ts` uses it for the welcome and for a hint the first time
   each thing comes up. `intro=0` turns both off; the tools set it. Announcements are held back
-  while the loading card or the welcome is up (`Toasts.hold`), and Settings can put the
-  welcome up again.
+  from the very start until the loading card, the welcome and the flyer are out of the way
+  (`Toasts.hold`), and Settings can put the welcome up again.
 - The last letter (`the-whole-town`) is sent, ahead of the queue, the day every patch has been
-  earned: the game's only ending, and it asks the player to come up anyway.
+  earned: the game's only ending, and it asks the player to come up anyway. The flyer's P.S.
+  says it is waiting before anything else, and Dot has a line of her own for it.
 - If the game cannot load, `showFatal` says so kindly, offers `Try again`, and keeps what went
   wrong small underneath.
 - `src/game/patches.ts` lists the patches for finishing a whole kind of thing. They are checked
@@ -613,8 +621,10 @@ Everything else is built in code from simple shapes.
   lumber appear; and by the next calendar day it is built. Then the flyer says so, the map
   marks it, and being there earns a postcard: every project is a landmark, shown in the Book
   as not built yet until it is. While one is going up, the flyer's P.S. says it will be done
-  tomorrow. The next is proposed once the one before stands. Nothing is paid, carried or
-  timed, and a project never staked out simply waits.
+  tomorrow. The next is proposed once the one before has stood a few days (`REST`), so five
+  projects last a keen player about three weeks; meanwhile the P.S. says the town is thinking
+  about what to build next. A proposed plot has one ribboned stake on it, to walk toward.
+  Nothing is paid, carried or timed, and a project never staked out simply waits.
 - `src/world/projectPlots.ts` (pure, tested) finds each plot from a description (along a
   path, on a pond's shore, at the top of a lift): dry ground, level enough, off the trails,
   turned to face the water or the way the ground falls away. `Built` keeps a clearing at
