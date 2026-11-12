@@ -18,7 +18,7 @@ import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { letterWaiting } from './game/letters';
 import { sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
-import { flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
+import { dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
 import { CabinSheet } from './ui/cabinSheet';
 import { artSlug } from './game/artNames';
@@ -27,7 +27,7 @@ import { PATCHES } from './game/patches';
 import { cabinSpots } from './world/cabin';
 import { PROJECTS } from './game/projects';
 import { TownProjects } from './world/projectMesh';
-import { projectWalls as wallsOfProject } from './world/projectPlots';
+import { floorAt, projectFloors, projectWalls as wallsOfProject, type Floor } from './world/projectPlots';
 import { Cabin } from './world/cabinMesh';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
 import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
@@ -41,7 +41,7 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { pushOut } from './player/collide';
 import { BIKE, fallLineYaw, SKI, SPRING_SKI } from './player/skiPhysics';
-import { buildLiftPath, inLiftClearing, pointAlong, stationNear } from './world/lifts';
+import { buildLiftPath, gateBeams, inLiftClearing, overBeam, pointAlong, stationNear } from './world/lifts';
 import { Built } from './world/built';
 import { signName } from './world/streets';
 import { countryOf } from './world/country';
@@ -63,7 +63,7 @@ import { trailAt, type Place } from './world/trails';
 import { Forest, TREE_RANGE } from './world/trees';
 import { Walls, type WallBox } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
-import { loadWorld, OPEN_LAND } from './world/world';
+import { loadWorld, OPEN_LAND, OPEN_WATER } from './world/world';
 import { lit, usePrint } from './look/material';
 
 /** A picture of the land as a print: the same picture, repainted on a canvas in the season's inks. */
@@ -171,7 +171,18 @@ function showFatal(message: string): void {
     el.id = 'fatal';
     (document.getElementById('app') ?? document.body).appendChild(el);
   }
-  el.textContent = `Something went wrong.\n\n${message}`;
+  // A kind word and a way on first; what went wrong, small, underneath, for whoever is fixing it.
+  const sorry = document.createElement('b');
+  sorry.textContent = "The mountain didn't load.";
+  const why = document.createElement('p');
+  why.textContent = navigator.onLine === false ? "There's no signal right now. It'll be here when there is." : "That happens sometimes. It's usually fine the second time.";
+  const again = document.createElement('button');
+  again.type = 'button';
+  again.textContent = 'Try again';
+  again.addEventListener('click', () => location.reload());
+  const detail = document.createElement('small');
+  detail.textContent = message;
+  el.replaceChildren(sorry, why, again, detail);
 }
 window.addEventListener('error', (e) => showFatal(String(e.error?.stack ?? e.message)));
 window.addEventListener('unhandledrejection', (e) => showFatal(String(e.reason?.stack ?? e.reason)));
@@ -284,6 +295,7 @@ async function boot(): Promise<void> {
   const canopyPicture = repaint(canopyTexture, cfg.look, season);
   const terrain = new Terrain(ground, snowPicture, canopyPicture, underfoot.print);
   const liftPaths = world.lifts.map((lift) => buildLiftPath(lift, (x, z) => ground.heightAt(x, z)));
+  const beams = gateBeams(liftPaths);
   // Everything people have built, apart from the lifts: lodges, the town, the train, signs.
   const built = new Built(world, (x, z) => ground.heightAt(x, z), season, look.roof, shadows, cfg.siding);
   const { townPlaces, depot: depotAt } = built;
@@ -556,6 +568,10 @@ async function boot(): Promise<void> {
     game.arrange(where, slot);
     setOut();
   };
+  cabinSheet.onPlace = (where, slot, id) => {
+    game.place(where, slot, id);
+    setOut();
+  };
   cabinSheet.onFill = () => {
     if (game.fillFeeder(today)) toasts.show({ kind: 'hint', title: 'Feeder filled', detail: 'Somebody might come by tomorrow.' });
   };
@@ -568,8 +584,8 @@ async function boot(): Promise<void> {
         patchArt: (id) => art('patches', id),
         stoneName: (id) => MINERALS.find((m) => m.id === id)?.name ?? id,
         patchName: (id) => PATCHES.find((p) => p.id === id)?.name ?? id,
-        stones: game.shelfChoices().length,
-        patches: game.wallChoices().length,
+        stoneChoices: game.shelfChoices(),
+        patchChoices: game.wallChoices(),
         guest: guest ? (SPECIES.find((sp) => sp.id === guest)?.name ?? null) : null,
       };
     });
@@ -578,6 +594,8 @@ async function boot(): Promise<void> {
   scene.add(townProjects.group);
   /** What of each built project is solid, so that it can be taken away again if the book changes. */
   const projectWalls = new Map<string, WallBox[]>();
+  /** The floors of what has been built: a dock's planks, a bandstand's boards. */
+  let floors: Floor[] = [];
   const showProjects = (): void => {
     for (const p of PROJECTS) {
       const state = game.projectState(p.id, today);
@@ -588,7 +606,18 @@ async function boot(): Promise<void> {
       for (const box of solid) walls.add(box);
       projectWalls.set(p.id, solid);
     }
+    floors = PROJECTS.flatMap((p) => {
+      const plot = built.plots.find((q) => q.id === p.id);
+      return plot && game.projectState(p.id, today) === 'built' ? projectFloors(p.kind, plot, ground.heightAt(plot.x, plot.z)) : [];
+    });
   };
+  /**
+   * How far above the ground (or below it) the player's feet are: up on a floor the town has
+   * built, or, out of winter, down in the water to the knees. Open water is only painted on
+   * the ground, so someone crossing it wades. It is eased, so a step up is a step and not a jump.
+   */
+  let footing = 0;
+  const WADE = -0.5;
   /** True while whoever was at the feeder is still there for the player to look at, though the feeder is empty again. */
   let guestStays = false;
 
@@ -721,7 +750,7 @@ async function boot(): Promise<void> {
   });
   // And out to the old garnet mine, where the tours have always gone by bus.
   const mineStop = standAt({ spot: 'gore-mt-mineral-shop' }, 12, 8);
-  if (mineStop) stops.push({ id: 'mine', name: 'the Garnet Mine', ...mineStop });
+  if (mineStop) stops.push({ id: 'mine', name: 'the Mineral Shop', ...mineStop });
   scene.add(folk.group, keepsakes.group, buildStops(stops, shadows));
   player.setOutfit(game.outfit());
   book.onWear = () => player.setOutfit(game.outfit());
@@ -951,6 +980,22 @@ async function boot(): Promise<void> {
   showProjects();
   announce(game.arrivedIn(season, today));
   if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
+  /** The welcome: a few words for someone new. Settings can put it up again. */
+  const openWelcome = (): void => {
+    talkSheet.open('Welcome to Gore', 'A quiet mountain, in your pocket', [
+      "Hi! There's no timer here, and nothing can go wrong.\nJust wander around.",
+      'Rest your thumb on the lower part of the screen to walk.\nDrag higher up to look around. Pinch to pull the camera back.',
+      `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill.\nThe lifts will bring you back up.`,
+      'Stones glint on the ground. Trails, lifts and summits stamp your passport.\nIt all goes in the Book, bottom right.',
+      "This is your cabin. Every day starts here, with a flyer of things worth doing.\nIf you get turned around, the Map knows the way.",
+    ]);
+    welcomed = true;
+  };
+  hud.onHowTo = openWelcome;
+  /** True when the day's flyer is to go up as soon as nothing else is open: after the welcome, and when midnight passes. */
+  let flyerWaits = false;
+  /** True while any sheet is up over the picture. */
+  const sheetOpen = (): boolean => document.querySelector('#talk-sheet:not([hidden]), #book-sheet:not([hidden]), #map-sheet:not([hidden]), #cabin-sheet:not([hidden]), #menu:not([hidden]), #flyer:not([hidden])') !== null;
   /** The watch of the day, which decides what wildlife is about. */
   let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
   // --- Today's flyer ---------------------------------------------------------------------------
@@ -964,24 +1009,41 @@ async function boot(): Promise<void> {
     });
     // A place the town has not built yet is nowhere to send anyone.
     const places = game.landmarks.filter((l) => !PROJECTS.some((p) => p.id === l.id)).map((l) => ({ lead: placeLead(l, today), open: !(l.id in game.save.landmarks) }));
-    // What the town is building: the spot to stake out, or, once it stands, the new thing to go and see.
+    // What the town is building: what was finished overnight first, then the spot to stake
+    // out, then anything built earlier that has still not been seen.
+    const yesterday = dayBefore(today);
     const projects = PROJECTS.flatMap((p) => {
       const plot = built.plots.find((at) => at.id === p.id);
       const state = game.projectState(p.id, today);
       if (!plot || state === 'later') return [];
-      const isBuilt = state === 'built';
-      return [{ lead: projectLead(p, isBuilt, plot.x, plot.z), open: isBuilt ? !(p.id in game.save.landmarks) : state === 'proposed' }];
-    });
+      const stands = state === 'built' ? (game.save.projects[p.id] === yesterday ? 'new' : 'standing') : 'proposed';
+      // Once staked out, today's lead is done: it stays on the flyer, ticked.
+      return [{ lead: projectLead(p, stands, plot.x, plot.z), open: state === 'built' ? !(p.id in game.save.landmarks) : state === 'proposed', rank: stands === 'new' ? 0 : stands === 'proposed' ? 1 : 2 }];
+    })
+      .sort((a, b) => a.rank - b.rank)
+      .map(({ lead, open }) => ({ lead, open }));
     const people = standings.filter((st) => (st.person.kind ?? 'person') !== 'board').map((st) => ({ lead: personLead(st.person, st.x, st.z), open: game.hasBusiness(st.person.id, season) }));
     const marge = standings.find((st) => st.person.id === 'marge');
     const rumour = marge && game.rumour(today) ? [{ lead: rumourLead(marge.person.name, marge.x, marge.z), open: !game.rumourFound(today) }] : [];
     return [...projects, ...trails, ...places, ...people, ...rumour];
   };
+  /**
+   * Whoever a newcomer should meet first: until an errand has been done, the person nearest
+   * the cabin who has something for them. After that the flyer picks for itself.
+   */
+  const neighbour = (): string | null => {
+    if (Object.values(game.save.errands).some((e) => e.done)) return null;
+    const from = home ? home.door : { x: player.position.x, z: player.position.z };
+    const near = standings
+      .filter((st) => (st.person.kind ?? 'person') === 'person' && game.hasBusiness(st.person.id, season))
+      .sort((a, b) => Math.hypot(a.x - from.x, a.z - from.z) - Math.hypot(b.x - from.x, b.z - from.z))[0];
+    return near ? `person:${near.person.id}` : null;
+  };
   const flyerPage = (): FlyerPage => {
     const all = leadsNow();
     const ids = game.leadsFor(today, () => {
       const pick = trailPick(game.trails, (name) => Boolean(game.save.trails[name]?.stamped), today);
-      return pickLeads(all.filter((l) => l.open).map((l) => l.lead), today, pick ? `trail:${pick.name}` : null);
+      return pickLeads(all.filter((l) => l.open).map((l) => l.lead), today, pick ? `trail:${pick.name}` : null, neighbour());
     });
     const letter = letterWaiting(game.save, game.save.letters, today);
     const inHand = game.projectInHand(today);
@@ -1002,6 +1064,7 @@ async function boot(): Promise<void> {
             ? "P.S. There's a letter for you at the post office."
             : null,
       flagged: game.save.flag,
+      riding: look.ride === 'bike',
     };
   };
   flyer.onFlag = (lead) => {
@@ -1141,6 +1204,13 @@ async function boot(): Promise<void> {
     built.update(liftClock, player.position.x, player.position.z);
     crowd?.update(liftClock, dt, player.position, busyness(watch));
     player.update(dt, input.moveX, input.moveY, follow.yaw, input.fast, ground, firmAt, bumpAt, liftClock);
+    if (player.mode !== 'lift') {
+      const under = ground.heightAt(player.position.x, player.position.z);
+      const floor = floorAt(floors, player.position.x, player.position.z);
+      const wanted = floor !== null ? Math.max(0, floor - under) : season !== 'winter' && world.openAt(player.position.x, player.position.z) === OPEN_WATER ? WADE : 0;
+      footing += (wanted - footing) * Math.min(1, dt * 12);
+      if (Math.abs(footing) > 0.005) player.position.y = under + footing;
+    } else footing = 0;
     // Skis leave their marks; anything else lifts them off the snow.
     if (player.mode === 'ski' && player.speed > 1.2) {
       // Below a crawl the direction of travel is not steady enough to draw from; use the skis.
@@ -1159,6 +1229,7 @@ async function boot(): Promise<void> {
     // At the top of a lift, set the player down on the snow a little way ahead of the last tower.
     const arrived = player.takeArrival();
     if (arrived) {
+      if (player.mode === 'ski') hint('offlift', 'Top of the lift', 'Steer left or right till you point downhill. The hill does the rest.');
       const top = pointAlong(arrived, arrived.length);
       const ax = top.x - Math.sin(top.yaw) * 30;
       const az = top.z - Math.cos(top.yaw) * 30;
@@ -1193,7 +1264,10 @@ async function boot(): Promise<void> {
     // Wildlife: anything come close to is seen and goes in the field guide, then makes off. A shy
     // creature come upon at speed bolts first. From a lift everything below can be watched at ease.
     const looked = game.lookAbout(px, pz, player.mode === 'lift' ? 0 : player.speed, today, season, watch);
-    if (looked.seen.length > 0) hint('guide', 'In the field guide', "A pale blue mark means you haven't seen it before.");
+    // The first time something not yet in the guide is near, say what its mark means and how to see it.
+    if (player.mode !== 'lift' && game.sightingsNear(px, pz, today, season, watch).some((s) => !(s.species.id in game.save.sightings) && Math.hypot(s.x - px, s.z - pz) < 45)) {
+      hint('guide', 'Something for the field guide', 'The pale blue mark is over it. Come close, gently.');
+    }
     for (const { sighting, event } of looked.seen) {
       if (sighting.species.kin === 'animal' || sighting.species.kin === 'bird' || sighting.species.id === 'rumor') critters.flee(sighting, px, pz);
       else critters.settle(sighting);
@@ -1209,7 +1283,18 @@ async function boot(): Promise<void> {
     sinceSlow += frameMs;
     if (sinceSlow >= 1000) {
       sinceSlow = 0;
-      today = dayKey(new Date());
+      const now = dayKey(new Date());
+      if (now !== today) {
+        // Midnight has passed with the game open: what was staked out yesterday is built, and
+        // there is a new flyer to put up when nothing else is in the way.
+        today = now;
+        showProjects();
+        flyerWaits = true;
+      }
+      if (flyerWaits && cfg.intro && cfg.hud && !bench && cfg.bench === null && !sheetOpen() && player.mode !== 'lift') {
+        flyerWaits = false;
+        if (game.flyerDue(today)) flyer.open(flyerPage);
+      }
       watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
       // Sitting on a bench with a view, under the real sky, earns the stamps that are for sitting.
       if (honestSky && player.seated && sittingOn?.view) {
@@ -1255,7 +1340,12 @@ async function boot(): Promise<void> {
       }
     }
     // Wandering off ends a conversation. The welcome stays until it is read or closed.
-    if (welcomed && !talkSheet.isOpen) welcomed = false;
+    if (welcomed && !talkSheet.isOpen) {
+      welcomed = false;
+      // The welcome has been read: now the day's flyer, as on any other day.
+      flyerWaits = true;
+    }
+    toasts.hold(!window.__gore.ready || welcomed);
     const someone = player.mode === 'lift' ? null : folk.nearest(px, pz, 7);
     const stop = player.mode === 'lift' || someone ? null : (stops.find((st) => Math.hypot(st.x - px, st.z - pz) < 9) ?? null);
     if (talkSheet.isOpen && !someone && !stop && !welcomed) talkSheet.close();
@@ -1299,7 +1389,8 @@ async function boot(): Promise<void> {
       const guest = game.feederGuest(today, season, watch);
       const away = Math.hypot(home.feeder.x - px, home.feeder.z - pz);
       if (guest && !cabin.hasGuest) cabin.setGuest(critterGeometry(guest, season));
-      if (guest && away < 13 && player.mode !== 'lift') {
+      // Close enough to be standing at the feeder: the yard the day begins in is further off than this.
+      if (guest && away < 4.5 && player.mode !== 'lift') {
         announce(game.metGuest(today, season, watch));
         guestStays = true;
       }
@@ -1364,6 +1455,8 @@ async function boot(): Promise<void> {
       follow.yaw = yaw;
     } else if (bench) follow.yaw = bench.yawAt(now);
     follow.update(player.position, ground, player.speed, dt, (x, z) => walls.roofAt(x, z));
+    // The beam over a lift's gate is just where the camera sits: it rises over one as it comes to it.
+    camera.position.y += overBeam(beams, camera.position.x, camera.position.y, camera.position.z);
     trees.update(player.position, camera.position, dt);
     sinceSky += frameMs;
     if (sinceSky >= 100) {
@@ -1411,22 +1504,16 @@ async function boot(): Promise<void> {
       window.__gore.ready = true;
       // A few words of welcome, the first time the game is opened.
       if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint('welcome')) {
-        talkSheet.open('Welcome to Gore', 'A quiet mountain, in your pocket', [
-          "Hi! There's no timer here, and nothing can go wrong.\nJust wander around.",
-          'Rest your thumb on the lower part of the screen to walk.\nDrag higher up to look around.',
-          `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill.\nThe lifts will bring you back up.`,
-          'Stones glint on the ground. Trails, lifts and summits stamp your passport.\nIt all goes in the Book, bottom right.',
-        ]);
-        welcomed = true;
+        openWelcome();
         // Someone new has just been told everything. The news is for those who were here before.
         game.hint(NEWS);
       } else if (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.hint(NEWS)) {
         // Once, for someone coming back to a mountain that has changed since they last opened it.
         talkSheet.open('Since you were last here', 'News from the mountain', [
-          "North Creek's open! The shuttle goes to town now.\nThere's a letter for you at the post office every day, and something new at the bakery, the deli and the library.",
-          "Everybody has a face now, and there are a few new neighbors.\nOne's a snowman. One's the mayor (a cat).",
-          "Every trail has a sign at the top, and the Snow Train's waiting at the depot.\nThere are three boards on the mountain worth reading, too.",
-          "Also - benches! In town and at the lookouts.\nWalk up to one and sit down. That's all it does.",
+          "The mountain's been printed! Flat colors, a line around everything.\nSame mountain. It just dressed up.",
+          "There's a flyer every morning now, with three things worth going out for.\nPut your flag on one. Or don't! It's only a flyer.",
+          "You've got a cabin, in the woods by Cedars Traverse. The day starts there.\nPut your best stones on the shelf, and fill the feeder.",
+          "The town wants to build a few things. It needs somebody to stake out the spots.\nAnd the map zooms now - pinch the picture, too, to pull the camera back.",
         ]);
         welcomed = true;
       } else if (cfg.flyer || (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.flyerDue(today))) {

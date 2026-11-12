@@ -1,6 +1,6 @@
 import { PROJECTS, type ProjectKind } from '../game/projects';
 import { distToPolyline } from './trails';
-import type { WallBox } from './walls';
+import { insideBox, type WallBox } from './walls';
 import { locate } from './whereabouts';
 import { OPEN_WATER, type World } from './world';
 
@@ -87,9 +87,9 @@ export function projectPlots(world: World): ProjectPlot[] {
 
 /**
  * What of each kind of thing is solid, in its own frame (x, z, width, depth, and how tall it
- * stands, for keeping the camera out of a roof): the hut whole, the lean-to's three walls so
- * that it can be walked into, the bandstand's floor. The dock and the lookout's deck are left
- * open, to be walked out along.
+ * stands, for keeping the camera out of a roof): the hut whole, and the lean-to's three walls
+ * so that it can be walked into. The dock, the bandstand and the lookout are floors to stand
+ * on (see `FLOORS`), not walls.
  */
 const SOLID: Record<ProjectKind, readonly (readonly [x: number, z: number, w: number, d: number, top?: number])[]> = {
   leanto: [
@@ -98,7 +98,7 @@ const SOLID: Record<ProjectKind, readonly (readonly [x: number, z: number, w: nu
     [1.95, -0.4, 0.3, 2.8],
   ],
   dock: [],
-  bandstand: [[0, 0, 5.4, 5.4, 5.6]],
+  bandstand: [],
   hut: [[0, 0, 5.0, 3.8, 4.4]],
   deck: [],
 };
@@ -108,4 +108,46 @@ export function projectWalls(kind: ProjectKind, plot: ProjectPlot, ground: numbe
   const c = Math.cos(plot.turn);
   const s = Math.sin(plot.turn);
   return SOLID[kind].map(([x, z, w, d, top]) => ({ x: plot.x + x * c + z * s, z: plot.z - x * s + z * c, w, d, turn: plot.turn, ...(top === undefined ? {} : { top: ground + top }) }));
+}
+
+/** A floor to stand on: a box on the ground, and how high its top is, in the world's own heights. */
+export interface Floor extends WallBox {
+  top: number;
+}
+
+/**
+ * What of each kind of thing can be stood on, in its own frame (x, z, width, depth, height of
+ * the boards above the plot's ground): the dock's planks out over the water and the step down
+ * to them, the bandstand's floor and its step, the lookout's deck and its step, the lean-to's
+ * floor. Someone who walks onto one is stood on its boards, not on the ground under it.
+ */
+const FLOORS: Record<ProjectKind, readonly (readonly [x: number, z: number, w: number, d: number, up: number])[]> = {
+  leanto: [[0, -0.4, 4.2, 2.8, 0.36]],
+  dock: [
+    [0, 4.2, 1.9, 9, 0.62],
+    [0, -0.5, 1.9, 1.2, 0.4],
+  ],
+  bandstand: [
+    [0, 0, 5.4, 5.4, 0.7],
+    [0, 3.0, 1.6, 0.8, 0.36],
+  ],
+  hut: [],
+  deck: [
+    [0, 1.4, 5.0, 3.6, 0.8],
+    [0, -0.9, 1.6, 1.0, 0.5],
+  ],
+};
+
+/** The floors of a built project, where its plot is. */
+export function projectFloors(kind: ProjectKind, plot: ProjectPlot, ground: number): Floor[] {
+  const c = Math.cos(plot.turn);
+  const s = Math.sin(plot.turn);
+  return FLOORS[kind].map(([x, z, w, d, up]) => ({ x: plot.x + x * c + z * s, z: plot.z - x * s + z * c, w, d, turn: plot.turn, top: ground + up }));
+}
+
+/** How high someone at (x, z) stands if there is a floor there: the highest one, or null on bare ground. */
+export function floorAt(floors: readonly Floor[], x: number, z: number): number | null {
+  let top: number | null = null;
+  for (const f of floors) if (insideBox(x, z, f) && (top === null || f.top > top)) top = f.top;
+  return top;
 }

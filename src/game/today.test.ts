@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { flyerDate, LEADS, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
+import { dayBefore, flyerDate, LEADS, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
 
 const trail = (name: string): Lead => trailLead({ name, difficulty: 'intermediate', glade: false }, 0, 0, '2026-11-11', false);
 const place = (id: string): Lead => placeLead({ id, name: id, x: 0, z: 0 }, '2026-11-11');
@@ -40,14 +40,37 @@ describe("today's flyer", () => {
   });
 
   it('puts what the town is building where a place would go', () => {
-    const project = projectLead({ id: 'lean-to', name: 'The Hardwood Lean-to', ask: 'Otto wants a lean-to.', done: 'It is up.' }, false, 0, 0);
+    const project = projectLead({ id: 'lean-to', name: 'The Hardwood Lean-to', ask: 'Otto wants a lean-to.', done: 'It is up.' }, 'proposed', 0, 0);
     const ids = pickLeads([...everything, project], '2026-11-11');
     expect(ids).toHaveLength(LEADS);
     expect(ids).toContain('project:lean-to');
     expect(ids.some((id) => id.startsWith('place:'))).toBe(false);
     expect(ids.some((id) => id.startsWith('trail:'))).toBe(true);
     expect(project.why).toMatch(/stake out the spot/);
-    expect(projectLead({ id: 'lean-to', name: 'x', ask: 'a', done: 'It is up.' }, true, 0, 0).head).toBe('Finished overnight');
+    expect(projectLead({ id: 'lean-to', name: 'x', ask: 'a', done: 'It is up.' }, 'new', 0, 0).head).toBe('Finished overnight');
+  });
+
+  it('shows what was finished overnight before what wants staking out, and what was never seen as a place worth the trip', () => {
+    const p = { id: 'x', name: 'x', ask: 'a', done: 'It is up.' };
+    const fresh = projectLead({ ...p, id: 'dock' }, 'new', 0, 0);
+    const wanted = projectLead({ ...p, id: 'bandstand' }, 'proposed', 0, 0);
+    // The game lists them in the order they are to be shown.
+    expect(pickLeads([fresh, wanted, ...everything], '2026-11-11')).toContain('project:dock');
+    expect(pickLeads([fresh, wanted, ...everything], '2026-11-11')).not.toContain('project:bandstand');
+    expect(projectLead(p, 'standing', 0, 0).head).toBe('Worth the trip');
+    expect(projectLead(p, 'standing', 0, 0).why).toBe('It is up.');
+  });
+
+  it('sends someone new next door before anywhere else', () => {
+    for (const d of ['11', '12', '13', '14']) expect(pickLeads(everything, `2026-11-${d}`, null, 'person:hazel')).toContain('person:hazel');
+    // Somebody who is not about is not offered.
+    expect(pickLeads(everything, '2026-11-11', null, 'person:nobody')).toHaveLength(LEADS);
+  });
+
+  it('knows the day before a day, across a month and a year', () => {
+    expect(dayBefore('2026-11-12')).toBe('2026-11-11');
+    expect(dayBefore('2026-12-01')).toBe('2026-11-30');
+    expect(dayBefore('2027-01-01')).toBe('2026-12-31');
   });
 
   it('makes up the number from what is left, and offers nothing when nothing is', () => {

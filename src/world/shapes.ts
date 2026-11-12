@@ -164,6 +164,10 @@ export function siding(): THREE.Texture | null {
   boards.wrapS = boards.wrapT = THREE.RepeatWrapping;
   boards.colorSpace = THREE.SRGBColorSpace;
   boards.anisotropy = 4;
+  // Far off, the lines must run together into one flat tone, not flicker against the pixels.
+  boards.generateMipmaps = true;
+  boards.minFilter = THREE.LinearMipmapLinearFilter;
+  boards.magFilter = THREE.LinearFilter;
   return boards;
 }
 

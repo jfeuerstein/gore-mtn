@@ -18,15 +18,17 @@ export interface Project {
   /** What the flyer says while it wants staking out, and once it is built. */
   ask: string;
   done: string;
+  /** What whoever wanted it says to the player, once, when it stands. */
+  said: string;
 }
 
 /** In the order the town gets round to them. */
 export const PROJECTS: readonly Project[] = [
-  { id: 'lean-to', name: 'The Hardwood Lean-to', kind: 'leanto', who: 'otto', ask: 'Otto wants a lean-to in the woods by your place.', done: "Otto's lean-to is up. It smells like new wood." },
-  { id: 'rabbit-dock', name: 'The Rabbit Pond Dock', kind: 'dock', who: 'wren', ask: 'Wren thinks Rabbit Pond should have a dock.', done: "The dock's in at Rabbit Pond. Mind the last plank." },
-  { id: 'bandstand', name: 'The Duck Pond Bandstand', kind: 'bandstand', who: 'marge', ask: "Marge says a town isn't a town without a bandstand.", done: "The bandstand's up by the Duck Pond. No band yet." },
-  { id: 'burnt-ridge-hut', name: 'The Burnt Ridge Hut', kind: 'hut', who: 'gus', ask: 'Gus wants a warming hut at the top of Burnt Ridge.', done: "There's a warming hut on Burnt Ridge now. Gus lit the stove." },
-  { id: 'reservoir-deck', name: 'The Reservoir Lookout', kind: 'deck', who: 'amos', ask: 'Amos wants a lookout over the reservoir.', done: 'The lookout over the reservoir is built. Amos approves.' },
+  { id: 'lean-to', name: 'The Hardwood Lean-to', kind: 'leanto', who: 'otto', ask: 'Otto wants a lean-to in the woods by your place.', done: "Otto's lean-to is up. It smells like new wood.", said: "Hey - the lean-to's up! It came out pretty good.\nI took a nap in it already. Just to test it." },
+  { id: 'rabbit-dock', name: 'The Rabbit Pond Dock', kind: 'dock', who: 'wren', ask: 'Wren thinks Rabbit Pond should have a dock.', done: "The dock's in at Rabbit Pond. Mind the last plank.", said: "They finished the dock! I can see it from up here.\nIt's really small from up here. I waved at it anyway." },
+  { id: 'bandstand', name: 'The Duck Pond Bandstand', kind: 'bandstand', who: 'marge', ask: "Marge says a town isn't a town without a bandstand.", done: "The bandstand's up by the Duck Pond. No band yet.", said: "A bandstand, hon! A real one. Did you see it?\nNow I just need a band. Do you play anything? ...That's okay." },
+  { id: 'burnt-ridge-hut', name: 'The Burnt Ridge Hut', kind: 'hut', who: 'gus', ask: 'Gus wants a warming hut at the top of Burnt Ridge.', done: "There's a warming hut on Burnt Ridge now. Gus lit the stove.", said: "The hut's open! I carried the stove up myself.\nWell - the snowcat carried it. I rode along." },
+  { id: 'reservoir-deck', name: 'The Reservoir Lookout', kind: 'deck', who: 'amos', ask: 'Amos wants a lookout over the reservoir.', done: 'The lookout over the reservoir is built. Amos approves.', said: "They built the lookout. I went and stood on it.\nYou can see the water from there. It's a good place to stand." },
 ];
 
 /** Where a project stands on a day: not yet proposed, wanting its spot staked out, being built, or built. */

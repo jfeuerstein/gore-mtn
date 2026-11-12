@@ -51,6 +51,8 @@ export interface Errand {
   fetch?: { name: string; from: string; handover: string };
   thanks: string;
   reward?: { gear?: string; pass?: boolean };
+  /** What is said instead of `thanks` when the player already has the thing it would give. */
+  thanksOwned?: string;
   /** An errand that must be done first, and the seasons this one is asked in. */
   after?: string;
   seasons?: readonly Season[];
@@ -251,7 +253,7 @@ export const PEOPLE: readonly Person[] = [
   {
     id: 'june',
     name: 'June',
-    role: 'Baker, the café on Main Street',
+    role: "Baker, June's Bakery",
     at: { road: 'Main Street', from: 'depot', metres: 170 },
     look: { jacket: 0xe8b040, trousers: 0x4a3a2e, hat: 0xf4ead8, style: 'beanie', features: { hair: 0xc8642d, hairStyle: 'bun', apron: 0xfffdf7 } },
     wearing: {
@@ -535,7 +537,7 @@ export const PEOPLE: readonly Person[] = [
   {
     id: 'bram',
     name: 'Bram',
-    role: 'Groomer, Base Lodge',
+    role: 'Groomer, Gore Mountain Lodge',
     prop: 'snowcat',
     at: { place: 'gore-mountain-lodge' },
     look: { jacket: 0xd9822b, trousers: 0x3a3430, hat: 0x1f242e, style: 'trapper', features: { beard: 0x3a3430, girth: 1.1 } },
@@ -689,8 +691,8 @@ export const ERRANDS: readonly Errand[] = [
     id: 'first-chair',
     from: 'hazel',
     title: 'First chair',
-    ask: "Could you do me a small favor?\nRide the Express to the top and tell me how it looks up there. I haven't been up yet today.",
-    nudge: "The Express loads just down the hill - look for the orange gate.",
+    ask: "Could you do me a small favor?\nRide a lift up - any of them - and tell me how it looks up there. I haven't been up yet today.",
+    nudge: "Any lift counts! They all load at an orange gate.\nThe little J-Bar's right here, if you want a short one.",
     need: { kind: 'lifts', count: 1 },
     thanks: "It's nice up there? Oh, good.\nHere - a patrol jacket. We had a spare, and you sort of look the part.",
     reward: { gear: 'jacket-patrol' },
@@ -786,7 +788,7 @@ export const ERRANDS: readonly Errand[] = [
     from: 'wren',
     title: 'The other view',
     ask: "Everybody comes up here to the tower. Hardly anybody walks out to the Vermont Overlook.\nYou should go stand there for a minute. That's all.",
-    nudge: "The Vermont Overlook's on your map, as a lookout. It's worth the walk.",
+    nudge: "The Vermont Overlook's on your map. It's worth the walk.",
     need: { kind: 'landmark', id: 'vermont-overlook' },
     thanks: "It's quiet out there, right?\nThat's my second favorite spot. I'm not telling you the first one.",
     after: 'raven-count',
@@ -863,7 +865,7 @@ export const ERRANDS: readonly Errand[] = [
     id: 'lost-mitten',
     from: 'pip',
     title: 'Pip\'s mitten',
-    ask: "I lost a mitten. A yellow one.\nIt was on my hand, and then it wasn't. I think it's under the Hudson chair. Maybe.",
+    ask: "I lost a mitten. A yellow one.\nIt was on my hand, and then it wasn't. I think it's under the Hudson Chair. Maybe.",
     nudge: "It's yellow, and it's under the Hudson Chair somewhere. Probably.",
     need: { kind: 'item', id: 'mitten' },
     lost: { name: 'A small yellow mitten', at: { lift: 'Hudson Chair', along: 0.45 } },
@@ -879,6 +881,7 @@ export const ERRANDS: readonly Errand[] = [
     need: { kind: 'item', id: 'goggles' },
     lost: { name: 'A pair of small goggles', at: { trail: 'Moxham', along: 0.5 } },
     thanks: "They still fit! Okay - you can have one of my hats.\nI have nine. I mean eight now. That's fine.",
+    thanksOwned: "They still fit! Thank you thank you.\nYou've already got one of my hats, so... we're even. That's how it works.",
     reward: { gear: 'hat-rainbow' },
     after: 'lost-mitten',
     seasons: ['winter', 'spring'],

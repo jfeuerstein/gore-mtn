@@ -69,7 +69,8 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   rock, with roads, paths and water painted in) and `canopy-<season>.png` (the forest as seen
   from afar). `world.json` also lists paths, roads, the town's buildings, ponds and named spots.
   Change the script and rerun it; never hand-edit the outputs. Trail and lift names come from
-  OpenStreetMap, not memory.
+  OpenStreetMap, not memory; `tidyName` (`src/world/names.ts`) only closes up doubled spaces
+  and the like when they are loaded, and the save reads its trail names the same way.
 - **Content is data.** Trails, lifts, places, and later minerals and stamps live in data files with
   tests that validate them.
 - **Logic gets unit tests; feel gets the owner's thumbs.** Keep pure logic (heightfield, trails,
@@ -310,6 +311,8 @@ Everything else is built in code from simple shapes.
   the owner tries it.
 - One thumb: left and right steer, up tucks (and poles from a standstill), down is a hockey stop.
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
+- Open water is painted on the ground. Out of winter someone crossing it wades, to the knees
+  (`footing` in `main.ts`); in winter it is ice and snow like anywhere else.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
   backwards. A tree is a bump, not a crash (`src/player/collide.ts`): the skier is nudged clear and
   loses speed, more the squarer the hit. Buildings are solid too (`src/world/walls.ts`).
@@ -365,7 +368,9 @@ Everything else is built in code from simple shapes.
   spring, summer and fall, and the town's houses all take their colour per instance; the owner
   has yet to confirm that on the phone's WebGPU.
 - `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
-  announcements at the top of the screen. With `hud=0` announcements are hidden too.
+  announcements at the top of the screen. With `hud=0` announcements are hidden too. A page
+  with four or more headings gets a row of them to jump by, which stays at the top as it
+  scrolls: the Passport runs to many screens.
   Landmarks are postcards: blank until visited, then a picture (`public/art/places/`).
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
   is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;
@@ -378,7 +383,10 @@ Everything else is built in code from simple shapes.
 
 - `src/game/people.ts` is the cast, their lines, their errands and the things to wear, all as
   data. `Game.talk()` decides what someone says: a greeting the first time, thanks for an errand
-  done, a thing handed over, a reminder, a new errand, or small talk, in that order.
+  done, a thing handed over, the day's bake, sandwich or book, a word about something the town
+  has built for them, a reminder, a new errand, or small talk, in that order. The day's gift
+  comes before any errand, so an errand in hand never hides it; only on a first meeting do
+  the hello and the first ask come first.
 - **How people talk.** The owner asked for the manner of A Short Hike, in their own voice: short
   lines that can be read in a breath, said the way a person would say them to a friend. So:
   contractions always; small hesitations (`Oh!`, `um`, `...`, `I guess`, `a little`); ` - ` for a
@@ -404,7 +412,9 @@ Everything else is built in code from simple shapes.
 - Each has a face and features of their own (`look.features`: hair, a beard, glasses, an apron,
   a patrol cross, a child's height), built onto the figure by `Skier`. The player has none:
   goggles, as ever.
-- Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted, and the
+- Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted (built
+  several times their size and brought back down, so that they get the print's line: `fine()`
+  in `folk.ts`), and the
   `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
   What Tom has to say is shown as written notes signed `- Tom`.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.
@@ -466,7 +476,13 @@ Everything else is built in code from simple shapes.
   first touch, as browsers require, and Settings turns it off. Keep it quiet: it is there to make
   movement feel like movement.
 - `Game.hint(id)` is true once. `main.ts` uses it for the welcome and for a hint the first time
-  each thing comes up. `intro=0` turns both off; the tools set it.
+  each thing comes up. `intro=0` turns both off; the tools set it. Announcements are held back
+  while the loading card or the welcome is up (`Toasts.hold`), and Settings can put the
+  welcome up again.
+- The last letter (`the-whole-town`) is sent, ahead of the queue, the day every patch has been
+  earned: the game's only ending, and it asks the player to come up anyway.
+- If the game cannot load, `showFatal` says so kindly, offers `Try again`, and keeps what went
+  wrong small underneath.
 - `src/game/patches.ts` lists the patches for finishing a whole kind of thing. They are checked
   once a second against a tally of the book. Add one as a line of data.
 - `public/sw.js` keeps a copy of the game for playing with no signal. It asks the network first
@@ -476,7 +492,8 @@ Everything else is built in code from simple shapes.
   with a mark of its contents (`vite.config.ts`), and the worker fetches whatever has changed
   since it last looked, so a season not yet visited or a patch not yet earned can turn up
   with no signal. `node tools/offline-check.mjs` checks that on the built game.
-- Settings lead with what a player wants (the save code and sound). Everything for testing is
+- Settings lead with what a player wants (the save code, sound, the welcome again, and the
+  credits). Everything for testing is
   below the "For testing" line: places to go to, a season, an hour and a sky to pin, the
   renderer, how thick the forest is, sharpness, the frame-rate readout and how far is drawn.
   Shadows, boards and shingles, the other people and full terrain detail are simply on; they
@@ -528,12 +545,19 @@ Everything else is built in code from simple shapes.
   see what is different today, pick somewhere to go, make an outing of it. The flyer is the
   first step. `src/game/today.ts` (pure, tested) says what is on it; `src/ui/flyer.ts` shows
   it: a sheet of paper pinned up over the lower part of the screen, the first time the game
-  is opened on a calendar day (`Game.flyerDue`, after the welcome and the news have had their
-  turn). The map's `Today` button brings it back. `flyer=1` puts it up for the tools.
+  is opened on a calendar day (`Game.flyerDue`): at once, or as soon as the welcome or the news
+  has been read. If midnight passes with the game open, the new day's flyer goes up when no
+  other sheet is in the way, and what was staked out the day before is built there and then.
+  The map's `Today` button brings it back. `flyer=1` puts it up for the tools.
 - It names three leads (`pickLeads`), each in a different part of the mountain: the trail of
   the day (the one the Saddle Lodge board has picked), a place with no postcard yet, and
   either someone with something for the player or the inn's rumour, day about. When the
-  town has a project in hand, it takes the second place (see Town projects). The rumour's
+  town has a project in hand, it takes the second place (see Town projects): what was finished
+  overnight first, then what wants staking out, then anything built earlier and never seen.
+  Someone who has not yet done an errand is sent to the nearest person with something for
+  them (`neighbour` in `main.ts`), and until six trails are stamped the trail of the day is an
+  easy or middling one out in the open (`GENTLE_UNTIL` in `report.ts`). `dayNumber` is well
+  stirred, so what is picked by the day does not walk down a list. The rumour's
   lead only says to ask Marge: where the stone lies is hers to tell. The three are chosen once
   and kept in the save (`leads`), so the flyer reads the same all day; one that has been done
   since is ticked and struck through.
@@ -555,12 +579,14 @@ Everything else is built in code from simple shapes.
 - `src/game/cabin.ts` (pure, tested) is the rules. A shelf by the door holds five stones and
   a board beside it three patches. Tapping a place on the cabin's sheet (`src/ui/cabinSheet.ts`,
   opened by the `Home` action at the door) steps it through what the player has found or
-  earned and has not set out elsewhere, and then to bare. What is set out is in the save
+  earned and has not set out elsewhere, and then to bare. With four or more things to choose
+  from, the place last tapped also gets a strip of them all, so any one is a single tap
+  (`Game.place`). What is set out is in the save
   (`cabin`) and shows on the cabin itself: stones as one instanced mesh, each patch as a
   disc wearing its picture.
 - The feeder answers overnight. Filled from the sheet, it has somebody at it on any later
-  day, by day (`FEEDER_GUESTS`, by season). They can be seen from the trail; coming within a
-  few steps puts them in the field guide and empties the feeder. The flyer's P.S. says when
+  day, by day (`FEEDER_GUESTS`, by season). They can be seen from the yard the day begins in; walking
+  up to the feeder (4.5 m) puts them in the field guide and empties it. The flyer's P.S. says when
   somebody is there.
 - Nothing about the cabin is a chore: a bare shelf is only bare, and an empty feeder only
   stays empty. The map marks it with a red house, and `window.__gore.teleport('home')` goes
@@ -585,7 +611,12 @@ Everything else is built in code from simple shapes.
   path, on a pond's shore, at the top of a lift): dry ground, level enough, off the trails,
   turned to face the water or the way the ground falls away. `Built` keeps a clearing at
   every plot from the start, and the view in front of it. `src/world/projectMesh.ts` builds
-  each from blocks, one mesh apiece. They are not solid.
+  each from blocks, one mesh apiece. The hut and the lean-to's walls are solid (`projectWalls`;
+  `Walls.add` and `remove` let walls come and go after the game has begun). The dock, the
+  bandstand, the lookout and the lean-to's floor are stood on (`projectFloors`, `floorAt`):
+  `main.ts` raises the player onto the boards.
+- Whoever wanted a thing built says so once when it stands (`Project.said`), and writes about
+  it (`letters.ts`).
 - What has been staked out is in the save (`projects`, the day each was). Add a project by
   adding it to `PROJECTS`, a site for it in `projectPlots.ts`, a model in `projectMesh.ts` and
   a postcard in the art manifest.
@@ -608,7 +639,7 @@ Everything else is built in code from simple shapes.
   the map its points (`TrailMap.points`) and what the book says of a trail, path or lift
   (`TrailMap.progress`); tapping anything names it and says where it stands in the book.
 - The legend is a row of chips that show and hide what they mark (trails, lifts, paths,
-  places, people). `To do` fades everything already in the book, so what is left stands out.
+  places, people). `Not yet` fades everything already in the book, so what is left stands out.
 - A flag can be planted on anything tapped, or on a bare spot. It is kept in the save
   (`flag`), stands in the world as a pennant on a pole, and a pointer under the place name
   gives its name, the distance and an arrow that turns with the camera. Coming to it takes it

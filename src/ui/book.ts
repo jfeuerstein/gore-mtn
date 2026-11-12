@@ -148,7 +148,20 @@ export class Book {
   private render(): void {
     for (const [tab, button] of this.tabs) button.setAttribute('aria-pressed', String(tab === this.tab));
     const page = { passport: () => this.passport(), minerals: () => this.minerals(), guide: () => this.guide(), pack: () => this.pack() }[this.tab];
-    this.body.replaceChildren(...page());
+    const made = page();
+    this.body.replaceChildren(...made);
+    // A long page gets a row of its headings to jump by: the Passport runs to many screens.
+    const heads = made.filter((e) => e.tagName === 'H3' && e.querySelector('span'));
+    if (heads.length >= 4) {
+      const jumps = el('div', 'jumps');
+      for (const head of heads) {
+        const chip = el('button', '', head.firstChild?.textContent ?? '');
+        chip.type = 'button';
+        chip.addEventListener('click', () => this.body.scrollTo({ top: head.offsetTop - this.body.offsetTop - jumps.offsetHeight - 8 }));
+        jumps.append(chip);
+      }
+      this.body.prepend(jumps);
+    }
   }
 
   private heading(title: string, have: number, of: number): HTMLElement {
@@ -298,11 +311,14 @@ export class Book {
       const text = el('div');
       const who = personById(e.to ?? e.from);
       text.appendChild(el('b', '', e.title));
-      text.appendChild(el('small', 'tally', game.needMet(e.need) ? `Done! Go see ${who?.name ?? 'them'}.` : `For ${who?.name ?? 'someone'} · ${who?.role ?? ''}`));
+      const sofar = game.needProgress(e.need);
+      text.appendChild(el('small', 'tally', game.needMet(e.need) ? `Done! Go see ${who?.name ?? 'them'}.` : `For ${who?.name ?? 'someone'}${sofar ? ` · ${sofar.have} of ${sofar.of} so far` : ` · ${who?.role ?? ''}`}`));
       text.appendChild(el('small', '', e.nudge));
       card.appendChild(text);
       list.appendChild(card);
     }
+    // Errands done are kept at the foot of the page, out of the way of what is in hand.
+    const finished = el('div', 'minerals');
     for (const e of ERRANDS) {
       const done = game.save.errands[e.id]?.done;
       if (!done) continue;
@@ -312,9 +328,10 @@ export class Book {
       text.appendChild(el('b', '', e.title));
       text.appendChild(el('small', '', `For ${personById(e.from)?.name ?? 'someone'} · done ${shortDay(done)}`));
       card.appendChild(text);
-      list.appendChild(card);
+      finished.appendChild(card);
     }
-    out.push(list);
+    if (active.length > 0) out.push(list);
+    else if (s.errands > 0) out.push(el('p', 'note', s.errands >= s.errandsTotal ? "Every errand's done. Nobody needs a thing." : "Nothing in hand. Somebody with a gold mark over their head has something to ask."));
 
     if (game.save.items.length > 0) {
       const h = el('h3', '', 'Carrying');
@@ -388,6 +405,10 @@ export class Book {
     if (game.save.pass) {
       out.push(el('h3', '', 'Snow Train pass'));
       out.push(el('p', 'note', game.save.away ? `You're visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));
+    }
+    if (finished.childElementCount > 0) {
+      out.push(el('h3', '', 'Errands done'));
+      out.push(finished);
     }
     return out;
   }

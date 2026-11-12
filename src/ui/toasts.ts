@@ -40,6 +40,16 @@ export class Toasts {
     (document.getElementById('app') ?? document.body).appendChild(this.el);
   }
 
+  /** True while announcements are kept back: under the loading card, and while the welcome is being read. */
+  private held = false;
+
+  /** Keep announcements back, or let those that were waiting out. Safe to call every frame. */
+  hold(on: boolean): void {
+    if (this.held === on) return;
+    this.held = on;
+    if (!on) this.fill();
+  }
+
   show(event: GameEvent): void {
     this.last = `${event.title} · ${event.detail}`;
     this.waiting.push(event);
@@ -47,7 +57,7 @@ export class Toasts {
   }
 
   private fill(): void {
-    while (this.el.childElementCount < MOST && this.waiting.length > 0) {
+    while (!this.held && this.el.childElementCount < MOST && this.waiting.length > 0) {
       const event = this.waiting.shift() as GameEvent;
       const toast = document.createElement('div');
       toast.className = `toast toast-${event.kind}`;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { snowReport, trailOfTheDay, wildlifeLog, type Conditions } from './report';
+import { dayNumber, GENTLE_UNTIL, snowReport, trailOfTheDay, trailPick, wildlifeLog, type Conditions } from './report';
 import { SPECIES } from './wildlife';
 
 const fair: Conditions = { season: 'winter', overcast: 0, falling: 0, watch: 'day', day: '2026-11-11' };
@@ -49,6 +49,26 @@ describe('the trail of the day', () => {
     expect(board).toMatch(/TWISTER|CHATIEMAC/);
     expect(board).toContain('2 still to stamp');
     expect(trailOfTheDay(trails, (name) => name === 'Sunway', '2026-11-11')).toBe(board);
+  });
+
+  it('sends someone new down something gentle and open, and anyone else anywhere', () => {
+    const hill = [
+      ...['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((n) => ({ name: `Glade ${n}`, difficulty: 'expert' as const, glade: true })),
+      { name: 'Sunway', difficulty: 'easy' as const, glade: false },
+      { name: 'Twister', difficulty: 'intermediate' as const, glade: false },
+    ];
+    const days = Array.from({ length: 20 }, (_, i) => `2026-11-${String(i + 1).padStart(2, '0')}`);
+    for (const day of days) expect(['Sunway', 'Twister']).toContain(trailPick(hill, () => false, day)?.name);
+    // With half a dozen trails in the passport, the board picks from everything that is left.
+    const done = new Set(hill.slice(0, GENTLE_UNTIL).map((t) => t.name));
+    expect(new Set(days.map((day) => trailPick(hill, (name) => done.has(name), day)?.name)).size).toBeGreaterThan(2);
+  });
+
+  it('does not walk down the list from one day to the next', () => {
+    const numbers = ['11', '12', '13', '14', '15', '16'].map((d) => dayNumber(`2026-11-${d}`));
+    const steps = numbers.slice(1).map((n, i) => Math.abs(n - (numbers[i] as number)));
+    expect(steps.every((step) => step > 1000)).toBe(true);
+    expect(new Set(numbers.map((n) => n % 6)).size).toBeGreaterThan(2);
   });
 
   it('says so when there is nothing left to stamp, and calls it a ride in the bike months', () => {

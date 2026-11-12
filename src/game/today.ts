@@ -43,7 +43,7 @@ export function trailLead(trail: { name: string; difficulty: Difficulty; glade: 
 }
 
 /** Why a place is worth the trip, one a day, turn about. */
-const PLACE_WHYS: readonly string[] = ["You don't have the postcard yet.", "It's a nice day for it.", "Nobody's been up there in a while.", 'Bring back a postcard.'];
+const PLACE_WHYS: readonly string[] = ["You don't have the postcard yet.", "You haven't been. It's worth a look.", "There's a postcard in it for you.", 'Bring back a postcard.'];
 
 /** Somewhere worth a postcard that has not been visited. */
 export function placeLead(spot: { id: string; name: string; x: number; z: number }, day: string): Lead {
@@ -61,11 +61,13 @@ export function rumourLead(innkeeper: string, x: number, z: number): Lead {
 }
 
 /**
- * What the town is building: a spot to go and stake out, or, the day after, something new to go and see.
- * @param built true once it stands; false while it wants its spot
+ * What the town is building: a spot to go and stake out; or, the day after, something new to
+ * go and see; or, if nobody went to look, a place still worth the trip.
+ * @param state `proposed` while it wants its spot, `new` on the day after it was staked out, `standing` from then on
  */
-export function projectLead(project: { id: string; name: string; ask: string; done: string }, built: boolean, x: number, z: number): Lead {
-  return { id: `project:${project.id}`, kind: 'project', head: built ? 'Finished overnight' : "The town's building", title: project.name, why: built ? project.done : `${project.ask} Go stake out the spot.`, x, z, flag: project.name };
+export function projectLead(project: { id: string; name: string; ask: string; done: string }, state: 'proposed' | 'new' | 'standing', x: number, z: number): Lead {
+  const head = state === 'proposed' ? "The town's building" : state === 'new' ? 'Finished overnight' : 'Worth the trip';
+  return { id: `project:${project.id}`, kind: 'project', head, title: project.name, why: state === 'proposed' ? `${project.ask} Go stake out the spot.` : project.done, x, z, flag: project.name };
 }
 
 /** How many leads a flyer carries. */
@@ -75,10 +77,11 @@ export const LEADS = 3;
  * Today's leads, chosen from what is still open: a trail, a place, and either someone with
  * something for the player or the inn's rumour, so that the three lie in different parts of
  * the mountain. The same three all day, whatever is done in the meantime.
- * @param open every lead that could be offered today, in a settled order
+ * @param open every lead that could be offered today, in a settled order; of the town's projects, the one to show first comes first
  * @param trailOfDay the id of the trail the Saddle Lodge board has picked, so the two agree
+ * @param neighbour someone to send a newcomer to before anyone else: the nearest person with something for them
  */
-export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string | null = null): string[] {
+export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string | null = null, neighbour: string | null = null): string[] {
   const seed = dayNumber(day);
   const of = (kind: LeadKind): Lead[] => open.filter((l) => l.kind === kind);
   const one = (list: readonly Lead[], shift: number): Lead | undefined => (list.length === 0 ? undefined : list[(seed >>> shift) % list.length]);
@@ -88,16 +91,25 @@ export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string
     if (lead && picked.length < LEADS && !picked.includes(lead)) picked.push(lead);
   };
   add(trails.find((l) => l.id === trailOfDay) ?? one(trails, 0));
-  // What the town is building is a place to go, and comes before any other.
-  add(one(of('project'), 0) ?? one(of('place'), 5));
-  // The rumour and the neighbours take turns, day about, when both are to be had.
+  // What the town is building is a place to go, and comes before any other: what was finished
+  // overnight first, then what wants staking out.
+  add(of('project')[0] ?? one(of('place'), 5));
+  // The rumour and the neighbours take turns, day about, when both are to be had. Someone new
+  // is sent next door first.
   const people = of('person');
   const rumour = of('rumour');
+  const nextDoor = people.find((l) => l.id === neighbour);
   const askFirst = seed % 2 === 0 ? rumour : people;
-  add(one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
+  add(nextDoor ?? one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
   // Short of three, whatever else is open makes up the number.
   for (const lead of [...of('project'), ...of('place'), ...trails, ...people, ...rumour]) add(lead);
   return picked.map((l) => l.id);
+}
+
+/** The day before a day, as a day: "2026-11-12" to "2026-11-11". */
+export function dayBefore(day: string): string {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d - 1, 12)).toISOString().slice(0, 10);
 }
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

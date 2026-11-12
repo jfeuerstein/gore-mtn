@@ -666,7 +666,7 @@ try {
   check('standing at a stop offers the shuttle', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Take the shuttle'));
   await tp.tap('#talk-button');
   const fares = await tp.locator('#talk-sheet .choices button').allTextContents();
-  check('it goes to the Ski Bowl, to town and out to the garnet mine', fares.join() === 'Ski Bowl,North Creek,Garnet Mine,Not now', fares.join());
+  check('it goes to the Ski Bowl, to town and out to the mineral shop', fares.join() === 'Ski Bowl,North Creek,Mineral Shop,Not now', fares.join());
   await tp.locator('#talk-sheet .choices button', { hasText: 'North Creek' }).tap();
   const inTown = await townState();
   check('and sets the player down at the depot', Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z) < 12, `${Math.hypot(inTown.x - depotStop.x, inTown.z - depotStop.z).toFixed(1)} m from the stop`);
@@ -814,26 +814,9 @@ try {
   check('the welcome is a few short pages and then gets out of the way', pages >= 3 && pages <= 5 && (await np.locator('#talk-sheet .choices button').allTextContents()).join() === 'Goodbye', `${pages} pages`);
   await np.locator('#talk-sheet .choices button', { hasText: 'Goodbye' }).tap();
   check('and closes', !(await np.locator('#talk-sheet').isVisible()));
-  await np.tap('#ski-button');
-  check('putting skis on for the first time brings a hint', await np.waitForFunction(() => window.__gore.state().hints.includes('skis') && [...document.querySelectorAll('#toasts .toast-hint b')].some((b) => b.textContent === 'On skis'), null, { timeout: 30000 }).then(() => true, () => false));
-  const hintBox = await np.locator('#toasts .toast-hint').first().boundingBox();
-  check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
-  await np.tap('#ski-button');
-  await np.tap('#menu-button');
-  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 3).join() === 'Your book,Sound,For testing');
-  await np.locator('#sound-off').tap();
-  check('sound can be turned off', (await np.evaluate(() => window.__gore.state().sound)) === false && (await np.getAttribute('#sound-off', 'aria-pressed')) === 'true');
-  await np.locator('#sound-on').tap();
-  check('and on again', (await np.evaluate(() => window.__gore.state().sound)) === true);
-  check('the credits name where the map comes from', /OpenStreetMap/.test(await np.locator('#menu').textContent()) && /USGS/.test(await np.locator('#menu').textContent()));
-  await np.locator('#menu .close').tap();
-  await np.waitForTimeout(1500);
-  await np.reload();
-  await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
-  await np.waitForTimeout(800);
-  check('the welcome is given once only', !(await np.locator('#talk-sheet').isVisible()) && (await np.evaluate(() => window.__gore.state().hints)).includes('welcome'));
-  // The day's flyer: put up the first time the game is opened on a day (after the welcome has had its turn), and once.
-  check("the day's flyer is put up on the next opening", await np.locator('#flyer').isVisible());
+  // The day's flyer: put up the first time the game is opened on a day, as soon as the welcome has been read, and once.
+  await np.waitForSelector('#flyer:not([hidden])', { timeout: 20000 }).catch(() => {});
+  check("the day's flyer goes up when the welcome has been read", await np.locator('#flyer').isVisible());
   const paper = await np.locator('#flyer .paper').boundingBox();
   check('the flyer fits the screen, over its lower part', paper !== null && paper.x >= 0 && paper.x + paper.width <= width && paper.y > height * 0.15 && paper.y + paper.height <= height + 4, paper ? `${Math.round(paper.y)} to ${Math.round(paper.y + paper.height)} of ${height}` : 'none');
   const leadRows = await np.locator('#flyer .lead').count();
@@ -850,10 +833,29 @@ try {
   await np.locator('#map-sheet .today').tap();
   check('the map has a way back to it, and it is the same flyer', (await np.locator('#flyer').isVisible()) && !(await np.locator('#map-sheet').isVisible()) && (await np.locator('#flyer .lead .flag').first().textContent()) === 'Flagged');
   await np.locator('#flyer .go').tap();
+  await np.tap('#ski-button');
+  check('putting skis on for the first time brings a hint', await np.waitForFunction(() => window.__gore.state().hints.includes('skis') && [...document.querySelectorAll('#toasts .toast-hint b')].some((b) => b.textContent === 'On skis'), null, { timeout: 30000 }).then(() => true, () => false));
+  const hintBox = await np.locator('#toasts .toast-hint').first().boundingBox();
+  check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
+  await np.tap('#ski-button');
+  await np.tap('#menu-button');
+  check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 5).join() === 'Your book,Sound,How to play,About,For testing' && (await np.locator('#menu h1').textContent()) === 'Settings');
+  await np.locator('#how-to').tap();
+  check('the welcome can be read again from Settings', (await np.locator('#talk-sheet').isVisible()) && (await np.locator('#talk-sheet .names b').textContent()) === 'Welcome to Gore' && !(await np.locator('#menu').isVisible()));
+  await np.locator('#talk-sheet .close, #talk-sheet .choices button', { hasText: /Close|Goodbye/ }).first().tap().catch(() => {});
+  for (let i = 0; i < 8 && (await np.locator('#talk-sheet').isVisible()); i++) await np.locator('#talk-sheet .choices button').last().tap();
+  await np.tap('#menu-button');
+  await np.locator('#sound-off').tap();
+  check('sound can be turned off', (await np.evaluate(() => window.__gore.state().sound)) === false && (await np.getAttribute('#sound-off', 'aria-pressed')) === 'true');
+  await np.locator('#sound-on').tap();
+  check('and on again', (await np.evaluate(() => window.__gore.state().sound)) === true);
+  check('the credits name where the map comes from', /OpenStreetMap/.test(await np.locator('#menu').textContent()) && /USGS/.test(await np.locator('#menu').textContent()));
+  await np.locator('#menu .close').tap();
   await np.waitForTimeout(1500);
   await np.reload();
   await np.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   await np.waitForTimeout(800);
+  check('the welcome is given once only', !(await np.locator('#talk-sheet').isVisible()) && (await np.evaluate(() => window.__gore.state().hints)).includes('welcome'));
   check('the flyer is put up once a day only', !(await np.locator('#flyer').isVisible()) && (await np.evaluate(() => window.__gore.state().flag)) !== null);
   await fresh1.close();
 

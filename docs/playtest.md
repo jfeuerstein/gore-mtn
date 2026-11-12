@@ -39,7 +39,9 @@ is described in [game-plan.md](game-plan.md).
 - **The feeder.** Fill it one day and somebody is at it the next, by day. Coming home puts
   them in the field guide.
 - **The town's projects.** Each is built the day after you stake it out, and the next is
-  proposed once it stands: a lean-to, a dock, a bandstand, a warming hut, a lookout.
+  proposed once it stands: a lean-to, a dock, a bandstand, a warming hut, a lookout. Walk out
+  along the dock, up into the bandstand, onto the lookout. Whoever wanted each one has
+  something to say about it, and writes.
 - **The Snow Train.** Conductor Bea at the depot asks for five stamps in your passport, then
   takes you to any season. In summer and fall the `Skis` button reads `Bike`.
 - **The map.** Drag it, zoom with `+` and `−` or a double tap, tap anything to name it and
@@ -90,8 +92,8 @@ The tools here draw with the fallback renderer and cannot present WebGPU, so the
 ## Known limits
 
 - Buildings have no insides. Everyone stands outside their door.
-- The river and ponds can be walked on, and the town's dock and lookout are walked through,
-  not onto.
+- The river and ponds are painted on the ground: out of winter you wade across them to the
+  knees, and in winter they are snow like anywhere else.
 - Settings > For testing > Go to earns stamps like arriving any other way, and will fill your
   book with things you did not earn.
 - A season or an hour pinned from Settings earns no condition patches. A season reached by

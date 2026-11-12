@@ -31,24 +31,24 @@ try {
   await page.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   check('the game starts with a network', !(await page.evaluate(() => window.__gore.error)));
   await page.evaluate(async () => {
+    window.__kept = null;
+    navigator.serviceWorker.addEventListener('message', (event) => (window.__kept = event.data));
     await navigator.serviceWorker.register('sw.js');
     const worker = await navigator.serviceWorker.ready;
     worker.active.postMessage('keep-all');
   });
+  // The worker says when it has done; give it three minutes, on a slow machine.
+  let waitError = '';
   const kept = await page
-    .waitForFunction(
-      async (n) => {
-        const cache = await caches.open('gore-v1');
-        const note = await cache.match('__kept.json');
-        return note ? Object.keys(await note.json()).length >= n : false;
-      },
-      wanted,
-      { timeout: 180000, polling: 1000 },
-    )
+    .waitForFunction(() => window.__kept !== null, null, { timeout: 180000, polling: 500 })
     .then(() => true)
-    .catch(() => false);
+    .catch((e) => {
+      waitError = String(e.message).split('\n')[0];
+      return false;
+    });
   const count = await page.evaluate(async () => (await (await caches.open('gore-v1')).keys()).length);
-  check('the worker keeps every file of the game', kept && count >= wanted, `${count} kept of ${wanted} listed`);
+  const said = await page.evaluate(() => window.__kept);
+  check('the worker keeps every file of the game', kept && said?.kept === true && count >= wanted, `${count} kept of ${wanted} listed${said?.failed ? `: ${said.failed}` : ''}${waitError ? `: ${waitError}` : ''}`);
 
   // No signal, and nobody at the other end.
   await context.setOffline(true);
@@ -57,10 +57,14 @@ try {
   const offline = await context.newPage();
   const errors = [];
   offline.on('pageerror', (e) => errors.push(e.message));
+  const said2 = [];
+  offline.on('console', (m) => said2.push(`${m.type()}: ${m.text().slice(0, 200)}`));
+  offline.on('requestfailed', (r) => said2.push(`failed: ${r.url().slice(-60)}`));
   await offline.goto(`${base}?season=fall&time=midday&weather=clear&intro=0`).catch((e) => errors.push(e.message));
-  await offline.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 }).catch(() => errors.push('never ready'));
+  await offline.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 240000 }).catch(() => errors.push('never ready'));
   const state = await offline.evaluate(() => ({ error: window.__gore?.error ?? null, season: window.__gore?.state?.().season })).catch(() => ({ error: 'no page', season: null }));
   check('with no network the game opens in a season it has never loaded', !state.error && state.season === 'fall' && errors.length === 0, state.error ?? errors[0] ?? state.season);
+  if (problems.length > 0) console.log(said2.slice(0, 25).join('\n'), await offline.evaluate(() => document.getElementById('loading')?.textContent?.slice(0, 200)));
   // Pictures never shown while there was a network: a postcard, a patch, a portrait, the models.
   const had = await offline.evaluate(async (paths) => Promise.all(paths.map((p) => fetch(p).then((r) => r.ok, () => false))), ['art/places/summit.webp', 'art/patches/first-tracks.webp', 'art/people/hazel.webp', 'models/park.json', 'world/ground-summer.png'].filter((p) => p in files));
   check('and has pictures it has never shown', had.length >= 4 && had.every(Boolean), had.join(' '));

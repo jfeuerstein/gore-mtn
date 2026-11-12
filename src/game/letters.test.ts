@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import { Game, type GameWorld, type SaveStore } from './game';
-import { letterWaiting, LETTERS } from './letters';
+import { EVERY_PATCH, letterWaiting, LETTERS } from './letters';
+import { PATCHES } from './patches';
+import { PROJECTS } from './projects';
 import { MINERALS } from './minerals';
 import { OFFERINGS } from './offerings';
 import { ERRANDS, personById } from './people';
@@ -34,6 +36,14 @@ describe('the letters', () => {
     }
   });
 
+  it('saves the last letter for a full book, and sends it ahead of the queue', () => {
+    expect(EVERY_PATCH).toBe(PATCHES.length);
+    const save = emptySave();
+    expect(letterWaiting(save, {}, '2026-11-11')?.id).not.toBe('the-whole-town');
+    for (const p of PATCHES) save.patches[p.id] = '2026-11-01';
+    expect(letterWaiting(save, { test: '2026-11-02' }, '2026-11-11')?.id).toBe('the-whole-town');
+  });
+
   it('always has something for a brand-new player', () => {
     expect(letterWaiting(emptySave(), {}, '2026-11-11')?.id).toBe('test');
   });
@@ -60,6 +70,9 @@ describe('the letters', () => {
     for (const e of ERRANDS) save.errands[e.id] = { taken: '2026-11-01', done: '2026-11-01' };
     for (const o of OFFERINGS) save.tried[o.id] = '2026-11-01';
     for (const id of ['snowman', 'rumor']) save.sightings[id] = { count: 1, first: '2026-11-01' };
+    for (const p of PROJECTS) save.projects[p.id] = '2026-11-01';
+    for (const p of PATCHES) save.patches[p.id] = '2026-11-01';
+    save.cabin.feeder = '2026-11-01';
     const had: Record<string, string> = {};
     for (let day = 1; day <= LETTERS.length; day++) {
       // A letter a day, on into January.

@@ -324,6 +324,16 @@ body {
   padding: 14px max(14px, env(safe-area-inset-right)) calc(var(--sheet-pad) + 6px) max(14px, env(safe-area-inset-left));
   font-size: 14px;
 }
+#menu h1 {
+  margin: 4px 0 10px;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: var(--display-weight);
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+  color: var(--ink);
+}
 #menu h2 {
   font-family: var(--display);
   font-size: 17px;
@@ -957,6 +967,51 @@ body {
   height: 60px;
   min-height: 60px;
   margin: 8px auto 16px;
+}
+#cabin-sheet .place.picked img {
+  filter: drop-shadow(0 0 0 var(--red)) drop-shadow(0 2px 1.5px rgba(34, 48, 74, 0.35));
+  transform: translateY(-3px);
+}
+#cabin-sheet .place.picked.bare {
+  border-color: var(--red);
+  color: var(--red);
+}
+/* Everything there is to choose from for the place last tapped: a strip to flick along. */
+#cabin-sheet .choices {
+  display: flex;
+  gap: 6px;
+  margin: 2px -4px 0;
+  padding: 4px 4px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-top: 2px dotted var(--kraft);
+}
+#cabin-sheet .choices::-webkit-scrollbar {
+  display: none;
+}
+#cabin-sheet .choice {
+  flex: none;
+  width: 50px;
+  height: 50px;
+  min-height: 50px;
+  padding: 3px;
+  background: none;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  color: var(--ink-soft);
+  font-size: 22px;
+}
+#cabin-sheet .choice img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#cabin-sheet .choice.on {
+  border-color: var(--red);
+}
+#cabin-sheet .choice.out {
+  opacity: 0.45;
 }
 #cabin-sheet .note {
   margin: 6px 0 0;
@@ -1735,9 +1790,44 @@ body {
   text-transform: var(--display-case);
 }
 #fatal {
-  font: 13px/1.5 ui-monospace, Menlo, monospace;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--ink);
+}
+#fatal b {
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  text-transform: var(--display-case);
+  font-size: 30px;
+  letter-spacing: 0.04em;
+  color: var(--red);
+}
+#fatal p {
+  margin: 0;
+  max-width: 300px;
+}
+#fatal button {
+  min-height: 48px;
+  padding: 0 28px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: var(--red);
+  color: var(--paper);
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  text-transform: var(--display-case);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  box-shadow: 0 3px 0 var(--ink);
+}
+#fatal small {
+  font: 10px/1.4 ui-monospace, Menlo, monospace;
   white-space: pre-wrap;
-  color: #8a1f11;
+  word-break: break-word;
+  max-width: 100%;
+  max-height: 22%;
+  overflow: hidden;
+  opacity: 0.55;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -2014,4 +2104,46 @@ body {
 }
 .toast-landmark .pic {
   border-radius: 6px;
+}
+
+/* A long page's headings, as a row to jump by. It stays at the top of the page as it scrolls. */
+#book-sheet .jumps {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  margin: 0 -4px 8px;
+  padding: 2px 4px 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: var(--paper);
+  background-image: var(--grain);
+  border-bottom: 2px dotted var(--ink-soft);
+}
+#book-sheet .jumps::-webkit-scrollbar {
+  display: none;
+}
+#book-sheet .jumps button {
+  flex: none;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: var(--display-weight);
+  text-transform: var(--display-case);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+}
+/* A heading with no count keeps its words on the left, like the rest. */
+#book-sheet h3,
+#book-sheet h4 {
+  justify-content: flex-start;
+}
+#book-sheet h3 span,
+#book-sheet h4 span {
+  margin-left: auto;
 }

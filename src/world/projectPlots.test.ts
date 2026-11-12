@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PROJECTS } from '../game/projects';
-import { projectPlots, projectWalls } from './projectPlots';
+import { floorAt, projectFloors, projectPlots, projectWalls } from './projectPlots';
 import { insideBox } from './walls';
 import { loadTestWorld } from './testWorld';
 import { distToPolyline } from './trails';
@@ -69,8 +69,18 @@ describe('what of a project is solid', () => {
     expect(solid(100 - 1.65, -50)).toBe(true);
   });
 
-  it('the dock and the lookout are left to be walked out along', () => {
+  it('the dock, the bandstand and the lookout are floors to stand on, not walls', () => {
     expect(projectWalls('dock', plot, 0)).toEqual([]);
     expect(projectWalls('deck', plot, 0)).toEqual([]);
+    expect(projectWalls('bandstand', plot, 0)).toEqual([]);
+    // The plot's front is toward +x here: the end of the dock is nine metres out over the water.
+    const dock = projectFloors('dock', plot, 100);
+    expect(floorAt(dock, 100 + 8, -50)).toBeCloseTo(100.62);
+    expect(floorAt(dock, 100 + 8, -50 + 2)).toBeNull();
+    expect(floorAt(dock, 100 - 3, -50)).toBeNull();
+    // The step is lower than the boards, and where both lie the boards win.
+    expect(floorAt(dock, 100 - 0.8, -50)).toBeCloseTo(100.4);
+    expect(floorAt(projectFloors('bandstand', plot, 0), 100, -50)).toBeCloseTo(0.7);
+    expect(projectFloors('hut', plot, 0)).toEqual([]);
   });
 });

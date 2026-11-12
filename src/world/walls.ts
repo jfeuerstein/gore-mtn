@@ -65,8 +65,12 @@ export function pushOutOfBox(x: number, z: number, radius: number, b: WallBox): 
 }
 
 const CELL = 48;
-/** A roof overhangs its walls a little; a camera keeps this far outside them, in metres. */
-const ROOF_MARGIN = 2;
+/**
+ * A roof overhangs its walls, and a shop's porch stands out in front of them (up to 2.5 m, with
+ * its own eave): a camera keeps this far outside a building's plot, in metres, so that it is
+ * never left looking out from under a porch ceiling.
+ */
+const ROOF_MARGIN = 3;
 
 /** Every building's walls, looked up by place so a mover only tests the few nearby. */
 export class Walls {

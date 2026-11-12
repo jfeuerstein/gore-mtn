@@ -46,11 +46,24 @@ function noticeboard(): THREE.BufferGeometry {
   );
 }
 
+/**
+ * Blocks for something small. A block gets its dark line only if it is stout enough to make
+ * part of a model's outline, and nothing about a dog or a cat is. So the model is built several
+ * times its size, where its body, head and legs are stout and its eyes and nose still are not,
+ * and then brought back down: the line comes down with it, to about the width of a figure's.
+ */
+function fine(list: readonly Block[], grow: number): THREE.BufferGeometry {
+  const big = list.map((b): Block => ({ ...b, size: [b.size[0] * grow, b.size[1] * grow, b.size[2] * grow], at: [b.at[0] * grow, b.at[1] * grow, b.at[2] * grow] }));
+  const geometry = blocks(big);
+  geometry.scale(1 / grow, 1 / grow, 1 / grow);
+  return geometry;
+}
+
 /** A big mountain dog, sitting: white and brown, with a small barrel at his collar. */
 function dog(): THREE.BufferGeometry {
   const brown = 0x9a5a2c;
   const white = 0xf4ead8;
-  return blocks([
+  return fine([
     // Haunches and body, tipped up as a sitting dog's is.
     { size: [0.62, 0.5, 0.7], at: [0, 0.3, 0.25], colour: brown },
     { size: [0.56, 0.75, 0.5], at: [0, 0.62, -0.1], colour: white, tip: -0.35 },
@@ -66,7 +79,7 @@ function dog(): THREE.BufferGeometry {
     // The barrel, and a tail laid out behind.
     { size: [0.2, 0.2, 0.26], at: [0, 0.82, -0.48], colour: 0xb9853f, turn: Math.PI / 2 },
     { size: [0.14, 0.14, 0.5], at: [0, 0.14, 0.78], colour: brown },
-  ]);
+  ], 4);
 }
 
 /** A fat orange cat, sitting very upright, in a chain of office. */
@@ -74,7 +87,7 @@ function cat(): THREE.BufferGeometry {
   const orange = 0xd9822b;
   const cream = 0xf4ead8;
   const gold = 0xe2b94a;
-  return blocks([
+  return fine([
     { size: [0.34, 0.34, 0.44], at: [0, 0.19, 0.08], colour: orange },
     { size: [0.28, 0.42, 0.26], at: [0, 0.44, -0.1], colour: orange },
     { size: [0.15, 0.28, 0.03], at: [0, 0.42, -0.235], colour: cream },
@@ -91,7 +104,7 @@ function cat(): THREE.BufferGeometry {
     { size: [0.24, 0.035, 0.03], at: [0, 0.6, -0.245], colour: gold },
     { size: [0.08, 0.08, 0.03], at: [0, 0.53, -0.255], colour: gold },
     { size: [0.08, 0.08, 0.42], at: [0.2, 0.06, 0.26], colour: orange, turn: 0.7 },
-  ]);
+  ], 4);
 }
 
 /** Coal eyes, a carrot and a striped scarf: what Tom keeps, whatever else he is made of that season. */
@@ -123,7 +136,7 @@ function tom(season: Season): THREE.BufferGeometry {
     { size: [0.42, 0.07, 0.42], at: [0, y + 0.07, 0], colour: 0xf4ead8 },
   ];
   if (season === 'winter') {
-    return blocks([
+    return fine([
       { size: [1.15, 0.85, 1.15], at: [0, 0.42, 0], colour: snow },
       { size: [0.86, 0.7, 0.86], at: [0, 1.15, 0], colour: snow },
       { size: [0.6, 0.55, 0.6], at: [0, 1.74, 0], colour: snow },
@@ -135,21 +148,21 @@ function tom(season: Season): THREE.BufferGeometry {
       // Twig arms, raised a little, as if about to make a point.
       { size: [0.05, 0.05, 0.75], at: [-0.74, 1.4, 0], colour: 0x6b4a33, turn: Math.PI / 2, tip: 0.45 },
       { size: [0.05, 0.05, 0.75], at: [0.74, 1.4, 0], colour: 0x6b4a33, turn: -Math.PI / 2, tip: 0.45 },
-    ]);
+    ], 2);
   }
   if (season === 'spring') {
     // Travelling light.
-    return blocks([
+    return fine([
       { size: [0.8, 0.38, 0.8], at: [0, 0.19, 0], colour: snow },
       { size: [0.5, 0.42, 0.5], at: [0, 0.58, 0], colour: snow },
       ...tomsFace(0.58, -0.26),
       ...tomsScarf(0.36, 0.62),
       ...hat(0.82),
       { size: [0.05, 0.05, 0.75], at: [0.7, 0.04, 0.2], colour: 0x6b4a33, turn: 0.9 },
-    ]);
+    ], 2);
   }
   const straw = 0xd9b65a;
-  return blocks([
+  return fine([
     { size: [0.12, 2.1, 0.12], at: [0, 1.05, 0.06], colour: 0x6b4a33 },
     { size: [1.7, 0.1, 0.1], at: [0, 1.58, 0.06], colour: 0x6b4a33 },
     // A plaid shirt and patched trousers, stuffed.
@@ -172,7 +185,7 @@ function tom(season: Season): THREE.BufferGeometry {
           { size: [0.08, 0.12, 0.08], at: [0.62, 0.39, -0.25], colour: 0x4f6b3a } as Block,
         ]
       : []),
-  ]);
+  ], 2);
 }
 
 /** The snowcat: tracks, a red cab, a blade in front and the comb behind that lays the corduroy. Its front is its own -z. */

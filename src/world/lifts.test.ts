@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildLiftPath,
   CABLE_HEIGHT,
+  gateBeams,
+  overBeam,
+  type LiftPath,
   inLiftClearing,
   LIFT_SPEED,
   LINE_CLEARING,
@@ -200,5 +203,29 @@ describe('the real lifts', () => {
         expect(at.y - world.source.heightAt(at.x, at.z), `${p.lift.name} at ${d} m`).toBeGreaterThan(-14);
       }
     }
+  });
+});
+
+describe('the beam over a gate', () => {
+  // A lift running north (toward -z) from the origin, on level ground at height 100.
+  const path = { points: [0, 100 + CABLE_HEIGHT, 0, 0, 100 + CABLE_HEIGHT, -60], surface: false } as unknown as LiftPath;
+  const beams = gateBeams([path]);
+
+  it('lies across the line at the foot of the lift, seven metres up', () => {
+    expect(beams).toHaveLength(1);
+    expect(beams[0]?.bottom).toBeCloseTo(106.6);
+    expect(Math.abs(beams[0]?.ax ?? 0)).toBeCloseTo(1);
+  });
+
+  it('lifts a camera that would sit on it, and no other', () => {
+    // On the beam, at its height: lifted clear over it.
+    expect(overBeam(beams, 2, 107, 0)).toBeCloseTo(108.4 - 107);
+    // Coming toward it, part of the way; well away, or well below, not at all.
+    const near = overBeam(beams, 2, 107, 1.5);
+    expect(near).toBeGreaterThan(0);
+    expect(near).toBeLessThan(1.4);
+    expect(overBeam(beams, 2, 107, 6)).toBe(0);
+    expect(overBeam(beams, 2, 102, 0)).toBe(0);
+    expect(overBeam(beams, 9, 107, 0)).toBe(0);
   });
 });

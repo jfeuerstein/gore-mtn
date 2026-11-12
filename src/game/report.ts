@@ -79,11 +79,20 @@ export function snowReport(c: Conditions, lifts: number, trails: number): string
   ].join('\n');
 }
 
-/** A small repeatable number from a day. */
+/**
+ * A repeatable number from a day, well stirred: one day's number says nothing about the
+ * next's, so what is picked by it (a trail, a reason, a guest) does not walk down a list.
+ */
 export function dayNumber(day: string): number {
   let seed = 0;
   for (let i = 0; i < day.length; i++) seed = (seed * 31 + day.charCodeAt(i)) >>> 0;
-  return seed;
+  // A day and the day after differ by one before this; afterwards, by about half their bits.
+  seed ^= seed >>> 16;
+  seed = Math.imul(seed, 0x85ebca6b);
+  seed ^= seed >>> 13;
+  seed = Math.imul(seed, 0xc2b2ae35);
+  seed ^= seed >>> 16;
+  return seed >>> 0;
 }
 
 /** Why today's trail is today's trail. */
@@ -110,10 +119,21 @@ export function trailOfTheDay(trails: readonly { name: string; difficulty: Diffi
   return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${trailReason(day)}.\n${todo.length} still to stamp.`;
 }
 
-/** The day's trail: one not yet stamped, the same one all day, for the board and for the flyer. Null when every trail is stamped. */
-export function trailPick<T extends { name: string }>(trails: readonly T[], stamped: (name: string) => boolean, day: string): T | null {
+/** How many trails must be in the passport before the board will send anyone down something hard. */
+export const GENTLE_UNTIL = 6;
+const GENTLE: readonly string[] = ['easy', 'intermediate'];
+
+/**
+ * The day's trail: one not yet stamped, the same one all day, for the board and for the flyer.
+ * Null when every trail is stamped. To someone new to the mountain it names an easy or a
+ * middling trail out in the open, not a glade or a black diamond.
+ */
+export function trailPick<T extends { name: string; difficulty?: string; glade?: boolean }>(trails: readonly T[], stamped: (name: string) => boolean, day: string): T | null {
   const todo = trails.filter((t) => !stamped(t.name));
-  return todo.length === 0 ? null : (todo[dayNumber(day) % todo.length] as T);
+  if (todo.length === 0) return null;
+  const gentle = trails.length - todo.length < GENTLE_UNTIL ? todo.filter((t) => !t.glade && t.difficulty !== undefined && GENTLE.includes(t.difficulty)) : [];
+  const from = gentle.length > 0 ? gentle : todo;
+  return from[dayNumber(day) % from.length] as T;
 }
 
 /** Why today's trail is today's trail. */

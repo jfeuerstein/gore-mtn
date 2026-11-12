@@ -66,10 +66,13 @@ Open the game
   chosen from what has been found. A feeder filled today has a guest at it tomorrow.
 - **Town projects.** The town builds five things, one after another: a lean-to, a dock, a
   bandstand, a warming hut, a lookout. The player's part is to go and stake out the spot; by
-  the next day it is built, for good, with a postcard for being there.
+  the next day it is built, for good, with a postcard for being there, boards to stand on,
+  and a word and a letter from whoever wanted it.
 - **The town's daily round.** A letter at the post office, the inn's rumour, a new bake, a new
   sandwich, a new library book; five doors called at in a day is a punch on a card.
 - **The Snow Train**, once its pass is earned, carries the player to another season.
+- **An ending, of a kind.** The day every patch is earned, one last letter comes from the
+  whole town. It says there is nothing left to find, and to come up anyway.
 
 ## 3. What there is to do
 

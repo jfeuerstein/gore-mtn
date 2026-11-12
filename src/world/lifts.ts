@@ -179,3 +179,52 @@ export function inLiftClearing(paths: readonly LiftPath[], x: number, z: number)
   }
   return false;
 }
+
+/** The beam over a lift's gate: where it is, and how high, in the world's own heights. */
+export interface GateBeam {
+  x: number;
+  z: number;
+  /** Half its length, across the line. */
+  half: number;
+  /** The way across the line, as a unit vector. */
+  ax: number;
+  az: number;
+  bottom: number;
+  top: number;
+}
+
+/**
+ * The beam over each lift's gate: two posts and a beam 7 m up, square to the line, at the
+ * bottom station. It is walked under, so it is no wall, but a camera following someone
+ * about the foot of a lift sits at just that height, and must be kept from sitting on it.
+ */
+export function gateBeams(paths: readonly LiftPath[]): GateBeam[] {
+  return paths.flatMap((path) => {
+    const p = path.points;
+    if (p.length < 6) return [];
+    const run = Math.hypot((p[3] as number) - (p[0] as number), (p[5] as number) - (p[2] as number)) || 1;
+    const dx = ((p[3] as number) - (p[0] as number)) / run;
+    const dz = ((p[5] as number) - (p[2] as number)) / run;
+    const ground = (p[1] as number) - (path.surface ? 0 : CABLE_HEIGHT);
+    return [{ x: p[0] as number, z: p[2] as number, half: 4.8, ax: dz, az: -dx, bottom: ground + 6.6, top: ground + 7.4 }];
+  });
+}
+
+/**
+ * How far a camera at (x, y, z) must be lifted to clear a gate's beam: nothing away from one,
+ * and rising smoothly to the whole way over as it comes within `reach` metres of the beam.
+ */
+export function overBeam(beams: readonly GateBeam[], x: number, y: number, z: number, reach = 2.5): number {
+  let lift = 0;
+  for (const b of beams) {
+    // Only a camera near the beam's own height is in its way.
+    if (y < b.bottom - 1.2 || y > b.top + 1) continue;
+    const along = (x - b.x) * b.ax + (z - b.z) * b.az;
+    const across = (x - b.x) * -b.az + (z - b.z) * b.ax;
+    const off = Math.hypot(Math.max(0, Math.abs(along) - b.half), across);
+    if (off >= reach) continue;
+    const near = 1 - off / reach;
+    lift = Math.max(lift, (b.top + 1 - y) * near * near * (3 - 2 * near));
+  }
+  return lift;
+}

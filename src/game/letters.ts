@@ -19,8 +19,21 @@ export interface Letter {
 const met = (id: string) => (save: SaveData) => id in save.met;
 const done = (id: string) => (save: SaveData) => Boolean(save.errands[id]?.done);
 const seen = (id: string) => (save: SaveData) => id in save.sightings;
+/** Once something the town has built has been staked out, and whoever is writing about it has been met. */
+const built = (project: string, who: string) => (save: SaveData) => project in save.projects && who in save.met;
+
+/** How many patches there are to earn. Kept here as a number so the post need not read the patch rules; a test holds the two together. */
+export const EVERY_PATCH = 28;
 
 export const LETTERS: readonly Letter[] = [
+  // The last letter, which goes to the head of the queue the day the book is full.
+  {
+    id: 'the-whole-town',
+    from: null,
+    signed: "-Everybody (Pip signed for Tom)",
+    when: (save) => Object.keys(save.patches).length >= EVERY_PATCH,
+    text: "We passed your Book around the inn last night. It's all in there - every trail, every stone, every one of us. Dot checked twice. Nothing left to find! Come up anyway. The mountain's still the mountain, and Gus made chili.",
+  },
   {
     id: 'test',
     from: 'dot',
@@ -207,6 +220,48 @@ export const LETTERS: readonly Letter[] = [
     signed: "-June",
     when: (save) => Object.keys(save.tried).length >= 4,
     text: "Walt says his sandwiches bring more people to Main Street than my scones do. He's allowed to think that. He's also getting day-old scones this week. :)",
+  },
+  {
+    id: 'home-feeder',
+    from: 'wren',
+    signed: "-Wren",
+    when: (save) => save.cabin.feeder !== '' && 'wren' in save.met,
+    text: "I heard you put a feeder up at your place. Good. Fill it at night and look in the morning - that's when they come. Don't stand too close. They know your jacket by now.",
+  },
+  {
+    id: 'built-lean-to',
+    from: 'otto',
+    signed: "-O.",
+    when: built('lean-to', 'otto'),
+    text: "Thanks for staking out the lean-to. You picked a pretty good spot. It's close enough to your place that I might borrow your woodpile. I'll ask first. Probably.",
+  },
+  {
+    id: 'built-dock',
+    from: 'pip',
+    signed: "PIP",
+    when: built('rabbit-dock', 'pip'),
+    text: "DEAR SKIER. There is a DOCK now. I ran to the end of it and stopped in time. Mom says I have to say that part. The fish are not scared of me yet but they will be.",
+  },
+  {
+    id: 'built-bandstand',
+    from: 'marge',
+    signed: "-Marge",
+    when: built('bandstand', 'marge'),
+    text: "Hon - the bandstand. I stood in it this morning with my coffee and nobody could tell me I wasn't a band. Come by. Bring anything that makes a noise.",
+  },
+  {
+    id: 'built-hut',
+    from: 'gus',
+    signed: "-Gus",
+    when: built('burnt-ridge-hut', 'gus'),
+    text: "The hut on Burnt Ridge has a stove now, so I brought chili up. Then I ate it, because nobody was there. It was pretty good. Come up sometime and I'll bring more.",
+  },
+  {
+    id: 'built-lookout',
+    from: 'amos',
+    signed: "-A.",
+    when: built('reservoir-deck', 'amos'),
+    text: "The lookout is built. From it you can see the reservoir and the hill where the old road ran. I stood there an hour. Nobody asked me to move.",
   },
   {
     id: 'sven-pizza',

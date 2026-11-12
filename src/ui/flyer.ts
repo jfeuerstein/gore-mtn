@@ -16,6 +16,8 @@ export interface FlyerPage {
   note: string | null;
   /** Where the player's flag is now, to show which lead has it. */
   flagged: { x: number; z: number } | null;
+  /** True in the bike months, when the day's trail is a ride and has no snowflake by it. */
+  riding?: boolean;
 }
 
 /** The mark beside each kind of lead: the trail's own mark is in its title, so it has a ski pole's basket. */
@@ -94,14 +96,14 @@ export class Flyer {
     if (page.leads.length === 0) {
       const none = document.createElement('p');
       none.className = 'none';
-      none.textContent = "Nothing on the list today.\nGo wherever looks good.";
+      none.textContent = "Nothing special today.\nGo wherever looks good.";
       this.list.append(none);
     }
     for (const lead of page.leads) {
       const row = document.createElement('div');
       row.className = `lead lead-${lead.kind}${lead.done ? ' done' : ''}`;
       const mark = document.createElement('i');
-      mark.textContent = lead.done ? '✓' : MARK[lead.kind];
+      mark.textContent = lead.done ? '✓' : lead.kind === 'trail' && page.riding ? '●' : MARK[lead.kind];
       const words = document.createElement('div');
       const head = document.createElement('small');
       head.textContent = lead.head;

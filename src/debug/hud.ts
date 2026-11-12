@@ -187,6 +187,7 @@ export class Hud {
     close.type = 'button';
     close.className = 'close';
     close.addEventListener('click', () => (this.menuEl.hidden = true));
+    add(this.menuEl, 'h1', 'Settings');
 
     if (this.book) {
       const book = this.book;
@@ -206,7 +207,7 @@ export class Hud {
       const restore = add(keep, 'button', 'Restore');
       restore.type = 'button';
       restore.id = 'save-restore';
-      const note = add(this.menuEl, 'p', 'The book is kept on this phone. A save code is the whole book as text: keep one somewhere safe, or use it to carry the book to another browser.');
+      const note = add(this.menuEl, 'p', 'The book is kept on this phone. A save code is the whole book as text: keep one somewhere safe, or use it to bring your book to a new phone.');
       copyCode.addEventListener('click', () => {
         const code = book.code();
         // Show it as well, so it can be copied by hand where the clipboard is not allowed.
@@ -221,14 +222,14 @@ export class Hud {
       restore.addEventListener('click', () => {
         const code = field.value.trim();
         if (!book.holds(code)) {
-          note.textContent = 'That is not a save code.';
+          note.textContent = "That doesn't look like a save code.";
           armed = '';
         } else if (armed !== code) {
           armed = code;
           note.textContent = 'This replaces the book on this phone with the one in the code. Tap Restore again to go ahead.';
         } else {
           armed = '';
-          note.textContent = book.restore(code) ? 'Book restored.' : 'That is not a save code.';
+          note.textContent = book.restore(code) ? 'Your book is back.' : "That doesn't look like a save code.";
           field.value = '';
         }
       });
@@ -277,6 +278,23 @@ export class Hud {
       }
     };
 
+    // The welcome again, for anyone who closed it too soon or wants reminding.
+    add(this.menuEl, 'h2', 'How to play');
+    const help = add(this.menuEl, 'div');
+    help.className = 'row';
+    const howTo = add(help, 'button', 'Read the welcome again');
+    howTo.type = 'button';
+    howTo.id = 'how-to';
+    howTo.addEventListener('click', () => {
+      this.menuEl.hidden = true;
+      this.onHowTo?.();
+    });
+
+    add(this.menuEl, 'h2', 'About');
+    add(this.menuEl, 'p', 'Gore is a personal, non-commercial fan project, not affiliated with or endorsed by Gore Mountain or any business in North Creek.');
+    add(this.menuEl, 'p', `${this.attribution} Weather: Open-Meteo. Drawn with three.js.`.trim());
+    add(this.menuEl, 'p', 'Lettering: Bebas Neue and Caveat. Portraits, postcards, patches and the field guide\'s models were made for this game with image and shape models; the people and their shops are invented.');
+
     // Everything below is for trying things out and for measuring, not for playing.
     const testing = add(this.menuEl, 'h2', 'For testing');
     testing.className = 'divider';
@@ -314,11 +332,6 @@ export class Hud {
     bench.type = 'button';
     bench.addEventListener('click', () => startBench(this.cfg.benchSeconds));
     add(this.menuEl, 'p', 'Changing a setting reloads the page. The benchmark steps through thirteen scenes by itself; leave the phone alone until it shows the results.');
-
-    add(this.menuEl, 'h2', 'About');
-    add(this.menuEl, 'p', 'Gore is a personal, non-commercial fan project, not affiliated with or endorsed by Gore Mountain or any business in North Creek.');
-    add(this.menuEl, 'p', `${this.attribution} Weather: Open-Meteo. Drawn with three.js.`.trim());
-    add(this.menuEl, 'p', 'Lettering: Bebas Neue and Caveat. Portraits, postcards, patches and the field guide\'s models were made for this game with image and shape models; the people and their shops are invented.');
   }
 
   /** One line that can be pasted back into a Claude session. */
@@ -342,6 +355,9 @@ export class Hud {
       `cpu ${s.frame.cpuAvgMs.toFixed(1)} ms  ${s.drawCalls} calls  ${(s.triangles / 1000).toFixed(0)}k tris\n` +
       `${s.width}x${s.height} @${s.pixelRatio}x  ${(s.trees / 1000).toFixed(1)}k trees`;
   }
+
+  /** Called when the player asks to read the welcome again. */
+  onHowTo: (() => void) | null = null;
 
   /**
    * Offer something to do here, as a button by the thumb, or take the offer away with null.

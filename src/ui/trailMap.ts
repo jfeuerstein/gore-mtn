@@ -217,7 +217,7 @@ export class TrailMap {
       this.chips.set(layer.id, chip);
       legend.append(chip);
     }
-    const left = button('To do', 'Show what is left to do', () => {
+    const left = button('Not yet', 'Show what is not in the book yet', () => {
       this.todo = !this.todo;
       this.refresh();
     });
@@ -767,7 +767,7 @@ export class TrailMap {
     else if (found?.point) text = say(found.point.label, found.point.note);
     else if (found?.path) text = say(`Path: ${found.path}`, this.progress('path', found.path)?.note);
     else if (found?.lift) text = say(`Lift: ${found.lift.lift.name ?? 'unnamed'}`, found.lift.lift.name ? this.progress('lift', found.lift.lift.name)?.note : undefined);
-    else if (found?.trail) text = say(`${DIFFICULTY_MARK[found.trail.difficulty]} ${found.trail.name}${found.trail.glade ? ' (glade)' : ''}`, this.progress('trail', found.trail.name as string)?.note);
+    else if (found?.trail) text = say(`${DIFFICULTY_MARK[found.trail.difficulty]} ${found.trail.name}${found.trail.glade ? ' (in the trees)' : ''}`, this.progress('trail', found.trail.name as string)?.note);
     else if (found?.spot) text = 'A spot on the mountain.';
     this.caption.textContent = text;
     // The flag goes wherever was tapped; tapping the flag itself takes it up.

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The Home Screen icon, drawn as the game is: a banded sky, flat inks, a dark line round things.
+       `node tools/art/make-icon.mjs` renders it to public/icon-180.png and public/icon-512.png. -->
+  <rect width="512" height="512" fill="#7fa7e3"/>
+  <rect y="120" width="512" height="392" fill="#9bbcea"/>
+  <rect y="196" width="512" height="316" fill="#b9d0f0"/>
+  <rect y="262" width="512" height="250" fill="#d6e3f5"/>
+  <!-- Far hills. -->
+  <path d="M0 318 L70 276 L150 306 L236 262 L330 300 L420 268 L512 304 L512 512 L0 512 Z" fill="#8fa3cf"/>
+  <!-- The mountain: snow in the light, snow in shade, with the line round it. -->
+  <path d="M-20 470 L150 232 L226 318 L330 150 L532 452 L532 532 L-20 532 Z" fill="#f6f7fb" stroke="#22304a" stroke-width="12" stroke-linejoin="round"/>
+  <path d="M330 150 L532 452 L532 532 L410 532 L352 322 L388 300 Z" fill="#c4cfe8"/>
+  <path d="M150 232 L226 318 L262 376 L206 352 Z" fill="#c4cfe8"/>
+  <path d="M330 150 L532 452" fill="none" stroke="#22304a" stroke-width="12" stroke-linecap="round"/>
+  <!-- Spruce across the foot of it, with a trail cut through. -->
+  <path d="M-20 420 L40 380 L74 414 L112 372 L150 412 L192 376 L226 416 L270 384 L300 420 L300 532 L-20 532 Z" fill="#2f5a45" stroke="#22304a" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M364 532 L372 432 L404 396 L440 430 L474 400 L532 440 L532 532 Z" fill="#2f5a45" stroke="#22304a" stroke-width="10" stroke-linejoin="round"/>
+  <!-- A skier: the brightest thing in the picture. -->
+  <path d="M318 388 L340 420 L318 452 L296 420 Z" fill="#c8402d" stroke="#22304a" stroke-width="9" stroke-linejoin="round"/>
+</svg>

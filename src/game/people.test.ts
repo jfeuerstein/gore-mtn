@@ -3,8 +3,10 @@ import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
 import { namedSpots } from '../world/whereabouts';
 import { Game, type GameWorld, type SaveStore } from './game';
+import { LETTERS } from './letters';
 import { MINERALS } from './minerals';
 import { buildLandmarks } from './passport';
+import { PROJECTS } from './projects';
 import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, PEOPLE, personById, TOWN_ROUND } from './people';
 import { SPECIES } from './wildlife';
 
@@ -115,7 +117,49 @@ describe('the errands', () => {
     const second = game.talk('fenn', DAY, 'winter');
     expect(second?.offer).toBeUndefined();
     expect(second?.events.some((e) => e.kind === 'item')).toBe(true);
+    // The next day opens with that day's book, whatever else is in hand, and then the errand again.
+    const morning = game.talk('fenn', '2026-11-12', 'winter');
+    expect(morning?.offer).toBeUndefined();
+    expect(morning?.events.some((e) => e.kind === 'item')).toBe(true);
     expect(game.talk('fenn', '2026-11-12', 'winter')?.offer?.id).toBe('overdue');
+  });
+
+  it('has whoever wanted a thing built say so, once, when it stands', () => {
+    const game = new Game(gameWorld, memory());
+    game.talk('otto', DAY, 'winter');
+    game.stakeOut('lean-to', DAY);
+    const said = PROJECTS.find((p) => p.id === 'lean-to')?.said;
+    // Not while it is going up; the day after, once.
+    expect(game.talk('otto', DAY, 'winter')?.lines).not.toContain(said);
+    expect(game.talk('otto', '2026-11-12', 'winter')?.lines).toContain(said);
+    expect(game.talk('otto', '2026-11-12', 'winter')?.lines).not.toContain(said);
+    expect(game.talk('otto', '2026-11-13', 'winter')?.lines).not.toContain(said);
+  });
+
+  it('has the postmaster say when the box is empty, once a day', () => {
+    const game = new Game(gameWorld, memory());
+    // The first day there is a letter; later the same day, small talk.
+    expect(game.talk('dot', DAY, 'winter')?.letter?.id).toBe('test');
+    expect(game.talk('dot', DAY, 'winter')?.lines.join(' ')).not.toMatch(/Nothing in your box/);
+    // Run the box dry: every letter that needs nothing has been had.
+    for (const l of LETTERS) if (!l.when) game.save.letters[l.id] = DAY;
+    const empty = game.talk('dot', '2026-11-20', 'winter');
+    expect(empty?.letter).toBeUndefined();
+    expect(empty?.lines.join(' ')).toMatch(/Nothing in your box/);
+    expect(game.talk('dot', '2026-11-20', 'winter')?.lines.join(' ')).not.toMatch(/Nothing in your box/);
+  });
+
+  it('hands over the day\'s bake even while an errand is in hand', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.talk('june', DAY, 'winter')?.offer?.id).toBe('ottos-coffee');
+    game.accept('ottos-coffee', DAY);
+    // Later the same day: the bake. The day after: the next bake first, then the reminder.
+    expect(game.talk('june', DAY, 'winter')?.events.some((e) => e.kind === 'item')).toBe(true);
+    const tried = Object.keys(game.save.tried).length;
+    const next = game.talk('june', '2026-11-12', 'winter');
+    expect(next?.lines).not.toContain(errandById('ottos-coffee')?.nudge);
+    expect(Object.keys(game.save.tried).length).toBe(tried + 1);
+    expect(game.talk('june', '2026-11-12', 'winter')?.lines).toEqual([errandById('ottos-coffee')?.nudge]);
   });
 
   it('keeps each bench the first time it is sat on', () => {
@@ -163,7 +207,7 @@ describe('talking and errands', () => {
     const first = game.talk('hazel', DAY, 'winter');
     expect(first?.lines[0]).toBe(personById('hazel')?.hello);
     expect(first?.offer?.id).toBe('first-chair');
-    expect(game.accept('first-chair', DAY)).toEqual([{ kind: 'errand', title: 'First chair', detail: 'New errand, in your pack' }]);
+    expect(game.accept('first-chair', DAY)).toEqual([{ kind: 'errand', title: 'First chair', detail: 'New errand · in the Book, under Pack' }]);
     expect(game.accept('first-chair', DAY)).toEqual([]);
     // Coming back empty-handed gets a reminder, not a second greeting.
     const again = game.talk('hazel', DAY, 'winter');

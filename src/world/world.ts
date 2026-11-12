@@ -1,3 +1,4 @@
+import { tidyName } from './names';
 import { isGzip, unpackHeights } from './codec';
 import { distanceToMask } from './distance';
 import { Heightfield } from './heightfield';
@@ -108,10 +109,11 @@ export function buildWorld(meta: WorldFile, heightBuf: ArrayBuffer, maskBuf: Arr
   return {
     source,
     trailMask,
-    trails: meta.trails,
+    // Names are shown as the map has them, tidied (see tidyName).
+    trails: meta.trails.map((t) => (t.name ? { ...t, name: tidyName(t.name) } : t)),
     lifts: meta.lifts,
     places: meta.places,
-    paths: meta.paths,
+    paths: meta.paths.map((p) => (p.name ? { ...p, name: tidyName(p.name) } : p)),
     water: meta.water,
     roads: meta.roads,
     rails: meta.rails ?? [],

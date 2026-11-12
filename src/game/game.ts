@@ -167,6 +167,8 @@ export class Game {
   private rumourOf: { day: string; rumour: Rumour } | null = null;
   /** The day the inn last passed on its rumour, so it is told once a day. */
   private rumourTold = '';
+  /** The day the postmaster last said the box was empty, so it is said once a day. */
+  private emptyBox = '';
   /** The day each person last handed over their offering, so a second visit the same day is small talk. */
   private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
@@ -251,7 +253,7 @@ export class Game {
       // Nobody gets a postcard of something that is not there yet.
       if (!this.landmarkOpen(mark.id, day)) continue;
       this.save.landmarks[mark.id] = day;
-      events.push({ kind: 'landmark', title: mark.name, detail: 'Landmark stamped', art: `places/${mark.id}` });
+      events.push({ kind: 'landmark', title: mark.name, detail: 'A new postcard', art: `places/${mark.id}` });
     }
     if (events.length > 0) this.dirty = true;
     return events;
@@ -528,6 +530,30 @@ export class Game {
     }
   }
 
+  /** How far along an errand that counts things is: so many of so many. Null for one that is simply done or not. */
+  needProgress(need: Need): { have: number; of: number } | null {
+    const save = this.save;
+    const count = (have: number, of: number): { have: number; of: number } | null => (of > 1 ? { have: Math.min(have, of), of } : null);
+    switch (need.kind) {
+      case 'mineral':
+        return count(save.minerals[need.id]?.count ?? 0, need.count);
+      case 'minerals':
+        return count(Object.keys(save.minerals).length, need.count);
+      case 'speciesCount':
+        return count(Object.keys(save.sightings).length, need.count);
+      case 'trails':
+        return count(this.summary().trails, need.count);
+      case 'lifts':
+        return count(this.summary().lifts, need.count);
+      case 'stamps':
+        return count(this.stamps(), need.count);
+      case 'seasons':
+        return count(Object.keys(save.seasons).length, need.count);
+      default:
+        return null;
+    }
+  }
+
   /** Errands taken and not yet done. */
   activeErrands(): Errand[] {
     return ERRANDS.filter((e) => this.save.errands[e.id] && !this.save.errands[e.id]?.done);
@@ -567,12 +593,12 @@ export class Game {
       if ((e.to ?? e.from) !== personId || !this.needMet(e.need)) continue;
       (save.errands[e.id] as { taken: string; done?: string }).done = day;
       if (e.need.kind === 'item') save.items = save.items.filter((i) => i !== (e.need as { id: string }).id);
-      talk.lines.push(e.thanks);
-      talk.events.push({ kind: 'errand', title: e.title, detail: 'Errand done' });
       const gear = e.reward?.gear ? gearById(e.reward.gear) : undefined;
+      talk.lines.push(gear && save.gear.owned.includes(gear.id) && e.thanksOwned ? e.thanksOwned : e.thanks);
+      talk.events.push({ kind: 'errand', title: e.title, detail: 'Errand done' });
       if (gear && !save.gear.owned.includes(gear.id)) {
         save.gear.owned.push(gear.id);
-        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat, in your pack' : 'A new jacket, in your pack', colour: gear.colour, art: `gear/${artSlug(gear.id)}` });
+        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat · in the Book, under Pack' : 'A new jacket · in the Book, under Pack', colour: gear.colour, art: `gear/${artSlug(gear.id)}` });
       }
       if (e.reward?.pass && !save.pass) {
         save.pass = true;
@@ -604,7 +630,39 @@ export class Game {
         talk.lines.push(`Okay, so. I heard somebody saw ${rumour.find.mineral.name.toLowerCase()} lying out by ${rumour.place}.\nA nice one, supposedly. I'd go look myself, but - forty beds.`);
       }
     }
-    const said = talk.lines.length - (talk.lines[0] === person.hello ? 1 : 0);
+    const saidBy = (): number => talk.lines.length - (talk.lines[0] === person.hello ? 1 : 0);
+    // What they have for the player today comes before any errand: the day's bake, sandwich
+    // or book is handed over the first time they are spoken to, whatever else is in hand.
+    // (On first meeting, the hello and whatever they want to ask come first.)
+    if (talk.lines.length === 0 && this.treated.get(personId) !== day) {
+      const treat = offeringFrom(personId, save.tried, day);
+      if (treat) {
+        this.treated.set(personId, day);
+        talk.lines.push(treat.offering.hand);
+        if (treat.fresh) {
+          save.tried[treat.offering.id] = day;
+          talk.events.push({ kind: 'item', title: treat.offering.name, detail: `${OFFERING_KIND[treat.offering.kind]} · noted in the Book`, art: `offerings/${artSlug(treat.offering.id)}` });
+        }
+      }
+    }
+    // Whoever wanted a thing built has something to say once it stands. Once.
+    if (saidBy() === 0) {
+      const theirs = PROJECTS.find((p) => p.who === personId && this.projectState(p.id, day) === 'built' && !save.hints.includes(`built:${p.id}`));
+      if (theirs) {
+        save.hints.push(`built:${theirs.id}`);
+        talk.lines.push(theirs.said);
+      }
+    }
+    // An empty box at the post office is said to be empty, once a day.
+    if (personId === 'dot' && saidBy() === 0 && talk.lines.length === 0 && this.emptyBox !== day && !Object.values(save.letters).includes(day)) {
+      this.emptyBox = day;
+      talk.lines.push(
+        Object.keys(save.letters).length >= LETTERS.length
+          ? "That's all of them. Every letter anybody's written you!\nI'll keep the box open. You never know."
+          : "Nothing in your box today. It happens!\nPeople write when there's news. Go make some.",
+      );
+    }
+    const said = saidBy();
     if (said === 0) {
       const waiting = this.activeErrands().find((e) => e.from === personId);
       const offer = this.nextErrand(personId, season);
@@ -615,15 +673,6 @@ export class Game {
         this.asked.set(offer.id, day);
         talk.lines.push(offer.ask);
         talk.offer = offer;
-      } else if (this.treated.get(personId) !== day && offeringFrom(personId, save.tried, day)) {
-        // With no errand to talk about, they hand over the day's bake, sandwich or book.
-        const { offering, fresh } = offeringFrom(personId, save.tried, day) as NonNullable<ReturnType<typeof offeringFrom>>;
-        this.treated.set(personId, day);
-        talk.lines.push(offering.hand);
-        if (fresh) {
-          save.tried[offering.id] = day;
-          talk.events.push({ kind: 'item', title: offering.name, detail: `${OFFERING_KIND[offering.kind]} · noted in your book`, art: `offerings/${artSlug(offering.id)}` });
-        }
       } else if (talk.lines.length === 0 && this.noticed.get(personId) !== day && (person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket])) {
         // They have something to say about what the player has on. Once a day is enough.
         this.noticed.set(personId, day);
@@ -675,7 +724,7 @@ export class Game {
     if (!e || this.save.errands[errandId]) return [];
     this.save.errands[errandId] = { taken: day };
     this.dirty = true;
-    const events: GameEvent[] = [{ kind: 'errand', title: e.title, detail: 'New errand, in your pack' }];
+    const events: GameEvent[] = [{ kind: 'errand', title: e.title, detail: 'New errand · in the Book, under Pack' }];
     // A delivery taken on from the person who has the goods is handed over on the spot.
     if (e.fetch && e.fetch.from === e.from && e.need.kind === 'item' && !this.save.items.includes(e.need.id)) {
       this.save.items.push(e.need.id);
@@ -767,6 +816,20 @@ export class Game {
     const placed = this.save.cabin[where];
     if (slot < 0 || slot >= placed.length) return;
     placed[slot] = nextChoice(where === 'shelf' ? this.shelfChoices() : this.wallChoices(), placed, slot);
+    this.dirty = true;
+    this.persist();
+  }
+
+  /**
+   * Set one thing out in a place, or leave the place bare with ''. Something set out elsewhere
+   * is moved here: a stone is in one place at a time. Anything not the player's to set out is refused.
+   */
+  place(where: 'shelf' | 'wall', slot: number, id: string): void {
+    const placed = this.save.cabin[where];
+    if (slot < 0 || slot >= placed.length) return;
+    if (id !== '' && !(where === 'shelf' ? this.shelfChoices() : this.wallChoices()).includes(id)) return;
+    if (id !== '') placed.forEach((other, i) => other === id && (placed[i] = ''));
+    placed[slot] = id;
     this.dirty = true;
     this.persist();
   }

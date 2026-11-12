@@ -4,6 +4,7 @@
  * The save is small and plain: it is kept in the browser's storage, and can be copied out as a
  * code and pasted back in, which is the only backup a web game on a phone has.
  */
+import { tidyName } from '../world/names';
 import { emptyCabin, SHELF_SLOTS, WALL_SLOTS, type CabinSave } from './cabin';
 
 export const SAVE_VERSION = 1;
@@ -134,7 +135,8 @@ function progress(v: unknown): Record<string, TrailProgress> {
   if (!isRecord(v)) return out;
   for (const [name, t] of Object.entries(v)) {
     if (!isRecord(t) || typeof t.seen !== 'string' || !/^[01]*$/.test(t.seen)) continue;
-    out[name] = isDay(t.stamped) ? { seen: t.seen, stamped: t.stamped } : { seen: t.seen };
+    // Trail names are kept as the game shows them, so progress under an older spelling is not lost.
+    out[tidyName(name)] = isDay(t.stamped) ? { seen: t.seen, stamped: t.stamped } : { seen: t.seen };
   }
   return out;
 }

@@ -98,6 +98,33 @@ describe('Game', () => {
     expect(game.save.cabin.wall[0]).toBe('');
   });
 
+  it('sets a chosen stone straight into a place, moving it from wherever else it sat', () => {
+    const game = new Game(gameWorld, memory());
+    game.save.minerals.quartz = { count: 1, best: 2, first: DAY };
+    game.save.minerals.garnet = { count: 2, best: 3, first: DAY };
+    game.place('shelf', 3, 'garnet');
+    expect(game.save.cabin.shelf).toEqual(['', '', '', 'garnet', '']);
+    // The same stone chosen for another place is moved there, not doubled.
+    game.place('shelf', 0, 'garnet');
+    expect(game.save.cabin.shelf).toEqual(['garnet', '', '', '', '']);
+    // Something never found, or a place that is not there, is refused; '' leaves a place bare.
+    game.place('shelf', 1, 'pyrite');
+    game.place('shelf', 9, 'quartz');
+    expect(game.save.cabin.shelf).toEqual(['garnet', '', '', '', '']);
+    game.place('shelf', 0, '');
+    expect(game.save.cabin.shelf.join('')).toBe('');
+  });
+
+  it('says how far along a counting errand is', () => {
+    const game = new Game(gameWorld, memory());
+    expect(game.needProgress({ kind: 'stamps', count: 5 })).toEqual({ have: 0, of: 5 });
+    game.save.lifts['Adirondack Express'] = DAY;
+    expect(game.needProgress({ kind: 'lifts', count: 3 })).toEqual({ have: 1, of: 3 });
+    // An errand that is simply done or not has no count to show.
+    expect(game.needProgress({ kind: 'lifts', count: 1 })).toBeNull();
+    expect(game.needProgress({ kind: 'item', id: 'coffee' })).toBeNull();
+  });
+
   it('fills the feeder once, and whoever comes the next day goes in the guide', () => {
     const game = new Game(gameWorld, memory());
     expect(game.fillFeeder(DAY)).toBe(true);
@@ -172,7 +199,7 @@ describe('Game', () => {
   it('gives each summit a patch in every season', () => {
     const game = new Game(gameWorld, memory());
     const top = place('summit');
-    expect(game.reachedAt(top.x + 10, top.z + 10, DAY, 'winter').map((e) => e.detail).sort()).toEqual(['Landmark stamped', 'Summit patch']);
+    expect(game.reachedAt(top.x + 10, top.z + 10, DAY, 'winter').map((e) => e.detail).sort()).toEqual(['A new postcard', 'Summit patch']);
     expect(game.reachedAt(top.x, top.z, DAY, 'winter')).toEqual([]);
     expect(game.reachedAt(top.x, top.z, '2027-07-04', 'summer')).toEqual([{ kind: 'peak', title: 'Gore Mountain', detail: 'Summer summit patch', art: 'peaks/gore' }]);
     expect(game.reachedAt(top.x, top.z, '2027-07-05', 'summer')).toEqual([]);

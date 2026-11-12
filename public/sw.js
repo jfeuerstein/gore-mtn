@@ -43,8 +43,16 @@ self.addEventListener('fetch', (event) => {
         if (response.ok) event.waitUntil(keep(request, response.clone()));
         return response;
       })
-      // Offline. The page itself is the same whatever options follow it in the address.
-      .catch(() => caches.match(request, { ignoreSearch: request.mode === 'navigate' }).then((hit) => hit ?? Response.error())),
+      // Offline. The page itself is the same whatever options follow it in the address, and is
+      // also kept under its own name, for a game that has only ever been opened once.
+      .catch(() =>
+        caches
+          // A copy is a copy whoever asked for it: the page asks for its script one way and the
+          // worker fetched it another, and a server's Vary header must not come between them.
+          .match(request, { ignoreSearch: request.mode === 'navigate', ignoreVary: true })
+          .then((hit) => hit ?? (request.mode === 'navigate' ? caches.match(new URL('index.html', self.registration.scope).href) : undefined))
+          .then((hit) => hit ?? Response.error()),
+      ),
   );
 });
 
@@ -65,6 +73,7 @@ async function keepAll() {
   const wanted = Object.keys(files).filter((path) => kept[path] !== files[path]);
   if (wanted.length === 0) return;
   let since = 0;
+  let failed = null;
   const note = () => cache.put(KEPT, new Response(JSON.stringify(kept), { headers: { 'Content-Type': 'application/json' } }));
   const one = async () => {
     for (let path = wanted.shift(); path !== undefined; path = wanted.shift()) {
@@ -75,8 +84,9 @@ async function keepAll() {
         await keep(new Request(url), response);
         kept[path] = files[path];
         if (++since % 20 === 0) await note();
-      } catch {
+      } catch (error) {
         // No signal, or it went: leave the rest for next time.
+        failed = String(error);
         return;
       }
     }
@@ -85,12 +95,15 @@ async function keepAll() {
   // Forget marks for files that are no longer part of the game.
   for (const path of Object.keys(kept)) if (!(path in files)) delete kept[path];
   await note();
+  return failed;
 }
 
 self.addEventListener('message', (event) => {
   if (event.data !== 'keep-all' || keeping) return;
   keeping = keepAll()
-    .catch(() => undefined)
+    .catch((error) => String(error))
+    // Say how it went to whoever asked: the tools listen, the game does not.
+    .then((failed) => event.source?.postMessage({ kept: !failed, failed: failed ?? null }))
     .finally(() => {
       keeping = null;
     });
