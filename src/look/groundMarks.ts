@@ -45,6 +45,11 @@ export const GROUND_MARKS: Record<Season, Readonly<Record<number, readonly Mark[
       { kind: 'pebbles', ink: 0xfbf8ee },
       { kind: 'twigs', ink: 0x5d7396 },
     ],
+    // Ice: the scratches of skates and the wind, and snow drifted on it.
+    0x7fb4c8: [
+      { kind: 'strokes', ink: 0xfbf8ee },
+      { kind: 'pebbles', ink: 0xc3d3ea },
+    ],
   },
   spring: {
     // Old snow; last year's leaves and this year's shoots; thawed grass with the winter's twigs on it.

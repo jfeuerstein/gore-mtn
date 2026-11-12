@@ -1,4 +1,5 @@
 import type { SaveData } from './save';
+import { bookFull } from './patches';
 
 /**
  * The post. One letter a day waits at the North Creek Post Office, from somebody the player has
@@ -22,19 +23,17 @@ const seen = (id: string) => (save: SaveData) => id in save.sightings;
 /** Once something the town has built has been staked out, and whoever is writing about it has been met. */
 const built = (project: string, who: string) => (save: SaveData) => project in save.projects && who in save.met;
 
-/** How many patches there are to earn. Kept here as a number so the post need not read the patch rules; a test holds the two together. */
-export const EVERY_PATCH = 28;
 
 /** The letter that closes a full book. */
 export const LAST_LETTER = 'the-whole-town';
 
 export const LETTERS: readonly Letter[] = [
-  // The last letter, which goes to the head of the queue the day the book is full.
+  // The last letter, which goes to the head of the queue the day the book is full (which does not wait on the weather: see `bookFull`).
   {
     id: LAST_LETTER,
     from: null,
     signed: "-Everybody (Pip signed for Tom)",
-    when: (save) => Object.keys(save.patches).length >= EVERY_PATCH,
+    when: (save) => bookFull(save.patches),
     text: "We passed your Book around the inn last night. It's all in there - every trail, every stone, every one of us. Dot checked twice. Here's one more patch, for your wall. Come up anyway! Gus made chili.",
   },
   {
@@ -272,6 +271,14 @@ export const LETTERS: readonly Letter[] = [
     signed: "-Sven",
     when: met('sven'),
     text: "A student asked me today what comes after pizza and french fries. I said: lunch. He's my best student. I might let him teach.",
+  },
+  // After the ending, for whoever goes on to earn the one patch that waited on the sky.
+  {
+    id: 'wren-sky',
+    from: 'wren',
+    signed: "-Wren",
+    when: (save) => 'weatherproof' in save.patches && bookFull(save.patches),
+    text: "I saw it in the log. Every kind of weather this mountain has, and you were out in all of it. The sky doesn't hand that patch to just anybody. I'd know - I've been asking for years.",
   },
 ];
 

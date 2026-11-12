@@ -73,26 +73,69 @@ const SNOW = 0xf2f5fa;
 const RUBBER = 0x1f2228;
 const WINDSCREEN = 0x2a3440;
 
-/** A parked car, or now and then a pickup, its nose toward its own +z. Under snow in winter. */
+const CHROME = 0xc9ced6;
+const LAMP_GLASS = 0xf2d16b;
+const TAIL_GLASS = 0xc8402d;
+const SKI_PAINT = [0xc8402d, 0x2b62c9, 0xf2d16b, 0x4f8a3f];
+
+/**
+ * A parked car, its nose toward its own +z: one of three kinds (a saloon, a wagon with a long
+ * roof, a pickup), each a body with a bonnet lower than its cabin, a band of glass round the
+ * cabin under a roof of its own paint, wheels with hubs, bumpers and lamps. In winter there is
+ * snow on the roof and the bonnet, and a wagon has skis on a rack.
+ */
 function car(roll: number, winter: boolean): Block[] {
   const paint = CAR_PAINT[Math.floor(roll * CAR_PAINT.length) % CAR_PAINT.length] as number;
-  const pickup = (roll * 7) % 1 < 0.3;
+  const kind = (roll * 7) % 1;
+  const pickup = kind < 0.28;
+  const wagon = !pickup && kind < 0.62;
+  // The cabin: where it sits along the car and how long it is.
+  const cabZ = pickup ? 0.35 : wagon ? -0.55 : -0.3;
+  const cabLong = pickup ? 1.45 : wagon ? 2.7 : 2.0;
+  const sill = 0.9;
+  const top = pickup ? 1.52 : wagon ? 1.5 : 1.42;
   const list: Block[] = [
-    { size: [1.76, 0.58, 4.3], at: [0, 0.6, 0], colour: paint },
-    // Bumpers, front and back.
-    { size: [1.8, 0.16, 0.12], at: [0, 0.42, 2.16], colour: 0xc9ced6 },
-    { size: [1.8, 0.16, 0.12], at: [0, 0.42, -2.16], colour: 0xc9ced6 },
+    // The body, sill to wheel arch, and the bonnet in front of the cabin.
+    { size: [1.76, 0.52, 4.3], at: [0, 0.64, 0], colour: paint },
+    { size: [1.66, 0.1, 2.15 - (cabZ + cabLong / 2)], at: [0, sill + 0.03, (2.15 + cabZ + cabLong / 2) / 2], colour: paint },
+    // Glass all round, and the roof on it.
+    { size: [1.58, top - sill - 0.08, cabLong], at: [0, (top + sill - 0.08) / 2, cabZ], colour: WINDSCREEN },
+    { size: [1.64, 0.1, cabLong - 0.1], at: [0, top - 0.03, cabZ], colour: paint },
+    // The posts at the corners of the glass, in the car's paint.
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ size: [0.1, top - sill - 0.08, 0.1] as [number, number, number], at: [sx * 0.76, (top + sill - 0.08) / 2, cabZ + sz * (cabLong / 2 - 0.05)] as [number, number, number], colour: paint }))),
+    // Bumpers, lamps in front, lamps behind.
+    { size: [1.82, 0.16, 0.14], at: [0, 0.46, 2.17], colour: CHROME },
+    { size: [1.82, 0.16, 0.14], at: [0, 0.46, -2.17], colour: CHROME },
+    { size: [0.34, 0.16, 0.06], at: [-0.6, 0.76, 2.16], colour: LAMP_GLASS },
+    { size: [0.34, 0.16, 0.06], at: [0.6, 0.76, 2.16], colour: LAMP_GLASS },
+    { size: [0.3, 0.14, 0.06], at: [-0.64, 0.78, -2.16], colour: TAIL_GLASS },
+    { size: [0.3, 0.14, 0.06], at: [0.64, 0.78, -2.16], colour: TAIL_GLASS },
   ];
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) list.push({ size: [0.24, 0.64, 0.64], at: [sx * 0.8, 0.32, sz * 1.35], colour: RUBBER });
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) {
+      list.push({ size: [0.26, 0.68, 0.68], at: [sx * 0.8, 0.34, sz * 1.38], colour: RUBBER }, { size: [0.04, 0.3, 0.3], at: [sx * 0.94, 0.34, sz * 1.38], colour: CHROME });
+    }
+  }
   if (pickup) {
-    // The cab forward, an open bed behind.
-    list.push({ size: [1.6, 0.56, 1.5], at: [0, 1.17, 0.45], colour: WINDSCREEN }, { size: [1.66, 0.1, 1.56], at: [0, 1.48, 0.45], colour: paint });
-    for (const sx of [-1, 1]) list.push({ size: [0.1, 0.34, 1.9], at: [sx * 0.83, 1.04, -1.15], colour: paint });
-    list.push({ size: [1.76, 0.34, 0.1], at: [0, 1.04, -2.1], colour: paint });
-    if (winter) list.push({ size: [1.5, 0.14, 1.4], at: [0, 1.59, 0.45], colour: SNOW }, { size: [1.5, 0.2, 1.8], at: [0, 0.98, -1.15], colour: SNOW }, { size: [1.5, 0.08, 1], at: [0, 0.93, 1.55], colour: SNOW });
-  } else {
-    list.push({ size: [1.56, 0.5, 2.3], at: [0, 1.14, -0.25], colour: WINDSCREEN }, { size: [1.62, 0.1, 2], at: [0, 1.42, -0.25], colour: paint });
-    if (winter) list.push({ size: [1.5, 0.14, 1.8], at: [0, 1.53, -0.25], colour: SNOW }, { size: [1.5, 0.08, 1], at: [0, 0.93, 1.5], colour: SNOW }, { size: [1.5, 0.08, 0.7], at: [0, 0.93, -1.7], colour: SNOW });
+    // An open bed behind the cab: two sides and a tailgate.
+    for (const sx of [-1, 1]) list.push({ size: [0.1, 0.36, 1.75], at: [sx * 0.83, sill + 0.14, -1.25], colour: paint });
+    list.push({ size: [1.76, 0.36, 0.1], at: [0, sill + 0.14, -2.1], colour: paint });
+    if (winter) list.push({ size: [1.5, 0.22, 1.65], at: [0, sill + 0.06, -1.25], colour: SNOW });
+  } else if (!wagon) {
+    // A saloon's boot, behind the glass.
+    list.push({ size: [1.66, 0.1, cabZ - cabLong / 2 + 2.15], at: [0, sill + 0.03, (cabZ - cabLong / 2 - 2.15) / 2], colour: paint });
+  }
+  if (wagon) {
+    // A rack on the roof, and in winter two pairs of skis on it.
+    for (const sz of [-0.7, 0.7]) list.push({ size: [1.5, 0.05, 0.07], at: [0, top + 0.07, cabZ + sz], colour: RUBBER });
+    if (winter) {
+      [-0.42, -0.26, 0.26, 0.42].forEach((sx, i) => list.push({ size: [0.09, 0.04, 1.9], at: [sx, top + 0.12, cabZ - 0.1], colour: SKI_PAINT[(Math.floor(roll * 97) + (i >> 1)) % SKI_PAINT.length] as number }));
+    }
+  }
+  if (winter) {
+    // Snow on the roof (not under the skis) and on the bonnet.
+    if (!wagon) list.push({ size: [1.5, 0.13, cabLong - 0.3], at: [0, top + 0.08, cabZ], colour: SNOW });
+    list.push({ size: [1.5, 0.08, 0.9], at: [0, sill + 0.12, 1.55], colour: SNOW });
   }
   return list;
 }
@@ -249,4 +292,61 @@ export function buildStreetFurniture(
     signs.push({ ...common, text: 'NORTH CREEK', y: y + 2.42, height: 0.8 }, { ...common, text: 'RIDE UP · SLIDE DOWN · SINCE 1934', y: y + 1.74, height: 0.56 });
   }
   return { walls, panes, signs };
+}
+
+/** The flags' colours, in order along a string: all the print's own inks. */
+const FLAGS = [0xc8402d, 0xf2d16b, 0xfbf8ee, 0x2b62c9, 0x4f8a3f, 0xd9772b];
+/** How high on a lamp a string is tied, how far it sags in the middle, and how far apart its flags hang, in metres. */
+const TIED = 4.25;
+const SAG = 1.1;
+const FLAG_EVERY = 1.15;
+
+/**
+ * Strings of flags hung lamp to lamp over the street, as one geometry: a dark cord and a
+ * pennant every stride, each a flat colour. Coloured on its corners, and to be drawn two-sided.
+ */
+export function buildBunting(spans: readonly { from: Fixture; to: Fixture }[], heightAt: (x: number, z: number) => number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const colours: number[] = [];
+  const paint = new THREE.Color();
+  const face = (corners: number[][], colour: number, nx: number, nz: number): void => {
+    paint.setHex(colour);
+    for (const c of corners) {
+      positions.push(c[0] as number, c[1] as number, c[2] as number);
+      normals.push(nx, 0, nz);
+      colours.push(paint.r, paint.g, paint.b);
+    }
+  };
+  let flag = 0;
+  for (const { from, to } of spans) {
+    const ay = heightAt(from.x, from.z) + TIED;
+    const by = heightAt(to.x, to.z) + TIED;
+    const length = Math.hypot(to.x - from.x, to.z - from.z);
+    const dx = (to.x - from.x) / length;
+    const dz = (to.z - from.z) / length;
+    // A point a way along the cord, which hangs in a curve.
+    const at = (metres: number): number[] => {
+      const t = metres / length;
+      return [from.x + dx * metres, ay + (by - ay) * t - SAG * 4 * t * (1 - t), from.z + dz * metres];
+    };
+    const count = Math.floor(length / FLAG_EVERY);
+    const first = (length - count * FLAG_EVERY) / 2;
+    for (let n = 0; n < count; n++) {
+      const a = at(first + n * FLAG_EVERY);
+      const b = at(first + (n + 1) * FLAG_EVERY);
+      // The cord, as a thin band.
+      face([a, b, [b[0] as number, (b[1] as number) - 0.05, b[2] as number], a, [b[0] as number, (b[1] as number) - 0.05, b[2] as number], [a[0] as number, (a[1] as number) - 0.05, a[2] as number]], 0x2a2e36, -dz, dx);
+      // A pennant under the middle of this stretch of it.
+      const l = at(first + (n + 0.22) * FLAG_EVERY);
+      const r = at(first + (n + 0.78) * FLAG_EVERY);
+      const tip = [((l[0] as number) + (r[0] as number)) / 2, ((l[1] as number) + (r[1] as number)) / 2 - 0.72, ((l[2] as number) + (r[2] as number)) / 2];
+      face([l, r, tip], FLAGS[flag++ % FLAGS.length] as number, -dz, dx);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colours, 3));
+  return geometry;
 }

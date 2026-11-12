@@ -16,7 +16,7 @@ import {
 } from './passport';
 import { LAST_LETTER, letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
-import { KEEPSAKE, PATCHES, patchesEarned, type Tally } from './patches';
+import { bookFull, KEEPSAKE, PATCHES, patchesEarned, type Tally } from './patches';
 import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
@@ -445,6 +445,7 @@ export class Game {
   /** Award any patches that have newly been earned. Cheap enough to call once a second. */
   checkPatches(day: string): GameEvent[] {
     const events: GameEvent[] = [];
+    const was = bookFull(this.save.patches);
     for (const id of patchesEarned(this.tally())) {
       if (id in this.save.patches) continue;
       this.save.patches[id] = day;
@@ -453,8 +454,12 @@ export class Game {
     }
     if (events.length > 0) {
       this.dirty = true;
-      // The last patch is the Book full: say so, and say where to go.
-      if (Object.keys(this.save.patches).length >= PATCHES.length) events.push({ kind: 'patch', title: 'Your Book is full', detail: 'Every patch is sewn on. Dot has something for you.' });
+      // The patch that fills the Book: say so, and say where to go. The Book is full without the
+      // patch that waits on the sky; if that one is still to come, it is owned up to.
+      if (!was && bookFull(this.save.patches)) {
+        const whole = Object.keys(this.save.patches).length >= PATCHES.length;
+        events.push({ kind: 'patch', title: 'Your Book is full', detail: whole ? 'Every patch is sewn on. Dot has something for you.' : 'The sky still owes you one patch. Dot has something for you.' });
+      }
     }
     return events;
   }

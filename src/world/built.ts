@@ -12,9 +12,10 @@ import { buildSigns } from './signs';
 import { Smoke } from './smoke';
 import { snowGuns } from './snowGuns';
 import { alongStreet, HIGH_STREET_HALF, SIDEWALK, streetStrips, type Kerbside, type Strip, type Zone } from './roadways';
-import { buildKerbside, buildStreetFurniture } from './streetFurniture';
+import { buildBunting, buildKerbside, buildStreetFurniture } from './streetFurniture';
 import { streetSurfaceMesh } from './streetSurface';
-import { benches, bridges, streetLamps, viewBenches, welcomeSigns, type Bench } from './streets';
+import { benches, bridges, buntingSpans, streetLamps, viewBenches, welcomeSigns, type Bench } from './streets';
+import { lit } from '../look/material';
 import { planHeight, planHouses } from './houseKinds';
 import { Houses } from './houses';
 import { TownPlaces, townPlaceHeight } from './townKit';
@@ -93,7 +94,14 @@ export class Built {
     // Lamps down Main Street, a bench by the doors, a welcome at each end of town, and whatever
     // stands outside the lodges: all joined into the named places' two meshes.
     this.benches = [...benches(townPlaces), ...viewBenches(world)];
-    const street = buildStreetFurniture(streetLamps(world), this.benches, welcomeSigns(world), heightAt, bridges(world));
+    const lamps = streetLamps(world);
+    const street = buildStreetFurniture(lamps, this.benches, welcomeSigns(world), heightAt, bridges(world));
+    this.flags = () => {
+      const mesh = new THREE.Mesh(buildBunting(buntingSpans(lamps), heightAt), lit({ vertexColors: true, side: THREE.DoubleSide }));
+      mesh.name = 'bunting';
+      mesh.castShadow = shadows;
+      return mesh;
+    };
 
     // The streets themselves: a surface over the ground where people live and park, with a
     // sidewalk down each side of Main Street in town.
@@ -216,6 +224,21 @@ export class Built {
       this.world.places.some((p) => Math.hypot(p.x - x, p.z - z) < (p.id === 'base-lodge' ? 78 : p.id === 'summit' ? 30 : 38)) ||
       this.townPlaces.some((p) => Math.hypot(p.x - x, p.z - z) < Math.max(p.w, p.d) / 2 + 7 || Math.hypot(p.door.x - x, p.door.z - z) < 11)
     );
+  }
+
+  /** Makes the strings of flags over Main Street, when they are wanted. */
+  private readonly flags: () => THREE.Mesh;
+  private flying = false;
+
+  /**
+   * Hang flags down Main Street, lamp to lamp. The town does it once the player's Book is full
+   * and the letter from everybody has been had, and leaves them up: the one thing the ending
+   * changes in the world.
+   */
+  celebrate(): void {
+    if (this.flying) return;
+    this.flying = true;
+    this.group.add(this.flags());
   }
 
   /** How lit the windows and lamps are, 0 by day and 1 after dark. Smoke pales by day and dims at night. */

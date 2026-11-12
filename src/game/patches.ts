@@ -11,6 +11,8 @@ export interface Patch {
   name: string;
   /** What it is for, shown before and after it is earned. */
   how: string;
+  /** Waits on the real sky: it can take most of a year of weather, however keen the player. The Book is counted full without it. */
+  sky?: true;
 }
 
 /** What a patch is judged on. */
@@ -40,7 +42,7 @@ export const PATCHES: readonly (Patch & { earned(t: Tally): boolean })[] = [
   { id: 'sixteen-summits', name: 'Sixteen Summits', how: 'Stand on every summit in every season.', earned: (t) => t.summary.seasonPeaks >= t.summary.seasonPeaksTotal },
   { id: 'sightseer', name: 'Sightseer', how: 'Visit every landmark.', earned: (t) => t.summary.landmarks >= t.summary.landmarksTotal },
   { id: 'four-seasons', name: 'Four Seasons', how: 'See the mountain in winter, spring, summer and fall.', earned: (t) => t.summary.seasons >= 4 },
-  { id: 'weatherproof', name: 'Weatherproof', how: 'Earn every conditions stamp.', earned: (t) => t.summary.conditions >= t.summary.conditionsTotal },
+  { id: 'weatherproof', name: 'Weatherproof', how: 'Earn every conditions stamp.', sky: true, earned: (t) => t.summary.conditions >= t.summary.conditionsTotal },
   { id: 'rockhound', name: 'Rockhound', how: 'Find every mineral.', earned: (t) => t.summary.minerals >= t.summary.mineralsTotal },
   { id: 'garnet-fever', name: 'Garnet Fever', how: 'Find fifty garnets.', earned: (t) => (t.save.minerals.garnet?.count ?? 0) >= 50 },
   { id: 'whopper', name: 'The Whopper', how: 'Find a stone over twenty centimeters.', earned: (t) => t.biggest >= 20 },
@@ -55,6 +57,15 @@ export const PATCHES: readonly (Patch & { earned(t: Tally): boolean })[] = [
   { id: 'bookworm', name: 'Library Card', how: 'Read every book the library has to lend.', earned: (t) => t.summary.read >= t.summary.readTotal },
   { id: 'good-dog', name: 'Friend of Biscuit', how: 'Pet the dog on seven different days.', earned: (t) => t.save.pets.length >= 7 },
 ];
+
+/**
+ * True once the Book is full: every patch earned but those that wait on the sky. A snowfall at
+ * dusk cannot be gone and got, so the game's ending does not wait for one. The weather's own
+ * patch is still there to be earned afterwards, and is all the sweeter.
+ */
+export function bookFull(earned: Readonly<Record<string, unknown>>): boolean {
+  return PATCHES.every((p) => p.sky || p.id in earned);
+}
 
 /**
  * What comes with the last letter, the day the Book is full: one more patch, which is not one

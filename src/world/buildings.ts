@@ -410,6 +410,41 @@ function depot(): Model {
   m.list.push({ size: [1.6, 2.5, 0.2], at: [-w * 0.12, BASE + 1.25, -d / 2 - 0.08], colour: 0x7a2e26 }, { size: [2.2, 2.6, 0.2], at: [7, BASE + 1.3, d / 2 + 0.08], colour: 0x7a2e26 }, { size: [2.2, 2.6, 0.2], at: [-7, BASE + 1.3, d / 2 + 0.08], colour: 0x7a2e26 });
   for (const f of [2, 3] as const) win(m, f, w / 2, 0, BASE + 1.9, 1.2, 1.6, 0x7a2e26);
   stack(m, 6, 0, eaves + 3.6, 1);
+  // A station is its platform. Dark boards to the sill all round; two benches; a baggage cart
+  // with a trunk, a case and a milk can on it; a lamp by each door; and by the bay the mast with
+  // its two blades that told a driver whether there were orders to stop for.
+  const OXBLOOD = 0x7a2e26;
+  m.list.push({ size: [w + 0.08, 1.05, d + 0.08], at: [0, BASE + 0.52, 0], colour: OXBLOOD });
+  const deck = SUNK + 0.2;
+  for (const x of [-11, 11]) {
+    m.list.push(
+      { size: [1.8, 0.08, 0.46], at: [x, deck + 0.46, d / 2 + 0.75], colour: TIMBER_DARK },
+      { size: [1.8, 0.42, 0.07], at: [x, deck + 0.8, d / 2 + 0.5], colour: TIMBER_DARK },
+      { size: [0.08, 0.46, 0.44], at: [x - 0.8, deck + 0.23, d / 2 + 0.75], colour: STEEL },
+      { size: [0.08, 0.46, 0.44], at: [x + 0.8, deck + 0.23, d / 2 + 0.75], colour: STEEL },
+    );
+  }
+  const cart = 4.2;
+  m.list.push(
+    { size: [2.3, 0.12, 1.15], at: [cart, deck + 0.62, d / 2 + 2.2], colour: 0x2f6b4f },
+    { size: [0.1, 0.78, 0.78], at: [cart - 0.5, deck + 0.39, d / 2 + 1.6], colour: OXBLOOD },
+    { size: [0.1, 0.78, 0.78], at: [cart - 0.5, deck + 0.39, d / 2 + 2.8], colour: OXBLOOD },
+    { size: [0.1, 0.5, 0.1], at: [cart + 1.0, deck + 0.3, d / 2 + 2.2], colour: STEEL },
+    { size: [0.9, 0.08, 0.08], at: [cart + 1.55, deck + 0.75, d / 2 + 2.2], colour: STEEL },
+    { size: [1.0, 0.55, 0.62], at: [cart - 0.4, deck + 0.96, d / 2 + 2.15], colour: 0x7a5236 },
+    { size: [0.62, 0.34, 0.44], at: [cart - 0.35, deck + 1.4, d / 2 + 2.2], colour: 0xc9a36b },
+    { size: [0.34, 0.62, 0.34], at: [cart + 0.6, deck + 0.99, d / 2 + 2.2], colour: 0xc9ced6 },
+    { size: [0.2, 0.16, 0.2], at: [cart + 0.6, deck + 1.38, d / 2 + 2.2], colour: 0xc9ced6 },
+  );
+  const mast = -3.3;
+  m.list.push(
+    { size: [0.2, 6.4, 0.2], at: [mast, deck + 3.2, d / 2 + 2.85], colour: 0xfbf8ee },
+    { size: [1.5, 0.3, 0.08], at: [mast + 0.75, deck + 5.9, d / 2 + 2.85], colour: 0xc8402d },
+    { size: [1.5, 0.3, 0.08], at: [mast - 0.75, deck + 5.3, d / 2 + 2.85], colour: 0xc8402d },
+    { size: [0.34, 0.3, 0.1], at: [mast + 1.35, deck + 5.9, d / 2 + 2.85], colour: 0xfbf8ee },
+    { size: [0.34, 0.3, 0.1], at: [mast - 1.35, deck + 5.3, d / 2 + 2.85], colour: 0xfbf8ee },
+  );
+  for (const x of [-7, 7, 0]) m.panes.push({ x: x + (x === 0 ? 2.2 : 1.5), y: BASE + 2.9, z: d / 2 + (x === 0 ? 1.3 : 0.2), w: 0.3, h: 0.4, face: 0 });
   return m;
 }
 

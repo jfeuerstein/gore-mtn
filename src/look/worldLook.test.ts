@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SEASONS } from './season';
-import { despeckle, inkAt, inkOrder, INKS, nearestInk, restyle, soften, weigh } from './worldLook';
+import { despeckle, freeze, ICE, inkAt, inkOrder, INKS, nearestInk, restyle, soften, weigh } from './worldLook';
 
 const picture = (w: number, h: number, colour: [number, number, number]): Uint8ClampedArray => {
   const out = new Uint8ClampedArray(w * h * 4);
@@ -243,5 +243,24 @@ describe('taking the specks out of a print', () => {
     const was = [...half];
     despeckle(half, 8, 8);
     expect([...half]).toEqual(was);
+  });
+});
+
+describe('freezing the water in a winter picture', () => {
+  it('prints ice where the map says there is water, and nowhere else', () => {
+    // A picture eight pixels square over a map four squares across: each square is two pixels by two.
+    const p = new Uint8ClampedArray(8 * 8 * 4).fill(200);
+    freeze(p, 8, 8, 4, 4, (i, j) => i === 1 && j === 2);
+    const ice = (x: number, y: number): boolean => ((p[(y * 8 + x) * 4] as number) << 16 | (p[(y * 8 + x) * 4 + 1] as number) << 8 | (p[(y * 8 + x) * 4 + 2] as number)) === ICE;
+    let frozen = 0;
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (ice(x, y)) frozen++;
+    expect(frozen).toBe(4);
+    expect(ice(2, 4) && ice(3, 4) && ice(2, 5) && ice(3, 5)).toBe(true);
+  });
+
+  it('uses an ink that is winter\'s own, and that nothing in the pictures is mistaken for', () => {
+    expect(INKS.winter).toContain(ICE);
+    // Snow in every shade the pipeline paints it is nearer some other ink.
+    for (const [r, g, b] of [[255, 255, 255], [232, 238, 246], [200, 214, 235], [150, 170, 205], [90, 110, 150]] as const) expect(nearestInk(INKS.winter, r, g, b)).not.toBe(ICE);
   });
 });

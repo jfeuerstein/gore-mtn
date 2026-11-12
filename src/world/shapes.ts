@@ -128,7 +128,8 @@ export function blocks(list: readonly Block[], extra: readonly THREE.BufferGeome
 
 /** The colour of snow on a roof, which wears no courses, and the place on the texture that is smooth. */
 const SNOW = new THREE.Color(0xf2f5fa);
-const SMOOTH = 0.03;
+// Half way up a course: well clear of the line under it, which lies at the foot of the texture.
+const SMOOTH = 0.5;
 
 /** How far a rim stands out from what it outlines, in metres: about a pixel or two at the distance buildings are seen from. */
 export const RIM = 0.085;

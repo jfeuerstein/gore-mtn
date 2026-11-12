@@ -13,8 +13,8 @@ export const WORLD_LOOKS: readonly WorldLook[] = ['plain', 'poster'];
 
 /** The inks of each season's print. */
 export const INKS: Record<Season, readonly number[]> = {
-  // Cream snow, three blues of shade, spruce and navy.
-  winter: [0xfbf8ee, 0xc3d3ea, 0x8fa5cc, 0x5d7396, 0x4d6b78, 0x2c4a52, 0x22304a, 0xb59a78],
+  // Cream snow, three blues of shade, spruce and navy; and ice, which the pictures do not have (`freeze`).
+  winter: [0xfbf8ee, 0xc3d3ea, 0x8fa5cc, 0x5d7396, 0x4d6b78, 0x2c4a52, 0x22304a, 0xb59a78, 0x7fb4c8],
   // Old snow, thaw, khaki, olive, umber, pine, bud green.
   spring: [0xf4f1e6, 0xcfdcea, 0xa8a077, 0x7d8a52, 0x7a6650, 0x365543, 0xb9c47a, 0x9aa0a0, 0x3d86a0],
   // Cream, sage, meadow, forest, pine, deep pine, water, path.
@@ -22,6 +22,37 @@ export const INKS: Record<Season, readonly number[]> = {
   // Cream, gold, orange, rust, maroon, pine, path, water.
   fall: [0xf1e9cf, 0xe3b03f, 0xd9772b, 0xb3472d, 0x7a3340, 0x2f5d4c, 0xc9a36b, 0x3d86a0, 0x8c6a48],
 };
+
+/** The ink of ice: a pond or a river in winter. */
+export const ICE = 0x7fb4c8;
+
+/**
+ * Freeze the water in a winter picture. The pipeline paints winter's ponds and rivers as snow
+ * like the ground round them, so that nothing says where the water is; here they are printed
+ * as ice, from the map of where the water lies.
+ * @param rgba the picture's bytes, four to a pixel
+ * @param across how many squares the map of the water has across the picture, and `down` it
+ * @param water whether a square of that map is water
+ */
+export function freeze(rgba: Uint8ClampedArray, width: number, height: number, across: number, down: number, water: (i: number, j: number) => boolean): void {
+  for (let j = 0; j < down; j++) {
+    const y0 = Math.floor((j * height) / down);
+    const y1 = Math.floor(((j + 1) * height) / down);
+    for (let i = 0; i < across; i++) {
+      if (!water(i, j)) continue;
+      const x0 = Math.floor((i * width) / across);
+      const x1 = Math.floor(((i + 1) * width) / across);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const p = (y * width + x) * 4;
+          rgba[p] = (ICE >> 16) & 255;
+          rgba[p + 1] = (ICE >> 8) & 255;
+          rgba[p + 2] = ICE & 255;
+        }
+      }
+    }
+  }
+}
 
 /** The nearest of some inks to a colour. */
 export function nearestInk(inks: readonly number[], r: number, g: number, b: number): number {

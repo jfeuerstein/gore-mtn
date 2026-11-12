@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { nearestOnLines } from './footprints';
-import { benches, bridges, streetLamps, viewBenches, welcomeSigns } from './streets';
+import { benches, bridges, buntingSpans, streetLamps, viewBenches, welcomeSigns } from './streets';
 import { OPEN_WATER } from './world';
 import { loadTestWorld } from './testWorld';
 import { resolveTownPlaces } from './townPlaces';
@@ -86,5 +86,18 @@ describe('street furniture', () => {
       expect(world.openAt(b.x - sx * 7, b.z - sz * 7), `${b.x.toFixed(0)},${b.z.toFixed(0)}`).toBe(OPEN_WATER);
     }
     for (const a of spans) for (const b of spans) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(20);
+  });
+});
+
+describe('the flags the town puts up when the Book is full', () => {
+  const lamps = streetLamps(world);
+  const spans = buntingSpans(lamps);
+  it('strings them lamp to lamp down most of the high street, never across a gap', () => {
+    expect(spans.length).toBeGreaterThan(lamps.length * 0.6);
+    for (const { from, to } of spans) {
+      const long = Math.hypot(to.x - from.x, to.z - from.z);
+      expect(long).toBeGreaterThan(8);
+      expect(long).toBeLessThanOrEqual(70);
+    }
   });
 });

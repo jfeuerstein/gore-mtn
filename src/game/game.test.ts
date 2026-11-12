@@ -116,6 +116,20 @@ describe('Game', () => {
     expect(game.save.cabin.shelf.join('')).toBe('');
   });
 
+  it('counts the Book full without the patch that waits on the sky, and owns up to it', () => {
+    const game = new Game(gameWorld, memory());
+    for (const p of PATCHES) game.save.patches[p.id] = DAY;
+    delete game.save.patches['first-tracks'];
+    delete game.save.patches.weatherproof;
+    game.save.trails.Sunway = { seen: '1', stamped: DAY };
+    const events = game.checkPatches(DAY);
+    const last = events[events.length - 1];
+    expect(last?.title).toBe('Your Book is full');
+    expect(last?.detail).toContain('sky');
+    game.save.letters.test = '2026-11-01';
+    expect(game.talk('dot', '2026-11-20', 'winter')?.letter?.id).toBe('the-whole-town');
+  });
+
   it('marks the day the Book is full, and gives a keepsake with the last letter', () => {
     const game = new Game(gameWorld, memory());
     // Every patch but one already in the book: the last one earned says the Book is full.

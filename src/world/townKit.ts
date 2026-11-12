@@ -129,6 +129,29 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
     for (const sx of [-1, 1]) kit.list.push({ size: [1.3, h + 5, 1.3], at: [sx * p.w * 0.4, 0.7 + (h + 5) / 2, -p.d * 0.1], colour: BRICK });
     kit.flues = [-1, 1].map((sx): [number, number, number] => [sx * p.w * 0.4, 0.7 + h + 5.2, -p.d * 0.1]);
     kit.panes.push(...windows(p.w, p.d, floors, 3.1, 0.7));
+    // An old hotel is dressed: green shutters at every front window, white boards at the corners
+    // and between the floors, a rail along the porch roof for the rooms that open onto it, and
+    // in the middle a gabled front of its own over the door, with a lantern each side.
+    const SHUTTER = 0x2f6b4f;
+    const count = Math.max(2, Math.floor(p.w / 3.4));
+    for (let f = 0; f < floors; f++) {
+      for (let i = 0; i < count; i++) {
+        const x = -p.w / 2 + ((i + 0.5) * p.w) / count;
+        if (f === 0 && Math.abs(x) < 1.6) continue;
+        for (const side of [-1, 1]) kit.list.push({ size: [0.34, 1.4, 0.1], at: [x + side * 0.84, 0.7 + 1.7 + f * 3.1, p.d / 2 + 0.06], colour: SHUTTER });
+      }
+    }
+    for (const sx of [-1, 1]) kit.list.push({ size: [0.36, h, 0.2], at: [sx * (p.w / 2 - 0.18), 0.7 + h / 2, p.d / 2 + 0.06], colour: WHITE });
+    for (let f = 1; f < floors; f++) kit.list.push({ size: [p.w, 0.22, 0.14], at: [0, 0.7 + f * 3.1 + 0.2, p.d / 2 + 0.06], colour: WHITE });
+    const rail = p.w * 0.94;
+    kit.list.push({ size: [rail, 0.1, 0.1], at: [0, 4.55, p.d / 2 + 2.95], colour: WHITE }, { size: [rail, 0.08, 0.08], at: [0, 4.1, p.d / 2 + 2.95], colour: WHITE });
+    const balusters = Math.max(4, Math.round(rail / 2.4));
+    for (let i = 0; i <= balusters; i++) kit.list.push({ size: [0.14, 0.95, 0.14], at: [-rail / 2 + (i * rail) / balusters, 4.1, p.d / 2 + 2.95], colour: WHITE });
+    const front = Math.min(9, p.w * 0.3);
+    kit.list.push({ size: [front, h, 1], at: [0, 0.7 + h / 2, p.d / 2 + 0.5], colour: CREAM }, { size: [1.7, 2.6, 0.2], at: [0, 0.7 + 1.3, p.d / 2 + 1.06], colour: DOOR });
+    kit.extra.push(placed(roof(Math.min(6, p.d * 0.3) * 1.6, front + 1, Math.min(6, p.d * 0.3) * 0.5, roofOf(r, 0x3f5a4a), 0xd8ceb4), 0, 0.7 + h, p.d / 2 + 0.2, Math.PI / 2));
+    kit.panes.push({ size: [1.4, 1.2, 0.14], at: [0, 0.7 + h + 1.2, p.d / 2 + 1.02], colour: 0xffffff });
+    for (const sx of [-1, 1]) kit.panes.push({ size: [0.3, 0.42, 0.3], at: [sx * 1.5, 0.7 + 2.6, p.d / 2 + 1.2], colour: 0xffffff });
     kit.signY = 4.6;
     kit.signH = 1.1;
     return kit;

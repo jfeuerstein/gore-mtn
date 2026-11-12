@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import { Game, type GameWorld, type SaveStore } from './game';
-import { EVERY_PATCH, letterWaiting, LETTERS } from './letters';
+import { letterWaiting, LETTERS } from './letters';
 import { PATCHES } from './patches';
 import { PROJECTS } from './projects';
 import { MINERALS } from './minerals';
@@ -37,11 +37,31 @@ describe('the letters', () => {
   });
 
   it('saves the last letter for a full book, and sends it ahead of the queue', () => {
-    expect(EVERY_PATCH).toBe(PATCHES.length);
     const save = emptySave();
     expect(letterWaiting(save, {}, '2026-11-11')?.id).not.toBe('the-whole-town');
     for (const p of PATCHES) save.patches[p.id] = '2026-11-01';
     expect(letterWaiting(save, { test: '2026-11-02' }, '2026-11-11')?.id).toBe('the-whole-town');
+  });
+
+  it('does not make the last letter wait on the weather', () => {
+    // Every patch but the one for the conditions, which only the real sky can give.
+    const save = emptySave();
+    for (const p of PATCHES) if (!p.sky) save.patches[p.id] = '2026-11-01';
+    expect(PATCHES.filter((p) => p.sky).map((p) => p.id)).toEqual(['weatherproof']);
+    expect(letterWaiting(save, { test: '2026-11-02' }, '2026-11-11')?.id).toBe('the-whole-town');
+    // One short of that, it is not sent.
+    delete save.patches['good-dog'];
+    expect(letterWaiting(save, { test: '2026-11-02' }, '2026-11-11')?.id).not.toBe('the-whole-town');
+  });
+
+  it('has a word from the observer for whoever earns the weather\'s patch after the ending', () => {
+    const save = emptySave();
+    save.met.wren = '2026-11-01';
+    for (const p of PATCHES) if (!p.sky) save.patches[p.id] = '2026-11-01';
+    const had = Object.fromEntries(LETTERS.filter((l) => l.id !== 'wren-sky').map((l) => [l.id, '2026-11-02']));
+    expect(letterWaiting(save, had, '2026-12-01')).toBeNull();
+    save.patches.weatherproof = '2026-11-30';
+    expect(letterWaiting(save, had, '2026-12-01')?.id).toBe('wren-sky');
   });
 
   it('always has something for a brand-new player', () => {

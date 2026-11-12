@@ -29,6 +29,24 @@ function clear(world: World, x: number, z: number): boolean {
   return !world.buildings.some((b) => insideBox(x, z, b, 1.5));
 }
 
+/** How far apart two lamps may be and still have a string of flags hung between them, in metres. */
+const STRING_REACH = 70;
+
+/**
+ * Strings of flags down the high street, lamp to lamp, crossing the road and crossing back:
+ * what the town puts up once the player's Book is full, and leaves up. Each is the two lamps
+ * it hangs between.
+ */
+export function buntingSpans(lamps: readonly Fixture[]): { from: Fixture; to: Fixture }[] {
+  const spans: { from: Fixture; to: Fixture }[] = [];
+  for (let i = 0; i + 1 < lamps.length; i++) {
+    const from = lamps[i] as Fixture;
+    const to = lamps[i + 1] as Fixture;
+    if (Math.hypot(to.x - from.x, to.z - from.z) <= STRING_REACH) spans.push({ from, to });
+  }
+  return spans;
+}
+
 /** Lamps down both sides of the high street, turn about, each leaning over the road. */
 export function streetLamps(world: World): Fixture[] {
   const lamps: Fixture[] = [];

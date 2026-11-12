@@ -9,7 +9,7 @@ import { deviceLabel, Hud } from './debug/hud';
 import { Atmosphere } from './look/atmosphere';
 import { paletteFor, type Weather } from './look/palette';
 import { GROUND_SHEETS, MARK_SIZE, packSheets } from './look/groundMarks';
-import { despeckle, inkOrder, restyle, type WorldLook } from './look/worldLook';
+import { despeckle, freeze, inkOrder, restyle, type WorldLook } from './look/worldLook';
 import { airFor, SEASON_LOOK, SEASON_NAME, seasonFor, seasonPalette, SEASONS, treeLook, type Season } from './look/season';
 import { namedTime, sunPosition } from './look/sun';
 import { easeWeather, fetchWeather, inventedWeather, NAMED_WEATHER } from './look/weather';
@@ -66,6 +66,7 @@ import { Forest, TREE_RANGE } from './world/trees';
 import { Walls, type WallBox } from './world/walls';
 import { locate, namedSpots } from './world/whereabouts';
 import { loadWorld, OPEN_LAND, OPEN_WATER } from './world/world';
+import { printShadow } from './look/printShadow';
 import { lit, usePrint } from './look/material';
 
 /**
@@ -94,7 +95,7 @@ async function loadMarks(season: Season, baseUrl: string): Promise<Uint8Array | 
 }
 
 /** A picture of the land as a print: the same picture, repainted on a canvas in the season's inks. */
-function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: { print: Print | null } | null = null): THREE.Texture {
+function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: { print: Print | null } | null = null, water: { across: number; down: number; at: (i: number, j: number) => boolean } | null = null): THREE.Texture {
   if (look === 'plain') return texture;
   const image = texture.image as HTMLImageElement;
   const canvas = document.createElement('canvas');
@@ -105,6 +106,8 @@ function repaint(texture: THREE.Texture, look: WorldLook, season: Season, keep: 
   ctx.drawImage(image, 0, 0);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   restyle(pixels.data, look, season);
+  // In winter the water is ice.
+  if (water && season === 'winter') freeze(pixels.data, canvas.width, canvas.height, water.across, water.down, water.at);
   // The ground is seen from close to, where a stray pixel is a square blot: those are taken out.
   if (keep) despeckle(pixels.data, canvas.width, canvas.height);
   ctx.putImageData(pixels, 0, 0);
@@ -310,6 +313,8 @@ async function boot(): Promise<void> {
     sc.far = 400;
     sun.shadow.bias = -0.0008;
     sun.shadow.normalBias = 0.4;
+    // In the print a shadow is one flat tone with a clean edge.
+    if (cfg.look === 'poster') (sun.shadow as unknown as { filterNode: unknown }).filterNode = printShadow(2048);
   }
   scene.add(sun, sun.target);
 
@@ -320,8 +325,14 @@ async function boot(): Promise<void> {
   ]);
   // The print repaints both pictures in the season's inks before anything is drawn with them.
   const underfoot: { print: Print | null } = { print: null };
-  const snowPicture = repaint(snowTexture, cfg.look, season, underfoot);
-  const canopyPicture = repaint(canopyTexture, cfg.look, season);
+  // Where the water lies, square by square of the ground's own grid, for printing it as ice in winter.
+  const water = {
+    across: ground.cols,
+    down: ground.rows,
+    at: (i: number, j: number): boolean => world.openAt(ground.originX + i * ground.cell, ground.originZ + j * ground.cell) === OPEN_WATER,
+  };
+  const snowPicture = repaint(snowTexture, cfg.look, season, underfoot, water);
+  const canopyPicture = repaint(canopyTexture, cfg.look, season, null, water);
   // Near the camera the ground is drawn from the weights of its inks, with the season's marks printed on it.
   const marks = underfoot.print && cfg.ground === 'marks' ? await loadMarks(season, import.meta.env.BASE_URL) : null;
   const groundLook = underfoot.print && cfg.ground !== 'flat' ? new GroundLook(season, underfoot.print.order, marks) : null;
@@ -435,6 +446,8 @@ async function boot(): Promise<void> {
     },
     store,
   );
+  // Once the letter from everybody has been had, the town's flags are out, and stay out.
+  if (LAST_LETTER in game.save.letters) built.celebrate();
   const toasts = new Toasts(cfg.hud);
   const book = new Book(game);
   // Sound starts with the first touch, which is when a browser will let it.
@@ -867,6 +880,8 @@ async function boot(): Promise<void> {
     if (chalk) lines.splice(0, lines.length, chalk());
     // A letter is read on the spot, in the hand it was written in.
     if (talk.letter) lines.push({ written: talk.letter.text, signed: talk.letter.signed });
+    // The letter from everybody: by the time it has been read, the town has its flags out.
+    if (talk.letter?.id === LAST_LETTER) built.celebrate();
     const board = talk.person.kind === 'board';
     // A snowman says nothing. His side of it is on notes stuck to him, in a child's hand.
     const notes = talk.person.kind === 'snowman';
