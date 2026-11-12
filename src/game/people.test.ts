@@ -8,7 +8,8 @@ import { OFFERINGS } from './offerings';
 import { MINERALS } from './minerals';
 import { buildLandmarks } from './passport';
 import { PROJECTS } from './projects';
-import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, PEOPLE, personById, TOWN_ROUND } from './people';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, GEAR_SLOTS, gearById, PEOPLE, personById, TOWN_ROUND } from './people';
+import { COME_BY } from './secrets';
 import { SPECIES } from './wildlife';
 
 const world = loadTestWorld();
@@ -123,7 +124,7 @@ describe('the errands', () => {
   it('only has people remark on things that can be worn, and remark once a day', () => {
     for (const person of PEOPLE) for (const id of Object.keys(person.wearing ?? {})) expect(gearById(id), `${person.id}: ${id}`).toBeDefined();
     const game = new Game(gameWorld, memory());
-    game.save.gear = { owned: ['hat-antlers'], hat: 'hat-antlers', jacket: '' };
+    game.save.gear = { ...game.save.gear, owned: [...game.save.gear.owned, 'hat-antlers'], hat: 'hat-antlers' };
     game.talk('biscuit', DAY, 'winter');
     const remark = game.talk('biscuit', DAY, 'winter');
     expect(remark?.lines[0]).toBe(personById('biscuit')?.wearing?.['hat-antlers']);
@@ -212,12 +213,17 @@ describe('the errands', () => {
     expect(game.save.rounds).toEqual([DAY]);
   });
 
-  it('can each earn every piece of gear but the two the player starts in', () => {
+  it('leaves nothing in the wardrobe that cannot be had: by an errand, or out on the mountain, or from the start', () => {
     const earned = new Set(ERRANDS.map((e) => e.reward?.gear).filter(Boolean));
-    for (const g of GEAR) {
-      if (g.id === DEFAULT_GEAR.hat || g.id === DEFAULT_GEAR.jacket) continue;
-      expect(earned.has(g.id), g.id).toBe(true);
+    const starts = new Set(Object.values(DEFAULT_GEAR));
+    for (const g of GEAR) expect(starts.has(g.id) || earned.has(g.id) || g.id in COME_BY, g.id).toBe(true);
+    // And nothing is listed as found that is not in the wardrobe, or that an errand gives already.
+    for (const id of Object.keys(COME_BY)) {
+      expect(gearById(id), id).toBeDefined();
+      expect(earned.has(id), id).toBe(false);
     }
+    // Every kind of thing has a plain one to start in, but nobody starts with company.
+    for (const slot of GEAR_SLOTS) expect(slot === 'pet' ? DEFAULT_GEAR[slot] === '' : gearById(DEFAULT_GEAR[slot])?.slot === slot, slot).toBe(true);
   });
 });
 
@@ -315,7 +321,8 @@ describe('talking and errands', () => {
 
   it('lets the player wear what they own and nothing else', () => {
     const game = new Game(gameWorld, memory());
-    expect(game.outfit()).toEqual({ jacket: 0xe2452f, hat: 0x2f6f8f, style: 'beanie' });
+    expect(game.outfit()).toMatchObject({ jacket: 0xe2452f, hat: 0x2f6f8f, style: 'beanie', goggles: 0x1f242e, skis: 0xd9a441, packStyle: 'box' });
+    expect(game.flourish()).toEqual({ track: 0, tune: 'bells', pet: '' });
     expect(game.wear('hat-trapper')).toBe(false);
     game.save.gear.owned.push('hat-trapper');
     expect(game.wear('hat-trapper')).toBe(true);
@@ -338,7 +345,7 @@ describe('talking and errands', () => {
     expect(again.talk('hazel', DAY, 'winter')?.lines[0]).not.toBe(personById('hazel')?.hello);
     const broken = new Game(gameWorld, memory('{"errands": 5, "gear": {"owned": [1, "hat-cap"], "hat": 7}, "items": "x", "pass": "yes", "away": "monsoon"}'));
     expect(broken.save.errands).toEqual({});
-    expect([...broken.save.gear.owned].sort()).toEqual(['hat-blue', 'hat-cap', 'jacket-red']);
+    expect([...broken.save.gear.owned].sort()).toEqual(['goggles-dark', 'hat-blue', 'hat-cap', 'jacket-red', 'pack-leather', 'skis-gold', 'trail-plain', 'tune-bells']);
     expect(broken.outfit().style).toBe('beanie');
     expect(broken.save.pass).toBe(false);
     expect(broken.save.away).toBeNull();

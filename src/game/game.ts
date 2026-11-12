@@ -17,15 +17,26 @@ import {
 import { LAST_LETTER, letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
 import { bookFull, KEEPSAKE, PATCHES, patchesEarned, type Tally } from './patches';
-import { DEFAULT_GEAR, ERRANDS, errandById, GEAR, gearById, personById, TOWN_ROUND, type Errand, type Mood, type Need, type Person, type Whereabouts } from './people';
+import { DEFAULT_GEAR, ERRANDS, errandById, GEAR_SLOTS, gearById, personById, SLOT_NAME, TOWN_ROUND, type Errand, type Gear, type GearSlot, type Mood, type Need, type Person, type Whereabouts } from './people';
 import { parseSave, serializeSave, type SaveData } from './save';
 import { GENTLE_SPEED, SHY_REACH, SIGHT_PATCH, sightingsInPatch, SPECIES, spotReach, watchSeed, type Country, type Sighting, type Watch } from './wildlife';
 import { feederGuest, nextChoice } from './cabin';
+import { addStone, BELL_HEARD, bellRemark, discover, KEYS, ringBell, type Found, type SecretKind } from './secrets';
+
+/** What an announcement says under the name of a secret, the first time it is found. */
+const SECRET_SAID: Record<SecretKind, string> = {
+  register: 'A register. You signed it.',
+  plaque: 'A plaque by the trail',
+  working: 'Not on any map',
+  room: 'The key fit',
+  cairn: 'A cairn',
+  bell: 'It carries all the way to town',
+};
 import { projectInHand, PROJECTS, projectState, type ProjectState } from './projects';
 
 /** Something the player has just earned, to announce. */
 export interface GameEvent {
-  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting' | 'errand' | 'gear' | 'item' | 'patch' | 'hint';
+  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting' | 'errand' | 'gear' | 'item' | 'patch' | 'hint' | 'secret';
   title: string;
   detail: string;
   /** For a mineral, its colour. */
@@ -200,10 +211,13 @@ export class Game {
         return project ? [{ id: project.id, name: project.name, x: at.x, z: at.z, reach: 26 }] : [];
       }),
     ];
-    // Start out in the plain red jacket and blue beanie.
-    for (const id of [DEFAULT_GEAR.hat, DEFAULT_GEAR.jacket]) if (!this.save.gear.owned.includes(id)) this.save.gear.owned.unshift(id);
-    if (!gearById(this.save.gear.hat)) this.save.gear.hat = DEFAULT_GEAR.hat;
-    if (!gearById(this.save.gear.jacket)) this.save.gear.jacket = DEFAULT_GEAR.jacket;
+    // Start out in the plain red jacket and blue beanie, with plain everything else, and nobody along.
+    for (const slot of [...GEAR_SLOTS].reverse()) {
+      const first = DEFAULT_GEAR[slot];
+      if (first && !this.save.gear.owned.includes(first)) this.save.gear.owned.unshift(first);
+      const on = gearById(this.save.gear[slot]);
+      if (!on || on.slot !== slot || !this.save.gear.owned.includes(on.id)) this.save.gear[slot] = first;
+    }
     this.liftNames = [...new Set(world.lifts.map((l) => l.name).filter((n): n is string => Boolean(n)))].sort();
     for (const l of world.lifts) if (l.name) this.liftKinds.set(l.name, l.kind);
   }
@@ -606,8 +620,7 @@ export class Game {
       talk.lines.push(gear && save.gear.owned.includes(gear.id) && e.thanksOwned ? e.thanksOwned : e.thanks);
       talk.events.push({ kind: 'errand', title: e.title, detail: 'Errand done' });
       if (gear && !save.gear.owned.includes(gear.id)) {
-        save.gear.owned.push(gear.id);
-        talk.events.push({ kind: 'gear', title: gear.name, detail: gear.slot === 'hat' ? 'A new hat · in the Book, under Pack' : 'A new jacket · in the Book, under Pack', colour: gear.colour, art: `gear/${artSlug(gear.id)}` });
+        talk.events.push(...this.give(gear.id));
       }
       if (e.reward?.pass && !save.pass) {
         save.pass = true;
@@ -695,6 +708,9 @@ export class Game {
         // They have something to say about what the player has on. Once a day is enough.
         this.noticed.set(personId, day);
         talk.lines.push((person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket]) as string);
+      } else if (talk.lines.length === 0 && (bellRemark(save, personId, day) ?? '') !== '') {
+        // The day after the summit bell was rung, whoever heard it says so, once.
+        talk.lines.push(BELL_HEARD[personId] as string);
       } else if (talk.lines.length === 0) {
         const n = this.chatted.get(personId) ?? 0;
         this.chatted.set(personId, n + 1);
@@ -716,6 +732,40 @@ export class Game {
     talk.train = personId === 'bea' && save.pass;
     this.dirty = true;
     return talk;
+  }
+
+  /**
+   * Come upon one of the mountain's secrets and do what is done there: read it, look inside,
+   * try the door. Says what there is to read and what came of it.
+   */
+  secret(id: string, day: string): { found: Found; events: GameEvent[] } | null {
+    const found = discover(this.save, id, day);
+    if (!found) return null;
+    const events: GameEvent[] = [];
+    if (found.first && found.open) events.push({ kind: 'secret', title: found.secret.kind === 'plaque' ? `Why it's called ${found.secret.name}` : found.secret.name, detail: SECRET_SAID[found.secret.kind] });
+    if (found.key) events.push({ kind: 'item', title: KEYS[found.key] ?? 'A key', detail: 'It must open something' });
+    for (const gear of found.gear) events.push(...this.give(gear));
+    if (found.open) this.dirty = true;
+    return { found, events };
+  }
+
+  /** Put a stone on a cairn: one a day, to each. */
+  cairn(id: string, day: string): GameEvent[] {
+    const added = addStone(this.save, id, day);
+    if (!added) return [];
+    this.dirty = true;
+    return [{ kind: 'secret', title: added.stones === 1 ? 'You start a cairn' : 'A stone on the cairn', detail: added.stones === 1 ? 'One stone. Add one each day you come up.' : `${added.stones} of yours on it now` }, ...added.gear.flatMap((g) => this.give(g))];
+  }
+
+  /** Ring the summit bell. True the first time in a day: the town will have heard it. */
+  ring(day: string): boolean {
+    this.dirty = true;
+    return ringBell(this.save, day);
+  }
+
+  /** How many stones the player has put on a cairn. */
+  stones(id: string): number {
+    return this.save.cairns[id]?.stones ?? 0;
   }
 
   /** Something has come to the player, rather than the other way about: a bird to a bench. It goes in the guide. */
@@ -769,20 +819,48 @@ export class Game {
     return [{ kind: 'item', title: lost.name, detail: 'Found! In your pack' }];
   }
 
-  /** Put on a hat or a jacket that is owned. */
+  /** Put on something that is owned, or take up with a pet. A pet that is already along is sent home. */
   wear(gearId: string): boolean {
     const gear = gearById(gearId);
     if (!gear || !this.save.gear.owned.includes(gearId)) return false;
-    this.save.gear[gear.slot] = gearId;
+    this.save.gear[gear.slot] = gear.slot === 'pet' && this.save.gear.pet === gearId ? '' : gearId;
     this.dirty = true;
     return true;
   }
 
-  /** What the player is wearing: the colours of jacket and hat, and the hat's style. */
-  outfit(): { jacket: number; hat: number; style: string } {
-    const hat = gearById(this.save.gear.hat) ?? (GEAR.find((g) => g.id === DEFAULT_GEAR.hat) as (typeof GEAR)[number]);
-    const jacket = gearById(this.save.gear.jacket) ?? (GEAR.find((g) => g.id === DEFAULT_GEAR.jacket) as (typeof GEAR)[number]);
-    return { jacket: jacket.colour, hat: hat.colour, style: hat.style ?? 'beanie' };
+  /** Come by something to wear, carry or bring along. Says so, the first time. */
+  give(gearId: string): GameEvent[] {
+    const gear = gearById(gearId);
+    if (!gear || this.save.gear.owned.includes(gearId)) return [];
+    this.save.gear.owned.push(gearId);
+    this.dirty = true;
+    return [{ kind: 'gear', title: gear.name, detail: `${SLOT_NAME[gear.slot].found} · in the Book, under Pack`, colour: gear.colour, art: `gear/${artSlug(gear.id)}` }];
+  }
+
+  /** What is on in a slot, or what the player started with. */
+  private worn(slot: GearSlot): Gear | undefined {
+    return gearById(this.save.gear[slot]) ?? gearById(DEFAULT_GEAR[slot]);
+  }
+
+  /** What the player is wearing and carrying, as the figure needs it. */
+  outfit(): { jacket: number; hat: number; style: string; goggles: number; skis: number; skiTips: number; pack: number; packStyle: string } {
+    const skis = this.worn('skis');
+    const pack = this.worn('pack');
+    return {
+      jacket: this.worn('jacket')?.colour ?? 0xe2452f,
+      hat: this.worn('hat')?.colour ?? 0x2f6f8f,
+      style: this.worn('hat')?.style ?? 'beanie',
+      goggles: this.worn('goggles')?.colour ?? 0x1f242e,
+      skis: skis?.colour ?? 0xd9a441,
+      skiTips: skis?.colour2 ?? skis?.colour ?? 0xd9a441,
+      pack: pack?.colour ?? 0x6b4a33,
+      packStyle: pack?.style ?? 'box',
+    };
+  }
+
+  /** The mark the player's skis leave (0 for the season's own), the voice their tunes are in, and who is along. */
+  flourish(): { track: number; tune: string; pet: string } {
+    return { track: this.worn('trail')?.colour ?? 0, tune: this.worn('tune')?.style ?? 'bells', pet: gearById(this.save.gear.pet)?.style ?? '' };
   }
 
   /** Ride the Snow Train to a season, or home (null). Needs the pass. */

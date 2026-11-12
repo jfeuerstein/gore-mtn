@@ -399,6 +399,64 @@ Subjects, left to right, top row first:
 ${subjects.map((s, i) => `${i + 1} ${s}.`).join('\n')}`;
 
 /** Each set of patches: where its pictures go, the colour of its border, and what is sewn on each. */
+/**
+ * Things to wear, carry and bring along that are found on the mountain: what is sewn on each
+ * one's patch. Made through fal, by the same family of model as the rest, to the same brief.
+ */
+const FOUND_ART = {
+  'hat-beret': "a dark red painter's beret",
+  'hat-crown': 'a yellow paper crown with uneven points',
+  'hat-sugar': 'a red plaid wool cap with a short peak',
+  'hat-straw': 'a wide straw sun hat',
+  'jacket-1967': 'an orange knit ski sweater with a white stripe across the chest',
+  'jacket-plaid': 'a red and black plaid wool jacket',
+  'jacket-band': 'a navy marching band jacket with gold buttons',
+  'jacket-moss': 'a moss green canvas camp jacket',
+  'goggles-dark': 'ski goggles with dark grey lenses',
+  'goggles-amber': 'ski goggles with amber orange lenses',
+  'goggles-rose': 'ski goggles with rose pink lenses',
+  'goggles-mirror': 'ski goggles with mirror blue lenses',
+  'goggles-aviator': 'old round leather goggles with brown glass',
+  'goggles-snow': 'ski goggles with white frames and pale blue lenses',
+  'skis-gold': 'a pair of yellow skis, crossed',
+  'skis-hickory': 'a pair of long brown wooden skis, crossed',
+  'skis-racer': 'a pair of red skis with white tips, crossed',
+  'skis-birch': 'a pair of white skis flecked with black like birch bark, crossed',
+  'skis-garnet': 'a pair of dark red skis with gold tips, crossed',
+  'skis-night': 'a pair of navy skis with small gold stars, crossed',
+  'pack-leather': 'a brown leather backpack',
+  'pack-basket': 'a woven wooden pack basket with leather straps',
+  'pack-satchel': 'a grey canvas satchel with paintbrushes sticking out of it',
+  'pack-red': 'a red daypack',
+  'pack-roll': 'a green blanket rolled up and tied with two straps',
+  'trail-plain': 'two ski tracks curving across white snow, drawn in pale blue',
+  'trail-gold': 'two ski tracks curving across white snow, drawn in gold with sparkles',
+  'trail-garnet': 'two ski tracks curving across white snow, drawn in dark red',
+  'trail-sky': 'two ski tracks curving across white snow, drawn in bright blue',
+  'trail-leaf': 'two ski tracks curving across white snow, drawn in leaf green',
+  'tune-bells': 'a brass sleigh bell',
+  'tune-fiddle': 'a fiddle and its bow',
+  'tune-horn': 'a brass french horn',
+  'tune-banjo': 'a banjo',
+  'tune-squeezebox': 'a red accordion',
+  'pet-kit': 'a fox kit sitting, orange with a white chest',
+  'pet-duckling': 'a yellow duckling',
+  'pet-chickadee': 'a black-capped chickadee',
+  'pet-kitten': 'a small grey kitten sitting',
+  'pet-toad': 'a brown toad',
+};
+
+/**
+ * The insides of the rooms behind the mountain's locked doors, by the name each is filed
+ * under (see `art` in src/game/secrets.ts): prints in the postcards' hand.
+ */
+export const ROOM_ART = {
+  'mid-station': card('the inside of a small old ski lift station: a wooden bench along one wall, a pot-bellied stove, a round wall clock, and one small red gondola cabin standing indoors with its door open'),
+  'mine-office': card('the inside of an old mine office: a wooden desk with an open ledger and an oil lamp, shelves of rock samples, a window with dusty light, a pair of leather goggles hanging from the lamp'),
+  'tuning-shed': card('the inside of a wooden shed filled from floor to rafters with old wooden skis standing in rows, a workbench with a block of wax and an iron'),
+  'power-house': card('the inside of an old brick power house: a big green dynamo with a flywheel, brass gauges on the wall, and a small grey kitten sitting on the floor in front of it'),
+};
+
 export const PATCH_SETS = {
   // Not for the Book: the shop signs' pictures, kept in the cache for make-art.mjs to lay out on their sheet.
   signs: { border: 'navy (#22304a)', subjects: Object.fromEntries(Object.entries(SHOP_ART).map(([name, what]) => [name, what.replace(', one single object', '')])), dir: 'tools/art/cache/shops/print', brief: SIGN_BRIEF },
@@ -410,6 +468,8 @@ export const PATCH_SETS = {
   conditions: { border: 'gold (#c98f1f)', subjects: briefs(CONDITION_ART) },
   pins: { border: 'blue (#2b62c9)', subjects: briefs(PIN_ART) },
   gear: { border: 'navy (#22304a)', subjects: briefs(GEAR_ART) },
+  // What is found on the mountain and in its secrets, in the same border as what is given for errands.
+  'gear:found': { border: 'navy (#22304a)', into: 'gear', by: 'fal', subjects: FOUND_ART },
   // What is eaten and what is read are both in public/art/offerings, in different borders.
   offerings: { border: 'tan (#a9763f)', subjects: briefs(only(OFFERING_ART, (id) => !id.startsWith('book-'))) },
   'offerings:books': {

@@ -1,4 +1,4 @@
-import { jingleFor, levelsFor, type Jingle, type Scene } from './soundscape';
+import { jingleFor, levelsFor, TUNE_VOICES, type Jingle, type Scene } from './soundscape';
 
 /** Where the player's choice of sound on or off is kept. */
 const PREF_KEY = 'gore.sound';
@@ -16,6 +16,8 @@ export class Sound {
   private rain: GainNode | null = null;
   private lift: GainNode | null = null;
   private on: boolean;
+  /** The voice the player's tunes are played in (`TUNE_VOICES`). */
+  private tune = 'bells';
   /** Metres walked since the last footstep. */
   private walked = 0;
   /** Seconds until the next bird is heard. */
@@ -142,6 +144,11 @@ export class Sound {
   }
 
   /** Ring the notes for something earned. */
+  /** Play the player's tunes in another voice. The church bell and the summit bell are always bells. */
+  setTune(voice: string): void {
+    this.tune = voice in TUNE_VOICES ? voice : 'bells';
+  }
+
   play(kind: string, detail = ''): void {
     const jingle = jingleFor(kind, detail);
     if (jingle) this.jingle(jingle);
@@ -158,7 +165,10 @@ export class Sound {
       return;
     }
     if (j.voice === 'thud') this.burst(180, 0.12, 0.5);
-    this.notes(j.notes, j.gap, j.gain * 0.22, j.voice === 'pluck' ? 'triangle' : 'sine', j.voice === 'pluck' ? 0.18 : 0.7, j.voice === 'thud' ? 0.06 : 0);
+    // A tune that rings is played in the player's own voice: bells, or whatever they have learned from the band.
+    const own = !j.fixed && (j.voice === 'bell' || j.voice === 'thud') ? TUNE_VOICES[this.tune] : undefined;
+    if (own && this.tune !== 'bells') this.notes(j.notes.map((f) => f * own.pitch), j.gap, j.gain * 0.22 * own.gain, own.wave, own.ring, j.voice === 'thud' ? 0.06 : 0);
+    else this.notes(j.notes, j.gap, j.gain * 0.22, j.voice === 'pluck' ? 'triangle' : 'sine', j.voice === 'pluck' ? 0.18 : 0.7, j.voice === 'thud' ? 0.06 : 0);
   }
 
   /** A run of notes, each fading away. */

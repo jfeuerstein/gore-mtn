@@ -5,7 +5,8 @@ import { CONDITIONS, trailShare, type TrailEntry } from '../game/passport';
 import { LETTERS } from '../game/letters';
 import { OFFERINGS } from '../game/offerings';
 import { PATCHES } from '../game/patches';
-import { ERRANDS, GEAR, personById, TOWN_ROUND } from '../game/people';
+import { KEYS, SECRETS } from '../game/secrets';
+import { ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND } from '../game/people';
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
 import { DIFFICULTY_MARK } from '../world/trails';
@@ -340,10 +341,41 @@ export class Book {
       out.push(el('p', 'note', carried.join(' · ')));
     }
 
+    // What has been come across out there that is on no map. Only what has been found: there is no list of the rest.
+    const notes = SECRETS.filter((sec) => sec.id in game.save.secrets);
+    if (notes.length > 0 || game.save.keys.length > 0) {
+      const h = el('h3', '', 'Field notes');
+      h.appendChild(el('span', '', `${notes.length} found`));
+      out.push(h);
+      out.push(el('p', 'note', "Things you've found that aren't on any map. There are more. Nobody knows how many."));
+      const said = (title: string, text: string): void => {
+        const card = el('div', 'mineral errand earned');
+        card.appendChild(el('span', 'badge badge-errand', '✎'));
+        const body = el('div');
+        body.append(el('b', '', title), el('small', '', text));
+        card.appendChild(body);
+        list2.appendChild(card);
+      };
+      const list2 = el('div', 'minerals');
+      const of = (kind: string): typeof notes => notes.filter((sec) => sec.kind === kind);
+      if (of('register').length > 0) said(`Registers signed · ${of('register').length}`, of('register').map((sec) => sec.name.replace(/^The /, '').replace(/ register$/, '')).join(' · '));
+      if (of('plaque').length > 0) said(`Why it's called that · ${of('plaque').length}`, of('plaque').map((sec) => sec.name).join(' · '));
+      for (const sec of [...of('working'), ...of('room')]) said(sec.name, `Found ${shortDay(game.save.secrets[sec.id] as string)}`);
+      const stones = Object.values(game.save.cairns).reduce((sum, c) => sum + c.stones, 0);
+      if (stones > 0) said(`Cairns · ${stones} stone${stones === 1 ? '' : 's'}`, 'One a day, on each summit you stand on.');
+      if ('bell' in game.save.secrets) said('The summit bell', game.save.bell.rang ? `Last rung ${shortDay(game.save.bell.rang)}` : 'Found');
+      if (game.save.keys.length > 0) {
+        const opened = (key: string): boolean => SECRETS.some((sec) => sec.needs === key && sec.id in game.save.secrets);
+        said('Keys', game.save.keys.map((key) => `${KEYS[key] ?? 'A key'}${opened(key) ? ' (used)' : ''}`).join(' · '));
+      }
+      out.push(list2);
+    }
+
     const owned = GEAR.filter((g) => game.save.gear.owned.includes(g.id));
     out.push(this.heading('Wardrobe', owned.length, GEAR.length));
-    out.push(el('p', 'note', "Hats and jackets people have given you. Tap one to put it on."));
-    for (const slot of ['hat', 'jacket'] as const) {
+    out.push(el('p', 'note', "Things people have given you, and things you've come across out there. Tap one to put it on."));
+    for (const slot of GEAR_SLOTS) {
+      out.push(el('h4', '', SLOT_NAME[slot].plural));
       const row = el('div', 'wardrobe');
       for (const g of GEAR.filter((q) => q.slot === slot)) {
         const have = game.save.gear.owned.includes(g.id);

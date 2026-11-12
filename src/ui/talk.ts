@@ -22,6 +22,8 @@ export interface Choice {
 export class TalkSheet {
   private readonly sheet: HTMLElement;
   private readonly portrait: HTMLImageElement;
+  /** A picture of what is being looked at (a room that has been let into), over the words. */
+  private readonly picture: HTMLImageElement;
   private readonly title: HTMLElement;
   private readonly subtitle: HTMLElement;
   private readonly text: HTMLElement;
@@ -57,9 +59,13 @@ export class TalkSheet {
     close.textContent = 'Close';
     close.addEventListener('click', () => this.close());
     head.append(this.portrait, names, close);
+    this.picture = make('img', 'picture');
+    this.picture.alt = '';
+    this.picture.hidden = true;
+    this.picture.addEventListener('error', () => (this.picture.hidden = true));
     this.text = make('p', 'line');
     this.buttons = make('div', 'choices');
-    this.sheet.append(head, this.text, this.buttons);
+    this.sheet.append(head, this.picture, this.text, this.buttons);
     (document.getElementById('app') ?? document.body).appendChild(this.sheet);
   }
 
@@ -73,8 +79,11 @@ export class TalkSheet {
    * @param portrait the address of a picture of whoever is speaking, if there is one
    */
   /** @param farewell what the button that closes the sheet says when there is nothing to choose: someone is said goodbye to, a notice is not */
-  open(title: string, subtitle: string, lines: readonly (string | Written)[], choices: readonly Choice[] = [], portrait: string | null = null, farewell = 'Goodbye'): void {
+  /** @param picture the address of a picture to show over the words: the inside of a room, a painting */
+  open(title: string, subtitle: string, lines: readonly (string | Written)[], choices: readonly Choice[] = [], portrait: string | null = null, farewell = 'Goodbye', picture: string | null = null): void {
     this.farewell = farewell;
+    this.picture.hidden = picture === null;
+    if (picture !== null && this.picture.getAttribute('src') !== picture) this.picture.src = picture;
     this.onOpen?.();
     this.portrait.hidden = portrait === null;
     if (portrait !== null && this.portrait.getAttribute('src') !== portrait) this.portrait.src = portrait;

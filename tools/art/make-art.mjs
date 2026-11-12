@@ -18,6 +18,8 @@ const SETS = {
   people: { art: manifest.PEOPLE_ART, size: 256 },
   // Postcards are little park posters, painted to the edge: they have a look of their own, written into each.
   places: { art: manifest.PLACE_ART ?? {}, size: 384, own: true },
+  // The insides of the rooms behind the locked doors: prints in the postcards' hand, shown wide over what is read there.
+  rooms: { art: manifest.ROOM_ART ?? {}, size: 512, own: true },
   // Everything in the Book that is a patch (stamps, pins, hats, bakes, minerals, the field guide) is made by make-patches.mjs.
   // The pictures for the shop signs go onto one sheet (see the end of this file), not into public/art one by one.
   shops: { art: manifest.SHOP_ART, size: 128, item: true, sheet: true },

@@ -50,7 +50,7 @@ export interface SaveData {
   /** Things being carried for an errand, by item id. */
   items: string[];
   /** Things to wear: what is owned, and what is on. */
-  gear: { owned: string[]; hat: string; jacket: string };
+  gear: { owned: string[]; hat: string; jacket: string; goggles: string; skis: string; pack: string; trail: string; tune: string; pet: string };
   /** People met, by id, and the day. */
   met: Record<string, string>;
   /** True once the Snow Train pass has been earned. */
@@ -76,6 +76,13 @@ export interface SaveData {
   flag: { x: number; z: number; label: string } | null;
   /** Town projects the player has staked out, by id, with the day each was: it is built by the next. */
   projects: Record<string, string>;
+  /** Secrets found (see `secrets.ts`), by id, with the day each was; and the keys picked up in them. */
+  secrets: Record<string, string>;
+  keys: string[];
+  /** The cairns: how many stones the player has put on each, and the day of the last. */
+  cairns: Record<string, { stones: number; day: string }>;
+  /** The summit bell: the day it was last rung, and who in town has said they heard it. */
+  bell: { rang: string; told: string[] };
   /** The player's cabin: what is on its shelf and its board, and when its feeder was filled. */
   cabin: CabinSave;
   /** The last day the flyer was put in front of the player: it is shown once, on the day's first opening. */
@@ -101,7 +108,7 @@ export function emptySave(): SaveData {
     seen: { watch: '', spots: [] },
     errands: {},
     items: [],
-    gear: { owned: [], hat: '', jacket: '' },
+    gear: { owned: [], hat: '', jacket: '', goggles: '', skis: '', pack: '', trail: '', tune: '', pet: '' },
     met: {},
     pass: false,
     away: null,
@@ -118,6 +125,10 @@ export function emptySave(): SaveData {
     leads: { day: '', ids: [] },
     cabin: emptyCabin(),
     projects: {},
+    secrets: {},
+    keys: [],
+    cairns: {},
+    bell: { rang: '', told: [] },
   };
 }
 
@@ -194,11 +205,9 @@ export function parseSave(text: string | null | undefined): SaveData {
   const strings = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
   save.items = strings(raw.items);
   if (isRecord(raw.gear)) {
-    save.gear = {
-      owned: strings(raw.gear.owned),
-      hat: typeof raw.gear.hat === 'string' ? raw.gear.hat : '',
-      jacket: typeof raw.gear.jacket === 'string' ? raw.gear.jacket : '',
-    };
+    const worn = (v: unknown): string => (typeof v === 'string' ? v : '');
+    const g = raw.gear;
+    save.gear = { owned: strings(g.owned), hat: worn(g.hat), jacket: worn(g.jacket), goggles: worn(g.goggles), skis: worn(g.skis), pack: worn(g.pack), trail: worn(g.trail), tune: worn(g.tune), pet: worn(g.pet) };
   }
   save.met = days(raw.met);
   save.pass = raw.pass === true;
@@ -217,6 +226,14 @@ export function parseSave(text: string | null | undefined): SaveData {
     const places = (v: unknown, n: number): string[] => Array.from({ length: n }, (_, i) => (Array.isArray(v) && typeof v[i] === 'string' ? (v[i] as string) : ''));
     save.cabin = { shelf: places(raw.cabin.shelf, SHELF_SLOTS), wall: places(raw.cabin.wall, WALL_SLOTS), feeder: isDay(raw.cabin.feeder) ? raw.cabin.feeder : '' };
   }
+  save.secrets = days(raw.secrets);
+  save.keys = strings(raw.keys);
+  if (isRecord(raw.cairns)) {
+    for (const [id, c] of Object.entries(raw.cairns)) {
+      if (isRecord(c) && typeof c.stones === 'number' && c.stones > 0 && isDay(c.day)) save.cairns[id] = { stones: Math.min(9999, Math.floor(c.stones)), day: c.day };
+    }
+  }
+  if (isRecord(raw.bell) && isDay(raw.bell.rang)) save.bell = { rang: raw.bell.rang, told: strings(raw.bell.told) };
   if (isDay(raw.flyer)) save.flyer = raw.flyer;
   if (isRecord(raw.leads) && isDay(raw.leads.day)) save.leads = { day: raw.leads.day, ids: strings(raw.leads.ids).slice(0, 6) };
   if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {

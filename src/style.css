@@ -1562,6 +1562,15 @@ body {
   /* Faces sit in the upper part of each picture. */
   object-position: 50% 22%;
 }
+#talk-sheet .picture {
+  display: block;
+  width: 100%;
+  max-height: 30vh;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  margin: 0 0 10px;
+}
 #talk-sheet .names {
   flex: 1;
   min-width: 0;

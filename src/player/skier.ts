@@ -36,6 +36,12 @@ export interface Outfit {
   /** beanie, trapper, toque, ranger, cap, lamp, tophat, helmet, antlers, propeller or straw. */
   style: string;
   trousers?: number;
+  /** The lenses of the goggles, the tops and the tips of the skis, and the pack and its shape (box, basket or roll): the player's own, when they are not the plain ones. */
+  goggles?: number;
+  skis?: number;
+  skiTips?: number;
+  pack?: number;
+  packStyle?: string;
   /** A face and features of their own. The player has none: goggles, and that is all. */
   features?: Features;
 }
@@ -143,6 +149,12 @@ export class Skier {
   private readonly head = new THREE.Group();
   private hat: THREE.Group | null = null;
   private hatStyle = '';
+  private packMat!: THREE.MeshLambertMaterial;
+  private skiMat!: THREE.MeshLambertMaterial;
+  private tipMat!: THREE.MeshLambertMaterial;
+  private lensMat!: THREE.MeshLambertMaterial;
+  private pack: THREE.Group | null = null;
+  private packStyle = 'box';
 
   /** @param outfit what to wear; the player's red jacket and blue beanie if not given */
   constructor(
@@ -156,8 +168,10 @@ export class Skier {
     const skin = mat(0xf0c9a4);
     this.hatMat = mat(outfit.hat);
     const cream = (this.creamMat = mat(0xf4ead8));
-    const leather = mat(0x6b4a33);
-    const skiMat = mat(0xd9a441);
+    const leather = (this.packMat = mat(outfit.pack ?? 0x6b4a33));
+    const skiMat = (this.skiMat = mat(outfit.skis ?? 0xd9a441));
+    const tipMat = (this.tipMat = mat(outfit.skiTips ?? outfit.skis ?? 0xd9a441));
+    const lens = (this.lensMat = mat(outfit.goggles ?? 0x1f242e));
     const box = (w: number, h: number, d: number, m: THREE.Material, x = 0, y = 0, z = 0): THREE.Mesh => {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
       mesh.position.set(x, y, z);
@@ -202,7 +216,7 @@ export class Skier {
       foot.add(boot);
       const ski = new THREE.Group();
       ski.add(box(0.12, 0.035, 1.7, skiMat, 0, -BODY.boot - 0.018, -0.1));
-      const tip = box(0.12, 0.035, 0.24, skiMat, 0, -BODY.boot + 0.03, -1.04);
+      const tip = box(0.12, 0.035, 0.24, tipMat, 0, -BODY.boot + 0.03, -1.04);
       tip.rotation.x = 0.5;
       ski.add(tip);
       ski.visible = false;
@@ -230,7 +244,12 @@ export class Skier {
       ),
       jacket,
     );
-    this.torso.add(coat, box(0.34, 0.4, 0.16, leather, 0, 0.36, 0.26));
+    this.torso.add(coat);
+    // The pack, which may be changed for another shape: it hangs from the torso as a part of its own.
+    this.packStyle = outfit.packStyle ?? 'box';
+    this.pack = this.buildPack(this.packStyle);
+    this.torso.add(this.pack);
+    void leather;
     const head = this.head;
     head.position.y = 0.62;
     const face = new THREE.Mesh(facets(0.19, 1, 1, 1.06, 1), skin);
@@ -247,11 +266,12 @@ export class Skier {
       cream,
     );
     scarf.position.y = 0.01;
-    const goggles = box(0.3, 0.08, 0.08, dark, 0, 0.19, -0.16);
+    // Goggles: a strap round the head and the lenses in front, which take their own colour.
+    const goggles = [box(0.385, 0.045, 0.34, dark, 0, 0.19, 0), box(0.3, 0.085, 0.07, lens, 0, 0.19, -0.165)];
     head.add(face, scarf);
     const f = outfit.features;
     if (!f) {
-      head.add(goggles);
+      head.add(...goggles);
     } else {
       // A face: two eyes, and whatever else is theirs. The head is 0.19 across the cheek, its middle at 0.17.
       if (f.skin !== undefined) skin.color.setHex(f.skin);
@@ -465,11 +485,51 @@ export class Skier {
     colours.needsUpdate = true;
   }
 
-  /** Change the colours of jacket and hat, and the hat itself if its style differs. */
+  /** A pack on the back: a plain box, a woven pack basket with its rim and straps, or a bedroll tied across. */
+  private buildPack(style: string): THREE.Group {
+    const g = new THREE.Group();
+    const { packMat: pack, darkMat: dark, creamMat: cream } = this;
+    const part = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number): THREE.Mesh => {
+      const mesh = new THREE.Mesh(geo, m);
+      mesh.position.set(x, y, z);
+      return mesh;
+    };
+    if (style === 'basket') {
+      // Wider at the belly than the mouth, with a dark rim: the pack the guides of these woods carried.
+      g.add(part(stack([{ y: 0, w: 0.3, d: 0.2 }, { y: 0.16, w: 0.4, d: 0.27 }, { y: 0.46, w: 0.32, d: 0.2 }], 8), pack, 0, 0.12, 0.3), part(new THREE.BoxGeometry(0.35, 0.04, 0.23), dark, 0, 0.6, 0.3));
+    } else if (style === 'roll') {
+      // A blanket rolled and tied, lying across the shoulders, with a small bag under it.
+      const roll = part(new THREE.CylinderGeometry(0.11, 0.11, 0.56, 8), pack, 0, 0.52, 0.27);
+      roll.rotation.z = Math.PI / 2;
+      g.add(roll, part(new THREE.BoxGeometry(0.03, 0.24, 0.24), cream, -0.16, 0.52, 0.27), part(new THREE.BoxGeometry(0.03, 0.24, 0.24), cream, 0.16, 0.52, 0.27), part(new THREE.BoxGeometry(0.3, 0.26, 0.13), dark, 0, 0.28, 0.26));
+    } else g.add(part(new THREE.BoxGeometry(0.34, 0.4, 0.16), pack, 0, 0.36, 0.26));
+    return g;
+  }
+
+  /** Change the colours of what is worn and carried, and the hat or the pack itself if its shape differs. */
   setOutfit(outfit: Outfit): void {
     this.jacketMat.color.setHex(outfit.jacket);
     this.hatMat.color.setHex(outfit.hat);
     if (outfit.trousers !== undefined) this.trousersMat.color.setHex(outfit.trousers);
+    if (outfit.goggles !== undefined) this.lensMat.color.setHex(outfit.goggles);
+    if (outfit.skis !== undefined) this.skiMat.color.setHex(outfit.skis);
+    if (outfit.skiTips !== undefined) this.tipMat.color.setHex(outfit.skiTips);
+    if (outfit.pack !== undefined) this.packMat.color.setHex(outfit.pack);
+    if (outfit.packStyle !== undefined && outfit.packStyle !== this.packStyle) {
+      this.packStyle = outfit.packStyle;
+      const built = this.joined.length > 0;
+      if (this.pack) {
+        this.torso.remove(this.pack);
+        const old = this.pack;
+        this.joined = this.joined.filter((j) => j.part !== old);
+      }
+      this.pack = this.buildPack(outfit.packStyle);
+      this.pack.traverse((o) => {
+        if (o instanceof THREE.Mesh) o.castShadow = this.castShadow;
+      });
+      this.torso.add(this.pack);
+      if (built) this.join(this.pack);
+    }
     if (outfit.style !== this.hatStyle) {
       this.hatStyle = outfit.style;
       const built = this.joined.length > 0;
@@ -540,6 +600,17 @@ export class Skier {
       const blade = part(new THREE.BoxGeometry(0.4, 0.015, 0.07), lit({ color: 0xe2a52e, flatShading: true }), 0, 0.52, 0);
       blade.rotation.y = 0.6;
       g.add(blade, part(new THREE.SphereGeometry(0.03, 5, 4), lit({ color: 0xc8402d, flatShading: true }), 0, 0.53, 0));
+    } else if (style === 'beret') {
+      // A painter's beret: a soft flat disc pulled to one side, with a stalk.
+      g.add(part(new THREE.CylinderGeometry(0.2, 0.205, 0.06, 10), hat, 0, 0.25, 0), part(new THREE.CylinderGeometry(0.27, 0.22, 0.07, 10), hat, 0.05, 0.31, 0.01), part(new THREE.CylinderGeometry(0.015, 0.015, 0.06, 5), hat, 0.05, 0.37, 0.01));
+    } else if (style === 'crown') {
+      // A paper crown, cut with scissors by somebody who is eight: a band, and five points that do not match.
+      g.add(part(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 10), hat, 0, 0.27, 0));
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const point = part(new THREE.ConeGeometry(0.06, 0.1 + (i % 2) * 0.05, 4), hat, Math.sin(a) * 0.17, 0.37 + (i % 2) * 0.02, Math.cos(a) * 0.17);
+        g.add(point);
+      }
     } else if (style === 'straw') {
       // A scarecrow's straw hat: wide, and a little crushed.
       g.add(part(new THREE.CylinderGeometry(0.4, 0.42, 0.03, 12), hat, 0, 0.28, 0), part(new THREE.CylinderGeometry(0.17, 0.2, 0.16, 10), hat, 0, 0.37, 0), part(new THREE.CylinderGeometry(0.205, 0.205, 0.04, 10), dark, 0, 0.31, 0));

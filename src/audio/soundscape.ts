@@ -57,6 +57,19 @@ export function levelsFor(s: Scene): Levels {
   return { wind, windTone, glide, glideTone, lift: s.mode === 'lift' ? 0.5 : 0, rain: s.rain ? clamp01(s.falling) * 0.6 : 0 };
 }
 
+/**
+ * The voices a tune can be played in: what the player's own jingles sound like. Bells are what
+ * everybody starts with; the others are learned from the town's band, one from each player.
+ * Each is a waveform, how long a note rings, how far up or down it is played, and how loud.
+ */
+export const TUNE_VOICES: Readonly<Record<string, { wave: 'sine' | 'triangle' | 'square' | 'sawtooth'; ring: number; pitch: number; gain: number }>> = {
+  bells: { wave: 'sine', ring: 0.7, pitch: 1, gain: 1 },
+  fiddle: { wave: 'sawtooth', ring: 0.42, pitch: 1, gain: 0.42 },
+  horn: { wave: 'triangle', ring: 0.55, pitch: 0.5, gain: 1.25 },
+  banjo: { wave: 'triangle', ring: 0.16, pitch: 2, gain: 1 },
+  squeezebox: { wave: 'square', ring: 0.38, pitch: 1, gain: 0.3 },
+};
+
 /** A short tune for something earned: notes in Hz, seconds between them, and how loud. */
 export interface Jingle {
   notes: number[];
@@ -68,6 +81,8 @@ export interface Jingle {
    * no notes at all, only the small dry sound of a pole going into snow.
    */
   voice: 'bell' | 'pluck' | 'thud' | 'whistle' | 'tick';
+  /** True for a bell that is a bell whatever tune the player has taken up: the church's, the summit's. */
+  fixed?: boolean;
 }
 
 // A pentatonic scale on D, so any run of notes sounds settled.
@@ -99,11 +114,17 @@ export function jingleFor(kind: string, detail = ''): Jingle | null {
     case 'toll': {
       // The church clock: one low stroke for each hour, by the twelve-hour clock.
       const strokes = Math.min(12, Math.max(1, Math.round(Number(detail)) || 1));
-      return { notes: Array.from({ length: strokes }, () => 196), gap: 1.4, gain: 0.5, voice: 'bell' };
+      return { notes: Array.from({ length: strokes }, () => 196), gap: 1.4, gain: 0.5, voice: 'bell', fixed: true };
     }
     case 'train':
       // A steam whistle: three notes at once, a little sour, as they are.
       return { notes: [392, 466.16, 587.33], gap: 0, gain: 0.4, voice: 'whistle' };
+    case 'secret':
+      // Something found that nobody pointed at: three notes going up, as a question does.
+      return { notes: [D[4], D[6], D[9]] as number[], gap: 0.13, gain: 0.35, voice: 'pluck' };
+    case 'bell':
+      // The summit bell: one low stroke and its octave, rung on.
+      return { notes: [146.83, 293.66], gap: 0.02, gain: 0.7, voice: 'bell', fixed: true };
     case 'pole':
       // A pole touched to the snow for a turn, or both pushed in to pole along: barely there.
       return { notes: [], gap: 0, gain: detail === 'push' ? 0.22 : 0.14, voice: 'tick' };

@@ -57,6 +57,9 @@ import { Glints } from './world/glints';
 import { buildLifts } from './world/scenery';
 import { Snowfall } from './world/snowfall';
 import { Terrain, type Print } from './world/terrainMesh';
+import { SecretThings } from './world/secretMesh';
+import { secretSites } from './world/secretSites';
+import type { Secret } from './game/secrets';
 import { GroundLook } from './world/groundMaterial';
 import { fromLocal } from './world/footprints';
 import { townPlaceAt } from './world/townPlaces';
@@ -348,12 +351,15 @@ async function boot(): Promise<void> {
   // Trees keep out of lift corridors and stand back from buildings...
   // ...and off roads, paths, lots and water. Out of winter each tree is dressed for the season:
   // hardwoods low on the mountain, spruce and fir higher up.
+  // The mountain's secrets: registers, plaques, cairns, old workings. Nothing points at them.
+  const secretThings = new SecretThings(secretSites(world, townPlaces), (x, z) => ground.heightAt(x, z), season, shadows);
+  scene.add(secretThings.group);
   const trees = new Forest(
     ground,
     world,
     cfg.trees,
     shadows,
-    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || built.near(x, z),
+    (x, z) => world.openAt(x, z) !== 0 || inLiftClearing(liftPaths, x, z) || built.near(x, z) || secretThings.clears(x, z),
     look.conifers ? (x, z, kindRoll, pickRoll) => treeLook(season, world.hardwoodAt(x, z), kindRoll, pickRoll) : null,
   );
   const liftCars = new LiftCars(liftPaths, shadows);
@@ -458,7 +464,7 @@ async function boot(): Promise<void> {
     if (events.length === 0) return;
     for (const event of events) toasts.show(event);
     // One tune for a batch, the grandest of them, so several stamps at once do not clash.
-    const order = ['patch', 'peak', 'season', 'gear', 'mineral', 'trail', 'path', 'lift', 'landmark', 'condition', 'errand', 'sighting', 'item'];
+    const order = ['patch', 'peak', 'season', 'gear', 'secret', 'mineral', 'trail', 'path', 'lift', 'landmark', 'condition', 'errand', 'sighting', 'item'];
     const lead = [...events].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))[0] as GameEvent;
     sound.play(lead.kind, lead.detail);
     book.refresh();
@@ -806,8 +812,16 @@ async function boot(): Promise<void> {
   const mineStop = standAt({ spot: 'gore-mt-mineral-shop' }, 12, 8);
   if (mineStop) stops.push({ id: 'mine', name: 'the Mineral Shop', ...mineStop });
   scene.add(folk.group, keepsakes.group, buildStops(stops, shadows));
+  let heardTune = game.flourish().tune;
   player.setOutfit(game.outfit());
-  book.onWear = () => player.setOutfit(game.outfit());
+  sound.setTune(game.flourish().tune);
+  book.onWear = () => {
+    player.setOutfit(game.outfit());
+    sound.setTune(game.flourish().tune);
+    // Something of the tune that has just been put on, to hear it by.
+    if (game.flourish().tune !== heardTune) sound.play('gear');
+    heardTune = game.flourish().tune;
+  };
 
   /** Lay out whatever lost property the errands in hand are looking for. */
   const layKeepsakes = (): void => {
@@ -1018,7 +1032,8 @@ async function boot(): Promise<void> {
     const starlight = Math.min(1, Math.max(0, (-sunDeg - 5) / 7)) * (1 - weather.overcast);
     atmosphere.apply(palette, sunNow, starlight);
     terrain.setTints(palette.snowTint, palette.canopyTint);
-    tracks.setColour(palette.track);
+    // The mark the skis leave: the season's own, or a line the player has come by.
+    tracks.setColour(game.flourish().track || palette.track);
     // Snow in winter, rain otherwise; leaves on a fair fall day, fireflies on a summer night.
     const air = airFor(season, palette.snowfall, sunDeg);
     snowfall.setKind(air.kind);
@@ -1033,6 +1048,42 @@ async function boot(): Promise<void> {
   // The day the finds are laid out for and stamps are dated with: the player's own calendar day.
   let today = dayKey(new Date());
   book.today = () => today;
+  // The stones the player has put on the cairns, as they were left.
+  secretThings.setStones((id) => game.stones(id));
+  /** Where the player stood to read whatever is on the talk sheet that nobody is saying: a plaque, a register, a room. */
+  let reading: { x: number; z: number } | null = null;
+  /** Do what is done at one of the mountain's secrets: add the stone, ring the bell, or read what there is to read. */
+  const openSecret = (secret: Secret): void => {
+    if (secret.kind === 'cairn') {
+      const events = game.cairn(secret.id, today);
+      if (events.length === 0) toasts.show({ kind: 'hint', title: "Today's stone is on it", detail: `${game.stones(secret.id)} of yours so far. One a day.` });
+      announce(events);
+      secretThings.setStones((id) => game.stones(id));
+      return;
+    }
+    if (secret.kind === 'bell') {
+      const first = !('bell' in game.save.secrets);
+      sound.play('bell');
+      if (game.ring(today)) toasts.show({ kind: 'secret', title: 'The summit bell', detail: first ? 'It carries all the way to town' : 'They heard that in town' });
+      return;
+    }
+    const result = game.secret(secret.id, today);
+    if (!result) return;
+    const { found, events } = result;
+    const subtitle = secret.kind === 'plaque' ? 'A brass plaque' : secret.kind === 'register' ? 'A tin box on a post' : secret.kind === 'room' ? (found.open ? 'Unlocked' : 'Locked') : 'Not on any map';
+    talkSheet.open(
+      secret.name,
+      subtitle,
+      found.pages.map((page) => (page.signed ? { written: page.text, signed: page.signed } : page.text)),
+      [],
+      null,
+      'Close',
+      found.open && secret.art ? `${import.meta.env.BASE_URL}art/${secret.art}.webp` : null,
+    );
+    reading = { x: player.position.x, z: player.position.z };
+    announce(events);
+    player.setOutfit(game.outfit());
+  };
   showProjects();
   announce(game.arrivedIn(season, today));
   if (away === season && cfg.season === 'real') toasts.show({ kind: 'season', title: `${SEASON_NAME[season]}, by Snow Train`, detail: 'Conductor Bea at the depot will take you home' });
@@ -1436,13 +1487,16 @@ async function boot(): Promise<void> {
     toasts.hold(!window.__gore.ready || welcomed || flyerWaits || flyer.isOpen);
     const someone = player.mode === 'lift' ? null : folk.nearest(px, pz, 7);
     const stop = player.mode === 'lift' || someone ? null : (stops.find((st) => Math.hypot(st.x - px, st.z - pz) < 9) ?? null);
-    if (talkSheet.isOpen && !someone && !stop && !welcomed) talkSheet.close();
+    // A sheet is put away when whoever or whatever it was about has been walked away from.
+    if (reading && (!talkSheet.isOpen || Math.hypot(reading.x - px, reading.z - pz) > 12)) reading = null;
+    if (talkSheet.isOpen && !someone && !stop && !welcomed && !reading) talkSheet.close();
     // Offer a ride when standing at the foot of a lift.
     const station = player.mode === 'lift' ? null : stationNear(liftPaths, player.position.x, player.position.z);
     // ...and a seat when standing by a bench.
     const seat = station || player.mode !== 'walk' ? null : (built.benches.find((b) => Math.hypot(b.x - px, b.z - pz) < 2.2) ?? null);
     // ...and, on the spot the town wants to build on, the chance to stake it out.
     const wanted = player.mode === 'lift' ? null : game.projectInHand(today);
+    const secretHere = secretThings.near(px, pz);
     const staking = wanted?.state === 'proposed' ? (built.plots.find((p) => p.id === wanted.project.id && Math.hypot(p.x - px, p.z - pz) < 9) ?? null) : null;
     if (staking) hint('project', 'This is the spot', 'Tap Stake it out, and the crew builds it overnight.');
     if (station) {
@@ -1470,6 +1524,10 @@ async function boot(): Promise<void> {
       });
     } else if (home && player.mode === 'walk' && Math.hypot(home.door.x - px, home.door.z - pz) < 3.6) {
       hud.setAction('Home', openCabin);
+    } else if (secretHere && player.mode !== 'lift') {
+      // One of the mountain's secrets: something to read, to look into, to add to, to ring.
+      const { secret } = secretHere;
+      hud.setAction(secret.kind === 'room' && secret.id in game.save.secrets ? 'Go in' : secret.action, () => openSecret(secret));
     } else hud.setAction(null);
     if (cabinSheet.isOpen && home && Math.hypot(home.door.x - px, home.door.z - pz) > 9) cabinSheet.close();
     // Whoever is at the feeder is there to be seen from the trail; coming home is what puts them in the guide.

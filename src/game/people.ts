@@ -1036,13 +1036,35 @@ export const ERRANDS: readonly Errand[] = [
 export const personById = (id: string): Person | undefined => PEOPLE.find((p) => p.id === id);
 export const errandById = (id: string): Errand | undefined => ERRANDS.find((e) => e.id === id);
 
-/** Things to wear, earned from errands. The first of each kind is what the player starts in. */
+/** The kinds of thing there are to wear, carry or have along, in the order the Book shows them. */
+export const GEAR_SLOTS = ['hat', 'jacket', 'goggles', 'skis', 'pack', 'trail', 'tune', 'pet'] as const;
+export type GearSlot = (typeof GEAR_SLOTS)[number];
+/** What the Book calls each, and what an announcement says when one is found. */
+export const SLOT_NAME: Record<GearSlot, { plural: string; found: string }> = {
+  hat: { plural: 'Hats', found: 'A new hat' },
+  jacket: { plural: 'Jackets', found: 'A new jacket' },
+  goggles: { plural: 'Goggles', found: 'New goggles' },
+  skis: { plural: 'Skis', found: 'New skis' },
+  pack: { plural: 'Packs', found: 'A new pack' },
+  trail: { plural: 'Tracks', found: 'A new kind of track to leave' },
+  tune: { plural: 'Tunes', found: 'A new tune' },
+  pet: { plural: 'Company', found: 'Somebody to bring along' },
+};
+
+/**
+ * Things to wear, carry or have along: given for errands, found lying about the mountain, or
+ * come by in its secrets (`secrets.ts` says where). The first of each kind is what the player
+ * starts in; there is no first pet, and going without one is always a choice.
+ */
 export interface Gear {
   id: string;
   name: string;
-  slot: 'hat' | 'jacket';
+  slot: GearSlot;
+  /** A hat's or jacket's colour; goggles' lenses; the top of a ski; a pack; the mark a ski leaves (0 for the season's own). */
   colour: number;
-  /** For a hat, its shape. */
+  /** The tips of a pair of skis. */
+  colour2?: number;
+  /** A hat's or a pack's shape; a tune's voice; which model a pet is. */
   style?: string;
 }
 
@@ -1069,7 +1091,49 @@ export const GEAR: readonly Gear[] = [
   { id: 'hat-propeller', name: 'Weather vane beanie', slot: 'hat', colour: 0x6a3f8f, style: 'propeller' },
   { id: 'hat-helmet', name: 'Patrol helmet', slot: 'hat', colour: 0xc8281e, style: 'helmet' },
   { id: 'hat-antlers', name: 'Honorary antlers', slot: 'hat', colour: 0x8a6a3c, style: 'antlers' },
+  // Found on the mountain, or come by in its secrets.
+  { id: 'hat-beret', name: "Painter's beret", slot: 'hat', colour: 0x7a3340, style: 'beret' },
+  { id: 'hat-crown', name: "Pip's paper crown", slot: 'hat', colour: 0xf2d16b, style: 'crown' },
+  { id: 'hat-sugar', name: "Sugarmaker's cap", slot: 'hat', colour: 0xb3472d, style: 'cap' },
+  { id: 'hat-straw', name: "Camper's straw hat", slot: 'hat', colour: 0xe2c99a, style: 'straw' },
+  { id: 'jacket-1967', name: 'The 1967 sweater', slot: 'jacket', colour: 0xd9772b },
+  { id: 'jacket-plaid', name: 'The rope tow plaid', slot: 'jacket', colour: 0xb3472d },
+  { id: 'jacket-band', name: 'Band jacket', slot: 'jacket', colour: 0x22304a },
+  { id: 'jacket-moss', name: "Camper's moss green", slot: 'jacket', colour: 0x4f8a3f },
+  { id: 'goggles-dark', name: 'Plain goggles', slot: 'goggles', colour: 0x1f242e },
+  { id: 'goggles-amber', name: 'Amber lenses', slot: 'goggles', colour: 0xd9772b },
+  { id: 'goggles-rose', name: 'Rose lenses', slot: 'goggles', colour: 0xe8a79a },
+  { id: 'goggles-mirror', name: 'Mirror blues', slot: 'goggles', colour: 0x2b62c9 },
+  { id: 'goggles-aviator', name: "Mine captain's goggles", slot: 'goggles', colour: 0x7a5236 },
+  { id: 'goggles-snow', name: 'Snow whites', slot: 'goggles', colour: 0xf2f5fa },
+  { id: 'skis-gold', name: 'Yellow skis', slot: 'skis', colour: 0xd9a441, colour2: 0xd9a441 },
+  { id: 'skis-hickory', name: 'Hickory skis', slot: 'skis', colour: 0x7a5236, colour2: 0x4a3326 },
+  { id: 'skis-racer', name: 'Red racers', slot: 'skis', colour: 0xc8402d, colour2: 0xfbf8ee },
+  { id: 'skis-birch', name: 'Birch skis', slot: 'skis', colour: 0xf1e9cf, colour2: 0x2a2e36 },
+  { id: 'skis-garnet', name: 'Garnet skis', slot: 'skis', colour: 0x8f2f2a, colour2: 0xf2d16b },
+  { id: 'skis-night', name: 'Night skis', slot: 'skis', colour: 0x22304a, colour2: 0xf2d16b },
+  { id: 'pack-leather', name: 'Leather pack', slot: 'pack', colour: 0x6b4a33, style: 'box' },
+  { id: 'pack-basket', name: 'Pack basket', slot: 'pack', colour: 0xc9a36b, style: 'basket' },
+  { id: 'pack-satchel', name: "Painter's satchel", slot: 'pack', colour: 0x7c8794, style: 'box' },
+  { id: 'pack-red', name: 'Red daypack', slot: 'pack', colour: 0xc8402d, style: 'box' },
+  { id: 'pack-roll', name: 'Bedroll', slot: 'pack', colour: 0x4f8a3f, style: 'roll' },
+  { id: 'trail-plain', name: 'Plain tracks', slot: 'trail', colour: 0 },
+  { id: 'trail-gold', name: 'Gold dust', slot: 'trail', colour: 0xf2d16b },
+  { id: 'trail-garnet', name: 'Garnet line', slot: 'trail', colour: 0x8f2f2a },
+  { id: 'trail-sky', name: 'Blue line', slot: 'trail', colour: 0x2b62c9 },
+  { id: 'trail-leaf', name: 'Leaf green', slot: 'trail', colour: 0x4f8a3f },
+  { id: 'tune-bells', name: 'Bells', slot: 'tune', colour: 0xf2d16b, style: 'bells' },
+  { id: 'tune-fiddle', name: 'Fiddle', slot: 'tune', colour: 0xa9763f, style: 'fiddle' },
+  { id: 'tune-horn', name: 'Horn', slot: 'tune', colour: 0xc98f1f, style: 'horn' },
+  { id: 'tune-banjo', name: 'Banjo', slot: 'tune', colour: 0xe2c99a, style: 'banjo' },
+  { id: 'tune-squeezebox', name: 'Squeezebox', slot: 'tune', colour: 0x8f2f2a, style: 'squeezebox' },
+  { id: 'pet-kit', name: 'A fox kit', slot: 'pet', colour: 0xd9772b, style: 'pet-kit' },
+  { id: 'pet-duckling', name: 'A duckling', slot: 'pet', colour: 0xf2d16b, style: 'pet-duckling' },
+  { id: 'pet-chickadee', name: 'A chickadee', slot: 'pet', colour: 0xa9b3c0, style: 'pet-chickadee' },
+  { id: 'pet-kitten', name: 'The power house kitten', slot: 'pet', colour: 0x5e6670, style: 'pet-kitten' },
+  { id: 'pet-toad', name: 'The cellar toad', slot: 'pet', colour: 0x7a5236, style: 'pet-toad' },
 ];
 
 export const gearById = (id: string): Gear | undefined => GEAR.find((g) => g.id === id);
-export const DEFAULT_GEAR = { hat: 'hat-blue', jacket: 'jacket-red' };
+/** What the player starts in. Nobody starts with company. */
+export const DEFAULT_GEAR: Record<GearSlot, string> = { hat: 'hat-blue', jacket: 'jacket-red', goggles: 'goggles-dark', skis: 'skis-gold', pack: 'pack-leather', trail: 'trail-plain', tune: 'tune-bells', pet: '' };

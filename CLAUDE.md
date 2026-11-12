@@ -32,7 +32,7 @@ node tools/touch-check.mjs                            # emulated-phone touch tes
 node tools/bench-check.mjs                            # runs the in-game benchmark end to end (slow)
 node tools/webgpu-smoke.mjs                           # first frames through WebGPU raise no errors
 node tools/offline-check.mjs                          # with no network, the game opens in a season it has never loaded
-NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and title pictures (needs the fal key)
+NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and room pictures (needs the fal key)
 NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
 NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the field guide's made models
 NODE_USE_ENV_PROXY=1 node tools/art/make-ground.mjs   # paint any missing sheets of ground marks, and lay them out (needs the fal key)
@@ -728,6 +728,41 @@ Everything else is built in code from simple shapes.
 - What has been staked out is in the save (`projects`, the day each was). Add a project by
   adding it to `PROJECTS`, a site for it in `projectPlots.ts`, a model in `projectMesh.ts` and
   a postcard in the art manifest.
+
+## Secrets
+
+- The owner asked for reasons to go out and explore that are not only one more thing for a
+  shelf. `src/game/secrets.ts` (pure, tested) is the mountain's secrets: things that are on
+  no map and that nothing points at. `SECRETS` is the data; `discover()` is what happens at
+  one. The Book lists a secret under Field notes only once it has been found, and never
+  says how many there are.
+- Where one stands is a description (`SecretWhere`: as people are placed, or on a peak,
+  along a path, at a town place's door, or `wild`: a walk into the woods far from any
+  trail), turned into a place by `src/world/secretSites.ts` (pure, tested).
+  `src/world/secretMesh.ts` builds them all from blocks into one mesh, keeps trees off
+  them, and says which is within reach; the action button then offers what is done there
+  (`openSecret` in `main.ts`), and what there is to read comes up on the talk sheet, which
+  can show a picture over the words.
+- The kinds so far. **Registers**: a tin box on a post at the far end of things, with a
+  logbook the town has been writing in for years, and a line for the player with the date.
+  **Plaques**: a brass plate beside a trail saying why it is called what it is called
+  (invented, every one; none for a trail named after a real person or a people).
+  **Old workings**: the adit at the mine, a cellar hole in the woods, the rope tow's
+  engine. **Rooms**: named places in town and at the mine whose doors are locked; a key
+  lies in one of the old workings, and the inside is a picture (`public/art/rooms/`,
+  `ROOM_ART`). **Cairns**: one on each summit, which takes a stone a day from the player
+  and grows. **The bell** on Gore's summit, which the town says it heard, the next day
+  (`BELL_HEARD`).
+- A secret may hand over something to wear and a key, once. `COME_BY` lists how every thing
+  in the wardrobe that is not an errand's is come by, and a test holds it to `GEAR`: nothing
+  may be in the Book that cannot be had.
+- The wardrobe has eight kinds of thing (`GEAR_SLOTS` in `people.ts`): hats, jackets,
+  goggles, skis, packs, the track the skis leave, the voice the player's tunes are played
+  in (`TUNE_VOICES`), and company (a pet). `Game.outfit()` is what the figure wears and
+  `Game.flourish()` the rest. Their patches are made a sheet at a time like the others, by
+  the same family of model through fal (`gear:found` in `PATCH_SETS`, `by: 'fal'`).
+- The wording of every register, plaque and room is the owner's to mark up, and follows the
+  rules for how people talk.
 
 ## Trail map
 

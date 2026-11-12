@@ -10,11 +10,14 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import { PATCH_BRIEF, PATCH_SETS } from './manifest.mjs';
+import { run as falRun, save as falSave } from './fal.mjs';
 import { save, task } from './tripo.mjs';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const CACHE = `${ROOT}tools/art/cache/sheets`;
 const MODEL = 'chat_image_2.5_flare';
+/** The same family of image model, through fal: for a set that says `by: 'fal'` (the owner asked for fal for what is found on the mountain). */
+const FAL_MODEL = 'fal-ai/gpt-image-1.5';
 const COLS = 4;
 /** The size each patch is saved at, in pixels. */
 const SIZE = 176;
@@ -27,16 +30,24 @@ let asked = 0;
 
 /** One sheet: up to sixteen patches. A short last row is filled out with stars, which are thrown away. Gives back the ids it could not find on it. */
 async function sheet(set, n, ids) {
-  const { border, subjects, into, dir, brief } = PATCH_SETS[set];
+  const { border, subjects, into, dir, brief, by } = PATCH_SETS[set];
   const file = `${CACHE}/${slug(set)}-${n}.png`;
   // A few patches are a sheet of two by two; otherwise four across.
   const cols = ids.length <= 4 ? 2 : COLS;
-  const rows = Math.max(2, Math.ceil(ids.length / cols));
+  // (Through fal the sheet is always square: four rows, however few patches.)
+  const rows = PATCH_SETS[set].by === 'fal' && cols === COLS ? 4 : Math.max(2, Math.ceil(ids.length / cols));
   const cells = cols * rows;
   if (redo.has(set) || !existsSync(file)) {
     const said = [...ids.map((id) => subjects[id]), ...Array(cells - ids.length).fill('a plain gold star')];
     const body = { prompt: (brief ?? PATCH_BRIEF)(cells, cols, rows, border, said), model: MODEL, size: `${cols * 512}x${rows * 512}`, quality: 'medium', background: 'transparent', output_format: 'png' };
     if (body.prompt.length > 1800) throw new Error(`the brief is ${body.prompt.length} characters; the model takes 1800`);
+    if (by === 'fal') {
+      // This model draws a square sheet of 1024 pixels: sixteen patches of 256, which is more than they are shown at.
+      const made = await falRun(FAL_MODEL, { prompt: body.prompt, image_size: '1024x1024', quality: 'high', background: 'transparent', output_format: 'png', num_images: 1 });
+      await falSave(made.images[0].url, file);
+      asked++;
+      console.log(`made ${set} sheet ${n} (fal)`);
+    } else {
     // Only so many generations may be asked for at once: wait and ask again.
     let done;
     for (let tries = 0; ; tries++) {
@@ -51,6 +62,7 @@ async function sheet(set, n, ids) {
     await save(done.output.generated_image_url, file);
     asked++;
     console.log(`made ${set} sheet ${n} (${done.credits_consumed} credits)`);
+    }
   }
   // Cut the sheet into its patches, and say which of them were not on it.
   // A set may be kept somewhere of its own (the shop signs go to the cache, to be laid out on one sheet).
@@ -78,4 +90,4 @@ for (const set of wanted.length ? wanted : Object.keys(PATCH_SETS)) {
     if (still.length) console.error(`MISSING from ${set}: ${still.join(', ')}`);
   }
 }
-console.log(`${asked} new sheet(s) asked of Tripo`);
+console.log(`${asked} new sheet(s) asked for`);
