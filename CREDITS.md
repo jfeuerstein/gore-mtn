@@ -11,7 +11,8 @@
 
 ## The game
 
-- **Rendering:** [three.js](https://threejs.org), MIT License.
+- **Rendering:** [three.js](https://threejs.org), MIT License. Its notice travels with the game
+  as `licenses/three-MIT.txt`.
 - **Sound:** made in the browser with Web Audio. There are no recordings.
 - **Lettering:** [Bebas Neue](https://github.com/dharmatype/Bebas-Neue) by Ryoichi Tsunekawa and
   [Caveat](https://github.com/googlefonts/caveat) by Impallari Type, both under the SIL Open

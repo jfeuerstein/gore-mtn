@@ -34,13 +34,18 @@ node tools/webgpu-smoke.mjs                           # first frames through Web
 node tools/offline-check.mjs                          # with no network, the game opens in a season it has never loaded
 NODE_USE_ENV_PROXY=1 node tools/art/make-art.mjs      # paint any missing portraits, postcards and title pictures (needs the fal key)
 NODE_USE_ENV_PROXY=1 node tools/art/make-patches.mjs  # make any missing sheets of patches for the Book (needs the Tripo key)
-NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the animals being tried
+NODE_USE_ENV_PROXY=1 node tools/models/make-models.mjs # picture, then shape, then low-poly model, for the field guide's made models
+node tools/art/make-icon.mjs                          # render the Home Screen icon from tools/art/icon.svg
 node tools/census.mjs "at=depot" "at=summit"          # where the draw calls go, by part of the scene
 node tools/tour.mjs out "me=0&zoom=0.4" person:tom place:cafe pos:2114,-1906,2.4   # many pictures from one load
 ```
 
 Run `npm test`, `npm run build`, `node tools/touch-check.mjs` and `node tools/webgpu-smoke.mjs`
-before pushing. Every push deploys
+before pushing (and `node tools/offline-check.mjs` after touching `public/sw.js` or the build).
+The tools that drive a browser need Playwright and its Chromium, which are not dependencies of
+the game: cloud sessions have them; elsewhere, `npm install --no-save playwright && npx
+playwright install chromium`. The deploy itself runs only the unit tests and the build.
+Every push deploys
 to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
 
 ## How to work here
@@ -347,8 +352,9 @@ Everything else is built in code from simple shapes.
   Conditions, some of them particular to a season, are earned by skiing or riding under the real
   calendar, clock and sky only, never a pinned one.
   Three more are for sitting on a bench with a view: at sunrise, at sunset, and under the stars.
-- Stones lie in four kinds of ground: on the groomed snow (so skiing a trail meets them), beside
-  the trails, in steep bare rock and in deep woods (the rarer ones, which take a detour). They
+- Stones lie in five kinds of ground: on the groomed snow (so skiing a trail meets them), beside
+  the trails, in steep bare rock, in deep woods (the rarer ones, which take a detour), and
+  thick round the old quarries (`mine`, within `MINE_REACH`). They
   are laid out patch by patch from the date and the place, so the day's scatter is the same on
   every load and new at midnight. `FIND_REPORT=1 npx vitest run src/game/minerals.test.ts`
   prints how many lie on the real mountain, by kind of ground. Change density with `KEEP` and
@@ -491,7 +497,9 @@ Everything else is built in code from simple shapes.
   starts it is asked to keep the rest (`keep-all`): the build writes `files.json`, every file
   with a mark of its contents (`vite.config.ts`), and the worker fetches whatever has changed
   since it last looked, so a season not yet visited or a patch not yet earned can turn up
-  with no signal. `node tools/offline-check.mjs` checks that on the built game.
+  with no signal. The page itself is kept last, only once everything it names has been, and
+  what belonged only to an older version is dropped only then; a page asked for on a weak
+  signal is waited on for four seconds before the kept copy is shown. `node tools/offline-check.mjs` checks that on the built game.
 - Settings lead with what a player wants (the save code, sound, the welcome again, and the
   credits). Everything for testing is
   below the "For testing" line: places to go to, a season, an hour and a sky to pin, the
@@ -649,7 +657,7 @@ Everything else is built in code from simple shapes.
 
 ## Measuring performance
 
-- The owner measures on the phone with Settings > Run benchmark, which steps through fixed settings
+- The owner measures on the phone with Settings > For testing > Run benchmark, which steps through fixed settings
   (`src/debug/bench.ts`) and ends with a block of text to paste back. Change the step list when a
   new question needs answering; run `node tools/bench-check.mjs` after touching it.
 - The steps now (thirteen, about a minute and a half): the Saddle Lodge as before, to set beside

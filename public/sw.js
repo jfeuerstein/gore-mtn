@@ -22,37 +22,48 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/** Keep an answer, and drop older builds of the same file so the store does not grow with every release. */
+/** Keep an answer. */
 async function keep(request, response) {
   const cache = await caches.open(CACHE);
   await cache.put(request, response);
-  const built = /\/assets\/([a-z]+)-[^/]+\.(js|css)$/i.exec(new URL(request.url).pathname);
-  if (!built) return;
-  for (const old of await cache.keys()) {
-    const other = /\/assets\/([a-z]+)-[^/]+\.(js|css)$/i.exec(new URL(old.url).pathname);
-    if (other && other[1] === built[1] && other[2] === built[2] && old.url !== request.url) await cache.delete(old);
-  }
+}
+
+/** How long a page is waited for before the kept copy is shown instead, in milliseconds: a weak signal is worse than none. */
+const PATIENCE = 4000;
+
+/** The kept copy of the page, whatever options follow it in the address. */
+function keptPage(request) {
+  return caches.match(request, { ignoreSearch: true, ignoreVary: true }).then((hit) => hit ?? caches.match(new URL('index.html', self.registration.scope).href));
 }
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
+  if (request.mode === 'navigate') {
+    // The page. It is asked for from the network, but not waited on for long, and it is never
+    // kept from here: a new page names a new script, and must not be kept before that script
+    // has been. `keepAll` keeps the page last, once everything it names is in hand.
+    event.respondWith(
+      (async () => {
+        const kept = await keptPage(request);
+        const fresh = fetch(request);
+        if (!kept) return fresh;
+        const waited = new Promise((resolve) => setTimeout(() => resolve(null), PATIENCE));
+        const answer = await Promise.race([fresh.catch(() => null), waited]);
+        return answer && answer.ok ? answer : kept;
+      })(),
+    );
+    return;
+  }
   event.respondWith(
     fetch(request)
       .then((response) => {
         if (response.ok) event.waitUntil(keep(request, response.clone()));
         return response;
       })
-      // Offline. The page itself is the same whatever options follow it in the address, and is
-      // also kept under its own name, for a game that has only ever been opened once.
-      .catch(() =>
-        caches
-          // A copy is a copy whoever asked for it: the page asks for its script one way and the
-          // worker fetched it another, and a server's Vary header must not come between them.
-          .match(request, { ignoreSearch: request.mode === 'navigate', ignoreVary: true })
-          .then((hit) => hit ?? (request.mode === 'navigate' ? caches.match(new URL('index.html', self.registration.scope).href) : undefined))
-          .then((hit) => hit ?? Response.error()),
-      ),
+      // Offline. A copy is a copy whoever asked for it: the page asks for its script one way and
+      // the worker fetched it another, and a server's Vary header must not come between them.
+      .catch(() => caches.match(request, { ignoreVary: true }).then((hit) => hit ?? Response.error())),
   );
 });
 
@@ -70,8 +81,12 @@ async function keepAll() {
   const files = await listed.json();
   const before = await cache.match(KEPT);
   const kept = before ? await before.json() : {};
-  const wanted = Object.keys(files).filter((path) => kept[path] !== files[path]);
+  // The page goes last: it is only kept once every file it names has been.
+  const wanted = Object.keys(files)
+    .filter((path) => kept[path] !== files[path])
+    .sort((a, b) => Number(a === 'index.html') - Number(b === 'index.html'));
   if (wanted.length === 0) return;
+  const page = wanted[wanted.length - 1] === 'index.html' ? wanted.pop() : null;
   let since = 0;
   let failed = null;
   const note = () => cache.put(KEPT, new Response(JSON.stringify(kept), { headers: { 'Content-Type': 'application/json' } }));
@@ -92,8 +107,21 @@ async function keepAll() {
     }
   };
   await Promise.all([one(), one()]);
-  // Forget marks for files that are no longer part of the game.
-  for (const path of Object.keys(kept)) if (!(path in files)) delete kept[path];
+  if (!failed && page) {
+    wanted.push(page);
+    await one();
+  }
+  if (!failed) {
+    // Everything of this version is in hand, the page included: now what belonged only to an
+    // older version can go, and not before, since until now the older page still needed it.
+    const scope = self.registration.scope;
+    for (const old of await cache.keys()) {
+      const url = new URL(old.url);
+      const path = url.href.startsWith(scope) ? url.pathname.slice(new URL(scope).pathname.length) : null;
+      if (path !== null && path !== KEPT && !(path in files)) await cache.delete(old);
+    }
+    for (const path of Object.keys(kept)) if (!(path in files)) delete kept[path];
+  }
   await note();
   return failed;
 }

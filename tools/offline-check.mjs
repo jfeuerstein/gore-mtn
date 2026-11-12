@@ -14,6 +14,8 @@ import { preview } from 'vite';
 import { launchBrowser } from './browser.mjs';
 
 const files = JSON.parse(readFileSync('dist/files.json', 'utf8'));
+/** Things never shown in a first minute of winter: a postcard, a patch, a portrait, the models, another season's ground. */
+const SAMPLES = ['art/places/fire-tower.webp', 'art/patches/first-tracks.webp', 'art/people/hazel.webp', 'models/park.json', 'world/ground-summer.png'];
 const wanted = Object.keys(files).length;
 const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel: 'silent' });
 const base = `http://127.0.0.1:${server.httpServer.address().port}/`;
@@ -66,8 +68,8 @@ try {
   check('with no network the game opens in a season it has never loaded', !state.error && state.season === 'fall' && errors.length === 0, state.error ?? errors[0] ?? state.season);
   if (problems.length > 0) console.log(said2.slice(0, 25).join('\n'), await offline.evaluate(() => document.getElementById('loading')?.textContent?.slice(0, 200)));
   // Pictures never shown while there was a network: a postcard, a patch, a portrait, the models.
-  const had = await offline.evaluate(async (paths) => Promise.all(paths.map((p) => fetch(p).then((r) => r.ok, () => false))), ['art/places/summit.webp', 'art/patches/first-tracks.webp', 'art/people/hazel.webp', 'models/park.json', 'world/ground-summer.png'].filter((p) => p in files));
-  check('and has pictures it has never shown', had.length >= 4 && had.every(Boolean), had.join(' '));
+  const had = await offline.evaluate(async (paths) => Promise.all(paths.map((p) => fetch(p).then((r) => r.ok, () => false))), SAMPLES);
+  check('and has pictures it has never shown', SAMPLES.every((p) => p in files) && had.length === SAMPLES.length && had.every(Boolean), SAMPLES.map((p, i) => `${p.split('/').pop()}:${p in files ? had[i] : 'not in the game'}`).join(' '));
 } finally {
   await browser.close();
   if (!stopped) await server.close();

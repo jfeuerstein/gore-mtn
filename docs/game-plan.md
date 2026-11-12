@@ -96,9 +96,9 @@ earned, so every shelf shows what there is to look for.
 | Page | What is in it |
 |---|---|
 | Passport | A stamp for every named trail (over ninety) and woodland path, skied or walked past nine in ten of its checkpoints; a pin for each of the 14 lifts; a patch for each of 4 summits in each season; 25 postcards for places (five of them built by the town); 15 conditions earned under the real sky; every bench sat on; 28 patches for finishing whole kinds of thing |
-| Minerals | 12 minerals of the Adirondacks, garnet first, found as stones on the groomed snow, beside the trails, in bare rock and in deep woods. The day's scatter is new at midnight. Each keeps its best size. |
+| Minerals | 12 minerals of the Adirondacks, garnet first, found as stones on the groomed snow, beside the trails, in bare rock, in deep woods and thick round the old quarries. The day's scatter is new at midnight. Each keeps its best size. |
 | Guide | 42 animals, birds, plants and curiosities, each with its ground, its seasons and its hours. Shy ones bolt if come upon fast. |
-| Pack | Hats and jackets to wear (22), letters (28), what has been tasted and read (33), the town round |
+| Pack | Hats and jackets to wear (22), letters (35), what has been tasted and read (33), the town round |
 
 ### People
 

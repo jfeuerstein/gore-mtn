@@ -18,8 +18,8 @@ Tomorrow somebody is at it, and the town has built the thing you staked out.
   snow, a mountain bike when it has gone, and a Snow Train to the other seasons.
 - A Book to fill: a passport of trails, lifts, summits and places; twelve minerals; a field
   guide of forty-two animals, birds and plants; things to wear, letters, bakes and books.
-- A town to walk through, with twenty-five people, boards, a dog, a cat who is mayor and a
-  snowman to talk to, and thirty-one errands that are never timed.
+- A town to walk through, with twenty-five to meet (seventeen people, five boards, a dog, a
+  cat who is mayor and a snowman) and thirty-one errands that are never timed.
 - A cabin of your own, a trail map to steer by, and five things the town builds because you
   went and staked out the spot.
 - No timers, no fail states, nothing to buy. It works with no signal.
@@ -54,6 +54,8 @@ Shift to go fast, drag to look, the wheel for the camera.
 
 The checks in `tools/` (screenshots, the touch test, the WebGPU smoke test, the benchmark)
 drive the built game in headless Chromium and need [Playwright](https://playwright.dev) with
-its Chromium available to Node. Regenerating the world or the made models needs Python with
+its Chromium available to Node (`npm install --no-save playwright && npx playwright install
+chromium`; it is not a dependency of the game, and the deploy runs only the unit tests and the
+build). Node 22 or later. Regenerating the world or the made models needs Python with
 the packages in `tools/requirements.txt`. Making pictures and models calls outside services
 whose keys are secrets of the build environment; none is in the repository.

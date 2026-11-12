@@ -4,6 +4,7 @@ import { loadTestWorld } from '../world/testWorld';
 import { namedSpots } from '../world/whereabouts';
 import { Game, type GameWorld, type SaveStore } from './game';
 import { LETTERS } from './letters';
+import { OFFERINGS } from './offerings';
 import { MINERALS } from './minerals';
 import { buildLandmarks } from './passport';
 import { PROJECTS } from './projects';
@@ -54,9 +55,28 @@ describe('the people', () => {
       }
     }
     for (const e of ERRANDS) {
-      for (const line of [e.ask, e.nudge, e.thanks, e.fetch?.handover ?? '']) {
+      for (const line of [e.ask, e.nudge, e.thanks, e.thanksOwned ?? '', e.fetch?.handover ?? '']) {
         if (personById(e.from)?.kind !== 'snowman') expect(line, e.id).not.toMatch(stiff);
         expect(line, e.id).not.toMatch(abroad);
+      }
+    }
+    // The same goes for anything written or handed over: letters, what comes with a bake or a
+    // book, and what is said of the things the town builds.
+    for (const l of LETTERS) {
+      // Pip is nine and writes it all out, as she does for Tom; a notice or an unsigned note has its own manner.
+      if (l.from !== null && l.from !== 'pip') expect(l.text, l.id).not.toMatch(stiff);
+      expect(l.text, l.id).not.toMatch(abroad);
+    }
+    for (const o of OFFERINGS) {
+      for (const line of [o.hand, o.note]) {
+        expect(line, o.id).not.toMatch(stiff);
+        expect(line, o.id).not.toMatch(abroad);
+      }
+    }
+    for (const project of PROJECTS) {
+      for (const line of [project.ask, project.done, project.said]) {
+        expect(line, project.id).not.toMatch(stiff);
+        expect(line, project.id).not.toMatch(abroad);
       }
     }
   });
