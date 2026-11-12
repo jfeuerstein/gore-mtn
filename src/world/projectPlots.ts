@@ -1,5 +1,6 @@
-import { PROJECTS } from '../game/projects';
+import { PROJECTS, type ProjectKind } from '../game/projects';
 import { distToPolyline } from './trails';
+import type { WallBox } from './walls';
 import { locate } from './whereabouts';
 import { OPEN_WATER, type World } from './world';
 
@@ -82,4 +83,29 @@ export function projectPlots(world: World): ProjectPlot[] {
     const at = buildable(world, path.pts[i] as number, path.pts[i + 1] as number, 8);
     return [{ id: project.id, ...at, turn: downhill(at.x, at.z) }];
   });
+}
+
+/**
+ * What of each kind of thing is solid, in its own frame (x, z, width, depth, and how tall it
+ * stands, for keeping the camera out of a roof): the hut whole, the lean-to's three walls so
+ * that it can be walked into, the bandstand's floor. The dock and the lookout's deck are left
+ * open, to be walked out along.
+ */
+const SOLID: Record<ProjectKind, readonly (readonly [x: number, z: number, w: number, d: number, top?: number])[]> = {
+  leanto: [
+    [0, -1.65, 4.2, 0.3],
+    [-1.95, -0.4, 0.3, 2.8],
+    [1.95, -0.4, 0.3, 2.8],
+  ],
+  dock: [],
+  bandstand: [[0, 0, 5.4, 5.4, 5.6]],
+  hut: [[0, 0, 5.0, 3.8, 4.4]],
+  deck: [],
+};
+
+/** The walls of a built project, where its plot is. */
+export function projectWalls(kind: ProjectKind, plot: ProjectPlot, ground: number): WallBox[] {
+  const c = Math.cos(plot.turn);
+  const s = Math.sin(plot.turn);
+  return SOLID[kind].map(([x, z, w, d, top]) => ({ x: plot.x + x * c + z * s, z: plot.z - x * s + z * c, w, d, turn: plot.turn, ...(top === undefined ? {} : { top: ground + top }) }));
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PROJECTS } from '../game/projects';
-import { projectPlots } from './projectPlots';
+import { projectPlots, projectWalls } from './projectPlots';
+import { insideBox } from './walls';
 import { loadTestWorld } from './testWorld';
 import { distToPolyline } from './trails';
 import { OPEN_WATER } from './world';
@@ -42,5 +43,34 @@ describe('the plots of the town projects', () => {
     if (!dock || !pond) throw new Error('no dock');
     const ahead = { x: dock.x + Math.sin(dock.turn) * 10, z: dock.z + Math.cos(dock.turn) * 10 };
     expect(Math.hypot(ahead.x - pond.x, ahead.z - pond.z)).toBeLessThan(Math.hypot(dock.x - pond.x, dock.z - pond.z));
+  });
+});
+
+describe('what of a project is solid', () => {
+  // A plot turned a quarter of the way round: its front (+z in its own frame) faces +x in the world.
+  const plot = { id: 'burnt-ridge-hut', x: 100, z: -50, turn: Math.PI / 2 };
+
+  it('the hut is a box where it stands, turned as its model is', () => {
+    const [box] = projectWalls('hut', plot, 800);
+    expect(box).toBeDefined();
+    if (!box) return;
+    expect(insideBox(100, -50, box)).toBe(true);
+    // Its depth is 3.8: a step out of the door is outside, a step along the wall is not.
+    expect(insideBox(100 + 2.6, -50, box)).toBe(false);
+    expect(insideBox(100, -50 + 2.3, box)).toBe(true);
+    expect(box.top).toBeGreaterThan(803);
+  });
+
+  it('the lean-to is open at the front and walled behind', () => {
+    const boxes = projectWalls('leanto', plot, 0);
+    const solid = (x: number, z: number): boolean => boxes.some((b) => insideBox(x, z, b));
+    expect(solid(100, -50)).toBe(false);
+    expect(solid(100 + 1.5, -50)).toBe(false);
+    expect(solid(100 - 1.65, -50)).toBe(true);
+  });
+
+  it('the dock and the lookout are left to be walked out along', () => {
+    expect(projectWalls('dock', plot, 0)).toEqual([]);
+    expect(projectWalls('deck', plot, 0)).toEqual([]);
   });
 });
