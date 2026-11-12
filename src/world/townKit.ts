@@ -329,7 +329,7 @@ const DRESSED: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'cafe', 'del
  * winter (the lights go with the windows, so they come on at dusk), tubs of flowers in spring
  * and summer, pumpkins in the fall.
  */
-function dressing(p: TownPlace, season: Season): { list: Block[]; panes: Block[] } {
+function dressing(p: TownPlace, season: Season, sign: { y: number; h: number } | null = null): { list: Block[]; panes: Block[] } {
   const list: Block[] = [];
   const panes: Block[] = [];
   const front = p.d / 2;
@@ -345,10 +345,16 @@ function dressing(p: TownPlace, season: Season): { list: Block[]; panes: Block[]
     const porchDepth = PORCH_DEPTH[p.style] ?? 0;
     const span = Math.min(p.w * (porchDepth ? 0.8 : 0.9), 24);
     const bulbs = Math.max(6, Math.round(span / 1.1));
+    // Under the eaves, unless that is where the name is painted: then under the name, or over it.
+    let eaves = 3.72;
+    if (!porchDepth && sign && eaves > sign.y - sign.h / 2 - 0.2 && eaves - 0.22 < sign.y + sign.h / 2 + 0.2) {
+      const under = sign.y - sign.h / 2 - 0.3;
+      eaves = under >= 2.9 ? under : sign.y + sign.h / 2 + 0.55;
+    }
     for (let i = 0; i <= bulbs; i++) {
       // Hung in shallow loops from one end of the front to the other.
       const sag = Math.abs(Math.sin((i / bulbs) * Math.PI * Math.max(2, Math.round(span / 5)))) * 0.22;
-      panes.push({ size: [0.13, 0.13, 0.13], at: [-span / 2 + (i * span) / bulbs, (porchDepth ? 3.3 : 3.72) - sag, front + (porchDepth ? porchDepth + 0.2 : 0.45)], colour: 0xffffff });
+      panes.push({ size: [0.13, 0.13, 0.13], at: [-span / 2 + (i * span) / bulbs, (porchDepth ? 3.3 : eaves) - sag, front + (porchDepth ? porchDepth + 0.2 : 0.45)], colour: 0xffffff });
     }
   } else if (season === 'fall') {
     list.push(
@@ -385,7 +391,7 @@ export function buildTownPlaces(
   for (const p of places) {
     const kit = STYLES[p.style](p, roofColour);
     if (DRESSED.includes(p.style)) {
-      const dress = dressing(p, season);
+      const dress = dressing(p, season, p.sign ? { y: kit.signY, h: kit.signH } : null);
       kit.list.push(...dress.list);
       kit.panes.push(...dress.panes);
     }

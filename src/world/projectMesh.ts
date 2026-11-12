@@ -47,9 +47,11 @@ function marker(): { list: Block[]; extra: THREE.BufferGeometry[] } {
 }
 
 /** What each kind of thing is made of, with its front at its own +z. */
-function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: THREE.BufferGeometry[] } {
+function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: THREE.BufferGeometry[]; over: { list: Block[]; extra: THREE.BufferGeometry[] } | null } {
   const list: Block[] = [];
   const extra: THREE.BufferGeometry[] = [];
+  /** A roof that comes off while someone is under it. */
+  let over: { list: Block[]; extra: THREE.BufferGeometry[] } | null = null;
   if (kind === 'leanto') {
     // An Adirondack lean-to: a floor, three log walls, a roof that slopes to the back, and a fire ring in front.
     list.push(sunk([4.2, 0.35, 2.8], [0, 0.18, -0.4], PLANK), { size: [4.2, 1.5, 0.3], at: [0, 1.1, -1.65], colour: LOG }, { size: [0.3, 1.9, 2.8], at: [-1.95, 1.3, -0.4], colour: LOG }, { size: [0.3, 1.9, 2.8], at: [1.95, 1.3, -0.4], colour: LOG });
@@ -69,17 +71,25 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
     list.push(sunk([1.9, 0.3, 1.2], [0, 0.25, -0.5], PALE));
   } else if (kind === 'bandstand') {
     // A bandstand: a raised floor, a post at each corner, a rail, and a roof with a little cupola.
-    list.push(sunk([5.4, 0.7, 5.4], [0, 0.35, 0], WHITE), sunk([1.6, 0.35, 0.8], [0, 0.18, 3.0], WHITE));
+    // It faces the water, so its step is at the back, on dry land, and the rail runs unbroken along the front.
+    list.push(sunk([5.4, 0.7, 5.4], [0, 0.35, 0], WHITE), sunk([1.6, 0.35, 0.8], [0, 0.18, -3.0], WHITE));
     for (const x of [-2.5, 2.5]) for (const z of [-2.5, 2.5]) list.push({ size: [0.24, 2.7, 0.24], at: [x, 2.05, z], colour: WHITE });
     for (const [x, z, w, d] of [
-      [0, -2.5, 4.8, 0.1],
+      [0, 2.5, 4.8, 0.1],
       [-2.5, 0, 0.1, 4.8],
       [2.5, 0, 0.1, 4.8],
-      [-1.7, 2.5, 1.5, 0.1],
-      [1.7, 2.5, 1.5, 0.1],
+      [-1.7, -2.5, 1.5, 0.1],
+      [1.7, -2.5, 1.5, 0.1],
     ] as const) list.push({ size: [w, 0.1, d], at: [x, 1.55, z], colour: GREEN }, { size: [w, 0.08, d], at: [x, 1.1, z], colour: GREEN });
-    extra.push(placed(roof(6.4, 6.4, 1.7, roofColour, GREEN), 0, 3.4, 0));
-    list.push({ size: [1.0, 0.7, 1.0], at: [0, 5.1, 0], colour: WHITE }, { size: [1.3, 0.16, 1.3], at: [0, 5.5, 0], colour: GREEN });
+    // The roof is a piece of its own: it is taken off while someone stands under it, as the
+    // cabin's porch has none, because the camera looks down from behind and would see only roof.
+    over = {
+      list: [
+        { size: [1.0, 0.7, 1.0], at: [0, 5.1, 0], colour: WHITE },
+        { size: [1.3, 0.16, 1.3], at: [0, 5.5, 0], colour: GREEN },
+      ],
+      extra: [placed(roof(6.4, 6.4, 1.7, roofColour, GREEN), 0, 3.4, 0)],
+    };
   } else if (kind === 'hut') {
     // A warming hut: red boards, a green door, a stove pipe, a bench under the eave and skis left leaning.
     list.push(sunk([5.0, 2.7, 3.8], [0, 1.35, 0], RED), { size: [1.0, 2.0, 0.12], at: [-0.9, 1.1, 1.93], colour: GREEN });
@@ -102,7 +112,7 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
     const unbuilt: never = kind;
     throw new Error(`no model for a ${String(unbuilt)}`);
   }
-  return { list, extra };
+  return { list, extra, over };
 }
 
 /**
@@ -112,6 +122,8 @@ function model(kind: ProjectKind, roofColour: number): { list: Block[]; extra: T
 export class TownProjects {
   readonly group = new THREE.Group();
   private readonly meshes = new Map<string, THREE.Mesh>();
+  /** The roofs that come off while someone stands under them, by project. */
+  private readonly roofs = new Map<string, THREE.Mesh>();
   private readonly material: THREE.MeshLambertMaterial;
 
   constructor(
@@ -133,17 +145,31 @@ export class TownProjects {
       this.group.remove(old);
       old.geometry.dispose();
       this.meshes.delete(id);
+      this.roofs.get(id)?.geometry.dispose();
+      this.roofs.delete(id);
     }
     const plot = this.plots.find((p) => p.id === id);
     const kind = this.kinds.get(id);
     if (!plot || !kind || state === 'later') return;
-    const { list, extra } = state === 'built' ? model(kind, this.roofColour) : state === 'building' ? site() : marker();
+    const made = state === 'built' ? model(kind, this.roofColour) : null;
+    const { list, extra } = made ?? (state === 'building' ? site() : marker());
     const mesh = new THREE.Mesh(blocks(list, extra), this.material);
+    if (made?.over) {
+      const roofMesh = new THREE.Mesh(blocks(made.over.list, made.over.extra), this.material);
+      roofMesh.castShadow = this.shadows;
+      mesh.add(roofMesh);
+      this.roofs.set(id, roofMesh);
+    }
     mesh.position.set(plot.x, this.heightAt(plot.x, plot.z), plot.z);
     mesh.rotation.y = plot.turn;
     mesh.castShadow = this.shadows;
     mesh.receiveShadow = true;
     this.meshes.set(id, mesh);
     this.group.add(mesh);
+  }
+
+  /** Take the roof off the one thing someone is standing under, and put every other back. */
+  openRoof(id: string | null): void {
+    for (const [mine, roofMesh] of this.roofs) roofMesh.visible = mine !== id;
   }
 }

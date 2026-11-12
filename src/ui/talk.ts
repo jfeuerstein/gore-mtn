@@ -29,6 +29,7 @@ export class TalkSheet {
   private lines: (string | Written)[] = [];
   private at = 0;
   private choices: Choice[] = [];
+  private farewell = 'Goodbye';
   /** Called when the sheet opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
 
@@ -71,7 +72,9 @@ export class TalkSheet {
    * @param choices offered after the last line, besides leaving
    * @param portrait the address of a picture of whoever is speaking, if there is one
    */
-  open(title: string, subtitle: string, lines: readonly (string | Written)[], choices: readonly Choice[] = [], portrait: string | null = null): void {
+  /** @param farewell what the button that closes the sheet says when there is nothing to choose: someone is said goodbye to, a notice is not */
+  open(title: string, subtitle: string, lines: readonly (string | Written)[], choices: readonly Choice[] = [], portrait: string | null = null, farewell = 'Goodbye'): void {
+    this.farewell = farewell;
     this.onOpen?.();
     this.portrait.hidden = portrait === null;
     if (portrait !== null && this.portrait.getAttribute('src') !== portrait) this.portrait.src = portrait;
@@ -122,6 +125,6 @@ export class TalkSheet {
         choice.onPick();
       }, choice.primary, choice.disabled);
     }
-    add(this.choices.length > 0 ? 'Not now' : 'Goodbye', () => this.close(), this.choices.length === 0);
+    add(this.choices.length > 0 ? 'Not now' : this.farewell, () => this.close(), this.choices.length === 0);
   }
 }

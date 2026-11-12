@@ -41,7 +41,7 @@ import { FollowCamera } from './player/followCamera';
 import { Player } from './player/player';
 import { pushOut } from './player/collide';
 import { BIKE, fallLineYaw, SKI, SPRING_SKI } from './player/skiPhysics';
-import { buildLiftPath, gateBeams, inLiftClearing, overBeam, pointAlong, stationNear } from './world/lifts';
+import { buildLiftPath, gateBeams, inLiftClearing, liftShacks, overBeam, pointAlong, stationNear } from './world/lifts';
 import { Built } from './world/built';
 import { signName } from './world/streets';
 import { countryOf } from './world/country';
@@ -322,7 +322,8 @@ async function boot(): Promise<void> {
   scene.add(terrain.group, trees.group, buildLifts(liftPaths, season === 'winter'), liftCars.group, built.group);
   if (cabin) scene.add(cabin.group);
   if (crowd) scene.add(crowd.group);
-  const walls = new Walls(built.walls);
+  // The attendants' shacks at the lifts are solid too, and have roofs a camera keeps out from under.
+  const walls = new Walls([...built.walls, ...liftShacks(liftPaths)]);
   /** Where someone at a place must move to in order to clear a tree trunk or a wall. */
   const bumpAt = (x: number, z: number, radius: number) => {
     const trunk = trees.trunkAt(x, z, radius);
@@ -996,7 +997,7 @@ async function boot(): Promise<void> {
       `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill.\nThe lifts will bring you back up.`,
       'Stones glint on the ground. Trails, lifts and summits stamp your passport.\nIt all goes in the Book, bottom right.',
       "This is your cabin. Every day starts here, with a flyer of things worth doing.\nIf you get turned around, the Map knows the way.",
-    ]);
+    ], [], null, "Let's go");
     welcomed = true;
   };
   hud.onHowTo = openWelcome;
@@ -1225,6 +1226,9 @@ async function boot(): Promise<void> {
       const wet = season === 'winter' ? 0 : SHALLOWS.reduce((n, [dx, dz]) => n + (world.openAt(player.position.x + dx, player.position.z + dz) === OPEN_WATER ? 1 : 0), 0) / SHALLOWS.length;
       const wanted = floor !== null ? Math.max(0, floor - under) : WADE * wet;
       footing += (wanted - footing) * Math.min(1, dt * 12);
+      // Under the bandstand's roof the camera would see only roof: it comes off while the player is on its floor.
+      const stand = built.plots.find((q) => q.id === 'bandstand');
+      townProjects.openRoof(stand && floor !== null && Math.hypot(stand.x - player.position.x, stand.z - player.position.z) < 4.2 ? 'bandstand' : null);
       if (Math.abs(footing) > 0.005) player.position.y = under + footing;
     } else footing = 0;
     // Skis leave their marks; anything else lifts them off the snow.
@@ -1531,7 +1535,7 @@ async function boot(): Promise<void> {
           "There's a flyer every morning now, with three things worth going out for.\nPut your flag on one. Or don't! It's only a flyer.",
           "You've got a cabin, in the woods by Cedars Traverse. The day starts there.\nPut your best stones on the shelf, and fill the feeder.",
           "The town wants to build a few things. It needs somebody to stake out the spots.\nAnd the map zooms now - pinch the picture, too, to pull the camera back.",
-        ]);
+        ], [], null, "Let's go");
         welcomed = true;
       } else if (cfg.flyer || (cfg.intro && cfg.hud && !bench && cfg.bench === null && game.flyerDue(today))) {
         // The first time the game is opened on a day, the day's flyer is put up.

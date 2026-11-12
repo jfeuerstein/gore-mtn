@@ -200,7 +200,7 @@ trying it beside the plain look. Four things make it, and anything new must take
   picture, cut to six inks and gathered into patches (`calm`), with a dark outline hull. A
   test fails if any model has an open edge or a loose piece. The converter needs Python with
   trimesh, fast-simplification, scipy, scikit-image, pymeshfix and Pillow.
-- They are one small JSON file, `public/models/park.json` (41 models, about 700 KB), read by
+- They are one small JSON file, `public/models/park.json` (43 models, about 750 KB), read by
   `src/world/modelFiles.ts`, and stand in for the block models in `critterModels.ts` at the
   same height. Nearly the whole field guide has one: the animals, the birds, the plants and
   mushrooms, the cairn and the snowman (the hare has two, for its two coats). The icicles and
@@ -425,9 +425,10 @@ Everything else is built in code from simple shapes.
 - Each has a face and features of their own (`look.features`: hair, a beard, glasses, an apron,
   a patrol cross, a child's height), built onto the figure by `Skier`. The player has none:
   goggles, as ever.
-- Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted (built
-  several times their size and brought back down, so that they get the print's line: `fine()`
-  in `folk.ts`), and the
+- Not everyone is a person. A `kind` of `board` is read, a `dog` or `cat` is petted (each a
+  made model, filed in `park.json` under its id among the people, `biscuit` and `pickles`;
+  with `models=blocks` they are built from blocks several times their size and brought back
+  down, so that they still get the print's line: `fine()` in `folk.ts`), and the
   `snowman` is Tom, who is a snowman in winter, a heap in spring and a scarecrow after that.
   What Tom has to say is shown as written notes signed `- Tom`.
   A `prop` (the groomer's snowcat, the patroller's sled) is one more mesh beside its owner.

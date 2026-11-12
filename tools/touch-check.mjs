@@ -811,8 +811,8 @@ try {
   check('the frame-rate readout is out of the way unless asked for', !(await np.locator('#stats').isVisible()));
   let pages = 1;
   for (; pages < 8 && (await np.locator('#talk-sheet .choices button', { hasText: /^Next$/ }).count()) > 0; pages++) await np.locator('#talk-sheet .choices button', { hasText: /^Next$/ }).tap();
-  check('the welcome is a few short pages and then gets out of the way', pages >= 3 && pages <= 5 && (await np.locator('#talk-sheet .choices button').allTextContents()).join() === 'Goodbye', `${pages} pages`);
-  await np.locator('#talk-sheet .choices button', { hasText: 'Goodbye' }).tap();
+  check('the welcome is a few short pages and then gets out of the way', pages >= 3 && pages <= 5 && (await np.locator('#talk-sheet .choices button').allTextContents()).join() === "Let's go", `${pages} pages`);
+  await np.locator('#talk-sheet .choices button', { hasText: "Let's go" }).tap();
   check('and closes', !(await np.locator('#talk-sheet').isVisible()));
   // The day's flyer: put up the first time the game is opened on a day, as soon as the welcome has been read, and once.
   await np.waitForSelector('#flyer:not([hidden])', { timeout: 20000 }).catch(() => {});
@@ -842,7 +842,7 @@ try {
   check('settings lead with the book and sound, and keep the testing aids apart', (await np.locator('#menu h2').allTextContents()).slice(0, 5).join() === 'Your book,Sound,How to play,About,For testing' && (await np.locator('#menu h1').textContent()) === 'Settings');
   await np.locator('#how-to').tap();
   check('the welcome can be read again from Settings', (await np.locator('#talk-sheet').isVisible()) && (await np.locator('#talk-sheet .names b').textContent()) === 'Welcome to Gore' && !(await np.locator('#menu').isVisible()));
-  await np.locator('#talk-sheet .close, #talk-sheet .choices button', { hasText: /Close|Goodbye/ }).first().tap().catch(() => {});
+  await np.locator('#talk-sheet .close, #talk-sheet .choices button', { hasText: /Close|Goodbye|Let's go/ }).first().tap().catch(() => {});
   for (let i = 0; i < 8 && (await np.locator('#talk-sheet').isVisible()); i++) await np.locator('#talk-sheet .choices button').last().tap();
   await np.tap('#menu-button');
   await np.locator('#sound-off').tap();

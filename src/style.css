@@ -2146,3 +2146,8 @@ body {
 #book-sheet h4 span {
   margin-left: auto;
 }
+/* Leaving a place bare is a choice like the rest: a dashed ring, as a bare place is. */
+#cabin-sheet .choice:first-child {
+  border: 2px dashed var(--kraft);
+  border-radius: 50%;
+}

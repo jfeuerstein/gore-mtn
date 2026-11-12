@@ -171,9 +171,10 @@ map's legend with patches sewn on.
 
 - **Built in code:** terrain, trees, every building, lifts, the train, signs, the people and
   the player (jointed figures, posed by code), stones, street furniture.
-- **Made outside and brought in:** the field guide's 41 models. A picture of each (FLUX,
-  through fal) is given a shape (Trellis, through fal), which a converter closes, cuts down to
-  about a thousand triangles and prints in six inks.
+- **Made outside and brought in:** the field guide's 41 models, and the dog and the cat. A
+  picture of each is given a shape (FLUX and Trellis through fal for most; Tripo for the
+  plants and the pets, which it makes a better job of), which a converter closes, cuts down
+  to about a thousand triangles and prints in a few inks.
 - **Painted:** portraits, postcards, title pictures and shop-sign pictures (FLUX, through
   fal); the Book's patches, a sheet at a time to one brief (Tripo's image model).
 - **Keys** are secrets of the build environment. None is in the repository.

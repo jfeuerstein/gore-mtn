@@ -228,3 +228,20 @@ export function overBeam(beams: readonly GateBeam[], x: number, y: number, z: nu
   }
   return lift;
 }
+
+/**
+ * The attendant's shack beside each lift's gate, as a box: solid, and with a roof a camera
+ * keeps out from under. It stands eleven metres to the side the attendant is on and five
+ * back from the gate, as `buildLifts` draws it.
+ */
+export function liftShacks(paths: readonly LiftPath[]): { x: number; z: number; w: number; d: number; turn: number; top: number }[] {
+  return paths.flatMap((path) => {
+    const p = path.points;
+    if (p.length < 6) return [];
+    const run = Math.hypot((p[3] as number) - (p[0] as number), (p[5] as number) - (p[2] as number)) || 1;
+    const dx = ((p[3] as number) - (p[0] as number)) / run;
+    const dz = ((p[5] as number) - (p[2] as number)) / run;
+    const ground = (p[1] as number) - (path.surface ? 0 : CABLE_HEIGHT);
+    return [{ x: (p[0] as number) + -11 * dz + -5 * dx, z: (p[2] as number) - -11 * dx + -5 * dz, w: 3.4, d: 3.4, turn: Math.atan2(dx, dz), top: ground + 3 }];
+  });
+}

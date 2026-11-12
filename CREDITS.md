@@ -29,10 +29,12 @@ real person, business or other game.
 - **Every patch in the Book** (stamps, summits, conditions, lift pins, things to wear, food and
   books, minerals and the field guide): Tripo's image model, a sheet at a time, from the same
   manifest and `tools/art/make-patches.mjs`.
-- **The field guide's models** (animals, birds, plants and curiosities, in
-  `public/models/park.json`): a picture from FLUX.1 [schnell] given a shape by
-  [TRELLIS](https://github.com/microsoft/TRELLIS) (Microsoft), both through fal, then closed,
-  cut down and coloured by `tools/models/convert.py`.
+- **The made models** (the field guide's animals, birds, plants and curiosities, and the dog
+  and the cat, in `public/models/park.json`): most are a picture from FLUX.1 [schnell] given
+  a shape by [TRELLIS](https://github.com/microsoft/TRELLIS) (Microsoft), both through fal;
+  eleven (nine plants, the dog and the cat) are a picture and a shape from
+  [Tripo](https://www.tripo3d.ai). All are then closed, cut down and coloured by
+  `tools/models/convert.py`.
 - **Everything else in the world** (terrain, trees, buildings, lifts, people, signs) is built
   in code.
 

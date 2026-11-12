@@ -76,6 +76,6 @@ export const MODELS = {
   cairn: { what: "a hiker's cairn: a neat stack of six flat grey stones, largest at the bottom, smallest on top" },
   snowman: { what: 'a small friendly snowman of three snowballs with stick arms, a carrot nose, coal eyes and a red scarf', inks: 'plant' },
   // Not of the field guide: the dog at the Saddle Lodge and the cat who is mayor, by the id each has among the people.
-  biscuit: { what: 'a big fluffy mountain rescue dog sitting upright, white with large brown patches and brown ears, a small wooden barrel hanging from its collar', by: 'tripo' },
-  pickles: { what: 'a fat orange tabby cat sitting very upright and dignified, with a cream chest, wearing a gold chain of office with a round medallion', by: 'tripo' },
+  biscuit: { what: 'a big fluffy mountain rescue dog sitting upright, white with large brown patches and brown ears, a small wooden barrel hanging from its collar', turn: 0, by: 'tripo' },
+  pickles: { what: 'a fat orange tabby cat sitting very upright and dignified, with a cream chest, wearing a gold chain of office with a round medallion', inks: 'plant', turn: 0, by: 'tripo' }, // the plants' inks have the orange a ginger cat wants
 };

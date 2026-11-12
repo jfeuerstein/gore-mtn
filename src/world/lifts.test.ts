@@ -3,6 +3,7 @@ import {
   buildLiftPath,
   CABLE_HEIGHT,
   gateBeams,
+  liftShacks,
   overBeam,
   type LiftPath,
   inLiftClearing,
@@ -227,5 +228,16 @@ describe('the beam over a gate', () => {
     expect(overBeam(beams, 2, 107, 6)).toBe(0);
     expect(overBeam(beams, 2, 102, 0)).toBe(0);
     expect(overBeam(beams, 9, 107, 0)).toBe(0);
+  });
+});
+
+describe("the attendant's shack", () => {
+  it('stands to the side of the gate and behind it, where it is drawn', () => {
+    // A lift running north (toward -z): across the line is x, and back from the gate is +z.
+    const path = { points: [0, 100 + CABLE_HEIGHT, 0, 0, 100 + CABLE_HEIGHT, -60], surface: false } as unknown as LiftPath;
+    const [shack] = liftShacks([path]);
+    expect(shack?.x).toBeCloseTo(11);
+    expect(shack?.z).toBeCloseTo(5);
+    expect(shack?.top).toBeCloseTo(103);
   });
 });

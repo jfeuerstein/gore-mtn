@@ -66,7 +66,7 @@ export function rumourLead(innkeeper: string, x: number, z: number): Lead {
  * @param state `proposed` while it wants its spot, `new` on the day after it was staked out, `standing` from then on
  */
 export function projectLead(project: { id: string; name: string; ask: string; done: string }, state: 'proposed' | 'new' | 'standing', x: number, z: number): Lead {
-  const head = state === 'proposed' ? "The town's building" : state === 'new' ? 'Finished overnight' : 'Worth the trip';
+  const head = state === 'proposed' ? 'The town is building' : state === 'new' ? 'Finished overnight' : 'Worth the trip';
   return { id: `project:${project.id}`, kind: 'project', head, title: project.name, why: state === 'proposed' ? `${project.ask} Go stake out the spot.` : project.done, x, z, flag: project.name };
 }
 

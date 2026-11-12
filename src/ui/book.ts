@@ -374,7 +374,7 @@ export class Book {
     // What the town has handed over: a menu ticked off, and a library card stamped.
     for (const [title, kinds, hint] of [
       ['Tasted', ['bake', 'sandwich'], "June's bakery and Walt's deli on Main Street each have something new every day."],
-      ['Library card', ['book'], "Fenn at the Town Hall library lends one book a day. He's never asked for one back."],
+      ['Library card', ['book'], "Mr. Fennimore at the library lends one book a day. He's never asked for one back."],
     ] as const) {
       const all = OFFERINGS.filter((o) => (kinds as readonly string[]).includes(o.kind));
       const had = all.filter((o) => o.id in game.save.tried);
@@ -452,7 +452,7 @@ export class Book {
     const s = game.summary();
     const out: HTMLElement[] = [this.heading('Minerals', s.minerals, s.mineralsTotal)];
     out.push(
-      el('p', 'note', s.specimens === 0 ? 'Stones glint on the snow by the trails, in bare rock and deep in the woods. New ones turn up every day.' : `${s.specimens} ${s.specimens === 1 ? 'stone' : 'stones'} picked up so far. New ones turn up every day.`),
+      el('p', 'note', s.specimens === 0 ? 'Stones glint on the ground: on the trails and beside them, in bare rock and deep in the woods. New ones turn up every day.' : `${s.specimens} ${s.specimens === 1 ? 'stone' : 'stones'} picked up so far. New ones turn up every day.`),
     );
     const list = el('div', 'minerals');
     for (const mineral of MINERALS) {

@@ -129,7 +129,7 @@ const FLOORS: Record<ProjectKind, readonly (readonly [x: number, z: number, w: n
   ],
   bandstand: [
     [0, 0, 5.4, 5.4, 0.7],
-    [0, 3.0, 1.6, 0.8, 0.36],
+    [0, -3.0, 1.6, 0.8, 0.36],
   ],
   hut: [],
   deck: [
