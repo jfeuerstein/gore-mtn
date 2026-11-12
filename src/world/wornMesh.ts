@@ -5,7 +5,7 @@ import { lit } from '../look/material';
 import type { Season } from '../look/season';
 
 /** What worn ground looks like: packed snow in winter, bare earth otherwise. */
-const WORN_INK: Record<Season, number> = { winter: 0xc9d3e3, spring: 0x8a6f52, summer: 0x9a7f5c, fall: 0x8a6a4a };
+const WORN_INK: Record<Season, number> = { winter: 0xa9b8d2, spring: 0x8a6f52, summer: 0x9a7f5c, fall: 0x8a6a4a };
 
 /**
  * The ground the player has worn by walking it: a patch to each worn square, laid on the
