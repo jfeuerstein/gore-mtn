@@ -186,8 +186,8 @@ trying it beside the plain look. Four things make it, and anything new must take
   course, as a pen would draw clapboard.
 - `look=plain&models=blocks` in the address draws the game as it was before the print, for
   setting one beside the other and for the benchmark's last step. It is not in Settings.
-- The print costs no draw calls and about 160,000 to 210,000 triangles in a view (the rims).
-  Not yet measured on the phone.
+- The print costs about three draw calls and 130,000 to 300,000 triangles in a view (the rims),
+  and nothing that can be measured in frame time on the phone (see Performance budget).
 
 ### Made models
 
@@ -378,8 +378,7 @@ Everything else is built in code from simple shapes.
   species needs an entry in `SPECIES` and a model; tests check both exist.
 - `src/world/glints.ts` draws the stones near the player: one instanced mesh coloured per
   instance, and one of unlit gold twinkles, two draw calls in all. Stones, the dressed trees of
-  spring, summer and fall, and the town's houses all take their colour per instance; the owner
-  has yet to confirm that on the phone's WebGPU.
+  spring, summer and fall, and the town's houses all take their colour per instance.
 - `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
   announcements at the top of the screen. With `hud=0` announcements are hidden too. A page
   with four or more headings gets a row of them to jump by, which stays at the top as it
@@ -733,51 +732,42 @@ The game is designed only for an upright phone (402 x 874 points on the owner's 
 
 ## Performance budget
 
-60 fps; under 150 draw calls and 300k triangles on screen; pixel ratio capped at 2; instancing for
-anything repeated; first load under 15 MB.
+60 fps on the owner's phone; pixel ratio capped at 2; instancing for anything repeated; first
+load under 15 MB (it is about 8).
 
-That target was set before the game had seasons, a town, wildlife, people, signs, a train or
-other skiers, and the game is now over it: about 150 to 165 draw calls and 700k to 860k
-triangles on the mountain. The phone holds 60 fps there all the same (see the measurements
-below), so the numbers are a caution, not a wall. Three things keep the calls where they are:
+The game was first held to 150 draw calls and 300,000 triangles on screen. It is well over
+both, and the phone holds 60 fps all the same, so those numbers are a caution, not a wall:
+what counts is the benchmark on the phone. Three things keep the draw calls where they are:
 
 - Far terrain is drawn in blocks. While every tile in a three-by-three block is at its coarsest
   detail and in the same texture, the block is one mesh (`Terrain.cull`); otherwise its tiles
-  are drawn one by one as before.
+  are drawn one by one.
 - The figure's rigid parts are each one mesh (`Skier.join`), painted on their vertices and
-  repainted when the outfit changes. About thirteen meshes on foot, where there were twenty.
+  repainted when the outfit changes. About thirteen meshes on foot.
 - The lodges, the named places, the lifts, the signs and the train are a dozen meshes in all.
 
 `node tools/census.mjs` lists what is switched on by part of the scene, and
 `window.__gore.show(part, false)` hides a part, to see what it costs in `state().drawCalls`.
 
-Since that measurement the town and the lodges have been rebuilt (every house its own shape,
-street surfaces, parked cars, a sun deck). In headless runs the Base Lodge view is now about
-180 draw calls and Main Street about 200, with some 200k more triangles in town than before.
-None of that has been measured on the phone: the benchmark's Main Street and Base Lodge steps
-will say what it cost.
+Measured on the owner's iPhone 17 Pro (2026-11-12, Home Screen app, WebGPU, 804 x 1748 at 2x),
+with everything built up to the park print, the made models, the cabin and the town's
+projects: a steady 60 fps at all thirteen benchmark steps, 98 to 100% of frames on time, none
+slower than 30 ms, using 3.3 to 6.3 ms of CPU a frame.
 
-Measured on the owner's iPhone 17 Pro (2026-11-11, Home Screen app, WebGPU), with everything
-built up to the other skiers: a steady 60 fps at all twelve benchmark steps, 98 to 100% of frames on time and
-none slower than 29 ms, using 4.5 to 6.3 ms of CPU per frame.
+- Saddle Lodge: 170 calls, 1,158k triangles. Without the other people, 163 calls. Thick forest:
+  1,365k triangles, every frame on time.
+- Base Lodge: 154 calls, 980k triangles; in fall, 152 and 847k.
+- Main Street: 131 calls, 939k triangles; without shadows, 93 calls and 595k; on a snowy dusk, 98.
+- Carried down Sunway at lift speed, building ground and forest all the way: 60 fps, 172 calls,
+  1,123k triangles, 6.3 ms of CPU, fewer than 1% of frames late.
+- WebGL 2 gave the same picture.
+- **What the print costs:** the Base Lodge with it (step 6) is 154 calls and 980k triangles; as
+  the game was before it (step 13), 151 and 848k. Three draw calls, 132,000 triangles, and no
+  frame time that can be measured.
 
-- Saddle Lodge: 157 calls, 858k triangles. Without the other people, 150 calls: they cost 7
-  calls and no measurable CPU. Thick forest: 1,014k triangles, still 60 fps.
-- Base Lodge: 147 calls, 721k triangles; in fall, with every tree dressed, 144 and 676k.
-- Main Street: 118 calls with the other people, 113 without, 84 with no shadows; on a snowy
-  dusk, 93.
-- Carried down Sunway at lift speed, building ground and forest all the way: 60 fps, 163 calls,
-  6.3 ms of CPU, fewer than 1% of frames late. Travelling costs about 1 ms a frame.
-- WebGL 2 gave the same picture: 60 fps, with 1% of frames one refresh late.
-
-The day before (2026-11-10), with only the mountain, lifts and forest built: 60 fps at every
-step, 104 draw calls and 623k triangles in the thick forest, about 4.4 ms of CPU. So everything
-added since has cost about 50 draw calls and 1 ms.
-
-Those measurements were all taken before the park print. In headless runs the print adds no
-draw calls and 160,000 to 210,000 triangles (Saddle Lodge 1,032k, Main Street 1,147k), which is
-about what the thick-forest step drew at 60 fps. The owner's next benchmark run will say what
-it costs on the phone: compare step 6 with the last step.
+The owner has looked at the print, the outlines and the made models on the phone's WebGPU and
+they look right. For comparison, the day before (2026-11-11, before the print): 157 calls and
+858k triangles at the Saddle Lodge, also a steady 60 fps.
 
 What the benchmark still does not show is heat and battery over a long session: each step
 measures five seconds (fifteen for the trail). The owner should say if the phone runs warm.

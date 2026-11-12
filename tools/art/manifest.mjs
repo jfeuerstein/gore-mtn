@@ -376,8 +376,23 @@ const SEWN = {
 const briefs = (art) => Object.fromEntries(Object.entries(art).map(([id, what]) => [id, SEWN[id] ?? brief(what)]));
 const only = (art, keep) => Object.fromEntries(Object.entries(art).filter(([id]) => keep(id)));
 
+/**
+ * The pictures on the signs that hang over shop doors are made a sheet at a time too, to a
+ * brief of their own: round painted signs, printed flat as a park poster is, so that they
+ * belong to the world they hang in. (They were first painted one at a time as soft little
+ * models, which did not.)
+ */
+export const SIGN_BRIEF = (count, cols, rows, border, subjects) => `Sprite sheet of ${count} round painted shop signs for a mobile game: a strict grid of ${cols} columns and ${rows} rows, even gaps, fully transparent background.
+Every sign is identical in construction: a perfect circle of the same size, flat cream ground, a thick flat ring in ${border}, the subject printed flat in the style of a 1930s national park poster: bold simple shapes in three or four flat inks with a thick navy outline. Straight on. No shading, no gradients, no highlights, no texture, no shadow, no text or numbers
+Palette: cream #f7f1e3, navy #22304a, brick red #c8402d, pine #2f6b4f, blue #2b62c9, gold #c98f1f, tan #a9763f, white; brown, orange, grey or black only where needed.
+Shown 60 pixels wide: each subject one clear centred shape that fills its sign.
+Subjects, left to right, top row first:
+${subjects.map((s, i) => `${i + 1} ${s}.`).join('\n')}`;
+
 /** Each set of patches: where its pictures go, the colour of its border, and what is sewn on each. */
 export const PATCH_SETS = {
+  // Not for the Book: the shop signs' pictures, kept in the cache for make-art.mjs to lay out on their sheet.
+  signs: { border: 'navy (#22304a)', subjects: Object.fromEntries(Object.entries(SHOP_ART).map(([name, what]) => [name, what.replace(', one single object', '')])), dir: 'tools/art/cache/shops/print', brief: SIGN_BRIEF },
   patches: { border: 'brick red (#c8402d)', subjects: briefs(PATCH_ART) },
   // Not one of the Book's: it comes with the last letter, for the cabin's board (KEEPSAKE in src/game/patches.ts).
   // A set of its own, so that the sheets already made for the others are cut as they were.

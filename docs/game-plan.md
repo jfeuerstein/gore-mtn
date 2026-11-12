@@ -182,20 +182,18 @@ map's legend with patches sewn on.
 ### Budget
 
 60 fps on the owner's phone, measured with the in-game benchmark. The cautious targets of 150
-draw calls and 300,000 triangles were set early and are exceeded (about 150 to 200 calls, and
-up to about 1.1 million triangles since the print); the phone held 60 fps at every benchmark
-step when last measured, which was before the print. First load is about 8 MB against a
-budget of 15.
+draw calls and 300,000 triangles were set early and are exceeded (about 130 to 170 calls and
+0.9 to 1.4 million triangles); the phone holds a steady 60 fps at every benchmark step with
+the print on (measured 2026-11-12), and the print itself costs nothing that can be measured.
+First load is about 8 MB against a budget of 15.
 
 ## 7. What is still open
 
 These are the owner's to settle; none blocks play.
 
-1. **The print on the phone.** Its cost has not been measured there (benchmark step 6 against
-   step 13), nor has it been seen on WebGPU, which the tools cannot show.
-2. **Heat and battery** over a long session.
-3. **The wording.** Every line of talk, every letter and every flyer lead is data, and the
+1. **Heat and battery** over a long session.
+2. **The wording.** Every line of talk, every letter and every flyer lead is data, and the
    owner's to mark up.
-4. **Names.** "Gore" is a working title. Shops and people are invented; the inn and a few
+3. **Names.** "Gore" is a working title. Shops and people are invented; the inn and a few
    buildings carry real names.
-5. **A licence** for the repository, if it is ever to be shared beyond its owner.
+4. **A licence** for the repository, if it is ever to be shared beyond its owner.

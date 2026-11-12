@@ -65,15 +65,14 @@ is described in [game-plan.md](game-plan.md).
 
 ## What only the phone can show
 
-The tools here draw with the fallback renderer and cannot present WebGPU, so these are yours:
+The tools here draw with the fallback renderer and cannot present WebGPU, so these are yours.
+(The print, the outlines and the made models have been looked at on the phone and are right, and
+the benchmark of 2026-11-12 holds 60 fps at every step.)
 
-- **The print on WebGPU.** Flat tones on every surface, a dark line round buildings, people,
-  animals and nearby trees, sharp-edged ground at your feet. Say if anything is unlit, black,
-  missing its line, or if the ground near you flickers between soft and sharp.
-- **Colour per thing.** Stones, the dressed trees out of winter, the town's houses and the
-  other skiers each take a colour of their own. All white or all grey is the thing to report.
-- **Frame rate.** Settings > For testing > Run benchmark, pasted back. Step 6 against step 13
-  says what the print costs.
+- **The new ski start.** Skis put on while you face up a slope, or stepped off a lift on,
+  are swung round to point across the hill and a little down. To try it: walk a few steps up
+  any trail, stop facing uphill, and tap `Skis`; or tap `Skis` before you ride a lift and see
+  which way you point at the top. You should start to slide without doing anything.
 - **Heat and battery** over twenty minutes.
 - **Sound on a real speaker**, and whether it tires.
 - **Offline.** After a minute or two with a signal, try aeroplane mode: the game should open,

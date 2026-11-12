@@ -27,7 +27,7 @@ let asked = 0;
 
 /** One sheet: up to sixteen patches. A short last row is filled out with stars, which are thrown away. Gives back the ids it could not find on it. */
 async function sheet(set, n, ids) {
-  const { border, subjects, into } = PATCH_SETS[set];
+  const { border, subjects, into, dir, brief } = PATCH_SETS[set];
   const file = `${CACHE}/${slug(set)}-${n}.png`;
   // A few patches are a sheet of two by two; otherwise four across.
   const cols = ids.length <= 4 ? 2 : COLS;
@@ -35,7 +35,7 @@ async function sheet(set, n, ids) {
   const cells = cols * rows;
   if (redo.has(set) || !existsSync(file)) {
     const said = [...ids.map((id) => subjects[id]), ...Array(cells - ids.length).fill('a plain gold star')];
-    const body = { prompt: PATCH_BRIEF(cells, cols, rows, border, said), model: MODEL, size: `${cols * 512}x${rows * 512}`, quality: 'medium', background: 'transparent', output_format: 'png' };
+    const body = { prompt: (brief ?? PATCH_BRIEF)(cells, cols, rows, border, said), model: MODEL, size: `${cols * 512}x${rows * 512}`, quality: 'medium', background: 'transparent', output_format: 'png' };
     if (body.prompt.length > 1800) throw new Error(`the brief is ${body.prompt.length} characters; the model takes 1800`);
     // Only so many generations may be asked for at once: wait and ask again.
     let done;
@@ -53,7 +53,8 @@ async function sheet(set, n, ids) {
     console.log(`made ${set} sheet ${n} (${done.credits_consumed} credits)`);
   }
   // Cut the sheet into its patches, and say which of them were not on it.
-  const out = `${ROOT}public/art/${into ?? set}`;
+  // A set may be kept somewhere of its own (the shop signs go to the cache, to be laid out on one sheet).
+  const out = dir ? `${ROOT}${dir}` : `${ROOT}public/art/${into ?? set}`;
   mkdirSync(out, { recursive: true });
   return JSON.parse(execFileSync('python3', [`${ROOT}tools/art/cut-sheet.py`, file, out, String(cols), String(SIZE), JSON.stringify(ids.map(slug))], { encoding: 'utf8' }));
 }

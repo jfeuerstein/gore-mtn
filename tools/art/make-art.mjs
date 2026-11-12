@@ -105,7 +105,11 @@ if (!wanted.length || wanted.includes('shops')) {
   const names = Object.keys(manifest.SHOP_ART);
   const cols = 8;
   const cell = SETS.shops.size;
-  const files = names.map((n) => `${ROOT}tools/art/cache/shops/small/${slug(n)}.png`);
+  // The printed signs made a sheet at a time (make-patches.mjs signs) where there are any; else the ones painted singly.
+  const files = names.map((n) => {
+    const printed = `${ROOT}tools/art/cache/shops/print/${slug(n)}.webp`;
+    return existsSync(printed) ? printed : `${ROOT}tools/art/cache/shops/small/${slug(n)}.png`;
+  });
   if (files.every((f) => existsSync(f))) {
     execFileSync('python3', [
       '-c',
@@ -117,7 +121,8 @@ cols, cell = ${cols}, ${cell}
 rows = math.ceil(len(files) / cols)
 sheet = Image.new('RGB', (cols * cell, rows * cell), (255, 253, 247))
 for i, f in enumerate(files):
-    sheet.paste(Image.open(f).convert('RGB'), ((i % cols) * cell, (i // cols) * cell))
+    im = Image.open(f).convert('RGBA').resize((cell, cell), Image.LANCZOS)
+    sheet.paste(im, ((i % cols) * cell, (i // cols) * cell), im)
 sheet.save(${JSON.stringify(`${ROOT}public/art/shop-signs.webp`)}, 'WEBP', quality=84, method=6)
 `,
     ]);
