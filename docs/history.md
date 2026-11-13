@@ -653,3 +653,35 @@ Decisions made while you were away that are yours to overrule. Each is easy to c
    the Performance budget in CLAUDE.md), but none of this has run on the phone. Settings > For
    testing > Run benchmark, pasted back, would settle it.
 8. The verdicts on everything since milestone 1 (see "What to judge" in the roadmap).
+
+## Since then (10 to 13 November 2026)
+
+The diary above stops when the first whole game was shown. What was built after it is
+described, as it stands, in `CLAUDE.md` and `docs/game-plan.md`; this is only the order it
+came in and why, so that those two need not carry the story.
+
+- **A look of its own.** Four looks were tried on the phone and the owner chose the park
+  print: flat inks, light in steps, a dark line round things, a banded sky. The ground near
+  the camera stopped being a stretched picture and became inks and printed marks; shadows got
+  a clean edge. The animals, and later the birds and plants, were made outside the game
+  (picture, shape, low-poly model in six inks) because the ones built from blocks looked like
+  another game beside the rest.
+- **A daily loop.** The owner asked for the loop of an exploration-heavy Animal Crossing:
+  the day's flyer, a cabin to bring things home to, and things the town builds overnight
+  once the player has staked them out.
+- **Judges.** Three rounds of independent judges (five, five, one) looked at the game through
+  different lenses and their findings were fixed: an ending that can be reached, trail signs
+  at the right mouths, winter roofs and ponds, cars, other skiers' poles.
+- **Reasons to explore.** Secrets on no map (registers, plaques, cairns, a bell, old
+  workings, locked rooms, a den, a sugar shack, a lantern), unmarked runs, people who are
+  somewhere different every day, the sea of cloud and the northern lights, a wardrobe of
+  eight kinds of thing, pets. The props for these were first built from blocks, which the
+  owner found too blocky, and were made again as models.
+- **Feel.** Poles that push and plant, speed lines, sheets that move, patches that are sewn
+  on. Loose snow was first a trench drawn on the ground, which the owner said looked bad,
+  and was made again as a real layer that is pushed aside.
+- **Rarer finds and a museum (13 November).** The owner found stones and wildlife too easy
+  and too plentiful. Both were cut to about a third, thirteen minerals were added, several
+  of which keep to a moment or a kind of ground, and a museum was opened in town with a
+  keeper who asks for old things one at a time. A fourth round of judges ran at the same
+  time, on the game as it stood before the museum.

@@ -89,6 +89,8 @@ export interface SaveData {
   paintings: Record<string, string>;
   /** The camper: on how many different days he has been found, and the last of them. */
   camper: { days: number; day: string };
+  /** What has been given to the museum (see `museum.ts`), by what it is filed under, with the day each was. */
+  museum: Record<string, string>;
   /** Unmarked runs skied top to bottom, by id, with the day each first was. */
   runs: Record<string, string>;
   /** Shooting stars watched, on nights when there were some. */
@@ -103,6 +105,14 @@ export interface SaveData {
   flyer: string;
   /** The leads on today's flyer, by id, chosen once so that they are the same all day. */
   leads: { day: string; ids: string[] };
+  /** What has been said today that is said once a day (the inn's rumour, an errand asked, a word about a hat), by what it is. */
+  said: { day: string; ids: string[] };
+  /**
+   * Whatever a save holds that this version does not know: a newer version wrote it. It is kept
+   * as it came and written back, so that a book read once by an older copy of the game (one
+   * kept for playing with no signal, say) does not lose what the newer one put in it.
+   */
+  more?: Record<string, unknown>;
 }
 
 /** How many squares of worn ground are kept, and how worn one can get. */
@@ -141,6 +151,7 @@ export function emptySave(): SaveData {
     flag: null,
     flyer: '',
     leads: { day: '', ids: [] },
+    said: { day: '', ids: [] },
     cabin: emptyCabin(),
     projects: {},
     secrets: {},
@@ -150,6 +161,7 @@ export function emptySave(): SaveData {
     hide: { day: '', finds: 0 },
     paintings: {},
     camper: { days: 0, day: '' },
+    museum: {},
     runs: {},
     meteors: 0,
     guests: [],
@@ -191,6 +203,9 @@ export function parseSave(text: string | null | undefined): SaveData {
     return save;
   }
   if (!isRecord(raw)) return save;
+  const known = new Set(Object.keys(save));
+  const more = Object.fromEntries(Object.entries(raw).filter(([key]) => !known.has(key) && key !== 'more'));
+  if (Object.keys(more).length > 0) save.more = more;
 
   save.trails = progress(raw.trails);
   save.paths = progress(raw.paths);
@@ -252,6 +267,7 @@ export function parseSave(text: string | null | undefined): SaveData {
     save.cabin = { shelf: places(raw.cabin.shelf, SHELF_SLOTS), wall: places(raw.cabin.wall, WALL_SLOTS), feeder: isDay(raw.cabin.feeder) ? raw.cabin.feeder : '' };
   }
   save.secrets = days(raw.secrets);
+  save.museum = days(raw.museum);
   save.keys = strings(raw.keys);
   if (isRecord(raw.cairns)) {
     for (const [id, c] of Object.entries(raw.cairns)) {
@@ -274,6 +290,7 @@ export function parseSave(text: string | null | undefined): SaveData {
   }
   if (isDay(raw.flyer)) save.flyer = raw.flyer;
   if (isRecord(raw.leads) && isDay(raw.leads.day)) save.leads = { day: raw.leads.day, ids: strings(raw.leads.ids).slice(0, 6) };
+  if (isRecord(raw.said) && isDay(raw.said.day)) save.said = { day: raw.said.day, ids: strings(raw.said.ids).slice(0, 200) };
   if (isRecord(raw.flag) && typeof raw.flag.x === 'number' && typeof raw.flag.z === 'number' && Number.isFinite(raw.flag.x) && Number.isFinite(raw.flag.z)) {
     save.flag = { x: raw.flag.x, z: raw.flag.z, label: typeof raw.flag.label === 'string' ? raw.flag.label.slice(0, 80) : 'Your flag' };
   }
@@ -281,7 +298,8 @@ export function parseSave(text: string | null | undefined): SaveData {
 }
 
 export function serializeSave(save: SaveData): string {
-  return JSON.stringify(save);
+  // What a newer version put in goes back as it came, beside what this one knows.
+  return JSON.stringify({ ...save.more, ...save, more: undefined });
 }
 
 /** A save as a code to copy somewhere safe. */

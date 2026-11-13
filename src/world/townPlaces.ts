@@ -10,7 +10,7 @@ import type { World } from './world';
  * real map (a named building, or a named point with a building by it), turned to face its road,
  * and given a style, a sign and a front door. No three.js here.
  */
-export type TownStyle = 'inn' | 'store' | 'postoffice' | 'church' | 'hall' | 'barn' | 'cafe' | 'deli' | 'house' | 'mill' | 'powerhouse' | 'cabin' | 'station' | 'tavern' | 'shed' | 'firehouse';
+export type TownStyle = 'museum' | 'inn' | 'store' | 'postoffice' | 'church' | 'hall' | 'barn' | 'cafe' | 'deli' | 'house' | 'mill' | 'powerhouse' | 'cabin' | 'station' | 'tavern' | 'shed' | 'firehouse';
 
 interface Listing {
   id: string;
@@ -23,6 +23,9 @@ interface Listing {
   /** ...or the building nearest a described spot, such as where its keeper stands. */
   near?: Whereabouts;
 }
+
+/** Where the museum is, and so where its keeper stands. */
+export const MUSEUM_AT: Whereabouts = { road: 'Main Street', from: 'depot', metres: 380 };
 
 export const TOWN_LISTINGS: readonly Listing[] = [
   { id: 'copperfield-inn', sign: 'COPPERFIELD INN', style: 'inn', building: 'Phoenix Inn Resort' },
@@ -39,6 +42,8 @@ export const TOWN_LISTINGS: readonly Listing[] = [
   // Where June bakes and Walt makes sandwiches: the buildings they stand outside.
   { id: 'cafe', sign: "JUNE'S BAKERY", style: 'cafe', near: { road: 'Main Street', from: 'depot', metres: 170 } },
   { id: 'deli', sign: "WALT'S DELI", style: 'deli', near: { road: 'Main Street', from: 'depot', metres: 290 } },
+  // Where Silas keeps the museum: further up the street.
+  { id: 'museum', sign: 'MUSEUM', style: 'museum', near: MUSEUM_AT },
   { id: 'inn-on-gore', sign: 'THE INN ON GORE', style: 'inn', spot: 'the-inn-on-gore-mountain' },
   // The old Barton Mines hamlet, at the western edge of the map.
   { id: 'gore-mt-mineral-shop', sign: 'MINERAL SHOP', style: 'cabin', spot: 'gore-mt-mineral-shop' },

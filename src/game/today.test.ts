@@ -1,3 +1,4 @@
+import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
 import { dayBefore, flyerDate, LEADS, patchLead, trailAgainLead, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
 
@@ -102,8 +103,7 @@ describe("today's flyer", () => {
   it('says things the way people here say them', () => {
     for (const lead of everything) {
       for (const text of [lead.head, lead.title, lead.why]) {
-        expect(text).not.toMatch(/\b(do not|does not|is not|are not|cannot|will not|have not)\b/);
-        expect(text).not.toMatch(/colour|neighbour|favourite|grey\b/);
+        expect(slips(text), text).toEqual([]);
       }
       expect(lead.why.length).toBeLessThan(60);
     }

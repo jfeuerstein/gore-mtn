@@ -55,7 +55,7 @@ describe('Game', () => {
     expect(s).toMatchObject({ trails: 0, lifts: 0, peaks: 0, landmarks: 0, conditions: 0, minerals: 0, specimens: 0 });
     expect(s.trailsTotal).toBeGreaterThan(90);
     expect(s.liftsTotal).toBe(14);
-    expect(s.mineralsTotal).toBe(12);
+    expect(s.mineralsTotal).toBe(25);
   });
 
   it('builds a town project overnight once its spot is staked out, and only then gives its postcard', () => {
@@ -472,6 +472,21 @@ describe('Game', () => {
   it('survives a damaged save', () => {
     const game = new Game(gameWorld, memory('{"trails": 12, "lifts": {"Sunway": "2026-11-10"}'));
     expect(game.summary()).toMatchObject({ trails: 0, lifts: 0 });
+  });
+
+  it('says what is left of a trail the player comes off part-skied, once a day', () => {
+    const game = new Game(gameWorld, memory());
+    const name = game.trails[0]?.name as string;
+    expect(game.leftTrail(name, DAY)).toEqual([]);
+    game.save.trails[name] = { seen: '000011111111111111111' };
+    const told = game.leftTrail(name, DAY);
+    expect(told).toHaveLength(1);
+    expect(told[0]?.title).toBe(name);
+    expect(told[0]?.detail).toBe("17 of 21 checkpoints. The top's still to ski.");
+    expect(game.leftTrail(name, DAY)).toEqual([]);
+    expect(game.leftTrail(name, '2026-12-25')).toHaveLength(1);
+    game.save.trails[name] = { seen: '111111111111111111111', stamped: DAY };
+    expect(game.leftTrail(name, '2026-12-26')).toEqual([]);
   });
 
   it('can be restored from another save', () => {

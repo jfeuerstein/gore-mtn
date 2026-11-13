@@ -1,5 +1,6 @@
 import type { Difficulty } from '../world/trails';
 import type { BookSummary } from './game';
+import { fullness } from './museum';
 import type { SaveData } from './save';
 
 /**
@@ -49,6 +50,10 @@ export const PATCHES: readonly (Patch & { earned(t: Tally): boolean })[] = [
   { id: 'naturalist', name: 'Naturalist', how: 'Get twenty things into the field guide.', earned: (t) => t.summary.species >= 20 },
   { id: 'full-guide', name: 'The Whole Guide', how: 'Fill the field guide.', earned: (t) => t.summary.species >= t.summary.speciesTotal },
   { id: 'believer', name: 'Believer', how: "See for yourself whether it's all Lies.", earned: (t) => 'rumor' in t.save.sightings },
+  { id: 'museum-friend', name: 'Friend of the Museum', how: 'Bring the museum its first ten pieces.', earned: (t) => fullness(t.save).given >= 10 },
+  { id: 'stone-hall', name: 'The Stone Hall', how: 'Put a stone of every kind in the museum.', earned: (t) => fullness(t.save).halls.stones.given >= fullness(t.save).halls.stones.total },
+  { id: 'natural-history', name: 'Natural History', how: 'Fill every drawer of the museum from your field guide.', earned: (t) => fullness(t.save).halls.nature.given >= fullness(t.save).halls.nature.total },
+  { id: 'old-things', name: 'Old Things', how: 'Bring back every old thing Silas asks after.', earned: (t) => fullness(t.save).halls.old.given >= fullness(t.save).halls.old.total },
   { id: 'good-neighbour', name: 'Good Neighbor', how: 'Finish every errand.', earned: (t) => t.summary.errands >= t.summary.errandsTotal },
   { id: 'pen-pal', name: 'Pen Pal', how: 'Collect ten letters from the post office.', earned: (t) => t.summary.letters >= 10 },
   { id: 'bench-warmer', name: 'Sitting Committee', how: "Sit on ten different benches. There's no hurry.", earned: (t) => t.summary.benches >= 10 },

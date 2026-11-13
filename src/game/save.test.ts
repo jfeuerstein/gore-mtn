@@ -16,6 +16,23 @@ describe('save', () => {
   it('survives being written and read back', () => {
     expect(parseSave(serializeSave(sample()))).toEqual(sample());
   });
+  it('keeps what a newer version of the game wrote, and writes it back', () => {
+    const newer = JSON.stringify({ ...JSON.parse(serializeSave(sample())), aquarium: { trout: '2027-06-01' }, tides: 3 });
+    const read = parseSave(newer);
+    // This version knows nothing of them, and loses nothing of them.
+    expect(read.more).toEqual({ aquarium: { trout: '2027-06-01' }, tides: 3 });
+    const back = JSON.parse(serializeSave(read)) as Record<string, unknown>;
+    expect(back.aquarium).toEqual({ trout: '2027-06-01' });
+    expect(back.tides).toBe(3);
+    expect('more' in back).toBe(false);
+    // And again, through a save code.
+    expect(saveFromCode(saveToCode(read))?.more).toEqual(read.more);
+    // A save with nothing unknown in it has nothing extra.
+    expect(parseSave(serializeSave(sample())).more).toBeUndefined();
+    // What it does know is never taken from there.
+    expect(parseSave(JSON.stringify({ more: { trails: 'x' }, tides: 1 })).more).toEqual({ tides: 1 });
+  });
+
 
   it('starts empty when there is nothing stored, or nonsense', () => {
     expect(parseSave(null)).toEqual(emptySave());

@@ -90,6 +90,7 @@ describe('the letters', () => {
     for (const e of ERRANDS) save.errands[e.id] = { taken: '2026-11-01', done: '2026-11-01' };
     for (const o of OFFERINGS) save.tried[o.id] = '2026-11-01';
     for (const id of ['snowman', 'rumor']) save.sightings[id] = { count: 1, first: '2026-11-01' };
+    for (const id of ['garnet', 'quartz', 'feldspar']) save.minerals[id] = { count: 1, best: 3, first: '2026-11-01' };
     for (const p of PROJECTS) save.projects[p.id] = '2026-11-01';
     for (const p of PATCHES) save.patches[p.id] = '2026-11-01';
     save.cabin.feeder = '2026-11-01';
@@ -129,6 +130,44 @@ describe('the post office, the inn and the dog', () => {
     const days = new Set<string>();
     for (let d = 10; d < 30; d++) days.add(`${game.rumour(`2026-11-${d}`)?.place}/${game.rumour(`2026-11-${d}`)?.find.mineral.id}`);
     expect(days.size).toBeGreaterThan(5);
+  });
+
+  it('talks of a rare stone the museum has no example of, and keeps to it all day whatever is given', () => {
+    const game = new Game(gameWorld, memory());
+    const rare = new Set(MINERALS.filter((m) => m.rarity === 'rare').map((m) => m.id));
+    const told = new Set<string>();
+    for (let d = 10; d < 30; d++) {
+      const mineral = game.rumour(`2026-11-${d}`)?.find.mineral.id ?? '';
+      expect(rare.has(mineral), mineral).toBe(true);
+      told.add(mineral);
+    }
+    expect(told.size).toBeGreaterThan(3);
+    // No meteorite unless there has been a shower: the Leonids are the 16th to the 18th.
+    expect(game.rumour('2026-11-11')?.find.mineral.id).not.toBe('meteorite');
+    // Given the very stone today, the talk stays the same until tomorrow; and then it is of the others.
+    const today = game.rumour(DAY);
+    if (!today) throw new Error('no rumour');
+    game.save.minerals[today.find.mineral.id] = { count: 1, best: 5, first: DAY };
+    game.museumGive(DAY);
+    const kept = memory();
+    kept.write(JSON.stringify(game.save));
+    expect(new Game(gameWorld, kept).rumour(DAY)?.find.mineral.id).toBe(today.find.mineral.id);
+    for (let d = 12; d < 30; d++) expect(game.rumour(`2026-11-${d}`)?.find.mineral.id).not.toBe(today.find.mineral.id);
+  });
+
+  it('remembers what was said today through closing the game and opening it again', () => {
+    const store = memory();
+    const game = new Game(gameWorld, store);
+    game.talk('marge', DAY, 'winter');
+    const told = game.talk('marge', DAY, 'winter');
+    expect(told?.lines.join(' ')).toContain(game.rumour(DAY)?.place);
+    game.persist();
+    // The same day, in a game opened afresh: she does not tell it over again.
+    const again = new Game(gameWorld, store);
+    expect(again.save.said.day).toBe(DAY);
+    expect(again.talk('marge', DAY, 'winter')?.lines.join(' ')).not.toContain(again.rumour(DAY)?.place);
+    // Tomorrow she has a new one.
+    expect(again.talk('marge', '2026-11-12', 'winter')?.lines.join(' ')).toContain(again.rumour('2026-11-12')?.place);
   });
 
   it('puts the rumoured stone where the innkeeper says, to be picked up once', () => {

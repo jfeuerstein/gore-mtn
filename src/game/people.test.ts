@@ -1,3 +1,4 @@
+import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
 import { countryOf } from '../world/country';
 import { loadTestWorld } from '../world/testWorld';
@@ -44,40 +45,33 @@ describe('the people', () => {
 
   it('talk the way people talk: in contractions, a row or two at a time, as it is spelled in New York', () => {
     // Nobody says "do not" out loud. Tom is left out: his notes are in a nine-year-old's hand, and she writes it all out.
-    const stiff = /\b(do not|does not|did not|is not|are not|was not|cannot|will not|would not|could not|have not|has not|I am not)\b/;
-    const abroad = /\b(colour|favourite|neighbour|centre|plough|practise|metres|doughnut|labelled|car park|cosy)\b/i;
     const spoken = (p: (typeof PEOPLE)[number]): string[] => [p.hello, ...p.chat, ...Object.values(p.seasonal ?? {}).flat(), ...Object.values(p.moods ?? {}).flat(), ...Object.values(p.wearing ?? {})];
     for (const p of PEOPLE) {
       for (const line of spoken(p)) {
-        if (p.kind !== 'snowman') expect(line, p.id).not.toMatch(stiff);
-        expect(line, p.id).not.toMatch(abroad);
+        expect(slips(line, p.kind === 'snowman'), `${p.id}: ${line}`).toEqual([]);
         // A line is at most a few short rows in one bubble; a notice may be a list.
         expect(line.split('\n').length, `${p.id}: ${line}`).toBeLessThanOrEqual(p.kind === 'board' ? 5 : 3);
       }
     }
     for (const e of ERRANDS) {
       for (const line of [e.ask, e.nudge, e.thanks, e.thanksOwned ?? '', e.fetch?.handover ?? '']) {
-        if (personById(e.from)?.kind !== 'snowman') expect(line, e.id).not.toMatch(stiff);
-        expect(line, e.id).not.toMatch(abroad);
+        expect(slips(line, personById(e.from)?.kind === 'snowman'), `${e.id}: ${line}`).toEqual([]);
       }
     }
     // The same goes for anything written or handed over: letters, what comes with a bake or a
     // book, and what is said of the things the town builds.
     for (const l of LETTERS) {
       // Pip is nine and writes it all out, as she does for Tom; a notice or an unsigned note has its own manner.
-      if (l.from !== null && l.from !== 'pip') expect(l.text, l.id).not.toMatch(stiff);
-      expect(l.text, l.id).not.toMatch(abroad);
+      expect(slips(l.text, l.from === null || l.from === 'pip'), l.id).toEqual([]);
     }
     for (const o of OFFERINGS) {
       for (const line of [o.hand, o.note]) {
-        expect(line, o.id).not.toMatch(stiff);
-        expect(line, o.id).not.toMatch(abroad);
+        expect(slips(line), `${o.id}: ${line}`).toEqual([]);
       }
     }
     for (const project of PROJECTS) {
       for (const line of [project.ask, project.done, project.said]) {
-        expect(line, project.id).not.toMatch(stiff);
-        expect(line, project.id).not.toMatch(abroad);
+        expect(slips(line), `${project.id}: ${line}`).toEqual([]);
       }
     }
   });

@@ -588,7 +588,9 @@ try {
   await op.fill('#save-field', code);
   await op.locator('#save-restore').tap();
   check('restoring asks before replacing the book', (await op.evaluate(() => window.__gore.state().book.trails)) === 0 && (await op.locator('#menu').textContent()).includes('Tap Restore again'));
-  await op.locator('#save-restore').tap();
+  // The game begins again from the book that was brought across.
+  await Promise.all([op.waitForEvent('load', { timeout: 60000 }), op.locator('#save-restore').tap()]);
+  await op.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const carried = await op.evaluate(() => window.__gore.state().book);
   check('and then brings the whole book across', carried.trails === skied.book.trails && carried.specimens === skied.book.specimens, JSON.stringify(carried));
   await other.context.close();
@@ -653,7 +655,7 @@ try {
   check('handing it over finishes the errand and earns his hat', thanked.errands.length === 0 && thanked.items.length === 0 && thanked.wearing.owned.includes('hat-trapper') && thanked.book.errands === 1, JSON.stringify(thanked.wearing));
   await tp.tap('#book-button');
   await tp.tap('#book-sheet [data-tab=pack]');
-  check('the pack shows the errand done and the hat in the wardrobe', (await tp.locator('#book-sheet .errand.earned').count()) === 1 && (await tp.locator('#book-sheet .wardrobe button:not(.locked)').count()) === 8);
+  check('the pack shows the errand done and the hat in the wardrobe', (await tp.locator('#book-sheet .errand.earned').count()) === 1 && (await tp.locator('#book-sheet .wardrobe button:not(.locked)').count()) === 6);
   // (Eight: the hat and jacket the player starts in, what they start with in five more kinds of thing, and Otto's hat.)
   await tp.locator('#book-sheet .wardrobe button', { hasText: 'trapper' }).tap();
   check('tapping the hat puts it on', (await townState()).wearing.hat === 'hat-trapper' && (await tp.locator('#book-sheet .wardrobe button.on', { hasText: 'trapper' }).count()) === 1);
@@ -805,8 +807,8 @@ try {
   await rp.tap('#menu-button');
   await rp.fill('#save-field', passCode);
   await rp.locator('#save-restore').tap();
-  await rp.locator('#save-restore').tap();
-  await rp.locator('#menu .close').tap();
+  await Promise.all([rp.waitForEvent('load', { timeout: 60000 }), rp.locator('#save-restore').tap()]);
+  await rp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   const elsewhere = homeSeason === 'summer' ? 'Fall' : 'Summer';
   const seasonsOffered = await board(elsewhere);
   check('five stamps earn the pass, and then she offers every other season', seasonsOffered.length === 4 && seasonsOffered.includes(elsewhere) && !seasonsOffered.some((b) => b.toLowerCase().startsWith(homeSeason)), seasonsOffered.join());
@@ -948,6 +950,28 @@ try {
   await hp.reload();
   await hp.waitForFunction(() => window.__gore?.ready || window.__gore?.error, null, { timeout: 120000 });
   check('and are still there the next time', (await hp.evaluate(() => window.__gore.state().cabin.shelf.join())) === setOut.shelf.join());
+  // The museum: a door in town, a sheet of empty cases, and a keeper to show what has been found to.
+  const museum = (await hp.evaluate(() => window.__gore.state())).museum;
+  check('there is a museum in town, with nothing in it yet and things of the player\'s to show', museum.door !== null && museum.given === 0 && museum.waiting >= 2 && museum.total > 90, `${museum.given} of ${museum.total}, ${museum.waiting} waiting`);
+  if (museum.door) {
+    await hp.evaluate(([x, z]) => window.__gore.place(x, z), [museum.door.x, museum.door.z]);
+    await hp.waitForFunction(() => document.getElementById('action-button').textContent === 'Museum', null, { timeout: 20000 }).catch(() => {});
+    check('at its door the action button reads Museum', (await hp.locator('#action-button').textContent()) === 'Museum');
+    await hp.tap('#action-button');
+    await atRest(hp);
+    const museumBox = await hp.locator('#museum-sheet').boundingBox();
+    check("it opens the museum's sheet, which fits the screen", museumBox !== null && museumBox.x >= 0 && museumBox.x + museumBox.width <= width && museumBox.y > 0 && museumBox.y + museumBox.height <= height + 4);
+    check('with four halls, and a place for every piece', (await hp.locator('#museum-sheet h3').count()) === 4 && (await hp.locator('#museum-sheet .case').count()) === museum.total);
+    const giveBox = await hp.locator('#museum-sheet .give').boundingBox();
+    check('the button to show the keeper is big enough for a thumb', giveBox !== null && giveBox.height >= 44 && giveBox.width >= 44, giveBox ? `${giveBox.width} x ${giveBox.height}` : 'hidden');
+    await hp.locator('#museum-sheet .give').tap();
+    await hp.waitForFunction(() => window.__gore.state().museum.given > 0, null, { timeout: 10000 }).catch(() => {});
+    const shown = await hp.evaluate(() => window.__gore.state());
+    check('showing him puts every one of them in a case and takes nothing from the Book', shown.museum.given === museum.waiting && shown.museum.waiting === 0 && shown.book.minerals === 2, `${shown.museum.given} in, ${shown.museum.waiting} waiting, ${shown.book.minerals} minerals`);
+    check('and the button goes away, with the cases marked', !(await hp.locator('#museum-sheet .give').isVisible()) && (await hp.locator('#museum-sheet .case.in').count()) === shown.museum.given);
+    await hp.locator('#museum-sheet button', { hasText: 'Close' }).tap();
+    check('and the sheet closes', !(await hp.locator('#museum-sheet').isVisible()));
+  }
   await homeCtx.close();
 
   // The Home Screen quirk: iOS lays the page out shorter than the screen it shows. It cannot be

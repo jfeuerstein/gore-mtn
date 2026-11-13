@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
 import { TUNE_VOICES } from '../audio/soundscape';
 import { emptySave } from './save';
@@ -16,7 +17,7 @@ describe('the secrets', () => {
       for (const page of s.pages) {
         // Short enough to read in a breath or two, and in the game's own English.
         expect(page.text.length, s.id).toBeLessThan(260);
-        expect(page.text, s.id).not.toMatch(/\b(do not|cannot|did not|is not|colour|grey)\b/i);
+        expect(slips(page.text), `${s.id}: ${page.text}`).toEqual([]);
       }
     }
   });

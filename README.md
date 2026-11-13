@@ -16,10 +16,11 @@ Tomorrow somebody is at it, and the town has built the thing you staked out.
   OpenStreetMap: over ninety named trails, all fourteen lifts, four summits.
 - Four seasons that follow the calendar, under the real hour and the real weather. Skis on
   snow, a mountain bike when it has gone, and a Snow Train to the other seasons.
-- A Book to fill: a passport of trails, lifts, summits and places; twelve minerals; a field
-  guide of forty-two animals, birds and plants; things to wear, letters, bakes and books.
-- A town to walk through, with twenty-five to meet (seventeen people, five boards, a dog, a
-  cat who is mayor and a snowman) and thirty-one errands that are never timed.
+- A Book to fill: a passport of trails, lifts, summits and places; twenty-five minerals; a
+  field guide of forty-two animals, birds and plants; things to wear, letters, bakes and
+  books. And a museum in town with empty cases, for showing what was found.
+- A town to walk through, with twenty-six to meet (eighteen people, five boards, a dog, a
+  cat who is mayor and a snowman) and thirty-nine errands that are never timed.
 - A cabin of your own, a trail map to steer by, and five things the town builds because you
   went and staked out the spot.
 - No timers, no fail states, nothing to buy. It works with no signal.

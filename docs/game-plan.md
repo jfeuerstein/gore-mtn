@@ -87,7 +87,7 @@ Open the game
 - **The bike** is the same simulation with other numbers, for when the snow has gone.
 - **Lifts:** all fourteen run. Board at the bottom, ride for up to a minute with the camera
   looking up the mountain, get off as you got on.
-- **The shuttle** runs between the Base Lodge, the Ski Bowl and the depot.
+- **The shuttle** runs between the Base Lodge, the Ski Bowl, the depot and the Mineral Shop.
 
 ### The Book
 
@@ -97,7 +97,8 @@ earned, so every shelf shows what there is to look for.
 | Page | What is in it |
 |---|---|
 | Passport | A stamp for every named trail (over ninety) and woodland path, skied or walked past nine in ten of its checkpoints; a pin for each of the 14 lifts; a patch for each of 4 summits in each season; 25 postcards for places (five of them built by the town); 15 conditions earned under the real sky; every bench sat on; 28 patches for finishing whole kinds of thing |
-| Minerals | 12 minerals of the Adirondacks, garnet first, found as stones on the groomed snow, beside the trails, in bare rock, in deep woods and thick round the old quarries. The day's scatter is new at midnight. Each keeps its best size. |
+| Minerals | 25 minerals of the Adirondacks, garnet first, found as stones on the groomed snow, beside the trails, in bare rock, in deep woods, round the old quarries, by the water and near the summits. Few enough that the rare ones are gone and looked for; some keep to an hour, a season or a meteor shower. The day's scatter is new at midnight. Each keeps its best size. |
+| The museum | A room of empty cases on Main Street, and Silas, who keeps it. What is found can be shown to him and goes into a case; nothing leaves the Book. He sends the player after old things one at a time, asks after what the museum lacks, and gives things to wear as it fills. |
 | Guide | 42 animals, birds, plants and curiosities, each with its ground, its seasons and its hours. Shy ones bolt if come upon fast. |
 | Pack | Things to wear and bring along, in eight kinds (hats, jackets, goggles, skis, packs, the line the skis leave, the voice of the player's tunes, a pet: 62 in all), letters, what has been tasted and read (33), the town round, field notes on what has been found that is on no map, and the painter's paintings |
 
@@ -192,10 +193,12 @@ map's legend with patches sewn on.
 
 - **Built in code:** terrain, trees, every building, lifts, the train, signs, the people and
   the player (jointed figures, posed by code), stones, street furniture.
-- **Made outside and brought in:** the field guide's 41 models, and the dog and the cat. A
-  picture of each is given a shape (FLUX and Trellis through fal for most; Tripo for the
-  plants and the pets, which it makes a better job of), which a converter closes, cuts down
-  to about a thousand triangles and prints in a few inks.
+- **Made outside and brought in:** 65 models: the field guide's animals, birds and plants,
+  the dog and the cat, four pets, and eighteen things people have made (the secrets' props
+  and what stands beside the people who roam). A picture of each is given a shape (FLUX and
+  Trellis through fal for most; Tripo for the plants and the pets; GPT Image and Tripo as
+  fal serves it for the made things), which a converter closes, cuts down to about a
+  thousand triangles and prints in a few inks.
 - **Painted:** portraits, postcards and the shapes of the marks printed on the ground
   (FLUX, through fal); the four posters on the way in, the shop-sign pictures and the
   Book's patches, a sheet at a time to one brief (Tripo's image model).

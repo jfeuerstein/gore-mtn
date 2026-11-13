@@ -43,6 +43,13 @@ export const LETTERS: readonly Letter[] = [
     text: "Hi! This is a test of your new mailbox. If you're reading this, it works.\nIf you're not reading this... I guess I'll never know. Anyway - welcome to town! :)",
   },
   {
+    id: 'silas-museum',
+    from: 'silas',
+    signed: "-Silas (the museum, Main Street)",
+    when: (save) => Object.keys(save.minerals).length >= 3 || Object.keys(save.sightings).length >= 5,
+    text: "Dear neighbor. Dot says you've been finding things on the hill. I keep the museum on Main Street, past the deli. It's mostly empty cases and one good chair. I'd love to see what you've got. You keep it all - I only need a look.",
+  },
+  {
     id: 'hazel-rules',
     from: 'hazel',
     signed: "-Hazel",

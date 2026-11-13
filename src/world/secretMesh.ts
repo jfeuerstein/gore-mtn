@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { CAIRN_TALL, secretById, type Secret, type SecretKind } from '../game/secrets';
+import { CAIRN_TALL, secretById, type Secret, type SecretKind, thereNow } from '../game/secrets';
 import { GENTLE_SPEED } from '../game/wildlife';
 import { madeModel } from './critterModels';
 import { modelGeometry, type ModelFile } from './modelFiles';
@@ -266,9 +266,10 @@ export interface SecretExtras {
 }
 
 /**
- * The mountain's secrets as they stand in the world: every one of them joined into one mesh
- * (a few thousand triangles for the whole mountain, like the sign posts), and the stones of
- * the cairns as one more, since those are the player's and grow.
+ * The mountain's secrets as they stand in the world: a made model at each, a mesh apiece and
+ * drawn only near the player (or, with `models=blocks`, every one of them built from blocks
+ * and joined into one mesh), and the stones of the cairns as one more, since those are the
+ * player's and grow.
  */
 export class SecretThings {
   readonly group = new THREE.Group();
@@ -323,7 +324,8 @@ export class SecretThings {
     for (const site of sites) {
       const secret = secretById(site.id);
       // Something that keeps to a season is simply not there in the others.
-      if (!secret || (secret.seasons && !secret.seasons.includes(season))) continue;
+      // (Whether one that keeps to the dark is lit is asked as the hour changes, not here.)
+      if (!secret || !thereNow(secret, season, true)) continue;
       this.placedAt.push({ site, secret });
       const y = heightAt(site.x, site.z);
       const sin = Math.sin(site.turn);

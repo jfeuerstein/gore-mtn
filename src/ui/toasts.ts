@@ -17,6 +17,7 @@ const KIND_MARK: Record<GameEvent['kind'], string> = {
   patch: '★',
   hint: '☞',
   secret: '✎',
+  museum: '◈',
   lift: '⌃',
   peak: '▲',
   landmark: '⌂',

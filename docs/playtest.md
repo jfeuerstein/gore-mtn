@@ -45,7 +45,7 @@ is described in [game-plan.md](game-plan.md).
 - **The Snow Train.** Conductor Bea at the depot asks for five stamps in your passport, then
   takes you to any season. In summer and fall the `Skis` button reads `Bike`.
 - **The map.** Drag it, zoom with `+` and `−` or a double tap, tap anything to name it and
-  see where it stands in the book, plant your flag anywhere. `To do` fades what you have.
+  see where it stands in the book, plant your flag anywhere. `Not yet` fades what you have.
 - **The camera.** Two fingers on the picture pinch it nearer or further, and it stays there.
 
 ## Things worth finding
@@ -86,6 +86,19 @@ onto your own map.
   16 to 18 November), look up. The northern lights are out some clear nights from fall to spring.
 - Walk the same way through the woods a few times and look at the ground.
 - `weather=fog`, `sky=meteors` and `sky=aurora` in the address show the last three without waiting.
+
+## The museum, and rarer finds
+
+- There are far fewer stones and animals about: roughly a third of what there was. Say if
+  an ordinary run now turns up too little, or still too much.
+- There are twenty-five minerals where there were twelve. The Book says where and when to
+  look for each: some only at dawn and dusk, some only by water, some only near a summit, one
+  only round a meteor shower.
+- The museum is on Main Street, a little past the deli, with Silas at the door. `at=museum`
+  goes there. Tap `Museum` at the door, then `Show Silas`. Nothing leaves your Book.
+- Silas asks for old things one at a time and says where each was lost. The first is by the
+  Lower Pit.
+- Ask Marge at the inn: her rumour is now of a rare stone the museum hasn't got.
 
 ## New to feel for
 
@@ -144,7 +157,7 @@ the benchmark of 2026-11-12 holds 60 fps at every step.)
 
 - Buildings have no insides. Everyone stands outside their door.
 - The river and ponds are painted on the ground: out of winter you wade across them to the
-  knees, and in winter they are snow like anywhere else.
+  knees, and in winter they are ice, to walk and ski across.
 - Settings > For testing > Go to earns stamps like arriving any other way, and will fill your
   book with things you did not earn.
 - A season or an hour pinned from Settings earns no condition patches. A season reached by

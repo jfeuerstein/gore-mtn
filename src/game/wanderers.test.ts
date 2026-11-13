@@ -1,6 +1,8 @@
+import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
 import { emptySave } from './save';
 import {
+  PIP_WATCHERS,
   BAND,
   BAND_PLAYS,
   BAND_TEACH,
@@ -56,10 +58,12 @@ describe('the people who roam', () => {
     const lines = [...NELL_GIVES, ...RO_FOUND, ...PIP_FOUND, ...Object.values(BAND_TEACH), ...Object.values(BAND_PLAYS), ...PIP_HAUNTS.flatMap((h) => h.hints ?? [])];
     for (const line of lines) {
       expect(line.length, line).toBeLessThan(200);
-      expect(line, line).not.toMatch(/\b(do not|does not|did not|is not|cannot|will not|have not|colour|grey|neighbour|practise)\b/i);
+      expect(slips(line), line).toEqual([]);
     }
     // Every place Pip hides has two things somebody might have seen.
     for (const h of PIP_HAUNTS) expect(h.hints?.length, h.id).toBe(2);
+    // And everybody who might have seen which way she went is somebody in town.
+    for (const who of PIP_WATCHERS) expect(PEOPLE.some((p) => p.id === who && (p.kind ?? 'person') === 'person' && !p.roams), who).toBe(true);
   });
 });
 

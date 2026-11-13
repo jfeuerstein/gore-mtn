@@ -113,6 +113,7 @@ export function jingleFor(kind: string, detail = ''): Jingle | null {
     case 'path':
     case 'lift':
     case 'landmark':
+    case 'museum':
     case 'condition':
       return { notes: [D[5], D[7], D[8]] as number[], gap: 0.09, gain: 0.45, voice: 'thud' };
     case 'peak':

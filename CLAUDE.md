@@ -417,7 +417,7 @@ Everything else is built in code from simple shapes.
   The owner asked for both. Each makes a small dry tick (`jingleFor('pole')`, the `tick` voice).
 - The camera follows the direction of travel, not the skis, so it holds steady through a stop.
 - Open water is painted on the ground. Out of winter someone crossing it wades, to the knees
-  (`footing` in `main.ts`); in winter it is ice and snow like anywhere else.
+  (`footing` in `main.ts`); in winter it is ice, and is walked and skied across.
 - No fail states: the skier can always stop, always get going again on the flat, and never slides
   backwards. A tree is a bump, not a crash (`src/player/collide.ts`): the skier is nudged clear and
   loses speed, more the squarer the hit. Buildings are solid too (`src/world/walls.ts`).
@@ -488,16 +488,28 @@ Everything else is built in code from simple shapes.
   Conditions, some of them particular to a season, are earned by skiing or riding under the real
   calendar, clock and sky only, never a pinned one.
   Three more are for sitting on a bench with a view: at sunrise, at sunset, and under the stars.
-- Stones lie in five kinds of ground: on the groomed snow (so skiing a trail meets them), beside
-  the trails, in steep bare rock, in deep woods (the rarer ones, which take a detour), and
-  thick round the old quarries (`mine`, within `MINE_REACH`). They
-  are laid out patch by patch from the date and the place, so the day's scatter is the same on
-  every load and new at midnight. `FIND_REPORT=1 npx vitest run src/game/minerals.test.ts`
-  prints how many lie on the real mountain, by kind of ground. Change density with `KEEP` and
-  `TRIES` in `minerals.ts`, then check that report.
+- Stones (`src/game/minerals.ts`: twenty-five minerals) lie in seven kinds of ground: on the
+  groomed snow (so skiing a trail meets them), beside the trails, in steep bare rock, in deep
+  woods, round the old quarries (`mine`, within `MINE_REACH`), by open water (`shore`) and
+  near the summits (`summit`, within `SUMMIT_REACH`). They are laid out patch by patch from
+  the date and the place, so the day's scatter is the same on every load and new at midnight.
+- **There are not many, on purpose.** The owner found stones and wildlife too easy to find
+  and too plentiful. A day now has about 740 stones on the whole mountain (it had 2,040): the
+  common ones are met every few hundred metres of trail, the uncommon ones want the right
+  ground, and of each rare kind there are one to six on the mountain. Some keep to a moment
+  (`when` on a `Mineral`, `isOut`): labradorite shows at dawn and dusk, ice lies by the water
+  in winter and the river's garnets when it is open, and a meteorite lies near a summit on
+  the days of a meteor shower and the morning after. One that is not out is simply not
+  there; nothing else lies in its place. `Game.setMoment` tells the rules the season and the
+  watch. `FIND_REPORT=1 npx vitest run src/game/minerals.test.ts` prints how many lie on the
+  real mountain a day, by kind of ground and by mineral. Change density with `KEEP` in
+  `minerals.ts` and the mix with each mineral's `habitats`, then check that report.
+- The inn's rumour is of a rare stone the museum has no example of, while there is one
+  (`Game.rumour`): the surest way to a rare stone is to ask Marge.
 - The field guide is `src/game/wildlife.ts`: some forty animals, birds, plants and curiosities,
   each with the kinds of ground, seasons and watches of the day (dawn, day, dusk, night) it keeps
-  to. Sightings are scattered like stones, but change with the watch as well as the day. Coming
+  to. Sightings are scattered like stones, but change with the watch as well as the day, and
+  were thinned with them: about 560 are about at a time, where there were 1,350. Coming
   close enters one in the guide; a shy creature come upon faster than `GENTLE_SPEED` bolts
   unseen. `src/world/country.ts` is the world as wildlife sees it. `FIND_REPORT=1 npx vitest run
   src/game/wildlife.test.ts` prints how many of each are about in every season and watch.
@@ -520,6 +532,32 @@ Everything else is built in code from simple shapes.
 - New things to collect are data: add them to the tables in `passport.ts` or `minerals.ts`, with
   a test, and the Book lists them.
 
+## The museum
+
+- The owner asked for somewhere to contribute finds to, with rarer and more intentional
+  things to look for. `src/game/museum.ts` (pure, tested) is the rules: a room of empty cases
+  on Main Street (`museum` in `townPlaces.ts`, a kit of its own in `townKit.ts`) and Silas,
+  its keeper, who stands at the door. It has four halls (`HALLS`, `PIECES`): a stone of every
+  kind, a card for everything in the field guide, the old things, and the painter's pictures.
+- **Nothing is handed in and lost.** At the door the action button reads `Museum` and opens
+  its sheet (`src/ui/museumSheet.ts`): the room, what Silas says, a button to show him
+  everything new at once (`Game.museumGive`), and every hall with a place for each thing. A
+  thing in its case is in its colours; one the player has and he has not seen waits in a gold
+  ring; the rest is a ghost. What has just gone in is sewn in, as a patch is. What is given
+  is in the save (`museum`).
+- **Old things** (`RELICS`) are not found by chance. Each is one of Silas's errands, asked one
+  after another (`relic-*` in `ERRANDS`): he says where it was lost, it lies there while the
+  errand is in hand, and it is in its case the moment it is brought back.
+- He asks after something the museum lacks that is about this season, a different thing each
+  day, with where to look (`wanted`, `keeperSays`); and as the cases fill he hands over five
+  things to wear (`MUSEUM_GIFTS`, at 5, 15, 30, 50 and 70 of its 99 pieces). Four patches are for it
+  (ten pieces, and each hall but the gallery, which waits on the painter).
+- A letter from Silas asks the player in once they have found a few things, and the flyer's
+  P.S. says when five or more are waiting to be shown. His wording follows the rules for how
+  people talk (he says `I believe`) and is the owner's to mark up.
+- The museum's patches and gifts were made through fal (`by: 'fal'` in `PATCH_SETS`): the
+  Tripo account had no credit left. The new stones and the old things are Tripo sheets.
+
 ## People and errands
 
 - `src/game/people.ts` is the cast, their lines, their errands and the things to wear, all as
@@ -536,7 +574,7 @@ Everything else is built in code from simple shapes.
   and about each other more than about their jobs. A line may hold two or three short rows,
   split with `\n`, which the talk sheet shows one under another; some lines should be one plain
   row. Each person keeps their own softeners (Hazel and June say `kind of`, Otto `pretty`, Bram
-  `I mean`, Marge `hon`; Ivy and Amos use none). Tom never speaks: his lines are notes stuck to
+  `I mean`, Marge `hon`, Silas `I believe`; Ivy and Amos use none). Tom never speaks: his lines are notes stuck to
   him, written out in full by Pip, and are shown as handwriting. A test in `people.test.ts`
   fails on `do not`, `cannot` and British spelling. The wording is the owner's to mark up.
 - An errand reads its need from the book (stones found, species seen, stamps earned) or from a
@@ -586,7 +624,8 @@ Everything else is built in code from simple shapes.
   the library's books are true). They are kept on the Pack page.
 - The second action button (`Hud.setTalk`) is for talking and for the shuttle, and sits above
   the first when both are offered, as beside a lift.
-- The shuttle carries the player between the Base Lodge, the Ski Bowl and the depot. The Snow
+- The shuttle carries the player between the Base Lodge, the Ski Bowl, the depot and the
+  Mineral Shop. The Snow
   Train, once its pass is earned from Conductor Bea, carries them to another season: the choice
   is kept in the save (`away`) and the game reopens in it. The `season` option still overrides.
 
@@ -823,8 +862,9 @@ Everything else is built in code from simple shapes.
 - Where one stands is a description (`SecretWhere`: as people are placed, or on a peak,
   along a path, at a town place's door, or `wild`: a walk into the woods far from any
   trail), turned into a place by `src/world/secretSites.ts` (pure, tested).
-  `src/world/secretMesh.ts` builds them all from blocks into one mesh, keeps trees off
-  them, and says which is within reach; the action button then offers what is done there
+  `src/world/secretMesh.ts` stands a made model at each (a mesh apiece, drawn only near
+  the player; the blocks they replaced are joined into one mesh for `models=blocks`), keeps
+  trees off them, and says which is within reach; the action button then offers what is done there
   (`openSecret` in `main.ts`), and what there is to read comes up on the talk sheet, which
   can show a picture over the words.
 - The kinds so far. **Registers**: a tin box on a post at the far end of things, with a
@@ -857,7 +897,7 @@ Everything else is built in code from simple shapes.
 - **Unmarked runs** (`unmarkedRuns`, the same file): the three longest ways down through
   forest that set off beside one trail and come out on another, found from the ground.
   Trees are kept back along each (`runCorridor`), a birch with an orange ribbon stands at
-  the top (a secret, `kind: 'ribbon'`) and a smaller one every 160 m. Finding one pencils
+  the top (a secret, `kind: 'ribbon'`) and a smaller one every 80 m. Finding one pencils
   it onto the map; coming down it top to bottom counts it (`Game.ranRun`, `runAlong` in
   `main.ts`).
 - **Found things are pencilled on the player's own map**: a small cross at each secret
@@ -949,8 +989,8 @@ Everything else is built in code from simple shapes.
   (`src/debug/bench.ts`) and ends with a block of text to paste back. Change the step list when a
   new question needs answering; run `node tools/bench-check.mjs` after touching it.
 - The steps now (thirteen, about a minute and a half): the Saddle Lodge as before, to set beside
-  the earlier run; then the Base Lodge and Main Street, each with and without the other people;
-  Main Street without shadows and on a snowy dusk; the Base Lodge in fall; and one step that is
+  the earlier run; then the Base Lodge; Main Street, with and without the other people,
+  without shadows and on a snowy dusk; the Base Lodge in fall; and one step that is
   carried down Sunway at lift speed, which measures building ground and forest while travelling;
   and last, the Base Lodge drawn as the game was before the print, to set beside step 6 and
   see what the print costs. Season, time and weather are pinned for every step.

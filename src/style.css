@@ -513,6 +513,8 @@ body {
   font-size: 16px;
   line-height: 1;
   color: var(--ink-soft);
+  /* The hand's last letter leans out past its own width: room for it, so that it is not cut. */
+  padding-right: 5px;
 }
 /* A hint is a sentence, not a label: let it run to two lines. */
 .toast-hint {
@@ -2128,9 +2130,13 @@ body {
   padding: 2px 4px 8px;
   overflow-x: auto;
   scrollbar-width: none;
-  background: var(--paper);
-  background-image: var(--grain);
-  border-bottom: 2px dotted var(--ink-soft);
+  /* The dotted rule under it is painted, not a border: a border's gaps let the page show through as it scrolls beneath. */
+  background-color: var(--paper);
+  background-image: radial-gradient(circle at center, var(--ink-soft) 1px, transparent 1.3px), var(--grain);
+  background-size: 6px 3px, auto;
+  background-position: left bottom, 0 0;
+  background-repeat: repeat-x, repeat;
+  padding-bottom: 11px;
 }
 #book-sheet .jumps::-webkit-scrollbar {
   display: none;
@@ -2191,6 +2197,7 @@ body {
 #map-sheet:not([hidden]),
 #talk-sheet:not([hidden]),
 #cabin-sheet:not([hidden]),
+#museum-sheet:not([hidden]),
 #menu:not([hidden]) {
   animation: sheet-up 0.26s cubic-bezier(0.2, 1.05, 0.35, 1);
 }
@@ -2418,4 +2425,185 @@ body {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/*
+ * The museum: a tall sheet, like the Book, that scrolls. The room at the top, what its keeper
+ * says, and then hall after hall of cases: what is in is in its colours, what is the player's
+ * to show has a gold ring, and the rest is a ghost.
+ */
+#museum-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 82%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  pointer-events: auto;
+  background-color: var(--paper);
+  background-image: var(--grain);
+  border-top: 2px solid var(--ink);
+  border-radius: 20px 20px 0 0;
+  border-bottom: var(--app-extra, 0px) solid var(--paper);
+  box-sizing: border-box;
+  box-shadow: 0 -6px 26px rgba(20, 28, 44, 0.28);
+  padding: 14px max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+  --map: #4d6168;
+}
+#museum-sheet .head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+#museum-sheet h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: var(--display-weight);
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+}
+#museum-sheet .body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 2px calc(var(--sheet-pad) + 10px);
+}
+#museum-sheet .room {
+  display: block;
+  width: 100%;
+  height: 128px;
+  object-fit: cover;
+  object-position: 50% 62%;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+#museum-sheet .says {
+  margin: 10px 2px 8px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+#museum-sheet .says span {
+  display: block;
+}
+#museum-sheet button {
+  font-family: var(--display);
+  font-size: 17px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: var(--display-case);
+  color: var(--ink);
+  background: var(--card);
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 12px 13px 9px;
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 0 var(--ink);
+}
+#museum-sheet button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+#museum-sheet .give {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  min-height: 48px;
+  background: var(--gold, #e9b949);
+}
+#museum-sheet .give[hidden] {
+  display: none;
+}
+#museum-sheet .count,
+#museum-sheet .note {
+  margin: 2px 2px 4px;
+  font-size: 13.5px;
+  opacity: 0.78;
+}
+#museum-sheet h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+  padding: 7px 12px 4px;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: var(--display-weight);
+  letter-spacing: 0.08em;
+  text-transform: var(--display-case);
+  color: var(--paper);
+  background: var(--map);
+  border-radius: 8px;
+  box-shadow: 0 3px 0 var(--ink);
+}
+#museum-sheet h3 small {
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+#museum-sheet .cases {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px 6px;
+}
+#museum-sheet .case {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+#museum-sheet .case img {
+  display: block;
+  width: 100%;
+  max-width: 64px;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+#museum-sheet .case.picture img {
+  object-fit: cover;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+#museum-sheet .case small:empty {
+  display: none;
+}
+#museum-sheet .case small {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.15;
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+#museum-sheet .case.none img {
+  filter: grayscale(1) contrast(0.5) brightness(1.2);
+  opacity: 0.26;
+}
+/* The player has one, and the keeper has not seen it: it waits in a gold ring. */
+#museum-sheet .case.yours img {
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5px var(--gold, #e9b949);
+  opacity: 0.7;
+}
+#museum-sheet .case.yours.picture img {
+  border-radius: 4px;
+}
+#museum-sheet .case.yours small {
+  opacity: 0.7;
+}
+#museum-sheet .sewn {
+  width: 100%;
+  max-width: 64px;
 }

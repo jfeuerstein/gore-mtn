@@ -1,3 +1,4 @@
+import { freshFromForecast } from '../game/snowpack';
 import { GORE } from './sun';
 import type { Weather } from './palette';
 
@@ -41,8 +42,7 @@ export function weatherFromForecast(reply: unknown): Weather | null {
   const upper = Math.max(typeof current.cloud_cover_mid === 'number' ? current.cloud_cover_mid : 0, typeof current.cloud_cover_high === 'number' ? current.cloud_cover_high : 0);
   const low = snowing === 0 && (current.weather_code === 45 || current.weather_code === 48 || (lowCover >= 80 && upper <= 30)) ? 1 : 0;
   // What has fallen since yesterday, when the reply carries the days as well as the moment.
-  const sums = (reply as { daily?: { snowfall_sum?: unknown } }).daily?.snowfall_sum;
-  const fresh = Array.isArray(sums) ? Math.min(60, sums.reduce((sum: number, cm) => sum + (typeof cm === 'number' && Number.isFinite(cm) && cm > 0 ? cm : 0), 0)) : undefined;
+  const fresh = freshFromForecast(reply) ?? undefined;
   return { overcast: Math.max(overcast, snowing), snowing, ...(low > 0 ? { low } : {}), ...(fresh !== undefined ? { fresh } : {}) };
 }
 

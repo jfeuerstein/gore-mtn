@@ -185,6 +185,22 @@ export function trailShare(p: TrailProgress | undefined): number {
   return n / p.seen.length;
 }
 
+/**
+ * What is left of a trail that has been skied most of the way and not stamped: how many of its
+ * checkpoints have been passed, and which part of it the rest are in. Null for a trail that is
+ * stamped, hardly begun, or as good as done.
+ */
+export function trailLeft(p: TrailProgress | undefined): { seen: number; of: number; part: 'top' | 'middle' | 'bottom' } | null {
+  if (!p || p.stamped || p.seen.length === 0) return null;
+  const share = trailShare(p);
+  if (share < 0.5 || share >= STAMP_SHARE) return null;
+  const of = p.seen.length;
+  const missed = { top: 0, middle: 0, bottom: 0 };
+  for (let i = 0; i < of; i++) if (p.seen[i] !== '1') missed[i < of / 3 ? 'top' : i < (of * 2) / 3 ? 'middle' : 'bottom']++;
+  const part = missed.top >= missed.middle && missed.top >= missed.bottom ? 'top' : missed.bottom >= missed.middle ? 'bottom' : 'middle';
+  return { seen: of - missed.top - missed.middle - missed.bottom, of, part };
+}
+
 /** Somewhere that earns a patch or stamp by being reached. */
 export interface Spot {
   id: string;

@@ -226,6 +226,22 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
     kit.signH = 0.9;
     return kit;
   },
+  museum(p, r) {
+    const h = 6.6;
+    const kit = shell(p.w, p.d, h, CREAM, roofOf(r, 0x4d5666), p.d * 0.22, CREAM);
+    const front = p.d / 2;
+    // A portico: wide stone steps, four columns and a pediment over the door, no wider than the front it stands on.
+    const pw = Math.min(8.2, p.w - 1);
+    kit.list.push({ size: [pw + 1.2, 0.4, 3.4], at: [0, 0.2, front + 1.7], colour: STONE }, { size: [pw - 0.2, 0.4, 2.6], at: [0, 0.55, front + 1.3], colour: STONE }, { size: [pw, 0.9, 2.6], at: [0, 0.7 + 5.25, front + 1.3], colour: WHITE });
+    for (const k of [-1, -0.37, 0.37, 1]) kit.list.push({ size: [0.6, 4.75, 0.6], at: [k * (pw / 2 - 0.7), 0.75 + 2.4, front + 2.2], colour: WHITE });
+    kit.extra.push(placed(roof(pw, 2.8, 1.7, WHITE, WHITE), 0, 0.7 + 5.7, front + 1.3));
+    // A long garnet banner on the wall either side of it, where the wall is wide enough for one.
+    for (const x of [-(pw / 2 + 1.5), pw / 2 + 1.5]) if (Math.abs(x) < p.w / 2 - 0.7) kit.list.push({ size: [1, 3.4, 0.12], at: [x, 0.7 + 3.3, front + 0.1], colour: 0x8f1d2c }, { size: [1.2, 0.14, 0.2], at: [x, 0.7 + 5.05, front + 0.14], colour: DARK });
+    kit.panes.push(...windows(p.w, p.d, 1, 3, 0.9, true, 2.6));
+    kit.signY = 0.7 + 5.25;
+    kit.signH = 0.8;
+    return kit;
+  },
   barn(p, r) {
     const h = 6.4;
     const kit = shell(p.w, p.d, h, 0x9a3a2c, roofOf(r, 0x4d5666), p.d * 0.36, 0x9a3a2c);
@@ -332,7 +348,7 @@ const STYLES: Record<TownStyle, (p: TownPlace, roofColour: number) => Kit> = {
 
 /** How high each style stands, roof and all, in metres: for the camera and for people to walk round. */
 export function townPlaceHeight(style: TownStyle, w: number, d: number): number {
-  const walls: Partial<Record<TownStyle, number>> = { inn: w > 40 ? 9.6 : 6.6, store: 5.2, postoffice: 4.8, church: 6.5, hall: 7.2, barn: 6.4, mill: 6, powerhouse: 6, station: 6 };
+  const walls: Partial<Record<TownStyle, number>> = { inn: w > 40 ? 9.6 : 6.6, museum: 6.6, store: 5.2, postoffice: 4.8, church: 6.5, hall: 7.2, barn: 6.4, mill: 6, powerhouse: 6, station: 6 };
   return (walls[style] ?? 4.8) + 0.7 + Math.min(6, d * 0.35);
 }
 
@@ -345,7 +361,7 @@ export function townPlaceHeight(style: TownStyle, w: number, d: number): number 
 const PORCH_DEPTH: Partial<Record<TownStyle, number>> = { inn: 2.8, cabin: 2.4, tavern: 2.2, house: 2.2 };
 
 /** The kinds of place that are dressed for the season: where somebody is in and out of the door all day. */
-const DRESSED: readonly TownStyle[] = ['inn', 'postoffice', 'hall', 'cafe', 'deli', 'house', 'tavern', 'cabin', 'store', 'church'];
+const DRESSED: readonly TownStyle[] = ['museum', 'inn', 'postoffice', 'hall', 'cafe', 'deli', 'house', 'tavern', 'cabin', 'store', 'church'];
 
 /**
  * What the season puts round a front door: a wreath and a string of lights along the front in
@@ -438,7 +454,8 @@ export function buildTownPlaces(
       hangs.push({ text: p.sign, x: p.x + lx * Math.cos(p.turn) + lz * Math.sin(p.turn), y: p.y - 0.5 + ly, z: p.z - lx * Math.sin(p.turn) + lz * Math.cos(p.turn), turn: p.turn });
     }
     if (p.sign) {
-      const out = p.d / 2 + (p.style === 'hall' ? 2.35 : 0.2);
+      // (On a portico's lintel, where there is one.)
+      const out = p.d / 2 + (p.style === 'hall' ? 2.35 : p.style === 'museum' ? 2.65 : 0.2);
       signs.push({
         text: p.sign,
         x: p.x + Math.sin(p.turn) * out,
@@ -446,7 +463,7 @@ export function buildTownPlaces(
         z: p.z + Math.cos(p.turn) * out,
         turn: p.turn,
         height: kit.signH,
-        maxWidth: p.style === 'hall' ? 7.2 : Math.min(p.w * 0.8, 11),
+        maxWidth: p.style === 'hall' ? 7.2 : p.style === 'museum' ? Math.min(7.4, p.w - 2) : Math.min(p.w * 0.8, 11),
         board: p.style === 'store' ? '#b53a2a' : p.style === 'postoffice' ? '#2b4a7a' : '#f5f2ea',
         ink: p.style === 'store' || p.style === 'postoffice' ? '#fffdf7' : '#22304a',
       });

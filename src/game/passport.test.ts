@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
 import type { Trail } from '../world/trails';
-import { buildLandmarks, buildPathBook, buildPeaks, buildTrailBook, benchConditionsNow, CONDITIONS, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare } from './passport';
+import { buildLandmarks, buildPathBook, buildPeaks, buildTrailBook, benchConditionsNow, CONDITIONS, conditionsNow, reached, STAMP_SHARE, TrailIndex, trailShare, trailLeft } from './passport';
 import type { TrailProgress } from './save';
 
 const trail = (name: string | null, pts: number[], extra: Partial<Trail> = {}): Trail => ({
@@ -255,5 +255,20 @@ describe('conditionsNow', () => {
     expect(conditionsNow(30, true, { overcast: 1, snowing: 1 })).toEqual(['powder-day']);
     expect(conditionsNow(-20, false, { overcast: 1, snowing: 0.6 }).sort()).toEqual(['night-owl', 'powder-day']);
     expect(conditionsNow(30, true, { overcast: 0.8, snowing: 0 })).toEqual([]);
+  });
+});
+
+describe('what is left of a trail', () => {
+  it('is said only of one that is mostly skied and not stamped, and says which part is still to ski', () => {
+    expect(trailLeft(undefined)).toBeNull();
+    expect(trailLeft({ seen: '000000000000000000000' })).toBeNull();
+    expect(trailLeft({ seen: '111100000000000000000' })).toBeNull();
+    // Begun a fifth of the way down, as a run from the cabin's yard is: the top is what is missing.
+    expect(trailLeft({ seen: '000011111111111111111' })).toEqual({ seen: 17, of: 21, part: 'top' });
+    expect(trailLeft({ seen: '111111111111111100000' })).toEqual({ seen: 16, of: 21, part: 'bottom' });
+    expect(trailLeft({ seen: '111111110000111111111' })).toEqual({ seen: 17, of: 21, part: 'middle' });
+    // As good as done, or done: nothing to say.
+    expect(trailLeft({ seen: '111111111111111111110' })).toBeNull();
+    expect(trailLeft({ seen: '000011111111111111111', stamped: '2026-11-01' })).toBeNull();
   });
 });

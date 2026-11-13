@@ -527,9 +527,9 @@ export function isAbout(s: Species, haunt: Haunt, season: Season, watch: Watch, 
 export const SIGHT_PATCH = 320;
 /** Places tried in each patch, and the chance each is kept, by kind of ground. */
 const TRIES = 150;
-const KEEP: Record<Haunt, number> = { trail: 0.035, edge: 0.3, woods: 0.02, rock: 0.1, water: 0.06, shore: 0.12, town: 0.1 };
+const KEEP: Record<Haunt, number> = { trail: 0.014, edge: 0.12, woods: 0.008, rock: 0.04, water: 0.025, shore: 0.05, town: 0.045 };
 /** No more than this many sightings in a patch. */
-export const MOST_SIGHTINGS = 10;
+export const MOST_SIGHTINGS = 6;
 
 export interface Sighting {
   /** Stable for the watch: patch column, row and the try that produced it. */

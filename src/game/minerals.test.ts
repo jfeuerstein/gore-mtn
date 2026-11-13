@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { loadTestWorld } from '../world/testWorld';
-import { daySeed, FIND_PATCH, findsInPatch, HABITATS, habitatAt, MINERALS, MOST_PER_PATCH, pick, specimenSize, type Find, type Ground, type Habitat } from './minerals';
+import { daySeed, FIND_PATCH, findsInPatch, HABITATS, habitatAt, isOut, MINERALS, MOST_PER_PATCH, pick, specimenSize, type Find, type Ground, type Habitat, type Moment } from './minerals';
+import { buildPeaks } from './passport';
 
 describe('the mineral table', () => {
-  it('has a dozen minerals with distinct ids and names', () => {
-    expect(MINERALS).toHaveLength(12);
-    expect(new Set(MINERALS.map((m) => m.id)).size).toBe(12);
-    expect(new Set(MINERALS.map((m) => m.name)).size).toBe(12);
+  it('has twenty-five minerals with distinct ids and names', () => {
+    expect(MINERALS).toHaveLength(25);
+    expect(new Set(MINERALS.map((m) => m.id)).size).toBe(25);
+    expect(new Set(MINERALS.map((m) => m.name)).size).toBe(25);
+  });
+
+  it('says in its hint when a stone keeps to an hour, a season or a shower', () => {
+    for (const m of MINERALS) {
+      if (m.when?.watches) for (const watch of m.when.watches) expect(m.hint, m.id).toContain(watch);
+      if (m.when?.seasons?.length === 1) expect(m.hint, m.id).toContain(m.when.seasons[0] as string);
+      if (m.when?.shower) expect(m.hint, m.id).toContain('meteor shower');
+    }
+    const garnet = MINERALS[0] as (typeof MINERALS)[number];
+    expect(isOut(garnet, { day: '2026-07-01', season: 'summer', watch: 'night' })).toBe(true);
   });
 
   it('gives every mineral somewhere to be found, a line about it and a hint', () => {
@@ -101,7 +112,7 @@ describe('the old garnet workings', () => {
       counts.set(id, (counts.get(id) ?? 0) + 1);
     }
     expect((counts.get('garnet') ?? 0) / 2000).toBeGreaterThan(0.5);
-    expect((counts.get('gem-garnet') ?? 0) / 2000).toBeGreaterThan(0.05);
+    expect((counts.get('gem-garnet') ?? 0) / 2000).toBeGreaterThan(0.03);
   });
 
   it('turn up big garnets far oftener than the trails do', () => {
@@ -137,17 +148,31 @@ describe('the old garnet workings', () => {
 describe('finds on the real mountain', () => {
   const world = loadTestWorld();
   const hf = world.source;
-  const ground: Ground = { trailDistance: (x, z) => world.trailDistance(x, z), slopeDegAt: (x, z) => hf.slopeDegAt(x, z) };
+  const peaks = buildPeaks(world.places, world.lifts);
+  const quarries = world.spots.filter((sp) => sp.kind === 'quarry');
+  const ground: Ground = {
+    trailDistance: (x, z) => world.trailDistance(x, z),
+    slopeDegAt: (x, z) => hf.slopeDegAt(x, z),
+    openAt: (x, z) => world.openAt(x, z),
+    peakDistance: (x, z) => Math.min(...peaks.map((p) => Math.hypot(p.x - x, p.z - z))),
+    mineDistance: (x, z) => Math.min(...quarries.map((q) => Math.hypot(q.x - x, q.z - z))),
+  };
   const cols = Math.ceil(hf.width / FIND_PATCH);
   const rows = Math.ceil(hf.depth / FIND_PATCH);
-  const all = (day: string): Find[] => {
+  // (Kept by the day: laying a day's stones over the whole mountain takes a moment.)
+  const lain = new Map<string, Find[]>();
+  const all = (day: string, moment?: Moment): Find[] => {
+    const kept = moment ? undefined : lain.get(day);
+    if (kept) return kept;
     const out: Find[] = [];
-    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push(...findsInPatch(ground, c, r, daySeed(day), hf.minX, hf.minZ));
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) out.push(...findsInPatch(ground, c, r, daySeed(day), hf.minX, hf.minZ, moment));
+    if (!moment) lain.set(day, out);
     return out;
   };
   const today = all('2026-11-10');
 
   it('are the same all day and different the next', () => {
+    lain.delete('2026-11-10');
     expect(all('2026-11-10').map((f) => f.id + f.mineral.id)).toEqual(today.map((f) => f.id + f.mineral.id));
     const tomorrow = all('2026-11-11');
     const same = tomorrow.filter((f, i) => today[i] && Math.hypot(f.x - (today[i] as Find).x, f.z - (today[i] as Find).z) < 1).length;
@@ -160,6 +185,7 @@ describe('finds on the real mountain', () => {
       const habitat = habitatAt(ground, f.x, f.z);
       expect(habitat, f.id).not.toBeNull();
       expect(f.mineral.habitats[habitat as Habitat] ?? 0, `${f.mineral.id} in ${habitat}`).toBeGreaterThan(0);
+      expect(world.openAt(f.x, f.z), f.id).toBe(0);
       expect(f.x).toBeGreaterThanOrEqual(hf.minX);
       expect(f.x).toBeLessThanOrEqual(hf.maxX + FIND_PATCH);
       const patch = f.id.split(':').slice(0, 2).join(':');
@@ -168,7 +194,7 @@ describe('finds on the real mountain', () => {
     expect(Math.max(...perPatch.values())).toBeLessThanOrEqual(MOST_PER_PATCH);
   });
 
-  it('are met on the groomed snow: a skier passes one within a swerve every hundred metres or so', () => {
+  it('are met on the groomed snow, but not at every turn: one within a swerve every few hundred metres', () => {
     const onTrail = today.filter((f) => habitatAt(ground, f.x, f.z) === 'trail');
     // Walk every trail's centre line and count the stones lying within 15 m of it.
     let length = 0;
@@ -186,38 +212,74 @@ describe('finds on the real mountain', () => {
       }
     }
     const spacing = length / met.size;
-    expect(spacing, `${met.size} stones within a swerve over ${Math.round(length)} m of trail; ${onTrail.length} on trails in all`).toBeGreaterThan(50);
-    expect(spacing).toBeLessThan(160);
+    expect(spacing, `${met.size} stones within a swerve over ${Math.round(length)} m of trail; ${onTrail.length} on trails in all`).toBeGreaterThan(180);
+    expect(spacing).toBeLessThan(520);
   });
 
-  it('are plentiful beside the trails: a find every hundred metres or two of skiing', () => {
-    const trailside = today.filter((f) => habitatAt(ground, f.x, f.z) === 'trailside');
-    const trailLength = world.trails.filter((t) => !t.area).reduce((sum, t) => {
-      let len = 0;
-      for (let i = 0; i + 3 < t.pts.length; i += 2) len += Math.hypot((t.pts[i + 2] as number) - (t.pts[i] as number), (t.pts[i + 3] as number) - (t.pts[i + 1] as number));
-      return sum + len;
-    }, 0);
-    const spacing = trailLength / trailside.length;
-    expect(spacing, `${trailside.length} trailside finds over ${Math.round(trailLength)} m of trail`).toBeGreaterThan(70);
-    expect(spacing).toBeLessThan(220);
-  });
-
-  it('include every mineral somewhere on the mountain on a typical day, rare ones least', () => {
+  it('are fewer than they were: some hundreds on the whole mountain, and of every rare kind only a handful', () => {
+    expect(today.length).toBeGreaterThan(350);
+    expect(today.length).toBeLessThan(900);
     const counts = new Map<string, number>();
     for (const f of today) counts.set(f.mineral.id, (counts.get(f.mineral.id) ?? 0) + 1);
-    for (const m of MINERALS) expect(counts.get(m.id) ?? 0, m.name).toBeGreaterThan(0);
-    expect(counts.get('gem-garnet') ?? 0).toBeLessThan((counts.get('garnet') ?? 0) / 4);
-    expect(today.length).toBeLessThan(3200);
+    for (const m of MINERALS.filter((q) => q.rarity === 'rare')) expect(counts.get(m.id) ?? 0, m.name).toBeLessThanOrEqual(9);
+    for (const m of MINERALS.filter((q) => q.rarity === 'common')) expect(counts.get(m.id) ?? 0, m.name).toBeGreaterThan(25);
   });
+
+  it('include every mineral somewhere on the mountain within a fortnight', () => {
+    const seen = new Set<string>();
+    for (let d = 1; d <= 14; d++) for (const f of all(`2026-12-${String(d).padStart(2, '0')}`)) seen.add(f.mineral.id);
+    for (const m of MINERALS) expect(seen.has(m.id), m.name).toBe(true);
+  }, 120000);
+
+  it('keep some stones to their hour, their season and their nights', () => {
+    const has = (finds: Find[], id: string): boolean => finds.some((f) => f.mineral.id === id);
+    const days = Array.from({ length: 10 }, (_, i) => `2026-12-${String(i + 1).padStart(2, '0')}`);
+    // Every stone the days could hold, and then which of them are out at a moment.
+    const on = (day: string): Find[] => all(day);
+    const over = (season: Moment['season'], watch: Moment['watch'], of: readonly string[] = days): Find[] => of.flatMap((day) => on(day).filter((f) => isOut(f.mineral, { day, season, watch })));
+    // Labradorite shows when the light is low.
+    expect(has(over('winter', 'dawn'), 'labradorite')).toBe(true);
+    expect(has(over('winter', 'dusk'), 'labradorite')).toBe(true);
+    expect(has(over('winter', 'day'), 'labradorite')).toBe(false);
+    expect(has(over('winter', 'night'), 'labradorite')).toBe(false);
+    // Ice in winter, and the river's garnets when the water is open.
+    expect(has(over('winter', 'day'), 'ice')).toBe(true);
+    expect(has(over('summer', 'day'), 'ice')).toBe(false);
+    expect(has(over('winter', 'day'), 'river-garnet')).toBe(false);
+    expect(has(over('summer', 'day'), 'river-garnet')).toBe(true);
+    // A meteorite on the days of a shower and the morning after, and never otherwise.
+    expect(has(over('winter', 'day'), 'meteorite')).toBe(false);
+    expect(has(over('winter', 'day', ['2026-12-12', '2026-12-13', '2026-12-14', '2026-12-15', '2026-12-16']), 'meteorite')).toBe(true);
+    expect(has(over('winter', 'day', ['2026-12-17', '2026-12-18']), 'meteorite')).toBe(false);
+    // The scatter itself leaves out what is not out, and nothing else lies where one of those would have.
+    const day = '2026-12-05';
+    const low = all(day, { day, season: 'winter', watch: 'dusk' });
+    const plain = all(day, { day, season: 'winter', watch: 'day' });
+    expect(has(low, 'labradorite') || has(on(day), 'labradorite') === false).toBe(true);
+    expect(has(plain, 'labradorite')).toBe(false);
+    expect(has(plain, 'river-garnet')).toBe(false);
+    const patchOf = (f: Find): string => f.id.split(':').slice(0, 2).join(':');
+    const full = new Set<string>();
+    for (const list of [low, on(day)]) {
+      const n = new Map<string, number>();
+      for (const f of list) n.set(patchOf(f), (n.get(patchOf(f)) ?? 0) + 1);
+      for (const [patch, count] of n) if (count >= MOST_PER_PATCH) full.add(patch);
+    }
+    for (const f of plain) if (!full.has(patchOf(f))) expect(low.find((g) => g.id === f.id)?.mineral.id, f.id).toBe(f.mineral.id);
+  }, 120000);
 
   it.runIf(process.env.FIND_REPORT)('reports how many of each (for tuning)', () => {
     const by = new Map<string, number>();
     const habitats = new Map<string, number>();
-    for (const f of today) {
-      by.set(f.mineral.name, (by.get(f.mineral.name) ?? 0) + 1);
-      const h = habitatAt(ground, f.x, f.z) ?? 'none';
-      habitats.set(h, (habitats.get(h) ?? 0) + 1);
+    const days = 10;
+    for (let d = 1; d <= days; d++) {
+      for (const f of all(`2026-12-${String(d).padStart(2, '0')}`)) {
+        by.set(f.mineral.name, (by.get(f.mineral.name) ?? 0) + 1);
+        const h = habitatAt(ground, f.x, f.z) ?? 'none';
+        habitats.set(h, (habitats.get(h) ?? 0) + 1);
+      }
     }
-    process.stderr.write(`${today.length} finds ${JSON.stringify([...habitats])} ${JSON.stringify([...by].sort((a, b) => b[1] - a[1]))}\n`);
-  });
+    const per = (m: Map<string, number>): [string, number][] => [...m].map(([k, n]): [string, number] => [k, Math.round((n / days) * 10) / 10]).sort((a, b) => b[1] - a[1]);
+    process.stderr.write(`a day, over ${days}: ${JSON.stringify(per(habitats))}\n${JSON.stringify(per(by))}\n`);
+  }, 120000);
 });

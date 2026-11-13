@@ -55,6 +55,15 @@ describe('the things people have made', () => {
   // Every model the secrets and the roamers' props ask for by name.
   const asked = [...new Set([...source('./secretMesh.ts').matchAll(/'(thing-[a-z-]+)'/g), ...source('./folk.ts').matchAll(/'(thing-[a-z-]+)'/g)].map((m) => m[1] as string))];
 
+  it('has a made model for every pet that can come along', () => {
+    // The models the companions are (KINDS in companion.ts), and every pet there is to have (GEAR in people.ts).
+    const kinds = [...source('./companion.ts').matchAll(/'(pet-[a-z]+)': \{ model: '([a-z-]+)'/g)].map((m) => ({ pet: m[1] as string, model: m[2] as string }));
+    const pets = [...source('../game/people.ts').matchAll(/slot: 'pet', colour: 0x[0-9a-f]+, style: '(pet-[a-z]+)'/g)].map((m) => m[1] as string);
+    expect(pets.length).toBeGreaterThanOrEqual(5);
+    expect(pets.filter((pet) => !kinds.some((k) => k.pet === pet))).toEqual([]);
+    expect(kinds.filter((k) => !(k.model in models)).map((k) => k.pet)).toEqual([]);
+  });
+
   it('has a made model for every one that is asked for by name', () => {
     expect(asked.length).toBeGreaterThanOrEqual(16);
     expect(asked.filter((id) => !(id in models))).toEqual([]);

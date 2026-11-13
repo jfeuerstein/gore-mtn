@@ -9,7 +9,10 @@ import { KEYS, SECRETS } from '../game/secrets';
 import { dropAway, sewn } from './motion';
 import { SIGHTS } from '../game/sky';
 import { PAINTER_HAUNTS, paintingId } from '../game/wanderers';
-import { ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND } from '../game/people';
+import { DEFAULT_GEAR, ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND, type GearSlot } from '../game/people';
+
+/** The kinds of thing in the wardrobe that are only shown once the player has one that is not what they began with. */
+const LATER_SLOTS: readonly GearSlot[] = ['trail', 'tune', 'pet'];
 import { KIN_NAME, SPECIES, type Kin, type Species } from '../game/wildlife';
 import { SEASON_NAME, SEASONS } from '../look/season';
 import { DIFFICULTY_MARK } from '../world/trails';
@@ -55,6 +58,9 @@ function plate(set: 'minerals' | 'species' | 'places' | 'paintings', id: string)
  * is shown as a pale ghost of itself, so that the shelf says what there is to look for.
  * @param art its set and name under public/art, as "patches/first-tracks"
  */
+/** Which page of the Book a thing is on, by the set its picture is filed in; the Passport if it is not said. */
+const PAGE_OF: Record<string, Tab> = { minerals: 'minerals', species: 'guide', gear: 'pack', offerings: 'pack' };
+
 /** Patches earned since the Book last showed their place: each is sewn on, once, when it does. */
 const justHad = new Set<string>();
 
@@ -103,6 +109,8 @@ export class Book {
   private readonly body: HTMLElement;
   private readonly tabs = new Map<Tab, HTMLButtonElement>();
   private tab: Tab = 'passport';
+  /** The picture of the last thing earned since the Book was last opened: it opens there. */
+  private newest: string | null = null;
   /** Called when the book opens, so other sheets can get out of the way. */
   onOpen: (() => void) | null = null;
   /** Called when the player changes what they are wearing. */
@@ -152,8 +160,18 @@ export class Book {
   open(): void {
     this.onOpen?.();
     this.sheet.hidden = false;
+    // It opens at what was had last, if anything has been since it was last open: at the page it is
+    // on, with its place in view, where it is being sewn on. Not at the top of a list of what is not yet had.
+    const newest = this.newest;
+    this.newest = null;
+    if (newest) this.tab = PAGE_OF[newest.slice(0, newest.indexOf('/'))] ?? 'passport';
     this.render();
     this.turn();
+    if (newest) {
+      const place = this.body.querySelector('.sewn');
+      if (place) place.scrollIntoView({ block: 'center' });
+      else this.body.scrollTop = 0;
+    }
   }
 
   close(): void {
@@ -177,6 +195,7 @@ export class Book {
    */
   earned(art: string): void {
     justHad.add(art);
+    this.newest = art;
   }
 
   /** Something has been earned: bring the page up to date if it is on show. */
@@ -442,6 +461,8 @@ export class Book {
     out.push(this.heading('Wardrobe', owned.length, GEAR.length));
     out.push(el('p', 'note', "Things people have given you, and things you've come across out there. Tap one to put it on."));
     for (const slot of GEAR_SLOTS) {
+      // Tracks, tunes and company mean nothing until one has been come by: they are not shown, as rows of question marks, before then.
+      if (LATER_SLOTS.includes(slot) && !GEAR.some((g) => g.slot === slot && g.id !== DEFAULT_GEAR[slot] && game.save.gear.owned.includes(g.id))) continue;
       out.push(el('h4', '', SLOT_NAME[slot].plural));
       const row = el('div', 'wardrobe');
       for (const g of GEAR.filter((q) => q.slot === slot)) {

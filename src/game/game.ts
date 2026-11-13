@@ -1,7 +1,8 @@
 import { SEASON_NAME, type Season } from '../look/season';
 import { DIFFICULTY_MARK, type Lift, type Path, type Place, type Trail } from '../world/trails';
 import { artSlug } from './artNames';
-import { daySeed, FIND_PATCH, findsInPatch, mineralById, MINERALS, specimenSize, type Find, type Ground } from './minerals';
+import { daySeed, FIND_PATCH, findsInPatch, isOut, mineralById, MINERALS, specimenSize, type Find, type Ground } from './minerals';
+import { fullness, give as giveToMuseum, MUSEUM_GIFTS, RELICS, toGive, type Piece } from './museum';
 import {
   buildLandmarks,
   buildPathBook,
@@ -12,8 +13,7 @@ import {
   TrailIndex,
   type Route,
   type Spot,
-  type TrailEntry,
-} from './passport';
+  type TrailEntry, trailLeft } from './passport';
 import { LAST_LETTER, letterWaiting, LETTERS, type Letter } from './letters';
 import { OFFERING_KIND, offeringFrom, OFFERINGS } from './offerings';
 import { bookFull, KEEPSAKE, PATCHES, patchesEarned, type Tally } from './patches';
@@ -44,7 +44,7 @@ import { projectInHand, PROJECTS, projectState, type ProjectState } from './proj
 
 /** Something the player has just earned, to announce. */
 export interface GameEvent {
-  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting' | 'errand' | 'gear' | 'item' | 'patch' | 'hint' | 'secret';
+  kind: 'trail' | 'path' | 'lift' | 'peak' | 'landmark' | 'condition' | 'season' | 'mineral' | 'sighting' | 'errand' | 'gear' | 'item' | 'patch' | 'hint' | 'secret' | 'museum';
   title: string;
   detail: string;
   /** For a mineral, its colour. */
@@ -184,25 +184,16 @@ export class Game {
   private readonly pathIndex: TrailIndex;
   private readonly patches = new Map<string, Find[]>();
   private patchDay = '';
+  /** The season and the watch of the day: some stones keep to particular ones. Set by whoever knows the hour. */
+  private nowSeason: Season = 'winter';
+  private nowWatch: Watch = 'day';
   /** The finds last handed out, and the day and patch they were worked out for. */
   private near: readonly Find[] = [];
   private nearKey = '';
   private dirty = false;
   private rumourOf: { day: string; rumour: Rumour } | null = null;
-  /** The day the inn last passed on its rumour, so it is told once a day. */
-  private rumourTold = '';
-  /** The day the postmaster last said the box was empty, so it is said once a day. */
-  private emptyBox = '';
-  /** Who has said, today, which way Pip went. */
-  private hinted: { day: string; who: string[] } = { day: '', who: [] };
-  /** The day each person last handed over their offering, so a second visit the same day is small talk. */
-  private readonly treated = new Map<string, string>();
   /** How many times each person has made small talk, so they say something different each time. */
   private readonly chatted = new Map<string, number>();
-  /** The day each errand was last asked, so that one turned down is not pressed. */
-  private readonly asked = new Map<string, string>();
-  /** The day each person last remarked on what the player is wearing. */
-  private readonly noticed = new Map<string, string>();
   private readonly sightPatches = new Map<string, Sighting[]>();
   private sightKey = '';
   private about: readonly Sighting[] = [];
@@ -218,6 +209,8 @@ export class Game {
     this.paths = buildPathBook(world.paths ?? [], world.trails);
     this.pathIndex = new TrailIndex(this.paths);
     this.peaks = buildPeaks(world.places, world.lifts);
+    // The summits are ground of their own for stones.
+    if (!world.peakDistance) this.world = { ...world, peakDistance: (x, z) => Math.min(...this.peaks.map((peak) => Math.hypot(peak.x - x, peak.z - z))) };
     this.landmarks = [
       ...buildLandmarks(world.places, world.spots ?? []),
       // What the town builds is worth a postcard too, once it is built.
@@ -227,14 +220,32 @@ export class Game {
       }),
     ];
     // Start out in the plain red jacket and blue beanie, with plain everything else, and nobody along.
+    this.mend();
+    this.liftNames = [...new Set(world.lifts.map((l) => l.name).filter((n): n is string => Boolean(n)))].sort();
+    for (const l of world.lifts) if (l.name) this.liftKinds.set(l.name, l.kind);
+  }
+
+  /** See that the book owns what everybody starts with, and has on only what it owns: a save may be older than a thing to wear. */
+  private mend(): void {
     for (const slot of [...GEAR_SLOTS].reverse()) {
       const first = DEFAULT_GEAR[slot];
       if (first && !this.save.gear.owned.includes(first)) this.save.gear.owned.unshift(first);
       const on = gearById(this.save.gear[slot]);
       if (!on || on.slot !== slot || !this.save.gear.owned.includes(on.id)) this.save.gear[slot] = first;
     }
-    this.liftNames = [...new Set(world.lifts.map((l) => l.name).filter((n): n is string => Boolean(n)))].sort();
-    for (const l of world.lifts) if (l.name) this.liftKinds.set(l.name, l.kind);
+  }
+
+  /**
+   * The player has come off a trail. If most of it is skied and it is not stamped, say what is
+   * left of it, once a day for each trail: a run begun part of the way down never gets its
+   * stamp, and nothing else would say why.
+   */
+  leftTrail(name: string, day: string): GameEvent[] {
+    const left = trailLeft(this.save.trails[name]);
+    if (!left || this.said(day, `left:${name}`)) return [];
+    this.say(day, `left:${name}`);
+    const rest = left.part === 'top' ? "The top's still to ski." : left.part === 'bottom' ? "The bottom's still to ski." : "There's a stretch in the middle still to ski.";
+    return [{ kind: 'hint', title: name, detail: `${left.seen} of ${left.of} checkpoints. ${rest}` }];
   }
 
   /** The player is skiing, or riding, down the mountain at a position. */
@@ -314,14 +325,22 @@ export class Game {
     return events;
   }
 
+  /** Say what season and watch of the day it is: the stones that keep to an hour or a season come and go with them. */
+  setMoment(season: Season, watch: Watch): void {
+    this.nowSeason = season;
+    this.nowWatch = watch;
+  }
+
   /**
    * Finds lying within a patch or so of a position that have not been picked up today. The same
    * list is handed back until the player moves to another patch or picks something up.
    */
   findsNear(x: number, z: number, day: string): readonly Find[] {
-    if (day !== this.patchDay) {
+    const when = `${day}:${this.nowSeason}:${this.nowWatch}`;
+    if (when !== this.patchDay) {
       this.patches.clear();
-      this.patchDay = day;
+      this.patchDay = when;
+      this.nearKey = '';
     }
     if (this.save.found.day !== day) {
       this.save.found = { day, spots: [] };
@@ -329,7 +348,7 @@ export class Game {
     }
     const col = Math.floor((x - this.world.minX) / FIND_PATCH);
     const row = Math.floor((z - this.world.minZ) / FIND_PATCH);
-    const nearKey = `${day}:${col}:${row}`;
+    const nearKey = `${when}:${col}:${row}`;
     if (nearKey === this.nearKey) return this.near;
     const taken = new Set(this.save.found.spots);
     const out: Find[] = [];
@@ -339,7 +358,7 @@ export class Game {
         const key = `${c}:${r}`;
         let finds = this.patches.get(key);
         if (!finds) {
-          finds = findsInPatch(this.world, c, r, daySeed(day), this.world.minX, this.world.minZ).filter((f) => !this.inBuilding(f.x, f.z));
+          finds = findsInPatch(this.world, c, r, daySeed(day), this.world.minX, this.world.minZ, { day, season: this.nowSeason, watch: this.nowWatch }).filter((f) => !this.inBuilding(f.x, f.z));
           this.patches.set(key, finds);
         }
         for (const f of finds) if (!taken.has(f.id)) out.push(f);
@@ -512,7 +531,9 @@ export class Game {
     if (this.rumourOf?.day === day) return this.rumourOf.rumour;
     const seed = daySeed(day) >>> 0;
     const spot = spots[seed % spots.length] as { name: string; x: number; z: number };
-    const mineral = mineralById(RUMOURED[(seed >>> 8) % RUMOURED.length] as string) ?? (MINERALS[0] as (typeof MINERALS)[number]);
+    // The talk is of a rare stone the museum had no example of this morning, while there is one; and of the old favourites after that.
+    const lacking = MINERALS.filter((m) => m.rarity === 'rare' && (this.save.museum[`mineral:${m.id}`] ?? day) >= day && (!m.when?.shower || isOut(m, { day, season: this.nowSeason, watch: 'day' })));
+    const mineral = lacking.length > 0 ? (lacking[(seed >>> 8) % lacking.length] as (typeof MINERALS)[number]) : (mineralById(RUMOURED[(seed >>> 8) % RUMOURED.length] as string) ?? (MINERALS[0] as (typeof MINERALS)[number]));
     // A little way off the spot itself, so it is found by looking, not tripped over.
     const a = ((seed >>> 16) % 360) * (Math.PI / 180);
     const find: Find = { id: `rumour:${day}`, x: spot.x + Math.cos(a) * 9, z: spot.z + Math.sin(a) * 9, mineral, size: specimenSize(mineral, 0.9 + ((seed >>> 4) % 10) / 100) };
@@ -619,11 +640,30 @@ export class Game {
     return pipHiding(this.save, day, busy);
   }
 
+  /**
+   * Things that are said once a day (the inn's rumour, an errand asked and turned down, a word
+   * about a hat) are kept in the book, so that closing the game and opening it again does not
+   * have them said twice.
+   */
+  private said(day: string, id: string): boolean {
+    return this.save.said.day === day && this.save.said.ids.includes(id);
+  }
+
+  private say(day: string, id: string): void {
+    if (this.save.said.day !== day) this.save.said = { day, ids: [] };
+    this.save.said.ids.push(id);
+    this.dirty = true;
+  }
+
+  /** How many people have said, today, which way Pip went. */
+  private pipHinters(day: string): number {
+    return this.save.said.day === day ? this.save.said.ids.filter((id) => id.startsWith('pip:')).length : 0;
+  }
+
   /** True if this is somebody who will say, just now, which way Pip went. */
   private hintsAt(personId: string, day: string, season: Season): boolean {
     if (!PIP_WATCHERS.includes(personId) || !this.pipHides(day, season)) return false;
-    const today = this.hinted.day === day ? this.hinted.who : [];
-    return today.length < HINTS_A_DAY && !today.includes(personId);
+    return this.pipHinters(day) < HINTS_A_DAY && !this.said(day, `pip:${personId}`);
   }
 
   /** True when one of the people who roam has something for the player. */
@@ -662,7 +702,10 @@ export class Game {
       if (e.need.kind === 'item') save.items = save.items.filter((i) => i !== (e.need as { id: string }).id);
       const gear = e.reward?.gear ? gearById(e.reward.gear) : undefined;
       talk.lines.push(gear && save.gear.owned.includes(gear.id) && e.thanksOwned ? e.thanksOwned : e.thanks);
-      talk.events.push({ kind: 'errand', title: e.title, detail: 'Errand done' });
+      const relic = RELICS.find((r) => r.id === e.id);
+      talk.events.push(relic ? { kind: 'museum', title: relic.name, detail: 'In its case at the museum', art: `relics/${e.id.replace(/^relic-/, '')}` } : { kind: 'errand', title: e.title, detail: 'Errand done' });
+      // What the keeper hands over as the cases fill counts an old thing brought back, too.
+      if (relic) talk.events.push(...this.museumGifts());
       if (gear && !save.gear.owned.includes(gear.id)) {
         talk.events.push(...this.give(gear.id));
       }
@@ -698,10 +741,10 @@ export class Game {
       }
     }
     // The innkeeper passes on the day's rumour, once.
-    if (personId === 'marge' && this.rumourTold !== day && !(talk.lines.length === 1 && talk.lines[0] === person.hello && this.nextErrand(personId, season))) {
+    if (personId === 'marge' && !this.said(day, 'rumour') && !(talk.lines.length === 1 && talk.lines[0] === person.hello && this.nextErrand(personId, season))) {
       const rumour = this.rumour(day);
       if (rumour && !save.found.spots.includes(rumour.find.id)) {
-        this.rumourTold = day;
+        this.say(day, 'rumour');
         talk.lines.push(`Okay, so. I heard somebody saw ${rumour.find.mineral.name.toLowerCase()} lying out by ${rumour.place}.\nA nice one, supposedly. I'd go look myself, but - forty beds.`);
       }
     }
@@ -709,10 +752,10 @@ export class Game {
     // What they have for the player today comes before any errand: the day's bake, sandwich
     // or book is handed over the first time they are spoken to, whatever else is in hand.
     // (On first meeting, the hello and whatever they want to ask come first.)
-    if (talk.lines.length === 0 && this.treated.get(personId) !== day) {
+    if (talk.lines.length === 0 && !this.said(day, `treat:${personId}`)) {
       const treat = offeringFrom(personId, save.tried, day);
       if (treat) {
-        this.treated.set(personId, day);
+        this.say(day, `treat:${personId}`);
         talk.lines.push(treat.offering.hand);
         if (treat.fresh) {
           save.tried[treat.offering.id] = day;
@@ -729,8 +772,8 @@ export class Game {
       }
     }
     // An empty box at the post office is said to be empty, once a day.
-    if (personId === 'dot' && saidBy() === 0 && talk.lines.length === 0 && this.emptyBox !== day && !Object.values(save.letters).includes(day)) {
-      this.emptyBox = day;
+    if (personId === 'dot' && saidBy() === 0 && talk.lines.length === 0 && !this.said(day, 'empty-box') && !Object.values(save.letters).includes(day)) {
+      this.say(day, 'empty-box');
       talk.lines.push(
         Object.keys(save.letters).length >= LETTERS.length
           ? "That's all of them. Every letter anybody's written you!\nI'll keep the box open. You never know."
@@ -743,20 +786,19 @@ export class Game {
       const offer = this.nextErrand(personId, season);
       if (waiting) {
         talk.lines.push(waiting.nudge);
-      } else if (offer && this.asked.get(offer.id) !== day) {
+      } else if (offer && !this.said(day, `ask:${offer.id}`)) {
         // Each errand is asked once a day. Turned down, they talk of other things until tomorrow.
-        this.asked.set(offer.id, day);
+        this.say(day, `ask:${offer.id}`);
         talk.lines.push(offer.ask);
         talk.offer = offer;
-      } else if (talk.lines.length === 0 && this.noticed.get(personId) !== day && (person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket])) {
+      } else if (talk.lines.length === 0 && !this.said(day, `wear:${personId}`) && (person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket])) {
         // They have something to say about what the player has on. Once a day is enough.
-        this.noticed.set(personId, day);
+        this.say(day, `wear:${personId}`);
         talk.lines.push((person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket]) as string);
       } else if (talk.lines.length === 0 && this.hintsAt(personId, day, season)) {
         // Pip is out hiding, and this is somebody who saw which way she went.
-        if (this.hinted.day !== day) this.hinted = { day, who: [] };
-        talk.lines.push(pipHint(day, this.hinted.who.length));
-        this.hinted.who.push(personId);
+        talk.lines.push(pipHint(day, this.pipHinters(day)));
+        this.say(day, `pip:${personId}`);
       } else if (talk.lines.length === 0 && (bellRemark(save, personId, day) ?? '') !== '') {
         // The day after the summit bell was rung, whoever heard it says so, once.
         talk.lines.push(BELL_HEARD[personId] as string);
@@ -803,7 +845,7 @@ export class Game {
     const ran = skiedRun(this.save, id, day);
     if (!ran) return [];
     this.dirty = true;
-    return [{ kind: 'secret', title: secretById(id)?.name ?? 'An unmarked run', detail: ran.done >= ran.of ? 'Top to bottom · that is all of them' : 'Top to bottom, and on no map but yours' }, ...ran.gear.flatMap((g) => this.give(g))];
+    return [{ kind: 'secret', title: secretById(id)?.name ?? 'An unmarked run', detail: ran.done >= ran.of ? "Top to bottom · that's all of them" : 'Top to bottom, and on no map but yours' }, ...ran.gear.flatMap((g) => this.give(g))];
   }
 
   /**
@@ -825,7 +867,7 @@ export class Game {
   trod(key: string): { shows: boolean; events: GameEvent[] } {
     const stepped = tread(this.save, key);
     this.dirty = true;
-    return { shows: stepped.shows, events: stepped.gear.flatMap((g) => [{ kind: 'secret', title: 'A path of your own', detail: 'Worn by walking it. It is on your map now.' } satisfies GameEvent, ...this.give(g)]) };
+    return { shows: stepped.shows, events: stepped.gear.flatMap((g) => [{ kind: 'secret', title: 'A path of your own', detail: "Worn by walking it. It's on your map now." } satisfies GameEvent, ...this.give(g)]) };
   }
 
   /** Put a stone on a cairn: one a day, to each. */
@@ -895,7 +937,9 @@ export class Game {
     if (!lost) return [];
     this.save.items.push(id);
     this.dirty = true;
-    return [{ kind: 'item', title: lost.name, detail: 'Found! In your pack' }];
+    // An old thing the museum is waiting for has a picture of its own.
+    const relic = RELICS.find((r) => r.id === id);
+    return [{ kind: 'item', title: lost.name, detail: relic ? 'Found! Silas will want to see this' : 'Found! In your pack', ...(relic ? { art: `relics/${id.replace(/^relic-/, '')}` } : {}) }];
   }
 
   /** Put on something that is owned, or take up with a pet. A pet that is already along is sent home. */
@@ -914,6 +958,31 @@ export class Game {
     this.save.gear.owned.push(gearId);
     this.dirty = true;
     return [{ kind: 'gear', title: gear.name, detail: `${SLOT_NAME[gear.slot].found} · in the Book, under Pack`, colour: gear.colour, art: `gear/${artSlug(gear.id)}` }];
+  }
+
+  /** What the keeper hands over, for as many pieces as the museum now has. */
+  private museumGifts(): GameEvent[] {
+    const count = fullness(this.save).given;
+    return MUSEUM_GIFTS.filter((gift) => count >= gift.at).flatMap((gift) => this.give(gift.gear));
+  }
+
+  /** What the player has that the museum has not: for the sheet, and for anyone who wants to say so. */
+  museumWaiting(): Piece[] {
+    return toGive(this.save);
+  }
+
+  /**
+   * Show the keeper everything new. Each thing goes into its case, and he may have something to
+   * give back. Nothing leaves the Book.
+   */
+  museumGive(day: string): { pieces: Piece[]; events: GameEvent[] } {
+    const pieces = giveToMuseum(this.save, day);
+    if (pieces.length === 0) return { pieces, events: [] };
+    this.dirty = true;
+    const first = pieces[0] as Piece;
+    const events: GameEvent[] = [{ kind: 'museum', title: pieces.length === 1 ? first.name : `${pieces.length} pieces for the museum`, detail: pieces.length === 1 ? 'In its case at the museum' : `${first.name} and ${pieces.length - 1} more, in their cases`, art: first.art }];
+    events.push(...this.museumGifts());
+    return { pieces, events };
   }
 
   /** What is on in a slot, or what the player started with. */
@@ -1093,6 +1162,7 @@ export class Game {
   /** Replace the save, as when restoring from a code. */
   restore(save: SaveData): void {
     this.save = save;
+    this.mend();
     this.nearKey = '';
     this.aboutKey = '';
     this.dirty = true;

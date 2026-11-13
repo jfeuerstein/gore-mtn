@@ -22,6 +22,8 @@ import { dayNumber, sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } fro
 import { patchLead, trailAgainLead, dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
 import { CabinSheet } from './ui/cabinSheet';
+import { MuseumSheet } from './ui/museumSheet';
+import { fullness, given as inMuseum, had as hasPiece, HALLS, keeperSays, nextGift, PIECES } from './game/museum';
 import { artSlug } from './game/artNames';
 import { MINERALS } from './game/minerals';
 import { KEEPSAKE, PATCHES } from './game/patches';
@@ -31,7 +33,7 @@ import { TownProjects } from './world/projectMesh';
 import { floorAt, projectFloors, projectWalls as wallsOfProject, type Floor } from './world/projectPlots';
 import { Cabin } from './world/cabinMesh';
 import { dayKey, parseSave, saveFromCode, saveToCode } from './game/save';
-import { benchVisitor, SPECIES, watchFor } from './game/wildlife';
+import { benchVisitor, SPECIES, speciesById, watchFor } from './game/wildlife';
 import { Input } from './input/input';
 import { Book, shortDay } from './ui/book';
 import { TalkSheet, type Choice, type Written } from './ui/talk';
@@ -663,24 +665,28 @@ async function boot(): Promise<void> {
     talkSheet.close();
     flyer.close();
     cabinSheet.close();
+    museumSheet.close();
   };
   book.onOpen = () => {
     trailMap.close();
     talkSheet.close();
     flyer.close();
     cabinSheet.close();
+    museumSheet.close();
   };
   talkSheet.onOpen = () => {
     trailMap.close();
     book.close();
     flyer.close();
     cabinSheet.close();
+    museumSheet.close();
   };
   flyer.onOpen = () => {
     trailMap.close();
     book.close();
     talkSheet.close();
     cabinSheet.close();
+    museumSheet.close();
   };
   // The cabin: what is on its shelf and its board is set out from the save, and changed from its sheet.
   const cabinSheet = new CabinSheet();
@@ -692,7 +698,48 @@ async function boot(): Promise<void> {
     book.close();
     talkSheet.close();
     flyer.close();
+    museumSheet.close();
   };
+  // The museum: what is in its cases, and what the player has to show its keeper.
+  const museumSheet = new MuseumSheet();
+  const museumDoor = townPlaces.find((p) => p.id === 'museum')?.door ?? null;
+  museumSheet.onOpen = () => {
+    trailMap.close();
+    book.close();
+    talkSheet.close();
+    flyer.close();
+    cabinSheet.close();
+  };
+  museumSheet.onGive = () => {
+    const { pieces, events } = game.museumGive(today);
+    announce(events);
+    return pieces.map((piece) => piece.key);
+  };
+  const openMuseum = (): void =>
+    museumSheet.open(() => {
+      const full = fullness(game.save);
+      const gift = nextGift(game.save);
+      return {
+        room: art('rooms', 'museum'),
+        says: keeperSays(game.save, today, season),
+        waiting: game.museumWaiting().length,
+        given: full.given,
+        total: full.total,
+        next: gift && full.given < gift.at ? { at: gift.at, what: 'something from Silas' } : null,
+        halls: HALLS.map((hall) => ({
+          name: hall.name,
+          bare: hall.bare,
+          ...full.halls[hall.id],
+          places: PIECES.filter((piece) => piece.hall === hall.id).map((piece) => ({
+            key: piece.key,
+            name: piece.name,
+            art: `${import.meta.env.BASE_URL}art/${piece.art}.webp`,
+            state: inMuseum(game.save, piece) ? ('in' as const) : hasPiece(game.save, piece) ? ('yours' as const) : ('none' as const),
+            picture: hall.id === 'gallery',
+          })),
+        })),
+      };
+    });
   cabinSheet.onArrange = (where, slot) => {
     game.arrange(where, slot);
     setOut();
@@ -715,7 +762,7 @@ async function boot(): Promise<void> {
         patchName: (id) => (id === KEEPSAKE.id ? KEEPSAKE.name : (PATCHES.find((p) => p.id === id)?.name ?? id)),
         stoneChoices: game.shelfChoices(),
         patchChoices: game.wallChoices(),
-        guest: guest ? (SPECIES.find((sp) => sp.id === guest)?.name ?? null) : null,
+        guest: guest ? (speciesById(guest)?.name ?? null) : null,
       };
     });
   // What the town builds: each project as it stands today, staked out or built.
@@ -964,6 +1011,9 @@ async function boot(): Promise<void> {
         onPick: () => {
           announce(game.accept(offer.id, today));
           layKeepsakes();
+          // Asked for something that is already done (a lift ridden on the way here), they are told so there and then:
+          // nobody is sent away to come straight back.
+          if ((offer.to ?? offer.from) === standing.person.id && offer.need.kind !== 'item' && game.needMet(offer.need)) window.setTimeout(() => talkTo(standing), 350);
         },
       });
     }
@@ -1051,11 +1101,9 @@ async function boot(): Promise<void> {
         const save = saveFromCode(code);
         if (save) {
           game.restore(save);
-          player.setOutfit(game.outfit());
-          layKeepsakes();
-          showFlag();
-          setOut();
-          showProjects();
+          // A book from elsewhere may be in another season, with other things built, worn and found: the game
+          // is begun again from it, once the sheet has had a moment to say so.
+          window.setTimeout(() => window.location.reload(), 900);
         }
         return Boolean(save);
       },
@@ -1333,10 +1381,13 @@ async function boot(): Promise<void> {
   hud.onHowTo = openWelcome;
   /** True when the day's flyer is to go up as soon as nothing else is open: after the welcome, and when midnight passes. */
   let flyerWaits = false;
+  /** The trail the player was last seen skiing on, by name, to notice when they come off it. */
+  let skiedOn: string | null = null;
   /** True while any sheet is up over the picture. */
-  const sheetOpen = (): boolean => document.querySelector('#talk-sheet:not([hidden]), #book-sheet:not([hidden]), #map-sheet:not([hidden]), #cabin-sheet:not([hidden]), #menu:not([hidden]), #flyer:not([hidden])') !== null;
+  const sheetOpen = (): boolean => document.querySelector('#talk-sheet:not([hidden]), #book-sheet:not([hidden]), #map-sheet:not([hidden]), #cabin-sheet:not([hidden]), #museum-sheet:not([hidden]), #menu:not([hidden]), #flyer:not([hidden])') !== null;
   /** The watch of the day, which decides what wildlife is about. */
   let watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+  game.setMoment(season, watch);
   placeRoamers(true);
   // --- Today's flyer ---------------------------------------------------------------------------
   // Every lead there could be, with whether it is still open: a trail without its stamp, a place
@@ -1423,6 +1474,8 @@ async function boot(): Promise<void> {
             ? "P.S. The band's on the bandstand tonight, once it's dark."
           : game.feederGuest(today, season, watch)
             ? "P.S. Somebody's at your feeder."
+            : game.museumWaiting().length >= 5 && 'silas' in game.save.met
+              ? `P.S. You've got ${game.museumWaiting().length} things Silas hasn't seen. He'd love to.`
             : building
               ? `P.S. ${building.name} will be up by tomorrow.`
               : townResting(game.save.projects, today)
@@ -1488,6 +1541,7 @@ async function boot(): Promise<void> {
     flag: game.save.flag,
     flyer: flyer.isOpen,
     projects: built.plots.map((p) => ({ id: p.id, x: p.x, z: p.z, turn: p.turn, state: game.projectState(p.id, today) })),
+    museum: { door: museumDoor, sheet: museumSheet.isOpen, ...fullness(game.save), waiting: game.museumWaiting().length },
     cabin: home ? { ...game.save.cabin, door: home.door, feederAt: home.feeder, guest: cabin?.hasGuest ?? false, sheet: cabinSheet.isOpen } : null,
     zoom: follow.zoomNow,
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
@@ -1695,6 +1749,11 @@ async function boot(): Promise<void> {
     critters.show(game.sightingsNear(px, pz, today, season, watch), heightAt, (id) => !(id in game.save.sightings));
     critters.update(dt, player.position, follow.yaw, heightAt);
     sinceSlow += frameMs;
+    // The day's flyer goes up the moment nothing else is in the way: not a second later, under a thumb that has already moved.
+    if (flyerWaits && cfg.intro && cfg.hud && !bench && cfg.bench === null && !sheetOpen() && player.mode !== 'lift') {
+      flyerWaits = false;
+      if (game.flyerDue(today)) flyer.open(flyerPage);
+    }
     if (sinceSlow >= 1000) {
       sinceSlow = 0;
       const now = dayKey(new Date());
@@ -1706,12 +1765,9 @@ async function boot(): Promise<void> {
         placeRoamers(false, true);
         flyerWaits = true;
       }
-      if (flyerWaits && cfg.intro && cfg.hud && !bench && cfg.bench === null && !sheetOpen() && player.mode !== 'lift') {
-        flyerWaits = false;
-        if (game.flyerDue(today)) flyer.open(flyerPage);
-      }
       const before = watch;
       watch = watchFor((sunNow.elevation * 180) / Math.PI, sunNow.azimuth < Math.PI);
+      game.setMoment(season, watch);
       // The hour has turned: the painter packs up at night, the band gathers at dusk, the lantern is lit.
       if (watch !== before) placeRoamers(false);
       // On a Saturday night with the band on the bandstand, there is music for anyone near enough to hear it.
@@ -1845,12 +1901,16 @@ async function boot(): Promise<void> {
       });
     } else if (home && player.mode === 'walk' && Math.hypot(home.door.x - px, home.door.z - pz) < 3.6) {
       hud.setAction('Home', openCabin);
+    } else if (museumDoor && player.mode === 'walk' && Math.hypot(museumDoor.x - px, museumDoor.z - pz) < 4.2) {
+      hud.setAction('Museum', openMuseum);
+      hint('museum', 'The museum', "Tap Museum to see the cases. Show Silas what you've found - you keep all of it.");
     } else if (secretHere && player.mode !== 'lift') {
       // One of the mountain's secrets: something to read, to look into, to add to, to ring.
       const { secret } = secretHere;
       hud.setAction(secret.kind === 'room' && secret.id in game.save.secrets ? 'Go in' : secret.action, () => openSecret(secret));
     } else hud.setAction(null);
     if (cabinSheet.isOpen && home && Math.hypot(home.door.x - px, home.door.z - pz) > 9) cabinSheet.close();
+    if (museumSheet.isOpen && museumDoor && Math.hypot(museumDoor.x - px, museumDoor.z - pz) > 10) museumSheet.close();
     // Whoever is at the feeder is there to be seen from the trail; coming home is what puts them in the guide.
     if (cabin && home) {
       const guest = game.feederGuest(today, season, watch);
@@ -1959,8 +2019,13 @@ async function boot(): Promise<void> {
         trees: trees.count,
       });
       pointToFlag();
+      const trailNow = trailAt(world.trails, player.position.x, player.position.z);
+      // Coming off a trail that is mostly skied and not stamped, the player is told what is left of it.
+      const skiing = player.mode === 'ski' ? (trailNow?.name ?? null) : null;
+      if (skiedOn && skiing !== skiedOn) announce(game.leftTrail(skiedOn, today));
+      skiedOn = skiing;
       hud.setWhere(
-        trailAt(world.trails, player.position.x, player.position.z),
+        trailNow,
         world.realElevationM(player.position.y) * M_TO_FT,
         player.mode === 'ski' ? player.speed * MS_TO_MPH : null,
         player.riding ? (player.riding.lift.name ?? 'Lift') : null,

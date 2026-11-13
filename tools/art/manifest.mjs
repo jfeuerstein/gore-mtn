@@ -41,6 +41,7 @@ export const PEOPLE_ART = {
   pickles: 'head and shoulders portrait of a fat, solemn orange tabby cat wearing a tiny gold mayoral chain of office, sitting very upright, looking unimpressed',
   biscuit: 'head and shoulders portrait of a big friendly Saint Bernard mountain dog with a little wooden barrel on its collar, tongue out, snow on its nose',
   nell: person('an elderly woman painter with white hair in a bun, round glasses, a dark red beret, a grey smock with a smear of blue paint on it, a paintbrush tucked behind her ear'),
+  silas: person('a tall thin elderly man who keeps a small museum, with a neat white moustache, round wire glasses, a grey flat cap, a brown tweed jacket and a dark green bow tie, holding a brass magnifying glass'),
   ro: person('a cheerful bearded camper in his fifties with a brown beard, a moss green wool jacket and a wide straw hat, a tin mug in his hand'),
   fitch: person('a shy thin man with a dark moustache, a navy jacket and a brown flat cap, holding a fiddle under his chin'),
   hattie: person('a big laughing woman with curly red-brown hair, a rust red jacket and a mustard knit hat, holding a brass horn'),
@@ -460,7 +461,37 @@ export const ROOM_ART = {
   'mid-station': card('the inside of a small old ski lift station: a wooden bench along one wall, a pot-bellied stove, a round wall clock, and one small red gondola cabin standing indoors with its door open'),
   'mine-office': card('the inside of an old mine office: a wooden desk with an open ledger and an oil lamp, shelves of rock samples, a window with dusty light, a pair of leather goggles hanging from the lamp'),
   'tuning-shed': card('the inside of a wooden shed filled from floor to rafters with old wooden skis standing in rows, a workbench with a block of wax and an iron'),
+  museum: card('the inside of a small town museum: glass display cases of crystals along one wall, a stuffed owl on a stand, an old wooden ski hung on the wall, framed landscape paintings, a polished wooden floor and a tall window'),
   'power-house': card('the inside of an old brick power house: a big green dynamo with a flywheel, brass gauges on the wall, and a small grey kitten sitting on the floor in front of it'),
+};
+
+/** The stones that came with the museum: a set of their own, so that the first sheet is cut as it was. */
+const MORE_MINERAL_ART = {
+  biotite: 'a stack of thin glossy black mica sheets',
+  diopside: 'stubby bottle-green crystals on white marble',
+  apatite: 'one six-sided blue-green crystal column',
+  serpentine: 'a smooth waxy mottled green stone',
+  ilmenite: 'a flat black metallic plate-shaped crystal',
+  'river-garnet': 'round red garnet pebbles beside a blue wave',
+  ice: 'a clear pale blue chunk of ice',
+  'smoky-quartz': 'brown-grey smoky pointed quartz crystals',
+  titanite: 'three honey-brown wedge-shaped crystals',
+  zircon: 'one tiny red-brown crystal under a magnifying glass',
+  fluorite: 'purple and green glassy cubes grown together',
+  'rimmed-garnet': 'a big red garnet in a black ring of rock',
+  meteorite: 'a dark pitted meteorite under a shooting star',
+};
+
+/** The old things the museum's keeper sends the player after (RELICS in src/game/museum.ts). */
+const RELIC_ART = {
+  lamp: "an old brass miner's lamp with a round reflector",
+  pail: 'a dented round tin lunch pail with a handle',
+  ski: 'one long old wooden ski with a leather strap',
+  ticket: 'an old cream railway ticket with a punched hole',
+  pike: 'an iron hook and spike on a wooden pole',
+  badge: 'a round red enamel badge with a white snowflake',
+  tin: 'a green tin box with binoculars on top',
+  cowbell: 'a brass cowbell on a red ribbon',
 };
 
 export const PATCH_SETS = {
@@ -497,6 +528,34 @@ export const PATCH_SETS = {
     },
   },
   minerals: { border: 'slate grey-blue (#4d6168)', subjects: briefs(MINERAL_ART) },
+  'minerals:more': { border: 'slate grey-blue (#4d6168)', into: 'minerals', subjects: MORE_MINERAL_ART },
+  // The museum: the old things brought back to it, the patches for its halls, and what its keeper hands over.
+  relics: { border: 'brown (#6b4a33)', subjects: RELIC_ART },
+  // (Through fal, like what is found on the mountain: the Tripo account had no credit left when these were made.)
+  'patches:museum': {
+    border: 'brick red (#c8402d)',
+    into: 'patches',
+    by: 'fal',
+    subjects: {
+      'museum-friend': 'a small museum building with white columns',
+      'stone-hall': 'a glass display case with three crystals inside',
+      'natural-history': 'a feather and a butterfly in a frame',
+      'old-things': 'an old brass lamp on a stone plinth',
+    },
+  },
+  'gear:museum': {
+    border: 'navy (#22304a)',
+    into: 'gear',
+    by: 'fal',
+    subjects: {
+      'hat-museum': 'a slate grey flat cap with a brass pin',
+      'pack-specimen': 'a brown leather case with brass corners',
+      'goggles-loupe': 'gold-rimmed goggles with one magnifying lens',
+      'jacket-tweed': 'a brown tweed jacket with elbow patches',
+    },
+  },
+  // (By itself: a fifth on that sheet came back as one of the stars that fill it out.)
+  'gear:museum-skis': { border: 'navy (#22304a)', into: 'gear', by: 'fal', subjects: { 'skis-crystal': 'a crossed pair of white skis with violet tips' } },
   species: { border: 'leaf green (#4f8a3f)', subjects: briefs(SPECIES_ART) },
 };
 

@@ -1,3 +1,4 @@
+import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
 import { PEOPLE } from './people';
 import { daysBetween, projectInHand, PROJECTS, projectState, REST, townResting } from './projects';
@@ -58,8 +59,7 @@ describe('town projects', () => {
       expect(PEOPLE.some((who) => who.id === p.who), p.who).toBe(true);
       for (const text of [p.ask, p.done]) {
         expect(text.length).toBeLessThan(64);
-        expect(text).not.toMatch(/\b(do not|does not|is not|are not|cannot|will not|have not)\b/);
-        expect(text).not.toMatch(/colour|neighbour|favourite/);
+        expect(slips(text), text).toEqual([]);
       }
     }
   });
