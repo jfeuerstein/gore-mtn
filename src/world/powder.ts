@@ -68,7 +68,7 @@ export class Powder {
       this.age[i] = 0;
       this.life[i] = LONGEST * (0.35 + Math.random() * 0.65);
       // Small: a cloud is a great many flecks, not a few balls.
-      this.size[i] = (0.05 + Math.random() * Math.random() * 0.2) * (0.7 + much * 0.6) * (1 + skid * 0.6);
+      this.size[i] = (0.05 + Math.random() * Math.random() * 0.2) * (0.7 + much * 0.6) * (1 + skid * 1.3);
     }
   }
 

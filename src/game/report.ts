@@ -16,6 +16,8 @@ export interface Conditions {
   day: string;
   /** New snow since yesterday, in centimetres, if it is known. */
   fresh?: number;
+  /** True when what cloud there is lies low, in the valleys: fog down here, and perhaps clear sky from the summits. */
+  low?: boolean;
 }
 
 /** New snow as a snow report would say it, in inches, as this is upstate New York: "8 inches". */
@@ -58,6 +60,8 @@ export function sky(c: Conditions): string {
   if (c.falling > 0.6) return snow ? 'SNOWING. A lot' : 'RAIN, pretty steady';
   if (c.falling > 0.05) return snow ? 'flurries' : 'a passing shower';
   if (c.watch === 'night') return c.overcast > 0.5 ? 'dark and cloudy' : 'clear, with stars';
+  // Cloud lying in the valleys is fog from below and a sea from above: it is worth saying which, since only one of them is overcast.
+  if (c.low) return 'fog in the valley, maybe clear up top';
   if (c.overcast > 0.7) return 'overcast';
   if (c.overcast > 0.3) return 'some clouds';
   return c.watch === 'dawn' ? 'clear, a little pink' : c.watch === 'dusk' ? 'clear, going gold' : 'bluebird';

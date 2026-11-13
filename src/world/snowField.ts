@@ -268,7 +268,8 @@ export class SnowField {
         // Down in a trough the snow is in its own shade, bluer and darker the deeper; heaped up, it is a touch brighter.
         const deep = this.deep[i] as number;
         const moved = deep > 0.02 ? Math.max(-deep, this.moved[i] as number) : 0;
-        const sunk = moved < 0 ? Math.min(1, -moved / 0.3) : 0;
+        // (Fully in shade at a hand's depth: a trough in the few inches on a groomed trail is to be seen too.)
+        const sunk = moved < 0 ? Math.min(1, -moved / 0.16) : 0;
         const heaped = moved > 0 ? 1 + 0.05 * Math.min(1, moved / 0.12) : 1;
         this.colours[k] = (this.inks[k] as number) * (1 - 0.3 * sunk) * heaped;
         this.colours[k + 1] = (this.inks[k + 1] as number) * (1 - 0.22 * sunk) * heaped;

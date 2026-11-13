@@ -9,6 +9,7 @@ import { KEYS, SECRETS } from '../game/secrets';
 import { dropAway, sewn } from './motion';
 import { SIGHTS } from '../game/sky';
 import { PAINTER_HAUNTS, paintingId } from '../game/wanderers';
+import { COME_BY } from '../game/secrets';
 import { DEFAULT_GEAR, ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND, type GearSlot } from '../game/people';
 
 /** The kinds of thing in the wardrobe that are only shown once the player has one that is not what they began with. */
@@ -58,6 +59,16 @@ function plate(set: 'minerals' | 'species' | 'places' | 'paintings', id: string)
  * is shown as a pale ghost of itself, so that the shelf says what there is to look for.
  * @param art its set and name under public/art, as "patches/first-tracks"
  */
+/** How a thing to wear was come by, in a few words: what it was found at, who gave it, or that it was the player's to begin with. */
+function cameFrom(id: string): string {
+  if (Object.values(DEFAULT_GEAR).includes(id)) return 'yours from the start';
+  const found = COME_BY[id];
+  if (found) return `from ${found}`;
+  const errand = ERRANDS.find((e) => e.reward?.gear === id);
+  const who = errand ? personById(errand.to ?? errand.from) : undefined;
+  return who ? `from ${who.name}, for an errand` : 'come by somewhere';
+}
+
 /** Which page of the Book a thing is on, by the set its picture is filed in; the Passport if it is not said. */
 const PAGE_OF: Record<string, Tab> = { minerals: 'minerals', species: 'guide', gear: 'pack', offerings: 'pack' };
 
@@ -209,7 +220,8 @@ export class Book {
     const made = page();
     this.body.replaceChildren(...made);
     // A long page gets a row of its headings to jump by: the Passport runs to many screens.
-    const heads = made.filter((e) => e.tagName === 'H3' && e.querySelector('span'));
+    // (Every heading, whether or not it has a count beside it: North Creek and the errands done are places to jump to as well.)
+    const heads = made.filter((e) => e.tagName === 'H3');
     if (heads.length >= 4) {
       const jumps = el('div', 'jumps');
       for (const head of heads) {
@@ -415,7 +427,7 @@ export class Book {
       };
       const list2 = el('div', 'minerals');
       const of = (kind: string): typeof notes => notes.filter((sec) => sec.kind === kind);
-      if (of('register').length > 0) said(`Registers signed · ${of('register').length}`, of('register').map((sec) => sec.name.replace(/^The /, '').replace(/ register$/, '')).join(' · '));
+      if (of('register').length > 0) said(`Registers signed · ${of('register').length}`, of('register').map((sec) => sec.name.replace(/^The register at /, '').replace(/^The /, '').replace(/ register$/, '').replace(/^(the|reservoir)\b/, (w) => (w === 'the' ? 'The' : 'The reservoir'))).join(' · '));
       if (of('plaque').length > 0) said(`Why it's called that · ${of('plaque').length}`, of('plaque').map((sec) => sec.name).join(' · '));
       for (const sec of [...of('working'), ...of('room'), ...of('den'), ...of('nest'), ...of('shack'), ...of('light')]) said(sec.name, `Found ${shortDay(game.save.secrets[sec.id] as string)}`);
       // The unmarked runs: pencilled on the map when found, and said to be done once come down.
@@ -458,8 +470,11 @@ export class Book {
     }
 
     const owned = GEAR.filter((g) => game.save.gear.owned.includes(g.id));
-    out.push(this.heading('Wardrobe', owned.length, GEAR.length));
-    out.push(el('p', 'note', "Things people have given you, and things you've come across out there. Tap one to put it on."));
+    // A count, and not "of so many": much of it is on no map, and the Book is full without it.
+    const wardrobe = el('h3', '', 'Wardrobe');
+    wardrobe.appendChild(el('span', '', `${owned.length}`));
+    out.push(wardrobe);
+    out.push(el('p', 'note', `Things people have given you, and things you've come across out there. Tap one to put it on.${game.save.gear.owned.some((id) => id.startsWith('pet-')) ? ' Tap whoever is along again to leave them home.' : ''}`));
     for (const slot of GEAR_SLOTS) {
       // Tracks, tunes and company mean nothing until one has been come by: they are not shown, as rows of question marks, before then.
       if (LATER_SLOTS.includes(slot) && !GEAR.some((g) => g.slot === slot && g.id !== DEFAULT_GEAR[slot] && game.save.gear.owned.includes(g.id))) continue;
@@ -480,6 +495,9 @@ export class Book {
         row.appendChild(b);
       }
       out.push(row);
+      // Where what is on came from: the wardrobe is a record of where the player has been, not only a list.
+      const on = GEAR.find((g) => g.slot === slot && game.save.gear[slot] === g.id);
+      if (on) out.push(el('p', 'note from', `${on.name} · ${cameFrom(on.id)}`));
     }
     // The town round: a punch for each door called at today.
     const today = game.save.round.who;
@@ -516,12 +534,15 @@ export class Book {
     const letters = LETTERS.filter((l) => l.id in game.save.letters).sort((a, b) => (game.save.letters[b.id] ?? '').localeCompare(game.save.letters[a.id] ?? ''));
     out.push(this.heading('Letters', letters.length, LETTERS.length));
     if (letters.length === 0) out.push(el('p', 'note', "Dot at the North Creek Post Office keeps your mail. There's one letter a day."));
-    for (const letter of letters) {
-      const page = el('div', 'letter');
+    letters.forEach((letter, i) => {
+      // Folded, all but the newest: who it is from and when, to be opened with a tap. Thirty letters in full were a wall.
+      const page = document.createElement('details');
+      page.className = 'letter';
+      page.open = i === 0;
+      page.appendChild(el('summary', '', `${letter.signed.replace(/^-\s*/, '')} · ${shortDay(game.save.letters[letter.id] ?? '')}`));
       page.appendChild(el('p', '', letter.text));
-      page.appendChild(el('small', '', `${letter.signed} · ${shortDay(game.save.letters[letter.id] ?? '')}`));
       out.push(page);
-    }
+    });
     if (game.save.pass) {
       out.push(el('h3', '', 'Snow Train pass'));
       out.push(el('p', 'note', game.save.away ? `You're visiting ${game.save.away}. Conductor Bea at the depot will take you on, or home.` : 'Conductor Bea at the North Creek depot will take you to any season.'));

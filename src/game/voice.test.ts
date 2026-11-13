@@ -56,6 +56,7 @@ describe('the rule for how people talk', () => {
         for (const [overcast, falling] of [[0, 0], [1, 0], [1, 1]] as const) {
           const c = { season, overcast, falling, watch, day: '2026-12-01', fresh: 12 };
           add('report/sky', sky(c));
+          add('report/sky', sky({ ...c, low: true }));
           add('report/snow', snowReport(c, 14, 100));
         }
         add('report/log', wildlifeLog(SPECIES, () => false, season, watch, '2026-12-01'));

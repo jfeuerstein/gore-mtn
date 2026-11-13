@@ -122,3 +122,14 @@ describe('the reasons, out of the snow months', () => {
   });
 });
 
+describe('a morning of fog', () => {
+  it('is not called overcast: the report says the cloud is low, and that it may be clear up top', () => {
+    const c: Conditions = { season: 'winter', overcast: 1, falling: 0, watch: 'dawn', day: '2026-12-01', fresh: 0, low: true };
+    expect(snowReport(c, 14, 100)).toContain('Sky: fog in the valley, maybe clear up top.');
+    expect(snowReport({ ...c, low: false }, 14, 100)).toContain('Sky: overcast.');
+    // What is falling, and the night, are said before it.
+    expect(snowReport({ ...c, falling: 0.8 }, 14, 100)).toContain('SNOWING');
+    expect(snowReport({ ...c, watch: 'night' }, 14, 100)).toContain('dark and cloudy');
+  });
+});
+

@@ -6,6 +6,7 @@ import { COLLECT_REACH, Game, type GameWorld, type SaveStore } from './game';
 import { MINERALS } from './minerals';
 import { ERRANDS } from './people';
 import { pipHint } from './wanderers';
+import { BELL_HEARD } from './secrets';
 import { parseSave } from './save';
 
 const world = loadTestWorld();
@@ -116,6 +117,32 @@ describe('Game', () => {
     expect(game.save.cabin.shelf).toEqual(['garnet', '', '', '', '']);
     game.place('shelf', 0, '');
     expect(game.save.cabin.shelf.join('')).toBe('');
+  });
+
+  it('has what was seen or heard said after whatever else somebody has to say, not kept back until they have nothing', () => {
+    const game = new Game(gameWorld, memory());
+    // Pip is out hiding, and Hazel still has an errand in hand to nudge about.
+    for (const e of ERRANDS.filter((q) => q.from === 'pip' || q.to === 'pip')) game.save.errands[e.id] = { taken: DAY, done: DAY };
+    for (const id of ['pip', 'hazel', 'otto']) game.save.met[id] = DAY;
+    game.save.errands['first-chair'] = { taken: DAY };
+    expect(game.pipHides(DAY, 'winter')).toBe(true);
+    const nudged = game.talk('hazel', DAY, 'winter');
+    expect(nudged?.lines).toHaveLength(2);
+    expect(nudged?.lines[1]).toBe(pipHint(DAY, 0));
+    // Once is enough from each of them.
+    expect(game.talk('hazel', DAY, 'winter')?.lines).not.toContain(pipHint(DAY, 0));
+    // Somebody asking for something says only that: a question is not followed by a second subject.
+    const asking = game.talk('otto', DAY, 'winter');
+    if (asking?.offer) expect(asking.lines).not.toContain(pipHint(DAY, 1));
+    // The bell, rung yesterday, is spoken of the same way.
+    const bell = new Game(gameWorld, memory());
+    bell.save.met.hazel = DAY;
+    bell.save.errands['first-chair'] = { taken: DAY };
+    bell.save.bell = { rang: '2026-11-10', told: [] };
+    const heard = bell.talk('hazel', '2026-11-11', 'winter');
+    expect(heard?.lines).toHaveLength(2);
+    expect(heard?.lines[1]).toBe(BELL_HEARD.hazel);
+    expect(bell.talk('hazel', '2026-11-11', 'winter')?.lines).not.toContain(BELL_HEARD.hazel);
   });
 
   it('has the town say which way Pip went while she is hiding: two of them a day, and then she is found', () => {

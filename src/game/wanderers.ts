@@ -47,7 +47,7 @@ export const CAMPER_HAUNTS: readonly Haunt[] = [
 
 /** Where each of the band practises, alone, until there are four of them. */
 export const BAND: readonly { who: string; tune: string; haunt: Haunt }[] = [
-  { who: 'fitch', tune: 'tune-fiddle', haunt: { id: 'band-fiddle', name: 'Rabbit Pond', where: { spot: 'rabbit-pond' }, off: 20 } },
+  { who: 'fitch', tune: 'tune-fiddle', haunt: { id: 'band-fiddle', name: 'the Fish Pond', where: { spot: 'fish-pond' }, off: 20 } },
   { who: 'hattie', tune: 'tune-horn', haunt: { id: 'band-horn', name: 'Burnt Ridge', where: { lift: 'Burnt Ridge Quad', along: 1 }, off: 30 } },
   { who: 'bo', tune: 'tune-banjo', haunt: { id: 'band-banjo', name: 'the scenic view', where: { spot: 'scenic-view' }, off: 10 } },
   { who: 'sal', tune: 'tune-squeezebox', haunt: { id: 'band-squeezebox', name: 'the Ski Bowl', where: { place: 'ski-bowl-lodge' }, off: 34 } },
@@ -58,7 +58,7 @@ export const BANDSTAND = 'bandstand';
 
 /** Where Pip hides, and what the town says about which way she went. */
 export const PIP_HAUNTS: readonly Haunt[] = [
-  { id: 'tower', name: 'the fire tower', where: { peak: 'gore' }, off: 13, hints: ["Pip? She got on the Straight Brook chair. That's all I saw.", 'Pip went up. All the way up, I think.'] },
+  { id: 'tower', name: 'the fire tower', where: { peak: 'gore' }, off: 34, hints: ["Pip? She got on the Straight Brook chair. That's all I saw.", 'Pip went up. All the way up, I think.'] },
   { id: 'quarry', name: 'the old quarry', where: { spot: 'garnet-quarry' }, off: 14, hints: ['Pip took the shuttle out toward the mine. She had a flashlight.', 'She said something about garnets. And giggled.'] },
   { id: 'saddle', name: 'the Saddle Lodge', where: { place: 'saddle-lodge' }, off: 26, hints: ["Pip? Up at the Saddle somewhere. Behind something, I'd guess.", 'She went up the Express with a sandwich. That means a long hide.'] },
   { id: 'duck-pond', name: 'the Duck Pond', where: { spot: 'duck-pond' }, off: 16, hints: ['I saw a yellow hat go by toward the Duck Pond.', "She's by some water. She told me not to say which."] },

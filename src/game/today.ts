@@ -115,7 +115,9 @@ export function pickLeads(open: readonly Lead[], day: string, trailOfDay: string
   const people = of('person');
   const rumour = of('rumour');
   const nextDoor = people.find((l) => l.id === neighbour);
-  const askFirst = seed % 2 === 0 ? rumour : people;
+  // (By the day's place in the calendar, so that it really is turn about: a stirred number runs in streaks.)
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  const askFirst = Math.round(Date.UTC(y, m - 1, d) / 86400000) % 2 === 0 ? rumour : people;
   add(nextDoor ?? one(askFirst, 9) ?? one(askFirst === rumour ? people : rumour, 9));
   // Short of three, whatever else is open makes up the number.
   for (const lead of [...of('project'), ...of('place'), ...trails, ...people, ...rumour, ...of('patch')]) add(lead);
@@ -145,6 +147,10 @@ export interface Aside {
   lastLetter: boolean;
   /** The meteor shower that is on tonight, by name, if there is one in the season the player is really in. */
   shower: string | null;
+  /** Cloud is lying in the valleys this morning: from a summit it may be a sea of it. */
+  fog: boolean;
+  /** The northern lights may be out tonight. */
+  aurora: boolean;
   /** The band plays on the bandstand tonight. */
   concert: boolean;
   /** Somebody is at the cabin's feeder. */
@@ -166,12 +172,14 @@ export const WAITING_FOR_ASIDE = 5;
 
 /**
  * The flyer's P.S.: one line, of the first of these that is so. The letter that ends the game
- * before anything; then what is only tonight; then what is waiting at home and in town; then
+ * before anything; then what is only this morning or tonight; then what is waiting at home and in town; then
  * what tomorrow brings; and last the things that will keep. Null on a day with none of them.
  */
 export function postscript(a: Aside): string | null {
   if (a.lastLetter) return "P.S. There's a letter at the post office. It's from everybody.";
   if (a.shower) return `P.S. Shooting stars tonight, if it's clear. It's ${a.shower}.`;
+  if (a.fog) return "P.S. Fog in the valley this morning. It might be clear up top.";
+  if (a.aurora) return "P.S. Look north tonight, if it's clear. Somebody saw the lights last time.";
   if (a.concert) return "P.S. The band's on the bandstand tonight, once it's dark.";
   if (a.guest) return "P.S. Somebody's at your feeder.";
   if (a.waiting >= WAITING_FOR_ASIDE) return `P.S. You've got ${a.waiting} things Silas hasn't seen. He'd love to.`;

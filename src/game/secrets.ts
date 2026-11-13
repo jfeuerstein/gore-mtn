@@ -135,7 +135,7 @@ export const SECRETS: readonly Secret[] = [
   plaque('Cloud', 0.4, "CLOUD. Some mornings you ski down into one. Some mornings you ski down out of one."),
   plaque('Echo', 0.5, "ECHO. Say something nice. It comes back."),
   plaque('Fairview', 0.5, "FAIRVIEW. The man who cut it thought the view was fair. He meant it as a compliment."),
-  plaque('Foxlair', 0.5, "FOXLAIR. There was a den under the big rock. There still is. Go by quietly."),
+  plaque('Foxlair', 0.5, "FOXLAIR. There was a den back in the birches. There still is. Go by quietly."),
   plaque('Headwaters', 0.4, "HEADWATERS. Three brooks start within a snowball's throw of here. Two of them end up in the Hudson."),
   plaque('Jamboree', 0.5, "JAMBOREE. The ski club's picnic ended up here one spring. Nobody remembers deciding that."),
   plaque('Otter Slide', 0.5, "OTTER SLIDE. The otters were here first. The trail just follows them."),
@@ -314,7 +314,7 @@ export const SECRETS: readonly Secret[] = [
     where: { wild: 4 },
     action: 'Go in',
     lead: { marks: 'buckets', seasons: ['spring'] },
-    pages: [{ text: "A shack in the maples, shut up tight. There's a note on the door." }, { text: "Back when the sap runs.\nMarch, if it's cold nights and warm days. April, if I oversleep.", signed: '-S.' }],
+    pages: [{ text: "A shack in the maples, shut up tight. There's a note on the door." }, { text: "Back when the sap runs.\nCold nights and warm days, that's all it takes. And me waking up.", signed: '-S.' }],
     turns: {
       spring: {
         pages: [
@@ -524,6 +524,11 @@ export function ringBell(save: SaveData, day: string): boolean {
   const again = save.bell.rang === day;
   save.bell = { rang: day, told: again ? save.bell.told : [] };
   return !again;
+}
+
+/** True if someone has something to say about the bell today and has not yet said it. Asking does not use it up. */
+export function bellHeard(save: SaveData, personId: string, day: string): boolean {
+  return BELL_HEARD[personId] !== undefined && save.bell.rang !== '' && !save.bell.told.includes(personId) && dayAfter(save.bell.rang) === day;
 }
 
 /** What someone says about the bell, the day after it was rung: once each, and nothing on any other day. */

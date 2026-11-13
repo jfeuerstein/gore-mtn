@@ -24,7 +24,7 @@ import { feederGuest, nextChoice } from './cabin';
 import { sawSight, SIGHTS, type Sight } from './sky';
 import { tread } from './worn';
 import { HINTS_A_DAY, PIP_WATCHERS, pipHiding, pipHint, wandererTurn, wandererWaits } from './wanderers';
-import { addStone, BELL_HEARD, bellRemark, discover, KEYS, ringBell, secretById, skiedRun, type Found, type SecretKind } from './secrets';
+import { addStone, bellRemark, discover, KEYS, ringBell, secretById, skiedRun, type Found, type SecretKind, bellHeard } from './secrets';
 
 /** What an announcement says under the name of a secret, the first time it is found. */
 const SECRET_SAID: Record<SecretKind, string> = {
@@ -777,7 +777,9 @@ export class Game {
       talk.lines.push(
         Object.keys(save.letters).length >= LETTERS.length
           ? "That's all of them. Every letter anybody's written you!\nI'll keep the box open. You never know."
-          : "Nothing in your box today. It happens!\nPeople write when there's news. Go make some.",
+          : bookFull(save.patches)
+            ? "Nothing in your box today.\nI think everybody's still getting over the last one. You gave them a lot to write about."
+            : "Nothing in your box today. It happens!\nPeople write when there's news. Go make some.",
       );
     }
     const said = saidBy();
@@ -795,20 +797,27 @@ export class Game {
         // They have something to say about what the player has on. Once a day is enough.
         this.say(day, `wear:${personId}`);
         talk.lines.push((person.wearing?.[save.gear.hat] ?? person.wearing?.[save.gear.jacket]) as string);
-      } else if (talk.lines.length === 0 && this.hintsAt(personId, day, season)) {
-        // Pip is out hiding, and this is somebody who saw which way she went.
-        talk.lines.push(pipHint(day, this.pipHinters(day)));
-        this.say(day, `pip:${personId}`);
-      } else if (talk.lines.length === 0 && (bellRemark(save, personId, day) ?? '') !== '') {
-        // The day after the summit bell was rung, whoever heard it says so, once.
-        talk.lines.push(BELL_HEARD[personId] as string);
-      } else if (talk.lines.length === 0) {
+      } else if (talk.lines.length === 0 && !this.hintsAt(personId, day, season) && !bellHeard(save, personId, day)) {
         const n = this.chatted.get(personId) ?? 0;
         this.chatted.set(personId, n + 1);
         // The weather or the hour comes up first, if they have something to say about it.
         const remark = mood ? person.moods?.[mood] : undefined;
         const lines = [...(n === 0 && remark ? remark : []), ...(person.seasonal?.[season] ?? []), ...person.chat, ...(n > 0 && remark ? remark : [])];
         talk.lines.push(lines[n % lines.length] as string);
+      }
+    }
+    // What somebody saw or heard today is passed on whatever else they had to say: it is not kept back until they
+    // have nothing to ask and nothing to hand over, which for most of the town is never. Not on top of a question
+    // that is waiting on an answer, though.
+    if (!talk.offer && !talk.letter) {
+      if (this.hintsAt(personId, day, season)) {
+        // Pip is out hiding, and this is somebody who saw which way she went.
+        talk.lines.push(pipHint(day, this.pipHinters(day)));
+        this.say(day, `pip:${personId}`);
+      } else {
+        // The day after the summit bell was rung, whoever heard it says so, once.
+        const heard = bellRemark(save, personId, day);
+        if (heard) talk.lines.push(heard);
       }
     }
     // The town round: a call at every door in one day is counted.

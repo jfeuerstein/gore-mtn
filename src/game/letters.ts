@@ -12,16 +12,19 @@ export interface Letter {
   /** Who it is from: a person's id for their portrait, and the name it is signed with. */
   from: string | null;
   signed: string;
-  /** What has to be true of the book before it is sent. Always sent if not given. */
-  when?: (save: SaveData) => boolean;
+  /** What has to be true of the book, on the day, before it is sent. Always sent if not given. */
+  when?: (save: SaveData, day: string) => boolean;
   text: string;
 }
 
 const met = (id: string) => (save: SaveData) => id in save.met;
 const done = (id: string) => (save: SaveData) => Boolean(save.errands[id]?.done);
 const seen = (id: string) => (save: SaveData) => id in save.sightings;
-/** Once something the town has built has been staked out, and whoever is writing about it has been met. */
-const built = (project: string, who: string) => (save: SaveData) => project in save.projects && who in save.met;
+/**
+ * Once something the town has built stands (it is staked out one day and built by the next: a letter that says it
+ * is built is not sent on the day of the stakes), and whoever is writing about it has been met.
+ */
+const built = (project: string, who: string) => (save: SaveData, day: string) => (save.projects[project] ?? '9999') < day && who in save.met;
 
 
 /** The letter that closes a full book. */
@@ -54,7 +57,7 @@ export const LETTERS: readonly Letter[] = [
     from: 'hazel',
     signed: "-Hazel",
     when: met('hazel'),
-    text: "Hi! It was nice to meet you today. There aren't really any rules up here. Okay, maybe one: don't ski into the snow guns. Somebody did that last year. (Me.)",
+    text: "Hi! It was nice to meet you. There aren't really any rules up here. Okay, maybe one: don't ski into the snow guns. Somebody did that last year. (Me.)",
   },
   {
     id: 'pip-fox',
@@ -296,5 +299,5 @@ export const LETTERS: readonly Letter[] = [
  */
 export function letterWaiting(save: SaveData, collected: Record<string, string>, day: string): Letter | null {
   if (Object.values(collected).includes(day)) return null;
-  return LETTERS.find((l) => !(l.id in collected) && (!l.when || l.when(save))) ?? null;
+  return LETTERS.find((l) => !(l.id in collected) && (!l.when || l.when(save, day))) ?? null;
 }

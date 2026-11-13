@@ -111,17 +111,19 @@ describe("today's flyer", () => {
 });
 
 describe("the flyer's P.S.", () => {
-  const nothing: Aside = { lastLetter: false, shower: null, concert: false, guest: false, waiting: 0, building: null, resting: false, letter: false, pip: false };
+  const nothing: Aside = { lastLetter: false, shower: null, fog: false, aurora: false, concert: false, guest: false, waiting: 0, building: null, resting: false, letter: false, pip: false };
 
   it('says nothing on a day with nothing to say', () => {
     expect(postscript(nothing)).toBeNull();
   });
 
   it('says one thing, and the one that matters most: the last letter, then tonight, then home and town, then tomorrow, then what will keep', () => {
-    const everything: Aside = { lastLetter: true, shower: 'the Leonids', concert: true, guest: true, waiting: 9, building: 'The dock', resting: true, letter: true, pip: true };
+    const everything: Aside = { lastLetter: true, shower: 'the Leonids', fog: true, aurora: true, concert: true, guest: true, waiting: 9, building: 'The dock', resting: true, letter: true, pip: true };
     const order: [keyof Aside, RegExp][] = [
       ['lastLetter', /from everybody/],
       ['shower', /the Leonids/],
+      ['fog', /Fog in the valley/],
+      ['aurora', /Look north tonight/],
       ['concert', /bandstand tonight/],
       ['guest', /feeder/],
       ['waiting', /9 things Silas/],

@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { lit } from '../look/material';
 
 /** Puffs in the column at once. */
-const PUFFS = 14;
+const PUFFS = 18;
 /** Seconds for a puff to rise from the fire to where it thins away. */
 const LIFE = 46;
 /** How high the column stands over the fire, and how far the air leans it, in metres. */
@@ -25,7 +25,12 @@ export class Plume {
   private readonly s = new THREE.Vector3();
   private at: { x: number; y: number; z: number } | null = null;
 
-  constructor() {
+  /** @param onSnow true in the months the mountain is white: pale smoke is not seen against it, so it is wood smoke's grey then */
+  constructor(onSnow = false) {
+    if (onSnow) {
+      this.material.color.setHex(0x8e96a3);
+      this.material.emissive.setHex(0x59616d);
+    }
     this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), this.material, PUFFS);
     this.mesh.name = 'plume';
     this.mesh.count = 0;
@@ -52,7 +57,7 @@ export class Plume {
       const sway = Math.sin(time * 0.2 + i * 2.1) * 2.2 * age;
       this.p.set(at.x + LEAN * age * age + sway, at.y + 0.8 + RISE * age, at.z + LEAN * 0.35 * age * age - sway * 0.5);
       // Small over the fire, wide aloft, and drawn in to nothing at the top, so that none of them pops out.
-      const size = (0.9 + age * 11) * Math.min(1, (1 - age) * 3.2) * Math.min(1, age * 14 + 0.25);
+      const size = (1.2 + age * 15) * Math.min(1, (1 - age) * 3.2) * Math.min(1, age * 14 + 0.25);
       this.s.set(size, size * 0.8, size);
       this.mesh.setMatrixAt(i, this.m.compose(this.p, this.q, this.s));
     }

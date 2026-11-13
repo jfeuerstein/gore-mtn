@@ -487,7 +487,7 @@ try {
     );
   check('the book starts with the Base Lodge stamp and nothing else', await bookSettle(() => window.__gore.state().book.landmarks === 1));
   const fresh = (await bookState()).book;
-  check('and counts what there is to find', fresh.trails === 0 && fresh.trailsTotal > 90 && fresh.liftsTotal === 14 && fresh.mineralsTotal === 12 && fresh.specimens === 0, JSON.stringify(fresh));
+  check('and counts what there is to find', fresh.trails === 0 && fresh.trailsTotal > 90 && fresh.liftsTotal === 14 && fresh.mineralsTotal === 25 && fresh.specimens === 0, JSON.stringify(fresh));
 
   await bp.tap('#book-button');
   check('the book button opens the book at the passport', (await bp.locator('#book-sheet').isVisible()) && (await bp.getAttribute('#book-sheet [data-tab=passport]', 'aria-pressed')) === 'true');
@@ -495,10 +495,10 @@ try {
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
-  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 28 + 3 + 4 + 24 + 15 + 14 + (await bp.evaluate(() => window.__gore.state().benches.length)), inkedStamps.join());
+  check('the Winter and Base Lodge stamps are inked and the rest are still to earn', inkedStamps.join() === 'Winter,Base Lodge' && (await bp.locator('#book-sheet .stamp.todo').count()) === 32 + 3 + 4 + 24 + 15 + 14 + (await bp.evaluate(() => window.__gore.state().benches.length)), inkedStamps.join());
   check('every trail and path is listed', (await bp.locator('#book-sheet .trail').count()) === fresh.trailsTotal + fresh.pathsTotal && fresh.pathsTotal > 15);
   await bp.tap('#book-sheet [data-tab=minerals]');
-  check('the minerals page lists all twelve, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 12 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
+  check('the minerals page lists all twenty-five, none found yet', (await bp.locator('#book-sheet .mineral').count()) === 25 && (await bp.locator('#book-sheet .mineral.earned').count()) === 0);
   // An open sheet covers the bottom row, so only one can be opened by hand. Should another be
   // opened some other way, the first gets out of its way.
   await bp.evaluate(() => document.getElementById('map-button').click());
@@ -557,7 +557,15 @@ try {
   check(`skiing the length of ${short1.name} stamps it`, skied.book.trails >= 1, `${skied.book.trails} stamped, ${run(short1).toFixed(0)} m`);
   check('the first trail earns a patch', await bookSettle(() => window.__gore.state().book.patches >= 1), (await bookState()).toast);
   await bp.tap('#book-button');
-  check('the book opens at the page it was left on', (await bp.getAttribute('#book-sheet [data-tab=minerals]', 'aria-pressed')) === 'true' && (await bp.locator('#book-sheet .mineral.earned').count()) === 1);
+  // It opens at what was earned last (the patch for a first trail, on the Passport), with that in view, being sewn on.
+  const newest = await bp.evaluate(() => {
+    const body = document.querySelector('#book-sheet .body').getBoundingClientRect();
+    const sewn = document.querySelector('#book-sheet .sewn')?.getBoundingClientRect();
+    return { tab: document.querySelector('#book-sheet [aria-pressed=true]')?.dataset.tab, seen: Boolean(sewn && sewn.top >= body.top && sewn.bottom <= body.bottom) };
+  });
+  check('the book opens at what was earned last, with it in view', newest.tab === 'passport' && newest.seen, JSON.stringify(newest));
+  await bp.tap('#book-sheet [data-tab=minerals]');
+  check('and the stone picked up is on the minerals page', (await bp.locator('#book-sheet .mineral.earned').count()) === 1);
   await bp.tap('#book-sheet [data-tab=passport]');
   const inked = await bp.locator('#book-sheet .trail.earned .name').allTextContents();
   check('and the passport shows it inked', inked.includes(short1.name), inked.join(', '));
@@ -814,8 +822,8 @@ try {
   check('five stamps earn the pass, and then she offers every other season', seasonsOffered.length === 4 && seasonsOffered.includes(elsewhere) && !seasonsOffered.some((b) => b.toLowerCase().startsWith(homeSeason)), seasonsOffered.join());
   const visiting = await railState();
   check(`the train arrives in ${elsewhere.toLowerCase()}, at the depot`, visiting.season === elsewhere.toLowerCase() && visiting.away === elsewhere.toLowerCase() && Math.hypot(visiting.x - bea.x, visiting.z - bea.z) < 60 && !(await rp.evaluate(() => window.__gore.error)), `${visiting.season}`);
-  // The restored book had no season stamps, so this is its first.
-  check('and the book stamps the season arrived in', visiting.book.seasons === 1);
+  // The restored book had no season stamps: the game began again from it at home, which stamped one, and this is the second.
+  check('and the book stamps the season arrived in', visiting.book.seasons === 2, `${visiting.book.seasons}`);
   const wayHome = await board('(home)');
   check('she offers the way home', wayHome.some((b) => b.endsWith('(home)')), wayHome.join());
   const returned = await railState();

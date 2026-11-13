@@ -387,7 +387,7 @@ async function boot(): Promise<void> {
   scene.add(secretThings.group);
   // Steam from the sugar shack when it is boiling, and the camper's smoke, which is there to be seen from across the valley.
   const steam = new Smoke(secretThings.flues);
-  const plume = new Plume();
+  const plume = new Plume(season === 'winter' || season === 'spring');
   scene.add(steam.mesh, plume.mesh);
   // What is in the sky only at the right moment: cloud in the valleys, shooting stars, the northern lights.
   const cloudTop = RELIEF * CLOUD_TOP;
@@ -1030,7 +1030,7 @@ async function boot(): Promise<void> {
     // Some boards are chalked up fresh each time they are read: from the sky as it is this
     // minute, from the passport, from what is about on the mountain at this hour.
     const chalked: Record<string, () => string> = {
-      report: () => snowReport({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today, fresh: freshNow() }, world.lifts.length, game.trails.length),
+      report: () => snowReport({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today, fresh: freshNow(), low: (weather.low ?? 0) > 0 }, world.lifts.length, game.trails.length),
       trailboard: () => trailOfTheDay(game.trails, (name) => Boolean(game.save.trails[name]?.stamped), today, look.ride === 'bike'),
       log: () => wildlifeLog(SPECIES, (id) => id in game.save.sightings, season, watch, today),
     };
@@ -1046,7 +1046,8 @@ async function boot(): Promise<void> {
     talkSheet.open(
       // A board's name is written small ("the noticeboard"); as a title it takes a capital.
       board ? talk.person.name.charAt(0).toUpperCase() + talk.person.name.slice(1) : talk.person.name,
-      talk.person.role,
+      // (On the bandstand of a Saturday night, nobody is practicing.)
+      talk.person.roams === 'band' && concertOn(game.save, today, watch) ? talk.person.role.replace(', practicing', ', in the band') : talk.person.role,
       board || notes ? lines.map((line) => (typeof line === 'string' ? { written: line, ...(notes ? { signed: '- Tom' } : {}) } : line)) : lines,
       choices,
       board ? null : `${import.meta.env.BASE_URL}art/people/${talk.person.id}.webp`,
@@ -1390,7 +1391,7 @@ async function boot(): Promise<void> {
       'Rest your thumb on the lower part of the screen to walk.\nDrag higher up to look around. Pinch to pull the camera back.',
       `Tap ${look.ride === 'bike' ? 'Bike' : 'Skis'}, bottom left, and point yourself downhill.\nThe lifts will bring you back up.`,
       'Stones glint on the ground. Trails, lifts and summits stamp your passport.\nIt all goes in the Book, bottom right.',
-      "This is your cabin. Every day starts here, with a flyer of things worth doing.\nIf you get turned around, the Map knows the way.",
+      "You have a cabin by the trail. Every day starts there, with a flyer of things worth doing.\nIf you get turned around, the Map knows the way.",
     ], [], null, "Let's go");
     welcomed = true;
   };
@@ -1471,7 +1472,7 @@ async function boot(): Promise<void> {
     const building = inHand?.state === 'building' ? inHand.project : null;
     return {
       date: flyerDate(today),
-      sky: `${SEASON_NAME[season]} · ${sky({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }).toLowerCase()}`,
+      sky: `${SEASON_NAME[season]} · ${sky({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today, low: (weather.low ?? 0) > 0 }).toLowerCase()}`,
       leads: ids.flatMap((id) => {
         const found = all.find((l) => l.lead.id === id);
         if (found) return [{ ...found.lead, done: !found.open }];
@@ -1483,6 +1484,8 @@ async function boot(): Promise<void> {
       note: postscript({
         lastLetter: letter?.id === LAST_LETTER,
         shower: season === seasonFor(new Date()) ? (showerOn(today)?.name ?? null) : null,
+        fog: (weather.low ?? 0) > 0 && watch !== 'night' && watch !== 'dusk',
+        aurora: season === seasonFor(new Date()) && auroraOn(today) && weather.overcast < 0.5,
         concert: weekday(today) === 6 && bandAbout(game.save, today) && bandWhole(game.save),
         guest: game.feederGuest(today, season, watch) !== null,
         waiting: 'silas' in game.save.met ? game.museumWaiting().length : 0,
