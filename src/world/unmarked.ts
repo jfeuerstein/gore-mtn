@@ -145,6 +145,23 @@ export function alongRun(run: Run, x: number, z: number): { share: number; off: 
   return { share: at / Math.max(1, run.pts.length / 2 - 1), off: best };
 }
 
+/** How near a run's line counts as being on it, in metres. */
+export const RUN_REACH = 14;
+/** A run counts once its bottom is reached with this many tenths of it passed on the way. */
+export const RUN_TENTHS = 8;
+
+/**
+ * Note that somebody is at a place: if that is on a run, mark the tenth of it they are in.
+ * @param tenths the tenths of this run passed so far, which is added to
+ * @returns true when that is the run come down: at its bottom, with most of it behind them
+ */
+export function downRun(run: Run, x: number, z: number, tenths: Set<number>): boolean {
+  const { share, off } = alongRun(run, x, z);
+  if (off > RUN_REACH) return false;
+  tenths.add(Math.min(9, Math.floor(share * 10)));
+  return share >= 0.97 && tenths.size >= RUN_TENTHS;
+}
+
 /** A step along a lead, in metres. */
 const LEAD_STEP = 5;
 

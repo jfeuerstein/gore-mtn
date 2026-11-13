@@ -1,6 +1,6 @@
 import { slips } from './voice';
 import { describe, expect, it } from 'vitest';
-import { dayBefore, flyerDate, LEADS, patchLead, trailAgainLead, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './today';
+import { dayBefore, flyerDate, LEADS, patchLead, trailAgainLead, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead, postscript, WAITING_FOR_ASIDE, type Aside } from './today';
 
 const trail = (name: string): Lead => trailLead({ name, difficulty: 'intermediate', glade: false }, 0, 0, '2026-11-11', false);
 const place = (id: string): Lead => placeLead({ id, name: id, x: 0, z: 0 }, '2026-11-11');
@@ -109,3 +109,42 @@ describe("today's flyer", () => {
     }
   });
 });
+
+describe("the flyer's P.S.", () => {
+  const nothing: Aside = { lastLetter: false, shower: null, concert: false, guest: false, waiting: 0, building: null, resting: false, letter: false, pip: false };
+
+  it('says nothing on a day with nothing to say', () => {
+    expect(postscript(nothing)).toBeNull();
+  });
+
+  it('says one thing, and the one that matters most: the last letter, then tonight, then home and town, then tomorrow, then what will keep', () => {
+    const everything: Aside = { lastLetter: true, shower: 'the Leonids', concert: true, guest: true, waiting: 9, building: 'The dock', resting: true, letter: true, pip: true };
+    const order: [keyof Aside, RegExp][] = [
+      ['lastLetter', /from everybody/],
+      ['shower', /the Leonids/],
+      ['concert', /bandstand tonight/],
+      ['guest', /feeder/],
+      ['waiting', /9 things Silas/],
+      ['building', /The dock will be up by tomorrow/],
+      ['resting', /thinking about what to build/],
+      ['letter', /a letter for you/],
+      ['pip', /Pip's hiding/],
+    ];
+    const state: Aside = { ...everything };
+    for (const [key, says] of order) {
+      const line = postscript(state) ?? '';
+      expect(line, key).toMatch(says);
+      expect(line.startsWith('P.S. '), key).toBe(true);
+      expect(slips(line), line).toEqual([]);
+      // With that out of the way, the next one is said.
+      (state as unknown as Record<string, unknown>)[key] = nothing[key];
+    }
+    expect(postscript(state)).toBeNull();
+  });
+
+  it('only mentions the museum once a few things are waiting', () => {
+    expect(postscript({ ...nothing, waiting: WAITING_FOR_ASIDE - 1 })).toBeNull();
+    expect(postscript({ ...nothing, waiting: WAITING_FOR_ASIDE })).toContain(`${WAITING_FOR_ASIDE} things`);
+  });
+});
+

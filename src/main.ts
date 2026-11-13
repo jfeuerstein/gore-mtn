@@ -19,7 +19,7 @@ import { benchConditionsNow, conditionsNow } from './game/passport';
 import { APPROACH, PEOPLE, type Mood } from './game/people';
 import { LAST_LETTER, letterWaiting } from './game/letters';
 import { dayNumber, sky, snowReport, trailOfTheDay, trailPick, wildlifeLog } from './game/report';
-import { patchLead, trailAgainLead, dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead } from './game/today';
+import { patchLead, trailAgainLead, dayBefore, flyerDate, personLead, pickLeads, placeLead, projectLead, rumourLead, trailLead, type Lead, postscript } from './game/today';
 import { Flyer, type FlyerPage } from './ui/flyer';
 import { CabinSheet } from './ui/cabinSheet';
 import { MuseumSheet } from './ui/museumSheet';
@@ -61,7 +61,7 @@ import { Snowfall } from './world/snowfall';
 import { Terrain, type Print } from './world/terrainMesh';
 import { SecretThings } from './world/secretMesh';
 import { placeAt, secretSites, setting } from './world/secretSites';
-import { alongRun, leadLine } from './world/unmarked';
+import { leadLine, downRun } from './world/unmarked';
 import { Plume } from './world/plume';
 import { SkyShow } from './world/skyShow';
 import { Powder } from './world/powder';
@@ -1352,12 +1352,9 @@ async function boot(): Promise<void> {
     for (const run of secretSetting.runs) {
       if (run.id in game.save.runs) continue;
       if (Math.abs((run.pts[0] as number) - px) > 1300 || Math.abs((run.pts[1] as number) - pz) > 1300) continue;
-      const { share, off } = alongRun(run, px, pz);
-      if (off > 14) continue;
       const tenths = runTenths.get(run.id) ?? new Set<number>();
       runTenths.set(run.id, tenths);
-      tenths.add(Math.min(9, Math.floor(share * 10)));
-      if (share < 0.97 || tenths.size < 8) continue;
+      if (!downRun(run, px, pz, tenths)) continue;
       // Somebody who came down it without stopping at the ribbon has found it all the same.
       if (!(run.id in game.save.secrets)) announce(game.secret(run.id, today, season)?.events ?? []);
       announce(game.ranRun(run.id, today));
@@ -1463,28 +1460,18 @@ async function boot(): Promise<void> {
         const earned = id.startsWith('patch:') ? PATCHES.find((p) => `patch:${p.id}` === id) : undefined;
         return earned ? [{ ...patchLead(earned), done: true }] : [];
       }),
-      // One line in pencil: the last letter before anything; then whoever is at the feeder, what
-      // tomorrow brings, the mail, and the town making up its mind.
-      note:
-        letter?.id === LAST_LETTER
-          ? "P.S. There's a letter at the post office. It's from everybody."
-          : showerOn(today) && season === seasonFor(new Date())
-            ? `P.S. Shooting stars tonight, if it's clear. It's ${showerOn(today)?.name}.`
-          : weekday(today) === 6 && bandAbout(game.save, today) && bandWhole(game.save)
-            ? "P.S. The band's on the bandstand tonight, once it's dark."
-          : game.feederGuest(today, season, watch)
-            ? "P.S. Somebody's at your feeder."
-            : game.museumWaiting().length >= 5 && 'silas' in game.save.met
-              ? `P.S. You've got ${game.museumWaiting().length} things Silas hasn't seen. He'd love to.`
-            : building
-              ? `P.S. ${building.name} will be up by tomorrow.`
-              : townResting(game.save.projects, today)
-                ? "P.S. The town's thinking about what to build next."
-                : letter
-                  ? "P.S. There's a letter for you at the post office."
-                  : game.pipHides(today, season)
-                    ? "P.S. Pip's hiding somewhere. Somebody in town saw which way she went."
-                    : null,
+      // One line in pencil, of whatever most wants saying today.
+      note: postscript({
+        lastLetter: letter?.id === LAST_LETTER,
+        shower: season === seasonFor(new Date()) ? (showerOn(today)?.name ?? null) : null,
+        concert: weekday(today) === 6 && bandAbout(game.save, today) && bandWhole(game.save),
+        guest: game.feederGuest(today, season, watch) !== null,
+        waiting: 'silas' in game.save.met ? game.museumWaiting().length : 0,
+        building: building?.name ?? null,
+        resting: townResting(game.save.projects, today),
+        letter: letter !== null && letter !== undefined,
+        pip: game.pipHides(today, season),
+      }),
       flagged: game.save.flag,
       riding: look.ride === 'bike',
     };

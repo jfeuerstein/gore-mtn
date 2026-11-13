@@ -138,3 +138,47 @@ export function flyerDate(day: string): string {
   const weekday = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay();
   return `${WEEKDAYS[weekday]} · ${MONTHS[m - 1]} ${d}`;
 }
+
+/** What the day has that might be worth a line in pencil at the foot of the flyer. */
+export interface Aside {
+  /** The letter from everybody is waiting at the post office. */
+  lastLetter: boolean;
+  /** The meteor shower that is on tonight, by name, if there is one in the season the player is really in. */
+  shower: string | null;
+  /** The band plays on the bandstand tonight. */
+  concert: boolean;
+  /** Somebody is at the cabin's feeder. */
+  guest: boolean;
+  /** How many things the player has that the museum's keeper has not seen, once he has been met. */
+  waiting: number;
+  /** What the town is building, to be up by tomorrow, by name. */
+  building: string | null;
+  /** The town has nothing in hand and is thinking about what to build next. */
+  resting: boolean;
+  /** A letter is waiting at the post office. */
+  letter: boolean;
+  /** Pip is hiding. */
+  pip: boolean;
+}
+
+/** How many things must be waiting for the museum before the flyer says so. */
+export const WAITING_FOR_ASIDE = 5;
+
+/**
+ * The flyer's P.S.: one line, of the first of these that is so. The letter that ends the game
+ * before anything; then what is only tonight; then what is waiting at home and in town; then
+ * what tomorrow brings; and last the things that will keep. Null on a day with none of them.
+ */
+export function postscript(a: Aside): string | null {
+  if (a.lastLetter) return "P.S. There's a letter at the post office. It's from everybody.";
+  if (a.shower) return `P.S. Shooting stars tonight, if it's clear. It's ${a.shower}.`;
+  if (a.concert) return "P.S. The band's on the bandstand tonight, once it's dark.";
+  if (a.guest) return "P.S. Somebody's at your feeder.";
+  if (a.waiting >= WAITING_FOR_ASIDE) return `P.S. You've got ${a.waiting} things Silas hasn't seen. He'd love to.`;
+  if (a.building) return `P.S. ${a.building} will be up by tomorrow.`;
+  if (a.resting) return "P.S. The town's thinking about what to build next.";
+  if (a.letter) return "P.S. There's a letter for you at the post office.";
+  if (a.pip) return "P.S. Pip's hiding somewhere. Somebody in town saw which way she went.";
+  return null;
+}
+

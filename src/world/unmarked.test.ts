@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RUN_IDS } from '../game/secrets';
 import { loadTestWorld } from './testWorld';
-import { alongRun, leadLine, runCorridor, unmarkedRuns } from './unmarked';
+import { alongRun, leadLine, runCorridor, unmarkedRuns, downRun, RUN_REACH, RUN_TENTHS } from './unmarked';
 import { OPEN_WATER } from './world';
 
 const world = loadTestWorld();
@@ -71,3 +71,35 @@ describe('what leads to something in the trees', () => {
     expect(tried).toBeGreaterThan(4);
   });
 });
+
+describe('coming down a run', () => {
+  const run = { id: 'run-x', pts: Array.from({ length: 51 }, (_, i) => [0, i * 8]).flat(), length: 400 };
+
+  it('counts once the bottom is reached with most of it passed on the way', () => {
+    const tenths = new Set<number>();
+    let done = false;
+    for (let z = 0; z <= 400 && !done; z += 4) done = downRun(run, 2, z, tenths);
+    expect(done).toBe(true);
+    expect(tenths.size).toBeGreaterThanOrEqual(RUN_TENTHS);
+  });
+
+  it('does not count for somebody who joins it near the bottom, or who is only beside it', () => {
+    const late = new Set<number>();
+    let done = false;
+    for (let z = 300; z <= 400; z += 4) done = downRun(run, 0, z, late) || done;
+    expect(done).toBe(false);
+    const wide = new Set<number>();
+    for (let z = 0; z <= 400; z += 4) done = downRun(run, RUN_REACH + 6, z, wide) || done;
+    expect(done).toBe(false);
+    expect(wide.size).toBe(0);
+  });
+
+  it('remembers what was passed, so a run left and come back to still counts', () => {
+    const tenths = new Set<number>();
+    for (let z = 0; z <= 360; z += 4) downRun(run, 0, z, tenths);
+    // Off into the trees and back for the last of it.
+    expect(downRun(run, 60, 370, tenths)).toBe(false);
+    expect(downRun(run, 0, 398, tenths)).toBe(true);
+  });
+});
+
