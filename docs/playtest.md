@@ -100,6 +100,28 @@ onto your own map.
   Lower Pit.
 - Ask Marge at the inn: her rumour is now of a rare stone the museum hasn't got.
 
+## From the fourth round of judges (13 November)
+
+Five judges looked at the game as it stood before the museum; what they found is fixed
+unless it says otherwise. Things worth a look on the phone:
+
+- **Speed lines.** Each new streak was drawn metres thick for one frame: a white or lilac
+  slab across the screen as the lines gathered. If you saw flashes at speed, that was it.
+- **Smoke, steam and powder** are faceted lumps in flat tones now, not smooth balls. Say if
+  you liked the soft ones better. Ro's smoke is grey in the snow months, so it can be seen.
+- **The Book** opens at whatever you earned last. Kept letters are folded; tap one to read it.
+  The wardrobe says where what you have on came from.
+- **Coming off a trail part-skied** you are told how much is left. A run from the cabin door
+  can never stamp Cedars Traverse: its top is up the hill.
+- **Four mineral patches** (gem garnet, tourmaline, wollastonite, labradorite) were pictures
+  of other stones and are painted again. Their borders are a shade bluer than the rest.
+- **The old adit** is in a bank now, not at the pond's edge. The rope tow's engine is rust,
+  the cellar hole is snowed over in winter, and each cairn starts with three stones.
+- **Restoring a save code** starts the game again from that book.
+- Not done: the fox's prints are still faint from the trail; the groomer's marks may shimmer
+  on a far slope at 1x; tapping a field note does not reopen what it said; the wardrobe's
+  ghosts are still question marks; `src/main.ts` is still long.
+
 ## New to feel for
 
 - Loose snow, made again as a layer of its own lying on the ground. Off the groomed trails

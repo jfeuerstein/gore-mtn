@@ -460,7 +460,8 @@ Everything else is built in code from simple shapes.
   and longer up to `LINES_FULL`. They are in the world, not on the screen; near the camera,
   because the camera looks the way the skier is going and a far one is seen end on; every
   other one pale and the rest dark, so that some show against snow and some against trees.
-  One instanced mesh, nothing see-through.
+  One instanced mesh, nothing see-through. A streak is sized by how far ahead it is now:
+  sized by where it had been, each new one was a slab across the screen for a frame.
 
 ## Lifts
 
@@ -484,7 +485,9 @@ Everything else is built in code from simple shapes.
   save code) and `game.ts`, which ties them together: `main.ts` tells it where the player is and
   what they are doing, and it returns what that earned.
 - Trails are stamped by skiing (or riding) past nine in ten of their checkpoints, with progress
-  kept between runs. The named paths through the woods are stamped the same way, on foot or
+  kept between runs. Coming off a trail that is more than half skied and not stamped, the
+  player is told what is left of it, once a day (`trailLeft`, `Game.leftTrail`): the cabin is
+  a fifth of the way down its own trail, and a run from the door can never stamp it. The named paths through the woods are stamped the same way, on foot or
   however the player likes. Lifts are pinned on arrival at the top. Landmarks are earned by being
   there, and each summit has a patch for every season. The first visit to each season is a stamp.
   Conditions, some of them particular to a season, are earned by skiing or riding under the real
@@ -523,14 +526,20 @@ Everything else is built in code from simple shapes.
   instance, and one of unlit gold twinkles, two draw calls in all. Stones, the dressed trees of
   spring, summer and fall, and the town's houses all take their colour per instance.
 - `src/ui/book.ts` is the Book sheet (Passport, Minerals, Guide and Pack pages) and `src/ui/toasts.ts` the
-  announcements at the top of the screen. With `hud=0` announcements are hidden too. A page
+  announcements at the top of the screen. The Book opens at whatever was earned last, with its
+  place in view. On the Pack page the wardrobe says where what is on came from (`cameFrom`),
+  counts what is had without saying out of how many, and keeps tracks, tunes and company out
+  of sight until one has been come by; kept letters are folded, all but the newest. With `hud=0` announcements are hidden too. A page
   with four or more headings gets a row of them to jump by, which stays at the top as it
   scrolls: the Passport runs to many screens.
   Landmarks are postcards: blank until visited, then a picture (`public/art/places/`).
 - The book is saved in `localStorage` under `gore.book`, at most once a second and when the game
   is put away. Add to the save by adding a field that `parseSave` fills in when it is missing;
-  never change the meaning of an existing one. Settings can copy the book out as a save code and
-  restore from one.
+  never change the meaning of an existing one. A field this version does not know is kept as
+  it came and written back (`more`): an older copy of the game, kept for playing with no
+  signal, must not lose what a newer one wrote. Settings can copy the book out as a save code
+  and restore from one; restoring begins the game again from that book (a reload), since it
+  may be in another season with other things built.
 - New things to collect are data: add them to the tables in `passport.ts` or `minerals.ts`, with
   a test, and the Book lists them.
 
@@ -567,7 +576,11 @@ Everything else is built in code from simple shapes.
   done, a thing handed over, the day's bake, sandwich or book, a word about something the town
   has built for them, a reminder, a new errand, or small talk, in that order. The day's gift
   comes before any errand, so an errand in hand never hides it; only on a first meeting do
-  the hello and the first ask come first.
+  the hello and the first ask come first. What somebody saw of Pip, or heard of the summit
+  bell, is said after whatever else they have to say (a judge found it never said at all,
+  behind errands), though not on top of a question waiting on an answer. What is said once a
+  day (the rumour, an errand asked and turned down, a word about a hat) is kept in the save
+  (`said`), so that closing the game does not have it said again.
 - **How people talk.** The owner asked for the manner of A Short Hike, in their own voice: short
   lines that can be read in a breath, said the way a person would say them to a friend. So:
   contractions always; small hesitations (`Oh!`, `um`, `...`, `I guess`, `a little`); ` - ` for a
@@ -577,8 +590,11 @@ Everything else is built in code from simple shapes.
   split with `\n`, which the talk sheet shows one under another; some lines should be one plain
   row. Each person keeps their own softeners (Hazel and June say `kind of`, Otto `pretty`, Bram
   `I mean`, Marge `hon`, Silas `I believe`; Ivy and Amos use none). Tom never speaks: his lines are notes stuck to
-  him, written out in full by Pip, and are shown as handwriting. A test in `people.test.ts`
-  fails on `do not`, `cannot` and British spelling. The wording is the owner's to mark up.
+  him, written out in full by Pip, and are shown as handwriting. The rule is one function,
+  `slips()` in `src/game/voice.ts`, which finds `do not`, `cannot` and British spelling;
+  `voice.test.ts` holds every table of words in the game to it (the cast, errands, letters,
+  offerings, minerals, the field guide, patches, secrets, the museum, the boards). The wording
+  is the owner's to mark up.
 - An errand reads its need from the book (stones found, species seen, stamps earned) or from a
   carried item; nothing is ever handed in and lost. Errands are never timed and cannot be failed.
   Rewards are hats and jackets, worn from the Pack page of the Book. Add an errand by adding it
@@ -789,6 +805,10 @@ Everything else is built in code from simple shapes.
   lead only says to ask Marge: where the stone lies is hers to tell. The three are chosen once
   and kept in the save (`leads`), so the flyer reads the same all day; one that has been done
   since is ticked and struck through.
+- Under the leads is one line in pencil, the P.S. (`postscript()` in `today.ts`, tested): the
+  first of these that is so. The last letter; a shower tonight; fog in the valley; the
+  northern lights; the band; somebody at the feeder; things the museum has not seen; what is
+  being built; the town thinking; a letter; Pip hiding.
 - Each lead has a `Flag` button that plants the player's flag on it. A lead is never a chore:
   nothing is lost by ignoring it, there is no reward for doing all three, and tomorrow there
   are three more. Add a kind of lead by adding a builder beside `trailLead` and a place for it
@@ -873,11 +893,13 @@ Everything else is built in code from simple shapes.
   logbook the town has been writing in for years, and a line for the player with the date.
   **Plaques**: a brass plate beside a trail saying why it is called what it is called
   (invented, every one; none for a trail named after a real person or a people).
-  **Old workings**: the adit at the mine, a cellar hole in the woods, the rope tow's
+  **Old workings**: the adit at the mine (set into a bank, clear of the water, looking
+  out down the slope: `into: 'hill'`), a cellar hole in the woods (under snow in winter:
+  `snowed()` in `modelFiles.ts` prints a model's greens in snow's inks), the rope tow's
   engine. **Rooms**: named places in town and at the mine whose doors are locked; a key
   lies in one of the old workings, and the inside is a picture (`public/art/rooms/`,
-  `ROOM_ART`). **Cairns**: one on each summit, which takes a stone a day from the player
-  and grows. **The bell** on Gore's summit, which the town says it heard, the next day
+  `ROOM_ART`). **Cairns**: one on each summit, begun with three stones, which takes a stone a
+  day from the player and grows. **The bell** on Gore's summit, which the town says it heard, the next day
   (`BELL_HEARD`).
 - A secret may hand over something to wear and a key, once. `COME_BY` lists how every thing
   in the wardrobe that is not an errand's is come by, and a test holds it to `GEAR`: nothing
@@ -914,7 +936,8 @@ Everything else is built in code from simple shapes.
   from green to the sky's own, so nothing is see-through. All three are kept only under
   the real calendar, clock and sky (`Game.saw`). `weather=fog`, `sky=meteors` and
   `sky=aurora` in the address show them for the tools; the flyer's P.S. says when a shower
-  is tonight.
+  is tonight, when there is fog in the valley of a morning, and when the lights may be out;
+  the snow report calls fog fog.
 - **Marks the player leaves.** Besides the cairns and the bell: ground worn by walking
   (`src/game/worn.ts`, pure, tested; `src/world/wornMesh.ts`). Off the trails and roads,
   each six-metre square remembers being crossed on foot; at three crossings it shows, as a
@@ -937,7 +960,8 @@ Everything else is built in code from simple shapes.
   (`tools/art/make-paintings.mjs`, through fal). They are kept in the Book under Paintings.
 - **Ro, the camper**, pitches somewhere out of the way each morning. His smoke
   (`src/world/plume.ts`) stands 85 m over the trees and is drawn from any distance: it is
-  how he is found. He has something for the first three days he is found.
+  how he is found. It is grey in the snow months, when pale smoke is white on white. His
+  tent is turned about his fire to ground of the fire's own height (`CAMP_TENT`). He has something for the first three days he is found.
 - **The band.** Four players practise alone around the mountain once the bandstand is
   built; each teaches a tune (a voice for the player's own jingles). With all four heard,
   they play on the bandstand on Saturdays from dusk (`concertOn`), and the first concert
