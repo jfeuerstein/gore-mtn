@@ -1195,7 +1195,8 @@ async function boot(): Promise<void> {
       if (st.person.roams === 'painter') {
         // Out while there is light to paint by.
         at = watch === 'night' ? null : hauntAt('nell', painterToday(today));
-        if (at) prop = beside(at, 0.2, -1.3);
+        // (The easel has its stool beside it now: both are a step further off, so that she is not standing in the stool.)
+        if (at) prop = beside(at, 0.2, -2.0);
       } else if (st.person.roams === 'camper') {
         at = hauntAt('ro', camperToday(today));
         if (at) {

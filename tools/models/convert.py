@@ -173,39 +173,48 @@ def calm(mesh, label, rounds=3):
     return label
 
 
-def biggest(mesh):
-    """The largest piece of a shape, alone."""
-    pieces = mesh.split(only_watertight=False)
-    return mesh if len(pieces) <= 1 else max(pieces, key=lambda piece: len(piece.faces))
-
-
 def welded(mesh, faces):
-    """The shape's own triangles, cut down to `faces` of them, as one closed solid; or None.
+    """The shape's own triangles, cut down to `faces` of them, as closed solids; or None.
 
     A shape that comes with a picture wrapped round it is cut along the picture's seams, so it
-    loads as a hundred loose pieces. Tripo's shapes, joined back up along those seams, are one
-    closed solid already (now and then with a stray scrap beside it), which Trellis's are not.
-    Cutting one down can pinch off a sliver or leave a seam open by a triangle: the scraps are
-    dropped and the seam mended. If what is left is not one closed solid of about the right
-    size, the answer is None, and the shape is given a new skin instead.
+    loads as a hundred loose pieces. Tripo's shapes, joined back up along those seams, are
+    closed solids already, which Trellis's are not: one solid, or a few that stand apart (an
+    easel and the stool beside it), and the owner has said a made thing may be several as long
+    as each is closed. Cutting one down can pinch off a sliver or leave a seam open by a
+    triangle: slivers and scraps are dropped and the seam mended. If any part that is left is
+    not closed, or the whole is no longer about the right size, the answer is None, and the
+    shape is given a new skin instead.
     """
     whole = trimesh.Trimesh(vertices=mesh.vertices.copy(), faces=mesh.faces.copy(), process=False)
     whole.merge_vertices(merge_tex=True, merge_norm=True)
-    # Something that stands apart from the rest (a stool by an easel, a cart before a tunnel) is a
-    # second solid, and a model is one: the larger is kept, as it is when a new skin is drawn.
-    whole = biggest(whole)
-    if len(whole.faces) < 0.5 * len(mesh.faces):
+    # The parts worth the name: not the scrap of a few triangles that sometimes comes with one.
+    parts = [part for part in whole.split(only_watertight=False) if len(part.faces) >= max(40, 0.01 * len(whole.faces))]
+    if not parts or sum(len(part.faces) for part in parts) < 0.9 * len(mesh.faces):
         return None
+    whole = trimesh.util.concatenate(parts) if len(parts) > 1 else parts[0]
     # A little under the number asked for: mending may add a triangle or two.
-    out = whole.simplify_quadric_decimation(face_count=int(faces * 0.97)) if len(whole.faces) > faces else whole.copy()
-    out = biggest(out)
+    cut = whole.simplify_quadric_decimation(face_count=int(faces * 0.97)) if len(whole.faces) > faces else whole.copy()
+    kept = []
+    for piece in cut.split(only_watertight=False):
+        # What cutting down pinched off: a few triangles, or something with no size to it.
+        if len(piece.faces) < 12 or np.linalg.norm(piece.extents) < 0.05:
+            continue
+        if not piece.is_watertight:
+            import pymeshfix
+            v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(piece.vertices, dtype=np.float64), np.ascontiguousarray(piece.faces, dtype=np.int32))
+            piece = trimesh.Trimesh(vertices=v, faces=f, process=True)
+            mended = piece.split(only_watertight=False)
+            if len(mended) > 1:
+                piece = max(mended, key=lambda m: len(m.faces))
+        if not piece.is_watertight:
+            return None
+        kept.append(piece)
+    if not kept or len(kept) > len(parts):
+        return None
+    out = trimesh.util.concatenate(kept) if len(kept) > 1 else kept[0]
+    out = trimesh.Trimesh(vertices=out.vertices, faces=out.faces, process=True)
     out.remove_unreferenced_vertices()
-    if not out.is_watertight:
-        import pymeshfix
-        v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(out.vertices, dtype=np.float64), np.ascontiguousarray(out.faces, dtype=np.int32))
-        out = biggest(trimesh.Trimesh(vertices=v, faces=f, process=True))
-        out.remove_unreferenced_vertices()
-    sound = out.is_watertight and len(out.split(only_watertight=False)) == 1
+    sound = out.is_watertight and len(out.split(only_watertight=False)) == len(kept)
     same = np.allclose(out.extents, whole.extents, rtol=0.03) and 0.6 * faces <= len(out.faces) <= faces
     return out if sound and same else None
 
@@ -232,7 +241,8 @@ def convert(source, look, turn, picture=None, which='animal', faces=None, weld=F
         # is used as it came.
         thin = welded(full, spec['faces'])
         # Said either way, so that whoever is making models knows which of them were given a new skin after all.
-        print(f"{source}: {'cut down as it came' if thin is not None else 'not one closed solid: given a new skin'}")
+        solids = len(thin.split(only_watertight=False)) if thin is not None else 0
+        print(f"{source}: {('cut down as it came' + (f', in {solids} solids' if solids > 1 else '')) if thin is not None else 'not closed: given a new skin'}")
     if thin is not None:
         pass
     elif spec['seal']:

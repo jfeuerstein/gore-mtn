@@ -32,11 +32,16 @@ function soundness(m: ModelFile): { open: number; pieces: number } {
 // in it until the converter makes one solid of it; these fail if that step is ever lost.
 describe('made models', () => {
   for (const look of ['park']) {
-    it(`has no holes and no loose pieces in the ${look} look`, () => {
+    it(`has no holes in the ${look} look, and no loose pieces but the parts of a made thing`, () => {
       const models = read(look);
       expect(Object.keys(models).length).toBeGreaterThanOrEqual(16);
       for (const [id, m] of Object.entries(models)) {
-        expect(soundness(m), id).toEqual({ open: 0, pieces: 1 });
+        const sound = soundness(m);
+        // No holes in anything. An animal, a plant or a pet is one piece; a thing people have made may be a few
+        // that stand apart (an easel and the stool beside it), every one of them closed.
+        expect(sound.open, id).toBe(0);
+        if (id.startsWith('thing-')) expect(sound.pieces, id).toBeLessThanOrEqual(4);
+        else expect(sound.pieces, id).toBe(1);
         expect(m.f.length / 3, id).toBeLessThanOrEqual(2000);
         expect(m.c.length, id).toBe(m.f.length / 3);
       }

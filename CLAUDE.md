@@ -271,9 +271,11 @@ trying it beside the plain look. Four things make it, and anything new must take
   came out as slivers at odd angles, which the owner saw. Tripo's shapes are one closed
   solid already once the seams of their picture are joined, so their own triangles are cut
   down (`welded` in `convert.py`), scraps dropped and a pinched seam mended; one that is
-  not closed after all is given a new skin, and the tool says which route each took. Where
-  a picture has two things standing apart (a stool by the easel, a cart before the adit),
-  the larger is the model. The picture is painted three-quarters on, so a model comes back facing any of
+  not closed after all is given a new skin, and the tool says which route each took. A made
+  thing need not be one solid, the owner has said, as long as every part of it is closed:
+  where a picture has things standing apart (the stool by the easel, the cart before the
+  adit), each is kept, and the test allows a `thing-*` a few closed pieces where an animal
+  must be one. The picture is painted three-quarters on, so a model comes back facing any of
   four ways: `turn` in the manifest is set by looking at its preview
   (`tools/models/cache/<id>.park.png`: front at the left of the side view and the top of the
   view from above). `reink` puts right an ink that printed wrong, by name.
