@@ -57,6 +57,8 @@ export class Built {
   private readonly cars: Kerbside[];
   /** The lanes of the car parks at the foot of the mountain. */
   private readonly lots: Strip[];
+  /** Every square metre of street and sidewalk that is ploughed or shovelled, by its corner. */
+  private readonly ploughed = new Set<number>();
 
   /**
    * @param heightAt the height of the ground
@@ -112,6 +114,16 @@ export class Built {
       ...(at('ski-bowl-lodge') ? [{ ...(at('ski-bowl-lodge') as { x: number; z: number }), reach: 260 }] : []),
     ];
     this.strips = streetStrips(world.roads, zones);
+    for (const strip of this.strips) {
+      const reach = (strip.sidewalks ? SIDEWALK.to : strip.half) + 0.7;
+      for (let i = 0; i + 1 < strip.pts.length; i += 2) {
+        const x = strip.pts[i] as number;
+        const z = strip.pts[i + 1] as number;
+        for (let cz = Math.floor(z - reach); cz <= Math.floor(z + reach); cz++) {
+          for (let cx = Math.floor(x - reach); cx <= Math.floor(x + reach); cx++) if (Math.hypot(cx + 0.5 - x, cz + 0.5 - z) < reach) this.ploughed.add((cx + 8192) * 16384 + cz + 8192);
+        }
+      }
+    }
     const surface = streetSurfaceMesh(this.strips, heightAt, season);
     if (surface) this.group.add(surface);
     // What stands along the kerb: cars parked on both sides, poles and their wires down one, a
@@ -191,6 +203,15 @@ export class Built {
       ...this.cars.map((c): WallBox => ({ x: c.x, z: c.z, w: 1.9, d: 4.4, turn: c.turn })),
       ...townPlaces.map((p): WallBox => ({ x: p.x, z: p.z, w: p.w, d: p.d, turn: p.turn, top: p.y + townPlaceHeight(p.style, p.w, p.d) })),
     ];
+  }
+
+  /**
+   * True where new snow does not lie loose: on a street, a sidewalk or a car park, which are ploughed, and on the
+   * cabin's porch and step, which are swept.
+   */
+  swept(x: number, z: number): boolean {
+    if (this.ploughed.has((Math.floor(x) + 8192) * 16384 + Math.floor(z) + 8192)) return true;
+    return this.cabin !== null && insideBox(x, z, { x: this.cabin.x, z: this.cabin.z, w: CABIN.w, d: CABIN.d, turn: this.cabin.turn }, CABIN.porch + 0.5);
   }
 
   /** True close to a lodge or a named place, or in front of its door: where trees should stand back. */

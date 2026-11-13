@@ -424,18 +424,35 @@ Everything else is built in code from simple shapes.
 - Skis leave tracks (`src/world/tracks.ts`): thin lines when carving, wide scrapes when skidding.
   The last 900 m or so stay on the snow.
 - **Loose snow** (the owner asked for snow with depth, that varies by day and snowfall and is
-  cut through). `src/game/snowpack.ts` (pure, tested) says how deep it is: the day's new
-  snow is what really fell at Gore since yesterday (`Weather.fresh`, from the same forecast
-  request, which now asks for the days' snowfall too) or, when that cannot be had, an amount
-  made up for the day (`inventedFresh`); the groomers have packed the trails, so most of it
-  is off them, and what is falling now lies on everything (`powderDepth`). Winter only. The
-  ground the game draws is the top of the snow, so nothing is dug: whoever is in it stands
-  lower by `sinkIn` (the same `footing` that wades), and `src/world/powder.ts` draws the
-  trench a skier cuts as a print would, its floor a tone darker and the snow pushed out of
-  it banked in a ridge on each side, wider and higher the deeper the snow, and throws lumps
-  of snow up from the skis, most in a skid. Two draw calls. The physics are not changed.
-  `powder=30` in the address sets the day's new snow in centimetres, to look at it; the
-  snow report by the Base Lodge says how much fell.
+  cut through; then, on seeing a trench drawn on the ground, for powdery snow lying as a
+  layer of its own). `src/game/snowpack.ts` (pure, tested) says how deep it is: the day's
+  new snow is what really fell at Gore since yesterday (`Weather.fresh`, from the same
+  forecast request, which asks for the days' snowfall too) or, when that cannot be had, an
+  amount made up for the day (`inventedFresh`); the groomers have packed the trails, so most
+  of it is off them, the woods and yards always have some (`LYING`), and what is falling now
+  lies on everything (`powderDepth`). Winter only.
+- The layer is `src/world/snowField.ts` (tested): a sheet of points a third of a metre
+  apart, some 63 m across, that keeps the player near its middle and lies on the ground as
+  deep as the snow is there. It is a real surface: a post or a tree's trunk goes down into
+  it, and whoever goes through it pushes it down and heaps it in a soft lip either side
+  (`tread`: a pair of skis, wider in a skid; a pair of boots), standing on the floor of
+  their own trough (`topAt`, the same `footing` that wades). It wears the ground's own
+  printed colours, shaded bluer down in a trough, and is lit in the print's steps but
+  smoothly, so a trough is a soft shape. One draw call. Where no snow lies loose the sheet
+  is tucked under the ground: on roads, paths and water, on the streets that are ploughed
+  and the cabin's porch (`Built.swept`), on a floor of boards and at the foot of a wall;
+  and on a groomed trail on a day with no new snow, so the groomer's marks show on dry
+  days and are under new snow on others. What lies on the ground is left uncovered
+  (`hollowsNow` in `main.ts`: stones, the field guide, a fox's prints, lost property, worn
+  ground, people). Moving the sheet is the costly part, so it goes a few metres at a time
+  (`SHIFT`), sliding what it holds and asking the world only about the strip that has come
+  in: about 1.4 ms a move and 0.05 ms a frame in Node. What was trodden is forgotten some
+  thirty metres behind. The physics are not changed.
+- `src/world/powder.ts` is what a ski throws up out of it: several hundred small flecks,
+  most in a skid, lit smoothly like the chimneys' smoke and never see-through. One draw
+  call. `powder=30` in the address sets the day's new snow in centimetres, to look at it;
+  the snow report by the Base Lodge says how much fell. Roofs, cars and trees wear the
+  snow they always did; only the ground has the layer.
 - **Speed lines** (`src/world/speedLines.ts`): above `LINES_FROM` (just over the pace of
   poling) thin streaks hang in the air ahead along the line of travel and are passed, more
   and longer up to `LINES_FULL`. They are in the world, not on the screen; near the camera,

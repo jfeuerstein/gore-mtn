@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { sayFresh } from './report';
-import { freshFromForecast, inventedFresh, powderDepth, sinkIn, TRENCH_FROM } from './snowpack';
+import { freshFromForecast, inventedFresh, powderDepth } from './snowpack';
 
 describe('how much loose snow is lying', () => {
   it('reads the new snow out of a forecast, and says nothing when the forecast does not', () => {
@@ -24,22 +24,20 @@ describe('how much loose snow is lying', () => {
   it('is deeper off the trails than on them, deeper after a snowfall, and only there in winter', () => {
     // A day with nothing new: the groomed trails are packed, the woods still have some.
     expect(powderDepth(0, 0, true, 'winter')).toBe(0);
-    expect(powderDepth(0, 0, false, 'winter')).toBeGreaterThan(TRENCH_FROM);
+    expect(powderDepth(0, 0, false, 'winter')).toBeGreaterThan(0.05);
     // A powder day.
-    expect(powderDepth(25, 0, true, 'winter')).toBeGreaterThan(TRENCH_FROM);
+    expect(powderDepth(25, 0, true, 'winter')).toBeGreaterThan(0.05);
     expect(powderDepth(25, 0, false, 'winter')).toBeGreaterThan(powderDepth(25, 0, true, 'winter') * 2);
     expect(powderDepth(25, 0, false, 'winter')).toBeGreaterThan(powderDepth(5, 0, false, 'winter'));
     // What is falling now lies on the trails too.
     expect(powderDepth(0, 1, true, 'winter')).toBeGreaterThan(0);
     // Never deeper than can be drawn, and never in the other seasons.
     expect(powderDepth(500, 1, false, 'winter')).toBeLessThanOrEqual(0.42);
-    expect(powderDepth(500, 1, true, 'winter')).toBeLessThanOrEqual(0.14);
+    expect(powderDepth(500, 1, true, 'winter')).toBeLessThanOrEqual(0.18);
     for (const season of ['spring', 'summer', 'fall'] as const) expect(powderDepth(30, 1, false, season)).toBe(0);
   });
 
-  it('lets a skier sink into it, but not to the bottom, and says it in inches', () => {
-    expect(sinkIn(0.3)).toBeGreaterThan(0.15);
-    expect(sinkIn(0.3)).toBeLessThan(0.3);
+  it('says it in inches', () => {
     expect(sayFresh(20)).toBe('8 inches');
     expect(sayFresh(2.5)).toBe('1 inch');
   });

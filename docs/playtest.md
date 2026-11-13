@@ -89,9 +89,12 @@ onto your own map.
 
 ## New to feel for
 
-- Loose snow. Off the groomed trails there is always some; after a real snowfall there is
-  more, and some on the trails too. You sink into it, cut a trench and throw snow in a turn.
-  `powder=30` in the address makes it a deep day, `powder=0` a bare one.
+- Loose snow, made again as a layer of its own lying on the ground. Off the groomed trails
+  there is always some; after a real snowfall there is more, and some on the trails too.
+  Skis and boots push a soft trough through it, with powder thrown up in a turn, and posts
+  and trees stand down in it. `powder=30` in the address makes it a deep day, `powder=0` a
+  bare one. To look for on the phone: the edges of tone on the snow near a trough, a line
+  where the layer ends about 30 m out, and whether a long fast run stays smooth.
 - Speed lines, from a little faster than poling. Say if there are too many or too few.
 - The sheets, the Book's pages and the buttons move a little now.
 - A patch earned for the first time is sewn on, in the announcement and in the Book.

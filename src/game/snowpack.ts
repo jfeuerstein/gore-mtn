@@ -28,9 +28,9 @@ export function inventedFresh(day: string): number {
 }
 
 /** The loose snow off the trails that is always there in winter, in centimetres: nobody grooms the woods. */
-const LYING = 8;
+const LYING = 16;
 /** The deepest loose snow is drawn, in metres: on a groomed trail, and off one. */
-const GROOMED_MOST = 0.14;
+const GROOMED_MOST = 0.18;
 const WILD_MOST = 0.42;
 
 /**
@@ -43,12 +43,6 @@ export function powderDepth(freshCm: number, snowing: number, groomed: boolean, 
   // Snow is winter's. Spring's is old and wet and holds a ski up.
   if (season !== 'winter') return 0;
   const fresh = Math.max(0, freshCm);
-  const cm = groomed ? fresh * 0.35 + snowing * 4 : LYING + fresh * 0.9 + snowing * 6;
+  const cm = groomed ? fresh * 0.5 + snowing * 5 : LYING + fresh * 0.9 + snowing * 6;
   return Math.min(groomed ? GROOMED_MOST : WILD_MOST, cm / 100);
 }
-
-/** How far a skier or a walker sinks into loose snow of a depth, in metres: not to the bottom of it. */
-export const sinkIn = (depth: number): number => depth * 0.72;
-
-/** Loose snow shallower than this leaves the ordinary lines of the skis and no trench, in metres. */
-export const TRENCH_FROM = 0.045;
