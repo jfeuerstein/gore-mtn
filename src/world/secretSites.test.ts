@@ -25,6 +25,23 @@ describe('where the secrets stand', () => {
     }
   });
 
+  it('sets the adit into a bank near the mine, well clear of the water, looking out down the slope', () => {
+    const adit = at('working-adit');
+    const mine = world.spots.find((sp) => sp.id === 'barton-mine');
+    if (!adit || !mine) throw new Error('no adit, or no mine');
+    expect(Math.hypot(adit.x - mine.x, adit.z - mine.z)).toBeLessThan(90);
+    // No water within a good few steps, any way round: it was at a pond's edge, half on the ice.
+    for (let k = 0; k < 16; k++) for (const r of [6, 12, 15]) expect(world.openAt(adit.x + Math.sin((k / 16) * Math.PI * 2) * r, adit.z + Math.cos((k / 16) * Math.PI * 2) * r), `${k} at ${r} m`).not.toBe(OPEN_WATER);
+    // The ground rises behind it and falls away in front.
+    const hf = world.source;
+    const front = { x: Math.sin(adit.turn), z: Math.cos(adit.turn) };
+    const here = hf.heightAt(adit.x, adit.z);
+    expect(hf.heightAt(adit.x - front.x * 5, adit.z - front.z * 5)).toBeGreaterThan(here + 1);
+    expect(hf.heightAt(adit.x + front.x * 5, adit.z + front.z * 5)).toBeLessThan(here);
+    // And it is not on the brink of a drop: there is somewhere to stand in front of it.
+    expect(hf.heightAt(adit.x + front.x * 5, adit.z + front.z * 5)).toBeGreaterThan(here - 3.5);
+  });
+
   it('puts each plaque beside its own trail, and on no other', () => {
     for (const secret of SECRETS.filter((s) => s.kind === 'plaque')) {
       const site = at(secret.id);

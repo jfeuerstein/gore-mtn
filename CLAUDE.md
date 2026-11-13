@@ -363,7 +363,8 @@ Everything else is built in code from simple shapes.
   culvert, a green steel truss for the highway over the Hudson.
 - Smoke rises from the chimneys that are lit (every season but summer) and steam from the
   engine (`src/world/smoke.ts`): one instanced mesh, moved every frame, drawn only near the
-  player. A kit reports its chimney tops as `flues`.
+  player. A puff is a faceted lump lit in the print's steps (it was lit smoothly, and a judge
+  saw a string of pearls: the one soft thing in a flat picture). A kit reports its chimney tops as `flues`.
 - Outside the lodges (`src/world/yards.ts`) there are racks of skis in the snow months and
   picnic tables otherwise. In winter and spring snow guns stand down the edges of the wide
   groomed trails (`src/world/snowGuns.ts`, pure, tested): one instanced mesh.
@@ -449,7 +450,8 @@ Everything else is built in code from simple shapes.
   in: about 1.4 ms a move and 0.05 ms a frame in Node. What was trodden is forgotten some
   thirty metres behind. The physics are not changed.
 - `src/world/powder.ts` is what a ski throws up out of it: several hundred small flecks,
-  most in a skid, lit smoothly like the chimneys' smoke and never see-through. One draw
+  most in a skid, faceted and lit in the print's steps like the chimneys' smoke, and never
+  see-through. One draw
   call. `powder=30` in the address sets the day's new snow in centimetres, to look at it;
   the snow report by the Base Lodge says how much fell. Roofs, cars and trees wear the
   snow they always did; only the ground has the layer.

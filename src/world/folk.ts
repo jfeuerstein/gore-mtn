@@ -320,6 +320,9 @@ const PROPS: Record<NonNullable<Person['prop']>, () => THREE.BufferGeometry> = {
  * at its own +z, as the ones built from blocks are. Null when the made models are not loaded,
  * and the blocks are used.
  */
+/** Where the camper's tent stands from his fire, in the camp's own frame, in metres. */
+export const CAMP_TENT = { x: -3.3, z: -0.4 } as const;
+
 function madeProp(kind: NonNullable<Person['prop']>): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } | null {
   const has = (id: string): ModelFile | null => madeModel(id) ?? null;
   // (A made model faces its own -z: half a turn brings its front to +z.)
@@ -335,7 +338,7 @@ function madeProp(kind: NonNullable<Person['prop']>): { geometry: THREE.BufferGe
     const tent = has('thing-tent');
     const fire = has('thing-campfire');
     // The fire where the camp is said to be, and the tent to one side of it with its door toward the fire.
-    return tent && fire ? joinModels([{ file: fire, tall: 0.95, turn: Math.PI }, { file: tent, tall: 1.9, x: -3.3, z: -0.4, turn: -Math.PI / 2 }]) : null;
+    return tent && fire ? joinModels([{ file: fire, tall: 0.95, turn: Math.PI }, { file: tent, tall: 1.9, x: CAMP_TENT.x, z: CAMP_TENT.z, turn: -Math.PI / 2 }]) : null;
   }
   return null;
 }

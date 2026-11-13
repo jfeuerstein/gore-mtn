@@ -334,7 +334,7 @@ export class SecretThings {
       const out = (lx: number, lz: number): { x: number; z: number } => ({ x: site.x + lx * cos + lz * sin, z: site.z - lx * sin + lz * cos });
       const cast = madeFor(secret, season);
       const stood = cast !== null && stand(cast.id, cast.tall, site.x, y - 0.04, site.z, site.turn);
-      if (secret.kind === 'shack' && season === 'spring') this.flues.push({ ...out(0, 0), y: y + 4.2, size: 1.7 });
+      if (secret.kind === 'shack' && season === 'spring') this.flues.push({ ...out(0, 0), y: y + 4.2, size: 0.9 });
       if (secret.kind === 'light') {
         // In a made lantern it is the glass itself that burns; in the one built from blocks, a flame in the open frame.
         const file = stood && cast ? madeModel(cast.id) : undefined;

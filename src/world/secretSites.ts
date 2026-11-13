@@ -142,11 +142,56 @@ function base({ world, town, wilds, runs }: Setting, where: SecretWhere): { x: n
  * level ground, on its own side of the place, off the trails, and clear of whatever is
  * standing there already. Null if the place is not on the map.
  */
-export function placeAt(set: Setting, id: string, where: SecretWhere, off: number, taken: readonly { x: number; z: number }[] = []): SecretSite | null {
+/** How far from open water something set into a hill keeps, in metres. */
+const SHORE_CLEAR = 16;
+
+/**
+ * Somewhere for a thing that goes back into the hill, such as a tunnel's mouth: dry ground
+ * that rises behind it, the steepest to be had within a couple of throws of where it is said
+ * to be, well clear of the water, and turned so that it looks out down the slope.
+ */
+function intoHill(set: Setting, at: { x: number; z: number }, off: number, taken: readonly { x: number; z: number }[]): { x: number; z: number; turn: number } | null {
+  const { world, town } = set;
+  const hf = world.source;
+  let best: { x: number; z: number; turn: number } | null = null;
+  let most = -Infinity;
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    for (const r of [off * 0.6, off, off * 1.5, off * 2.1, off * 2.8]) {
+      const px = at.x + Math.sin(a) * r;
+      const pz = at.z + Math.cos(a) * r;
+      if (!dry(world, px, pz) || world.openAt(px, pz) !== 0 || world.trailDistance(px, pz) < 6 || taken.some((o) => Math.hypot(o.x - px, o.z - pz) < 7)) continue;
+      if (world.buildings.some((b) => Math.hypot(b.x - px, b.z - pz) < 12) || town.some((t) => Math.hypot(t.x - px, t.z - pz) < Math.max(t.w, t.d) / 2 + 5)) continue;
+      let wet = false;
+      for (let k = 0; k < 8 && !wet; k++) wet = world.openAt(px + Math.sin((k / 8) * Math.PI * 2) * SHORE_CLEAR, pz + Math.cos((k / 8) * Math.PI * 2) * SHORE_CLEAR) === OPEN_WATER;
+      if (wet) continue;
+      // Which way the ground falls, and how fast, taken over the width of the thing itself.
+      const gx = (hf.heightAt(px + 3, pz) - hf.heightAt(px - 3, pz)) / 6;
+      const gz = (hf.heightAt(px, pz + 3) - hf.heightAt(px, pz - 3)) / 6;
+      const rise = Math.hypot(gx, gz);
+      if (rise < 0.08) continue;
+      // How far the ground climbs in the five metres behind it, and how far it drops in the five in front: it wants a
+      // bank at its back and somewhere to stand before it, not the brink of a drop.
+      const here = hf.heightAt(px, pz);
+      const behind = hf.heightAt(px + (gx / rise) * 5, pz + (gz / rise) * 5) - here;
+      const before = here - hf.heightAt(px - (gx / rise) * 5, pz - (gz / rise) * 5);
+      const score = Math.min(behind, 3.5) - Math.max(0, before - 2) * 0.6 - Math.abs(r - off) * 0.03;
+      if (behind > 1 && score > most) {
+        most = score;
+        best = { x: px, z: pz, turn: Math.atan2(-gx, -gz) };
+      }
+    }
+  }
+  return best;
+}
+
+export function placeAt(set: Setting, id: string, where: SecretWhere, off: number, taken: readonly { x: number; z: number }[] = [], into?: 'hill'): SecretSite | null {
   const { world, town } = set;
   const at = base(set, where);
   if (!at) return null;
   let { x, z } = at;
+  const bank = into === 'hill' ? intoHill(set, at, Math.max(off, 12), taken) : null;
+  if (bank) return { id, ...bank };
   if (off > 0) {
     const side = ((hash(id) % 360) / 180) * Math.PI;
     let best = -Infinity;
@@ -192,7 +237,7 @@ export function placeAt(set: Setting, id: string, where: SecretWhere, off: numbe
 export function secretSites(world: World, town: readonly TownPlace[] = resolveTownPlaces(world), set: Setting = setting(world, town)): SecretSite[] {
   const out: SecretSite[] = [];
   for (const secret of SECRETS) {
-    const site = placeAt(set, secret.id, secret.where, secret.off ?? 0, out);
+    const site = placeAt(set, secret.id, secret.where, secret.off ?? 0, out, secret.into);
     if (site) out.push(site);
   }
   return out;

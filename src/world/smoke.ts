@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { lit } from '../look/material';
 
 /** Somewhere smoke rises from: the top of a chimney, or the stack of a steam engine. */
 export interface Flue {
@@ -22,7 +23,7 @@ const RANGE = 420;
 /**
  * Smoke from the town's chimneys and steam from the train: a few pale puffs over each flue,
  * rising, spreading and thinning away. One instanced mesh for all of them, lit like everything
- * else so it takes the colour of the hour. Only the flues near the player are drawn.
+ * else, in the print's steps, so it takes the colour of the hour. Only the flues near the player are drawn.
  */
 export class Smoke {
   readonly mesh: THREE.InstancedMesh;
@@ -34,9 +35,10 @@ export class Smoke {
 
   constructor(private readonly flues: readonly Flue[]) {
     // Pale, and a little bright of its own, so the underside of a puff is not a dark stone in the sky.
-    // Smoke is the one thing in the air that is not printed: it is lit smoothly, not in steps, so a puff stays soft.
-    this.material = new THREE.MeshLambertMaterial({ color: 0xf2f4f7, emissive: 0xaab0ba, emissiveIntensity: 0.6 });
-    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 1), this.material, Math.max(1, flues.length * PUFFS));
+    // It is printed like everything else: a puff is a faceted lump, each face one flat tone. (It was lit smoothly, and
+    // was the one soft thing in a flat picture: a string of pearls over the chimneys.)
+    this.material = lit({ color: 0xf2f4f7, emissive: 0xaab0ba, emissiveIntensity: 0.6 });
+    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), this.material, Math.max(1, flues.length * PUFFS));
     this.mesh.name = 'smoke';
     this.mesh.count = 0;
     // Puffs move every frame, so the mesh is never left out for being off screen by its old bounds.

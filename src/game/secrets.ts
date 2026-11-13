@@ -38,6 +38,8 @@ export interface Secret {
   where: SecretWhere;
   /** Metres to stand off from that place, away from the trail or the door, into the trees. */
   off?: number;
+  /** Something that goes back into the hill (a tunnel's mouth) is set against rising ground, well clear of the water, with its back to the slope. */
+  into?: 'hill';
   /** What the action button says there. */
   action: string;
   /** What is read or found there. Each row is a page of the sheet: handwriting if it is signed. */
@@ -157,6 +159,7 @@ export const SECRETS: readonly Secret[] = [
     name: 'The old adit',
     where: { spot: 'barton-mine' },
     off: 26,
+    into: 'hill',
     action: 'Look inside',
     pages: [
       { text: "A tunnel, timbered at the mouth, going back into the hill a little way. The walls catch the light: garnet, everywhere, like the inside of a pomegranate." },

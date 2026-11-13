@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { lit } from '../look/material';
 
 /** Puffs of snow in the air at once. */
 const PUFFS = 720;
@@ -8,13 +9,12 @@ const LONGEST = 0.8;
 /**
  * Powder in the air: what a ski throws up out of loose snow. Not lumps: a cloud, made of
  * many small soft puffs that are thrown out, swell, slow in the air and are gone. Like the
- * smoke from the chimneys it is the one kind of thing that is lit smoothly and not in the
- * print's steps, so that a puff is soft; and like the smoke nothing is see-through: a puff
- * ends by shrinking away. One instanced mesh.
+ * smoke from the chimneys each is a small faceted lump, lit in the print's steps; and like
+ * the smoke nothing is see-through: a puff ends by shrinking away. One instanced mesh.
  */
 export class Powder {
   readonly mesh: THREE.InstancedMesh;
-  private readonly material = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0xb9c4d6, emissiveIntensity: 0.55 });
+  private readonly material = lit({ color: 0xffffff, emissive: 0xb9c4d6, emissiveIntensity: 0.55 });
   private readonly at = new Float32Array(PUFFS * 3);
   private readonly going = new Float32Array(PUFFS * 3);
   private readonly age = new Float32Array(PUFFS).fill(1);

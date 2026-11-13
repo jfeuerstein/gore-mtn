@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { lit } from '../look/material';
 
 /** Puffs in the column at once. */
 const PUFFS = 14;
@@ -12,11 +13,12 @@ const LEAN = 26;
  * A column of smoke from a fire in the woods, to be seen from across the valley: that is the
  * point of it. The camper's fire is somewhere different every day and nothing says where; the
  * smoke does. A handful of pale puffs that rise slowly, grow and thin away: one instanced
- * mesh, lit smoothly as the chimneys' smoke is.
+ * mesh, faceted and lit in the print's steps as the chimneys' smoke is.
  */
 export class Plume {
   readonly mesh: THREE.InstancedMesh;
-  private readonly material = new THREE.MeshLambertMaterial({ color: 0xeef0f3, emissive: 0xaab0ba, emissiveIntensity: 0.6 });
+  // (Faceted and lit in the print's steps, as the chimneys' smoke is.)
+  private readonly material = lit({ color: 0xeef0f3, emissive: 0xaab0ba, emissiveIntensity: 0.6 });
   private readonly m = new THREE.Matrix4();
   private readonly q = new THREE.Quaternion();
   private readonly p = new THREE.Vector3();
@@ -24,7 +26,7 @@ export class Plume {
   private at: { x: number; y: number; z: number } | null = null;
 
   constructor() {
-    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 1), this.material, PUFFS);
+    this.mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.5, 0), this.material, PUFFS);
     this.mesh.name = 'plume';
     this.mesh.count = 0;
     this.mesh.frustumCulled = false;

@@ -78,7 +78,7 @@ export class SpeedLines {
     const length = 2 + speed * 0.34 * this.shown;
     for (let i = 0; i < count; i++) {
       const p = this.at[i] as THREE.Vector3;
-      const ahead = (p.x - camera.x) * this.along.x + (p.y - camera.y) * this.along.y + (p.z - camera.z) * this.along.z;
+      let ahead = (p.x - camera.x) * this.along.x + (p.y - camera.y) * this.along.y + (p.z - camera.z) * this.along.z;
       // Passed, or left behind by a turn: set down again ahead, somewhere round the line of travel but not on it.
       const off = Math.hypot((p.x - camera.x) - this.along.x * ahead, (p.y - camera.y) - this.along.y * ahead, (p.z - camera.z) - this.along.z * ahead);
       if (ahead < -length || ahead > AHEAD[1] + 10 || off > ASIDE[1] + 6) {
@@ -87,9 +87,11 @@ export class SpeedLines {
         // A new one starts anywhere along the way ahead, so that they do not come in waves.
         const d = AHEAD[0] + Math.random() * (AHEAD[1] - AHEAD[0]);
         p.copy(camera).addScaledVector(this.along, d).addScaledVector(this.across, Math.cos(a) * r).addScaledVector(this.lift, Math.sin(a) * r * 0.7 - 0.6);
+        // (How far ahead it is now: a streak sized by where it was, far off or not yet anywhere, was a slab across the screen for a frame.)
+        ahead = d;
       }
       // As thin on the screen wherever it is: a line of about a point and a half, not a plank up close and nothing far off.
-      const thick = 0.0021 * Math.max(4, ahead);
+      const thick = 0.0021 * Math.min(AHEAD[1] + 10, Math.max(4, ahead));
       this.mesh.setMatrixAt(i, this.m.compose(p, this.q, this.s.set(thick, thick, length)));
     }
     this.mesh.count = count;

@@ -49,7 +49,7 @@ import { Built } from './world/built';
 import { signName } from './world/streets';
 import { countryOf } from './world/country';
 import { Critters } from './world/critters';
-import { buildStops, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
+import { buildStops, CAMP_TENT, Folk, Keepsakes, type Keepsake, type Standing, type Stop } from './world/folk';
 import { buildRoute, busyness, routePoint } from './world/crowd';
 import { Crowd } from './world/crowdMesh';
 import { critterGeometry, hasMadeModel, useMadeModels } from './world/critterModels';
@@ -1322,7 +1322,24 @@ async function boot(): Promise<void> {
       } else if (st.person.roams === 'camper') {
         at = hauntAt('ro', camperToday(today));
         if (at) {
-          prop = beside(at, 2.6, 0.4);
+          const fire = beside(at, 2.6, 0.4);
+          // The tent stands a few steps from the fire, and the two are one piece: it is turned about the fire to
+          // wherever the ground is most nearly the fire's own height, so that on a hillside the tent is neither
+          // buried nor in the air.
+          let turn = fire.turn;
+          let least = Infinity;
+          for (let k = 0; k < 24; k++) {
+            const t = fire.turn + (k / 24) * Math.PI * 2;
+            const tx = fire.x + CAMP_TENT.x * Math.cos(t) + CAMP_TENT.z * Math.sin(t);
+            const tz = fire.z - CAMP_TENT.x * Math.sin(t) + CAMP_TENT.z * Math.cos(t);
+            // (Not out onto a trail or the water, either; and as little turned from where it was as may be.)
+            const off = Math.abs(ground.heightAt(tx, tz) - fire.y) + (world.openAt(tx, tz) !== 0 || world.onTrail(tx, tz) ? 5 : 0) + Math.min(k, 24 - k) * 0.004;
+            if (off < least) {
+              least = off;
+              turn = t;
+            }
+          }
+          prop = { ...fire, turn };
           plume.set({ x: prop.x, y: prop.y, z: prop.z });
         }
       } else if (st.person.roams === 'band' && bandAbout(game.save, today)) {
