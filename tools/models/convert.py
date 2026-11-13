@@ -173,7 +173,44 @@ def calm(mesh, label, rounds=3):
     return label
 
 
-def convert(source, look, turn, picture=None, which='animal', faces=None):
+def biggest(mesh):
+    """The largest piece of a shape, alone."""
+    pieces = mesh.split(only_watertight=False)
+    return mesh if len(pieces) <= 1 else max(pieces, key=lambda piece: len(piece.faces))
+
+
+def welded(mesh, faces):
+    """The shape's own triangles, cut down to `faces` of them, as one closed solid; or None.
+
+    A shape that comes with a picture wrapped round it is cut along the picture's seams, so it
+    loads as a hundred loose pieces. Tripo's shapes, joined back up along those seams, are one
+    closed solid already (now and then with a stray scrap beside it), which Trellis's are not.
+    Cutting one down can pinch off a sliver or leave a seam open by a triangle: the scraps are
+    dropped and the seam mended. If what is left is not one closed solid of about the right
+    size, the answer is None, and the shape is given a new skin instead.
+    """
+    whole = trimesh.Trimesh(vertices=mesh.vertices.copy(), faces=mesh.faces.copy(), process=False)
+    whole.merge_vertices(merge_tex=True, merge_norm=True)
+    # Something that stands apart from the rest (a stool by an easel, a cart before a tunnel) is a
+    # second solid, and a model is one: the larger is kept, as it is when a new skin is drawn.
+    whole = biggest(whole)
+    if len(whole.faces) < 0.5 * len(mesh.faces):
+        return None
+    # A little under the number asked for: mending may add a triangle or two.
+    out = whole.simplify_quadric_decimation(face_count=int(faces * 0.97)) if len(whole.faces) > faces else whole.copy()
+    out = biggest(out)
+    out.remove_unreferenced_vertices()
+    if not out.is_watertight:
+        import pymeshfix
+        v, f = pymeshfix.clean_from_arrays(np.ascontiguousarray(out.vertices, dtype=np.float64), np.ascontiguousarray(out.faces, dtype=np.int32))
+        out = biggest(trimesh.Trimesh(vertices=v, faces=f, process=True))
+        out.remove_unreferenced_vertices()
+    sound = out.is_watertight and len(out.split(only_watertight=False)) == 1
+    same = np.allclose(out.extents, whole.extents, rtol=0.03) and 0.6 * faces <= len(out.faces) <= faces
+    return out if sound and same else None
+
+
+def convert(source, look, turn, picture=None, which='animal', faces=None, weld=False):
     spec = dict(LOOKS[look])
     if faces:
         spec['faces'] = faces
@@ -186,10 +223,21 @@ def convert(source, look, turn, picture=None, which='animal', faces=None):
         out.remove_unreferenced_vertices()
         return out
 
-    if spec['seal']:
+    thin = None
+    if spec['seal'] and weld:
+        # A thing with flat walls and straight edges keeps them only if its own triangles are
+        # cut down. Pouring it into cubes and drawing a new skin (below) rounds every crease and
+        # leaves the cutting-down nothing to go by, so that a wall comes out as slivers at odd
+        # angles. If the shape is already one closed solid, and is still one once cut down, it
+        # is used as it came.
+        thin = welded(full, spec['faces'])
+        # Said either way, so that whoever is making models knows which of them were given a new skin after all.
+        print(f"{source}: {'cut down as it came' if thin is not None else 'not one closed solid: given a new skin'}")
+    if thin is not None:
+        pass
+    elif spec['seal']:
         # A clump of thin things (petals, berries, fronds) does not always survive being cut down:
         # the skin tears. Poured into coarser cubes it comes out stouter and simpler, and does.
-        thin = None
         for fine in (140, 100, 72, 52):
             thin = cut(seal(full, fine))
             if thin.is_watertight and len(thin.split(only_watertight=False)) == 1:
@@ -268,9 +316,10 @@ if __name__ == '__main__':
     ap.add_argument('--like', help='the picture the model was made from, to grade its colours to')
     ap.add_argument('--inks', choices=['animal', 'bird', 'plant', 'made'], default='animal', help='which inks the park print may use')
     ap.add_argument('--faces', type=int, help='how many triangles to cut it down to, if not the look\'s own number')
+    ap.add_argument('--weld', action='store_true', help='if the shape is one closed solid once its seams are joined, cut it down as it is instead of drawing a new skin round it: for things with straight edges')
     ap.add_argument('--preview')
     args = ap.parse_args()
-    data, mesh, cols = convert(args.source, args.look, args.turn, args.like, args.inks, args.faces)
+    data, mesh, cols = convert(args.source, args.look, args.turn, args.like, args.inks, args.faces, args.weld)
     with open(args.out, 'w') as f:
         json.dump(data, f, separators=(',', ':'))
     if args.preview:

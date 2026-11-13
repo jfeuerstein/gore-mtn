@@ -266,7 +266,14 @@ trying it beside the plain look. Four things make it, and anything new must take
   Tripo's model as fal serves it makes the shape, and the converter prints it in the game's
   own inks (`--inks made`: `MADE` in `convert.py` is `INKS` in `print.ts`, with a toy's
   orange wood weathered to the game's timber first) at a triangle count of its own
-  (`faces`). The picture is painted three-quarters on, so a model comes back facing any of
+  (`faces`). They are not given a new skin as the animals are (`--weld`): pouring a shape
+  into cubes rounds every crease and leaves the cutting-down nothing to go by, so a wall
+  came out as slivers at odd angles, which the owner saw. Tripo's shapes are one closed
+  solid already once the seams of their picture are joined, so their own triangles are cut
+  down (`welded` in `convert.py`), scraps dropped and a pinched seam mended; one that is
+  not closed after all is given a new skin, and the tool says which route each took. Where
+  a picture has two things standing apart (a stool by the easel, a cart before the adit),
+  the larger is the model. The picture is painted three-quarters on, so a model comes back facing any of
   four ways: `turn` in the manifest is set by looking at its preview
   (`tools/models/cache/<id>.park.png`: front at the left of the side view and the top of the
   view from above). `reink` puts right an ink that printed wrong, by name.

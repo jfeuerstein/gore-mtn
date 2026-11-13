@@ -88,7 +88,9 @@ async function falTripoShape(id) {
   }
   for (const look of LOOKS) {
     const out = `${CACHE}/${id}.${look}.json`;
-    execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, out, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? FAL_TRIPO.turn), '--inks', MODELS[id].inks ?? 'made', '--faces', String(MODELS[id].faces ?? 1200), '--preview', `${CACHE}/${id}.${look}.png`]);
+    const said = execFileSync('python3', [`${ROOT}tools/models/convert.py`, glb, out, '--look', look, '--like', picture, '--turn', String(MODELS[id].turn ?? FAL_TRIPO.turn), '--inks', MODELS[id].inks ?? 'made', '--faces', String(MODELS[id].faces ?? 1200), '--weld', '--preview', `${CACHE}/${id}.${look}.png`]);
+    // The converter says whether the shape was cut down as it came or had to be given a new skin.
+    console.log(String(said).trim().replace(/^.*\/ft-/gm, '  '));
     // An ink that came out wrong for what the thing is made of (brass that printed as paper) is put right by name.
     const inks = MODELS[id].reink;
     if (inks) {
