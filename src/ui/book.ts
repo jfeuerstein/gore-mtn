@@ -6,6 +6,7 @@ import { LETTERS } from '../game/letters';
 import { OFFERINGS } from '../game/offerings';
 import { PATCHES } from '../game/patches';
 import { KEYS, SECRETS } from '../game/secrets';
+import { dropAway, sewn } from './motion';
 import { SIGHTS } from '../game/sky';
 import { PAINTER_HAUNTS, paintingId } from '../game/wanderers';
 import { ERRANDS, GEAR, GEAR_SLOTS, SLOT_NAME, personById, TOWN_ROUND } from '../game/people';
@@ -54,7 +55,21 @@ function plate(set: 'minerals' | 'species' | 'places' | 'paintings', id: string)
  * is shown as a pale ghost of itself, so that the shelf says what there is to look for.
  * @param art its set and name under public/art, as "patches/first-tracks"
  */
-function pic(art: string, have: boolean): HTMLImageElement {
+/** Patches earned since the Book last showed their place: each is sewn on, once, when it does. */
+const justHad = new Set<string>();
+
+/** A patch in its place, sewn on if it has only just been earned. */
+function inPlace(img: HTMLImageElement, art: string, have: boolean): HTMLElement {
+  if (!have || !justHad.has(art)) return img;
+  justHad.delete(art);
+  return sewn(img);
+}
+
+function pic(art: string, have: boolean): HTMLElement {
+  return inPlace(picture(art, have), art, have);
+}
+
+function picture(art: string, have: boolean): HTMLImageElement {
   const img = document.createElement('img');
   img.className = have ? 'pic' : 'pic ghost';
   img.alt = '';
@@ -115,6 +130,7 @@ export class Book {
         this.tab = tab;
         this.render();
         this.body.scrollTop = 0;
+        this.turn();
       });
       this.tabs.set(tab, button);
       tabs.appendChild(button);
@@ -137,10 +153,30 @@ export class Book {
     this.onOpen?.();
     this.sheet.hidden = false;
     this.render();
+    this.turn();
   }
 
   close(): void {
+    dropAway(this.sheet);
     this.sheet.hidden = true;
+  }
+
+  /** A page has been turned to: what is on it settles in, a row after a row. Not when the page is only brought up to date. */
+  private turn(): void {
+    this.body.classList.remove('turned');
+    void this.body.offsetWidth;
+    this.body.classList.add('turned');
+    window.clearTimeout(this.turned);
+    this.turned = window.setTimeout(() => this.body.classList.remove('turned'), 600);
+  }
+  private turned = 0;
+
+  /**
+   * Something has been earned whose picture is filed under this (`patches/first-tracks`): the
+   * next time its place in the Book is on show, it is sewn on there.
+   */
+  earned(art: string): void {
+    justHad.add(art);
   }
 
   /** Something has been earned: bring the page up to date if it is on show. */
@@ -491,7 +527,7 @@ export class Book {
       for (const sp of entries) {
         const record = game.save.sightings[sp.id];
         const card = el('div', `mineral species ${record ? 'earned' : 'todo'}`);
-        card.appendChild(record ? plate('species', sp.id) : ghost('species', sp.id));
+        card.appendChild(record ? inPlace(plate('species', sp.id), `species/${sp.id}`, true) : ghost('species', sp.id));
         const text = el('div');
         text.appendChild(el('b', '', sp.name));
         if (record) {
@@ -521,7 +557,7 @@ export class Book {
     for (const mineral of MINERALS) {
       const record = game.save.minerals[mineral.id];
       const card = el('div', `mineral ${record ? 'earned' : 'todo'}`);
-      const gem = record ? plate('minerals', mineral.id) : ghost('minerals', mineral.id);
+      const gem = record ? inPlace(plate('minerals', mineral.id), `minerals/${mineral.id}`, true) : ghost('minerals', mineral.id);
       const text = el('div');
       const name = el('b', '', mineral.name);
       name.appendChild(el('span', `rarity ${mineral.rarity}`, mineral.rarity));

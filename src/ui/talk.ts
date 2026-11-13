@@ -1,3 +1,4 @@
+import { dropAway } from './motion';
 /** Something written, to be read rather than heard: a letter, a notice. Shown as handwriting on its own paper. */
 export interface Written {
   written: string;
@@ -97,6 +98,7 @@ export class TalkSheet {
   }
 
   close(): void {
+    dropAway(this.sheet);
     this.sheet.hidden = true;
   }
 
@@ -104,6 +106,9 @@ export class TalkSheet {
     const line = this.lines[this.at] ?? '';
     const written = typeof line !== 'string';
     this.text.className = written ? 'line written' : 'line';
+    // Each thing said comes up as it is said: the class is taken off and put back, so that it does so again.
+    void this.text.offsetWidth;
+    this.text.classList.add('spoken');
     this.text.textContent = written ? line.written : line;
     if (written && line.signed) {
       const signed = document.createElement('span');

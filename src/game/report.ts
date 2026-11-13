@@ -14,6 +14,14 @@ export interface Conditions {
   watch: Watch;
   /** The date, as YYYY-MM-DD: the report has a different closing line each day. */
   day: string;
+  /** New snow since yesterday, in centimetres, if it is known. */
+  fresh?: number;
+}
+
+/** New snow as a snow report would say it, in inches, as this is upstate New York: "8 inches". */
+export function sayFresh(freshCm: number): string {
+  const inches = Math.round(freshCm / 2.54);
+  return inches === 1 ? '1 inch' : `${inches} inches`;
 }
 
 const SURFACE: Record<Season, string> = {
@@ -60,6 +68,8 @@ function fresh(c: Conditions): string {
   if (c.season === 'summer') return 'no';
   if (c.season === 'fall') return c.falling > 0.05 ? "no, that's rain" : 'not yet';
   if (c.falling > 0.6) return 'yes! Look outside';
+  // What fell since yesterday, when it was enough to say so: that is what is lying off the trails today.
+  if (c.season === 'winter' && (c.fresh ?? 0) >= 2.5) return `${sayFresh(c.fresh as number)} since yesterday`;
   if (c.falling > 0.05) return 'a dusting so far';
   return c.season === 'winter' ? 'not since last time' : 'no, sorry';
 }

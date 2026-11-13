@@ -20,13 +20,26 @@ const server = await preview({ preview: { port: 0, host: '127.0.0.1' }, logLevel
 const url = `http://127.0.0.1:${server.httpServer.address().port}/?at=base-lodge&trees=2000&shadows=0&stride=2&view=1500&dpr=1&stats=1&intro=0&season=winter&time=midday&weather=clear`;
 const browser = await launchBrowser();
 const failures = [];
+/**
+ * These checks are of where things are and what they do, so the phone they are made on asks
+ * for less movement, which the game honours by not moving its sheets at all: a sheet measured
+ * half way up is not where it will be. (Run once with this taken out, every tap and every flow
+ * passed with the sheets moving; only the measurements were off.)
+ */
+const STILL = { reducedMotion: 'reduce' };
+
+/**
+ * Wait until nothing on the page is moving: a sheet comes up from below when it is opened, and
+ * where it is is where it comes to rest. (Its being open is true at once, and is not waited for.)
+ */
+const atRest = (page) => page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'), null, { timeout: 5000 }).catch(() => {});
 const check = (label, ok, detail = '') => {
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}${detail ? ` (${detail})` : ''}`);
   if (!ok) failures.push(label);
 };
 /** @param season the season to pin, or null to leave the game to the calendar and the Snow Train */
 const open = async (device, extra = '', season = 'winter') => {
-  const context = await browser.newContext({ ...devices[device] });
+  const context = await browser.newContext({ ...devices[device], ...STILL });
   const page = await context.newPage();
   page.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
   await page.goto(url.replace('season=winter', season ? `season=${season}` : 'x=1') + extra);
@@ -70,6 +83,7 @@ try {
   // Trail map.
   await page.tap('#map-button');
   check('map button opens the trail map', await page.locator('#map-sheet').isVisible());
+  await atRest(page);
   const mapBox = await page.locator('#map-sheet canvas').boundingBox();
   check('the map fits the screen and is taller than wide', mapBox.width > 200 && mapBox.width <= width && mapBox.height > mapBox.width && mapBox.y + mapBox.height <= height);
   const inks = await page.evaluate(() => {
@@ -169,6 +183,7 @@ try {
     await page.waitForFunction(() => document.getElementById('action-button').textContent === 'Home', null, { timeout: 15000 }).catch(() => {});
     check('at the door the action button reads Home', (await page.locator('#action-button').textContent()) === 'Home');
     await page.tap('#action-button');
+    await atRest(page);
     const homeBox = await page.locator('#cabin-sheet').boundingBox();
     check("it opens the cabin's sheet, which fits the screen", homeBox !== null && homeBox.x >= 0 && homeBox.x + homeBox.width <= width && homeBox.y > 0 && homeBox.y + homeBox.height <= height + 4);
     check('with five places on the shelf and three on the board', (await page.locator('#cabin-sheet .places').first().locator('.place').count()) === 5 && (await page.locator('#cabin-sheet .places').nth(1).locator('.place').count()) === 3);
@@ -292,6 +307,7 @@ try {
   // Settings sheet.
   await page.tap('#menu-button');
   check('settings sheet opens', await page.locator('#menu').isVisible());
+  await atRest(page);
   const sheet = await box('#menu');
   check('settings sheet spans the bottom of the screen', sheet.width >= width - 1 && Math.abs(sheet.y + sheet.height - height) < 2);
   await page.locator('#menu button', { hasText: 'Saddle Lodge' }).tap();
@@ -421,6 +437,7 @@ try {
   await lp.waitForSelector('#action-button:not([hidden])', { timeout: 20000 }).catch(() => {});
   const offer = await lp.locator('#action-button').textContent();
   check('standing at the foot of a lift offers a ride by name', offer === `Ride ${shortLift.name}`, offer);
+  await atRest(lp);
   const actionBox = await lp.locator('#action-button').boundingBox();
   const skiBox = await lp.locator('#ski-button').boundingBox();
   check('the ride button is by the thumb and clear of the other buttons', actionBox.y > lp.viewportSize().height * 0.6 && actionBox.y + actionBox.height <= skiBox.y && actionBox.height >= 44);
@@ -474,6 +491,7 @@ try {
 
   await bp.tap('#book-button');
   check('the book button opens the book at the passport', (await bp.locator('#book-sheet').isVisible()) && (await bp.getAttribute('#book-sheet [data-tab=passport]', 'aria-pressed')) === 'true');
+  await atRest(bp);
   const bookBox = await bp.locator('#book-sheet').boundingBox();
   check('the book is a sheet across the bottom of the screen', bookBox.width >= width - 1 && Math.abs(bookBox.y + bookBox.height - height) < 2 && bookBox.y > height * 0.1);
   const inkedStamps = await bp.locator('#book-sheet .stamp.earned b').allTextContents();
@@ -613,6 +631,7 @@ try {
   check('standing by someone offers to talk to them by name', await townSettle(() => !document.getElementById('talk-button').hidden && document.getElementById('talk-button').textContent === 'Talk to June'));
   await tp.tap('#talk-button');
   check('talking opens a sheet with their name', (await tp.locator('#talk-sheet').isVisible()) && (await tp.locator('#talk-sheet .names b').textContent()) === 'June');
+  await atRest(tp);
   const talkBox = await tp.locator('#talk-sheet').boundingBox();
   check('the talk sheet sits at the bottom, within the screen', Math.abs(talkBox.y + talkBox.height - height) < 2 && talkBox.y > height * 0.4 && talkBox.width >= width - 1);
   const june = await hear();
@@ -623,6 +642,7 @@ try {
   await goTo(person('otto').x + 1.5, person('otto').z + 3);
   check('the person it is for is now marked', (await townState()).people.find((p) => p.id === 'otto').business);
   await townSettle(() => document.getElementById('talk-button').textContent === 'Talk to Otto' && !document.getElementById('talk-button').hidden);
+  await atRest(tp);
   const rideBox = await tp.locator('#action-button').boundingBox();
   const talkButton = await tp.locator('#talk-button').boundingBox();
   check('beside a lift, the talk button sits above the ride button', rideBox !== null && talkButton.y + talkButton.height <= rideBox.y && talkButton.height >= 44);
@@ -801,7 +821,7 @@ try {
   await rail.context.close();
 
   // A first visit: a few words of welcome, hints as things come up, and a quiet screen.
-  const fresh1 = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  const fresh1 = await browser.newContext({ ...devices['iPhone 15 Pro'], ...STILL });
   const np = await fresh1.newPage();
   np.on('pageerror', (e) => failures.push(`page error: ${e.message}`));
   const plain = url.replace('&stats=1&intro=0', '');
@@ -818,6 +838,7 @@ try {
   // The day's flyer: put up the first time the game is opened on a day, as soon as the welcome has been read, and once.
   await np.waitForSelector('#flyer:not([hidden])', { timeout: 20000 }).catch(() => {});
   check("the day's flyer goes up when the welcome has been read", await np.locator('#flyer').isVisible());
+  await atRest(np);
   const paper = await np.locator('#flyer .paper').boundingBox();
   check('the flyer fits the screen, over its lower part', paper !== null && paper.x >= 0 && paper.x + paper.width <= width && paper.y > height * 0.15 && paper.y + paper.height <= height + 4, paper ? `${Math.round(paper.y)} to ${Math.round(paper.y + paper.height)} of ${height}` : 'none');
   const leadRows = await np.locator('#flyer .lead').count();
@@ -836,6 +857,7 @@ try {
   await np.locator('#flyer .go').tap();
   await np.tap('#ski-button');
   check('putting skis on for the first time brings a hint', await np.waitForFunction(() => window.__gore.state().hints.includes('skis') && [...document.querySelectorAll('#toasts .toast-hint b')].some((b) => b.textContent === 'On skis'), null, { timeout: 30000 }).then(() => true, () => false));
+  await atRest(np);
   const hintBox = await np.locator('#toasts .toast-hint').first().boundingBox();
   check('the hint fits the screen', hintBox !== null && hintBox.x >= 0 && hintBox.x + hintBox.width <= width);
   await np.tap('#ski-button');
@@ -861,7 +883,7 @@ try {
   await fresh1.close();
 
   // Someone coming back with a book from before the town opened is told the news, once.
-  const back1 = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  const back1 = await browser.newContext({ ...devices['iPhone 15 Pro'], ...STILL });
   await back1.addInitScript(() => {
     if (!localStorage.getItem('gore.book')) localStorage.setItem('gore.book', JSON.stringify({ hints: ['welcome', 'skis'], lifts: { Sunway: '2026-11-01' } }));
   });
@@ -880,7 +902,7 @@ try {
   await back1.close();
 
   // Coming home with stones in the book and a feeder filled the day before.
-  const homeCtx = await browser.newContext({ ...devices['iPhone 15 Pro'] });
+  const homeCtx = await browser.newContext({ ...devices['iPhone 15 Pro'], ...STILL });
   await homeCtx.addInitScript(() => {
     if (!localStorage.getItem('gore.book')) {
       localStorage.setItem(

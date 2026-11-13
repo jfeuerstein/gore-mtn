@@ -294,6 +294,8 @@ export interface Weather {
   snowing: number;
   /** How much cloud is lying low, in the valleys, 0..1: fog, or cloud under a clear sky. None if not given. */
   low?: number;
+  /** New snow since yesterday, in centimetres, when the sky's source says. */
+  fresh?: number;
 }
 
 /**

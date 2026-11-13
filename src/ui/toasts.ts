@@ -1,3 +1,4 @@
+import { newPatch, sewn } from './motion';
 import type { GameEvent } from '../game/game';
 
 /** How long an announcement stays up, in milliseconds (a hint, which has to be read, stays longer), and how many show at once. */
@@ -83,7 +84,8 @@ export class Toasts {
         const plain = mark;
         pic.addEventListener('error', () => pic.replaceWith(plain));
         toast.classList.add('toast-pic');
-        mark = pic;
+        // A patch had for the first time is sewn on as it is held up.
+        mark = newPatch(event) ? sewn(pic) : pic;
       }
       const text = document.createElement('span');
       const title = document.createElement('b');

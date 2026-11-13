@@ -13,9 +13,9 @@ export const WEATHERS = ['clear', 'cloudy', 'snow', 'fog'] as const;
 export type WeatherName = (typeof WEATHERS)[number];
 
 export const NAMED_WEATHER: Record<WeatherName, Weather> = {
-  clear: { overcast: 0, snowing: 0 },
-  cloudy: { overcast: 1, snowing: 0 },
-  snow: { overcast: 1, snowing: 1 },
+  clear: { overcast: 0, snowing: 0, fresh: 3 },
+  cloudy: { overcast: 1, snowing: 0, fresh: 8 },
+  snow: { overcast: 1, snowing: 1, fresh: 24 },
   // Cloud lying in the valleys under a clear sky: from the summits, a sea of it.
   fog: { overcast: 0.1, snowing: 0, low: 1 },
 };
@@ -40,7 +40,10 @@ export function weatherFromForecast(reply: unknown): Weather | null {
   const lowCover = typeof current.cloud_cover_low === 'number' ? current.cloud_cover_low : 0;
   const upper = Math.max(typeof current.cloud_cover_mid === 'number' ? current.cloud_cover_mid : 0, typeof current.cloud_cover_high === 'number' ? current.cloud_cover_high : 0);
   const low = snowing === 0 && (current.weather_code === 45 || current.weather_code === 48 || (lowCover >= 80 && upper <= 30)) ? 1 : 0;
-  return low > 0 ? { overcast: Math.max(overcast, snowing), snowing, low } : { overcast: Math.max(overcast, snowing), snowing };
+  // What has fallen since yesterday, when the reply carries the days as well as the moment.
+  const sums = (reply as { daily?: { snowfall_sum?: unknown } }).daily?.snowfall_sum;
+  const fresh = Array.isArray(sums) ? Math.min(60, sums.reduce((sum: number, cm) => sum + (typeof cm === 'number' && Number.isFinite(cm) && cm > 0 ? cm : 0), 0)) : undefined;
+  return { overcast: Math.max(overcast, snowing), snowing, ...(low > 0 ? { low } : {}), ...(fresh !== undefined ? { fresh } : {}) };
 }
 
 /** A repeatable number in 0..1 for a whole number. */
@@ -77,12 +80,14 @@ export function inventedWeather(when: Date): Weather {
 export function easeWeather(now: Weather, target: Weather, dt: number, perSecond = 0.12): Weather {
   const step = (a: number, b: number): number => a + Math.max(-perSecond * dt, Math.min(perSecond * dt, b - a));
   const low = step(now.low ?? 0, target.low ?? 0);
-  return { overcast: step(now.overcast, target.overcast), snowing: step(now.snowing, target.snowing), ...(low > 0 ? { low } : {}) };
+  return { overcast: step(now.overcast, target.overcast), snowing: step(now.snowing, target.snowing), ...(low > 0 ? { low } : {}), ...(target.fresh !== undefined ? { fresh: target.fresh } : {}) };
 }
 
 export const FORECAST_URL =
   `https://api.open-meteo.com/v1/forecast?latitude=${GORE.latitude}&longitude=${GORE.longitude}` +
-  '&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,snowfall,precipitation,weather_code,temperature_2m';
+  '&current=cloud_cover,cloud_cover_low,cloud_cover_mid,cloud_cover_high,snowfall,precipitation,weather_code,temperature_2m' +
+  // ...and how much snow fell yesterday and today, for how deep the loose snow lies.
+  '&daily=snowfall_sum&past_days=1&forecast_days=1&timezone=America%2FNew_York';
 
 /**
  * The real weather at Gore right now, or null if it cannot be had (offline, or the service is

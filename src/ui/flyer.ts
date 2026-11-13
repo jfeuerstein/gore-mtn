@@ -1,4 +1,5 @@
 import type { Lead } from '../game/today';
+import { dropAway } from './motion';
 
 /** A lead as the flyer shows it: with whether it has been done since the flyer went up. */
 export interface FlyerLead extends Lead {
@@ -82,6 +83,7 @@ export class Flyer {
   }
 
   close(): void {
+    dropAway(this.sheet);
     this.sheet.hidden = true;
   }
 

@@ -62,6 +62,11 @@ import { placeAt, secretSites, setting } from './world/secretSites';
 import { alongRun, leadLine } from './world/unmarked';
 import { Plume } from './world/plume';
 import { SkyShow } from './world/skyShow';
+import { Powder } from './world/powder';
+import { newPatch } from './ui/motion';
+import { SpeedLines } from './world/speedLines';
+import { inventedFresh, powderDepth, sinkIn, TRENCH_FROM } from './game/snowpack';
+import { trackHalfWidth } from './world/tracks';
 import { Companion } from './world/companion';
 import { WornGround } from './world/wornMesh';
 import { wornCells, wornKey } from './game/worn';
@@ -385,6 +390,10 @@ async function boot(): Promise<void> {
   const cloudTop = RELIEF * CLOUD_TOP;
   const skyShow = new SkyShow(cloudTop, ground.maxX - ground.minX);
   scene.add(skyShow.group);
+  // Loose snow, for the skier to cut through, and the air going by at speed.
+  const powder = new Powder(shadows);
+  const speedLines = new SpeedLines();
+  scene.add(powder.group, speedLines.mesh);
   // Wherever somebody might be standing on some day (the painter, the camper, the band, Pip), there is room to stand.
   const hauntSpots = [
     ...PAINTER_HAUNTS.map((h) => ['nell', h, 6] as const),
@@ -502,7 +511,11 @@ async function boot(): Promise<void> {
   for (const gesture of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) window.addEventListener(gesture, () => sound.unlock(), { passive: true });
   const announce = (events: readonly GameEvent[]): void => {
     if (events.length === 0) return;
-    for (const event of events) toasts.show(event);
+    for (const event of events) {
+      toasts.show(event);
+      // A patch had for the first time is sewn on in the announcement, and again in its place in the Book when that is next looked at.
+      if (event.art && newPatch(event)) book.earned(event.art);
+    }
     // One tune for a batch, the grandest of them, so several stamps at once do not clash.
     const order = ['patch', 'peak', 'season', 'gear', 'secret', 'mineral', 'trail', 'path', 'lift', 'landmark', 'condition', 'errand', 'sighting', 'item'];
     const lead = [...events].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind))[0] as GameEvent;
@@ -942,7 +955,7 @@ async function boot(): Promise<void> {
     // Some boards are chalked up fresh each time they are read: from the sky as it is this
     // minute, from the passport, from what is about on the mountain at this hour.
     const chalked: Record<string, () => string> = {
-      report: () => snowReport({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today }, world.lifts.length, game.trails.length),
+      report: () => snowReport({ season, overcast: weather.overcast, falling: weather.snowing, watch, day: today, fresh: freshNow() }, world.lifts.length, game.trails.length),
       trailboard: () => trailOfTheDay(game.trails, (name) => Boolean(game.save.trails[name]?.stamped), today, look.ride === 'bike'),
       log: () => wildlifeLog(SPECIES, (id) => id in game.save.sightings, season, watch, today),
     };
@@ -1103,6 +1116,8 @@ async function boot(): Promise<void> {
     const starry = starlight > 0.5;
     skyShow.set(seaNow(weatherAbout()), starry && (cfg.sky === 'meteors' || (cfg.sky === 'real' && showerOn(nightOf()) !== null)), starry && (cfg.sky === 'aurora' || (cfg.sky === 'real' && auroraOn(nightOf()))), palette.skyTop);
     terrain.setTints(palette.snowTint, palette.canopyTint);
+    powder.setTint(palette.snowTint);
+    speedLines.setTint(palette.snowTint, palette.track);
     // The mark the skis leave: the season's own, or a line the player has come by.
     tracks.setColour(game.flourish().track || palette.track);
     // Snow in winter, rain otherwise; leaves on a fair fall day, fireflies on a summer night.
@@ -1124,6 +1139,11 @@ async function boot(): Promise<void> {
   // The stones the player has put on the cairns, as they were left.
   secretThings.setStones((id) => game.stones(id));
   // The ground the player has worn by walking it, and whoever has come along with them.
+  /** New snow since yesterday, in centimetres: a number from the address, what the sky's source says, or an amount made up for the day. */
+  const freshNow = (): number => cfg.powder ?? weather.fresh ?? inventedFresh(today);
+  /** How deep the loose snow is where the player is, in metres. Not on a road, a floor or a lift. */
+  let snowDeep = 0;
+  const velocity = new THREE.Vector3();
   const wornGround = new WornGround(season);
   wornGround.set(wornCells(game.save), (x, z) => ground.heightAt(x, z));
   const companion = new Companion(shadows);
@@ -1419,6 +1439,8 @@ async function boot(): Promise<void> {
     crowd: crowd ? { ...crowd.shown, nearest: crowd.nearest, strollers: crowd.strollers.map((w) => ({ x: w.x, z: w.z })) } : null,
     people: standings.map((st) => ({ id: st.person.id, x: st.x, z: st.z, business: game.hasBusiness(st.person.id, season) })),
     sky: skyShow.now(),
+    // How deep the loose snow is under the player, in metres, and what has been cut and thrown.
+    powder: { depth: snowDeep, fresh: freshNow(), ...powder.counts, lines: speedLines.mesh.count },
     // For the tools: where the secrets stand, who is roaming and where, and the unmarked runs from top to bottom.
     secrets: secretPlaces.map((at) => ({ id: at.id, x: at.x, z: at.z, turn: at.turn, found: at.id in game.save.secrets })),
     roamers: roamers.map((st) => ({ id: st.person.id, x: st.x, z: st.z, about: folk.about(st.person.id), waits: game.roamerWaits(st.person.id, today, season, watch) })),
@@ -1509,7 +1531,11 @@ async function boot(): Promise<void> {
       const floor = floorAt(floors, player.position.x, player.position.z);
       // The water gets deeper going in: how much of the ground round about is water says how deep.
       const wet = season === 'winter' ? 0 : SHALLOWS.reduce((n, [dx, dz]) => n + (world.openAt(player.position.x + dx, player.position.z + dz) === OPEN_WATER ? 1 : 0), 0) / SHALLOWS.length;
-      const wanted = floor !== null ? Math.max(0, floor - under) : WADE * wet;
+      // Loose snow lies on the trails and in the woods, not on a ploughed road or a floor of boards; the groomers have packed the trails.
+      const onSnow = floor === null && world.openAt(player.position.x, player.position.z) === 0;
+      snowDeep = onSnow ? powderDepth(freshNow(), weather.snowing, world.onTrail(player.position.x, player.position.z), season) : 0;
+      // Whoever is in it sinks into it, on skis or on foot.
+      const wanted = floor !== null ? Math.max(0, floor - under) : wet > 0 ? WADE * wet : -sinkIn(snowDeep);
       footing += (wanted - footing) * Math.min(1, dt * 12);
       // Under the bandstand's roof the camera would see only roof: it comes off while the player is on its floor.
       const roofed = floor === null ? null : (built.plots.find((q) => (q.id === 'bandstand' || q.id === 'lean-to') && Math.hypot(q.x - player.position.x, q.z - player.position.z) < 4.2) ?? null);
@@ -1531,6 +1557,20 @@ async function boot(): Promise<void> {
     } else if (player.mode !== 'ski') {
       tracks.lift();
     }
+    // In loose snow the skier cuts a trench, with the snow banked up either side, and throws snow up in a turn.
+    if (player.mode === 'ski' && player.speed > 1.2 && snowDeep >= TRENCH_FROM) {
+      const steady = player.speed > 2.5;
+      powder.cut(player.position.x, player.position.z, steady ? player.travelHeading : player.skiHeading, trackHalfWidth(steady ? player.slip : 0) + 0.13, snowDeep, ground);
+      powder.throwUp(dt, player.position.x, ground.heightAt(player.position.x, player.position.z), player.position.z, player.speed, player.travelHeading, player.slip, snowDeep);
+    } else powder.lift();
+    powder.update(dt);
+    // The air going by: which way the skier is going, down the slope as well as along it, and how fast.
+    if (player.mode === 'ski' && player.speed > 2) {
+      const dx = -Math.sin(player.travelHeading);
+      const dz = -Math.cos(player.travelHeading);
+      velocity.set(dx, ground.heightAt(player.position.x + dx, player.position.z + dz) - ground.heightAt(player.position.x, player.position.z), dz).normalize().multiplyScalar(player.speed);
+    } else velocity.set(0, 0, 0);
+    speedLines.update(dt, camera.position, velocity);
     // At the top of a lift, set the player down on the snow a little way ahead of the last tower.
     const arrived = player.takeArrival();
     if (arrived) {

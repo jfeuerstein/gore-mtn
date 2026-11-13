@@ -1,4 +1,5 @@
 import type { CabinSave } from '../game/cabin';
+import { dropAway } from './motion';
 
 /** What the sheet needs to know, asked for again whenever something on it may have changed. */
 export interface CabinPage {
@@ -92,6 +93,7 @@ export class CabinSheet {
   }
 
   close(): void {
+    dropAway(this.sheet);
     this.sheet.hidden = true;
   }
 

@@ -347,7 +347,10 @@ export class Player {
     groomedAt: (x: number, z: number) => boolean,
     bumpAt: (x: number, z: number, radius: number) => Bump | null,
   ): void {
+    // Where the skier was, on the ground: whoever owns the scene may have stood them lower (sunk in loose snow) or
+    // higher (on a floor), and that is not ground they have covered.
     const before = this.position.clone();
+    before.y = hf.heightAt(before.x, before.z);
     let after = advanceSki({ ...this.skiState, x: before.x, z: before.z, heading: this.heading }, input, hf, groomedAt, dt, this.tune);
     // A tree is a bump, not a crash: the skier is nudged clear and loses speed, more the squarer the hit.
     const bump = bumpAt(after.x, after.z, BODY_RADIUS);

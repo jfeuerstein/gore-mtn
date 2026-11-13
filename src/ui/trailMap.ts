@@ -2,6 +2,7 @@ import type { LiftPath } from '../world/lifts';
 import { DIFFICULTY_MARK, distToPolyline, type Difficulty, type Trail } from '../world/trails';
 import type { World } from '../world/world';
 import { boundsOf, clampCamera, lookAt, MAX_ZOOM, panBy, wholeMap, zoomAbout, type Bounds, type MapCamera, type MapView } from './mapView';
+import { dropAway } from './motion';
 
 const TRAIL_COLOUR: Record<Difficulty, string> = {
   easy: '#2f9e55',
@@ -263,6 +264,7 @@ export class TrailMap {
   }
 
   close(): void {
+    dropAway(this.sheet);
     this.sheet.hidden = true;
     window.clearInterval(this.timer);
     this.fingers.clear();

@@ -70,7 +70,7 @@ to GitHub Pages, and the owner playtests on an iPhone 17 Pro.
   `look=plain` or `shadows=0` goes without).
 - **Every state is a URL.** Debug options live in `src/config.ts` and are read from the query
   string (`season`, `time`, `weather`, `at`, `pos`, `yaw`, `pitch`, `zoom`, `ski`, `trees`, `dpr`, `shadows`, `stride`, `view`, `renderer`,
-  `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `sky`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
+  `hud`, `me`, `siding`, `crowd`, `look`, `ground`, `models`, `zoo`, `flyer`, `sky`, `powder`, `stats`, `intro`, `shortpage`, `bench`, `benchsecs`). `at` takes `home` (the player's cabin, and the default), a place (`summit`, `depot`) or one of the
   town's named places (`copperfield-inn`, `cafe`, `johnsburg-town-hall`: the ids in
   `src/world/townPlaces.ts`), and stands the player across the street from its door. Add new ones there rather than hard-coding. `window.__gore` exposes state
   (including the book's counts, the stones lying nearby, the last announcement and who else is about) and a few
@@ -423,6 +423,25 @@ Everything else is built in code from simple shapes.
   loses speed, more the squarer the hit. Buildings are solid too (`src/world/walls.ts`).
 - Skis leave tracks (`src/world/tracks.ts`): thin lines when carving, wide scrapes when skidding.
   The last 900 m or so stay on the snow.
+- **Loose snow** (the owner asked for snow with depth, that varies by day and snowfall and is
+  cut through). `src/game/snowpack.ts` (pure, tested) says how deep it is: the day's new
+  snow is what really fell at Gore since yesterday (`Weather.fresh`, from the same forecast
+  request, which now asks for the days' snowfall too) or, when that cannot be had, an amount
+  made up for the day (`inventedFresh`); the groomers have packed the trails, so most of it
+  is off them, and what is falling now lies on everything (`powderDepth`). Winter only. The
+  ground the game draws is the top of the snow, so nothing is dug: whoever is in it stands
+  lower by `sinkIn` (the same `footing` that wades), and `src/world/powder.ts` draws the
+  trench a skier cuts as a print would, its floor a tone darker and the snow pushed out of
+  it banked in a ridge on each side, wider and higher the deeper the snow, and throws lumps
+  of snow up from the skis, most in a skid. Two draw calls. The physics are not changed.
+  `powder=30` in the address sets the day's new snow in centimetres, to look at it; the
+  snow report by the Base Lodge says how much fell.
+- **Speed lines** (`src/world/speedLines.ts`): above `LINES_FROM` (just over the pace of
+  poling) thin streaks hang in the air ahead along the line of travel and are passed, more
+  and longer up to `LINES_FULL`. They are in the world, not on the screen; near the camera,
+  because the camera looks the way the skier is going and a far one is seen end on; every
+  other one pale and the rest dark, so that some show against snow and some against trees.
+  One instanced mesh, nothing see-through.
 
 ## Lifts
 
@@ -667,6 +686,22 @@ Everything else is built in code from simple shapes.
 - The prompts never name the game, the mountain's owner or the player, nor any other game. No key is ever in the
   repo: the fal key and the Tripo key are network secrets on the environment, sent by the
   session's proxy (`queue.fal.run`, `openapi.tripo3d.ai`).
+- The interface moves a little (the owner asked for it; the end of `src/style.css`, and
+  `src/ui/motion.ts`). A sheet comes up from below when it is opened, and when it is closed
+  it is hidden at once (the game and the checks read `hidden`) while a piece of paper its
+  shape drops away (`dropAway`). A page of the Book settles in a row at a time when it is
+  turned to, not when it is only brought up to date; what someone says comes up as it is
+  said; a button darkens a touch under the thumb (it does not shrink: the touch check holds every
+  button to thumb size, pressed or not); what can be done here turns up with a spring.
+  Nothing loops, since a thing that never stops moving cannot be tapped by the tools, and
+  `prefers-reduced-motion` turns all of it off, which is how the touch check runs: it measures
+  where things come to rest.
+- **A patch is sewn on** when it is had for the first time (`sewn` and `newPatch` in
+  `motion.ts`): in the announcement, and again in its place in the Book the next time that
+  place is shown (`Book.earned`). The patch is laid on pale, a ring of stitches goes in
+  round it one at a time with a needle going round, and it is pressed down in its colours.
+  The ring is uncovered by a mask whose angle is animated in steps (`@property --sewn`).
+  Postcards and paintings are pictures, not patches, and are not sewn.
 - The interface has a look of its own, set out at the top of `src/style.css`: paper, ink and
   enamel colours as variables, a display face for headings and buttons, Caveat for anything
   handwritten, all bundled from `@fontsource`. Use the variables; do not add new colours or

@@ -2172,3 +2172,250 @@ body {
   aspect-ratio: 4 / 3;
   object-fit: cover;
 }
+
+/* --- Things that move ------------------------------------------------------------------------
+   The sheets come up from where the thumb is and drop away again; what is on them settles in a
+   row at a time; a button answers a press; and a patch that has just been earned is sewn on.
+   All of it is short, none of it loops, and none of it is in the way of a tap. Someone who has
+   asked their phone for less movement gets none (the last rule here). */
+@keyframes sheet-up {
+  from {
+    translate: 0 34px;
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+}
+#book-sheet:not([hidden]),
+#map-sheet:not([hidden]),
+#talk-sheet:not([hidden]),
+#cabin-sheet:not([hidden]),
+#menu:not([hidden]) {
+  animation: sheet-up 0.26s cubic-bezier(0.2, 1.05, 0.35, 1);
+}
+/* The flyer is a sheet of paper pinned up: it swings in on its pin. */
+@keyframes flyer-in {
+  from {
+    translate: 0 46px;
+    rotate: -3.5deg;
+    opacity: 0;
+  }
+  55% {
+    opacity: 1;
+  }
+  75% {
+    rotate: 0.8deg;
+  }
+}
+#flyer:not([hidden]) {
+  animation: flyer-in 0.38s cubic-bezier(0.2, 1, 0.35, 1);
+}
+/* The paper left behind by a sheet that has been put down. */
+@keyframes sheet-down {
+  to {
+    translate: 0 60px;
+    opacity: 0;
+  }
+}
+.sheet-ghost {
+  position: absolute;
+  z-index: 30;
+  box-sizing: border-box;
+  pointer-events: none;
+  background-color: var(--paper);
+  background-image: var(--grain);
+  border: 2px solid var(--ink);
+  animation: sheet-down 0.2s cubic-bezier(0.5, 0, 0.9, 0.5) forwards;
+}
+/* What is on a page settles in from just below, a row after a row, when the page is turned to. */
+@keyframes row-in {
+  from {
+    translate: 0 10px;
+    opacity: 0;
+  }
+}
+#book-sheet .body.turned > * {
+  animation: row-in 0.26s ease-out backwards;
+}
+#book-sheet .body.turned > :nth-child(2) { animation-delay: 0.03s; }
+#book-sheet .body.turned > :nth-child(3) { animation-delay: 0.06s; }
+#book-sheet .body.turned > :nth-child(4) { animation-delay: 0.09s; }
+#book-sheet .body.turned > :nth-child(5) { animation-delay: 0.12s; }
+#book-sheet .body.turned > :nth-child(6) { animation-delay: 0.15s; }
+#book-sheet .body.turned > :nth-child(n + 7) { animation-delay: 0.18s; }
+/* Someone's words come up as they are said, and the next row a beat after the one before. */
+@keyframes said {
+  from {
+    translate: 0 6px;
+    opacity: 0;
+  }
+}
+#talk-sheet .line.spoken,
+#talk-sheet .picture:not([hidden]) {
+  animation: said 0.22s ease-out backwards;
+}
+/* A button answers a press by darkening a touch, as paper does under a thumb. (Those that sink a
+   little keep doing so as well.) It does not shrink: a thing to press is never smaller than a thumb. */
+#app button {
+  transition:
+    filter 0.12s ease-out,
+    transform 0.06s,
+    background-color 0.15s,
+    opacity 0.15s;
+}
+#app button:active {
+  filter: brightness(0.92);
+}
+/* What can be done here turns up with a little spring, not all at once. */
+@keyframes pop-in {
+  from {
+    scale: 0.82;
+    opacity: 0;
+  }
+  70% {
+    scale: 1.04;
+  }
+}
+#action-button:not([hidden]),
+#talk-button:not([hidden]),
+#flag-pointer:not([hidden]) {
+  animation: pop-in 0.22s ease-out;
+}
+/* The tab that is open, and a thing in the wardrobe that has just been put on, give a small nod. */
+@keyframes nod {
+  40% {
+    scale: 1.07;
+  }
+}
+#book-sheet .tabs button[aria-pressed='true'],
+#book-sheet .wardrobe button.on {
+  animation: nod 0.24s ease-out;
+}
+
+/* --- A patch is sewn on -----------------------------------------------------------------------
+   Round the picture, a ring of stitches goes in one at a time, a needle going round with it;
+   then the patch is pressed down. The ring is uncovered by a mask that turns in steps, one
+   stitch to a step. */
+@property --sewn {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 360deg;
+}
+.sewn {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  --stitching: 1.15s;
+}
+.sewn > svg {
+  position: absolute;
+  inset: -9%;
+  width: 118%;
+  height: 118%;
+  overflow: visible;
+  pointer-events: none;
+  rotate: var(--turn, 0deg);
+  -webkit-mask-image: conic-gradient(#000 var(--sewn), transparent 0);
+  mask-image: conic-gradient(#000 var(--sewn), transparent 0);
+  animation:
+    sew var(--stitching) steps(20, jump-end) 0.35s backwards,
+    sewn-away 0.5s ease-in 2.6s forwards;
+}
+.sewn .thread {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  /* Twenty stitches to the ring: each a little longer than the gap after it. */
+  stroke-dasharray: 3.5 2.5;
+}
+@keyframes sew {
+  from {
+    --sewn: 0deg;
+  }
+  to {
+    --sewn: 360deg;
+  }
+}
+@keyframes sewn-away {
+  to {
+    opacity: 0;
+  }
+}
+/* The needle: a sliver of steel at the stitch that is going in, gone when the last one is.
+   It is a box the size of the patch that turns about its middle, with the sliver at its top edge,
+   so that it sits on the ring whatever size the patch is. */
+.sewn .needle {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  rotate: calc(var(--turn, 0deg) + var(--sewn));
+  opacity: 0;
+  animation:
+    sew var(--stitching) steps(20, jump-end) 0.35s backwards,
+    needle var(--stitching) linear 0.35s;
+}
+.sewn .needle::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1.5px);
+  top: -17%;
+  width: 3px;
+  height: 30%;
+  /* Across the ring at a slant, the way a needle goes through cloth. */
+  rotate: 58deg;
+  transform-origin: 50% 45%;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(#f7f1e3, #8a93a3);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+@keyframes needle {
+  from,
+  to {
+    opacity: 0;
+  }
+  6%,
+  94% {
+    opacity: 1;
+  }
+}
+/* The patch itself: laid on pale, and pressed down in its colours as the last stitch goes in. */
+@keyframes pressed {
+  from {
+    filter: grayscale(0.85) opacity(0.5);
+    scale: 1.12;
+  }
+  70% {
+    filter: grayscale(0.85) opacity(0.5);
+    scale: 1.12;
+  }
+  84% {
+    filter: none;
+    scale: 0.92;
+  }
+  to {
+    filter: none;
+    scale: 1;
+  }
+}
+.sewn > img,
+.toast .sewn > .pic,
+#book-sheet .sewn > img {
+  animation: pressed calc(var(--stitching) + 0.75s) ease-out backwards;
+}
+/* In an announcement the picture's own margins go to the ring it sits in. */
+.toast .sewn {
+  margin: -4px 0 -4px -2px;
+}
+.toast .sewn .pic {
+  margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app *,
+  #app *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

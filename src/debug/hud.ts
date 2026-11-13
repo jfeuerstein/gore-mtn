@@ -2,6 +2,7 @@ import { DEFAULTS, withParams, type Config } from '../config';
 import { DIFFICULTY_MARK, type Place, type Trail } from '../world/trails';
 import { startBench } from './bench';
 import { describeSummary, type FrameSummary } from './perf';
+import { dropAway } from '../ui/motion';
 
 export interface HudStats {
   frame: FrameSummary;
@@ -196,7 +197,10 @@ export class Hud {
     const close = add(this.menuEl, 'button', 'Close');
     close.type = 'button';
     close.className = 'close';
-    close.addEventListener('click', () => (this.menuEl.hidden = true));
+    close.addEventListener('click', () => {
+      dropAway(this.menuEl);
+      this.menuEl.hidden = true;
+    });
     add(this.menuEl, 'h1', 'Settings');
 
     if (this.book) {
