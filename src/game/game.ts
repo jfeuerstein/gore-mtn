@@ -691,7 +691,7 @@ export class Game {
     if (turn) {
       talk.lines.push(...turn.lines);
       if (turn.painting) talk.events.push({ kind: 'item', title: turn.painting.name, detail: 'A painting · kept in the Book', art: `paintings/${turn.painting.id}` });
-      if (hiding) talk.events.push({ kind: 'secret', title: 'Found Pip', detail: save.hide.finds === 1 ? 'She will hide somewhere else tomorrow' : `${save.hide.finds} times now` });
+      if (hiding) talk.events.push({ kind: 'secret', title: 'Found Pip', detail: save.hide.finds === 1 ? "She'll hide somewhere else tomorrow" : `${save.hide.finds} times now` });
       for (const gear of turn.gear) talk.events.push(...this.give(gear));
       if (turn.tune) talk.tune = turn.tune;
     }

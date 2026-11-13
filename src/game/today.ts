@@ -31,7 +31,7 @@ export interface Lead {
 
 /** A trail not yet stamped, flagged at its top. */
 export function trailLead(trail: { name: string; difficulty: Difficulty; glade: boolean }, x: number, z: number, day: string, riding: boolean): Lead {
-  const why = trailReason(day);
+  const why = trailReason(day, riding);
   return {
     id: `trail:${trail.name}`,
     kind: 'trail',

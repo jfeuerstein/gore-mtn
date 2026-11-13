@@ -85,7 +85,8 @@ export function snowReport(c: Conditions, lifts: number, trails: number): string
     `Surface: ${SURFACE[c.season]}.`,
     `Lifts turning: ${lifts} of ${lifts}.`,
     `Trails open: ${trails} of ${trails}.`,
-    NOTES[seed % NOTES.length] as string,
+    // (Nobody grooms dirt: in the bike months that note is about the berms.)
+    (NOTES[seed % NOTES.length] as string).replace("Bram groomed everything last night.", c.season === 'summer' || c.season === 'fall' ? 'Bram raked every berm last night.' : 'Bram groomed everything last night.'),
   ].join('\n');
 }
 
@@ -105,7 +106,11 @@ export function dayNumber(day: string): number {
   return seed >>> 0;
 }
 
-/** Why today's trail is today's trail. */
+/** Why today's trail is today's trail: on snow, and (where it differs) on dirt, in the bike months. */
+const DIRT_REASONS: Readonly<Record<string, string>> = {
+  'Bram did a really nice job on it': 'the trail crew just raked it out',
+  'Hazel says the snow is good on it': 'Hazel says the dirt is just right on it',
+};
 const REASONS: readonly string[] = [
   "you haven't been down it yet",
   'Bram did a really nice job on it',
@@ -130,7 +135,7 @@ export function trailOfTheDay(trails: readonly { name: string; difficulty: Diffi
   const todo = trails.filter((t) => !stamped(t.name));
   const pick = trailPick(trails, stamped, day);
   if (!pick) return `${title}: whichever you like!\nYou've done every single one. We checked the book twice.`;
-  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${trailReason(day)}.\n${todo.length} still to stamp.`;
+  return `${title}: ${DIFFICULTY_MARK[pick.difficulty]} ${pick.name.toUpperCase()}${pick.glade ? ' (in the trees)' : ''}.\nWhy: ${trailReason(day, riding)}.\n${todo.length} still to stamp.`;
 }
 
 /** How many trails must be in the passport before the board will send anyone down something hard. */
@@ -150,13 +155,17 @@ export function trailPick<T extends { name: string; difficulty?: string; glade?:
   return from[dayNumber(day) % from.length] as T;
 }
 
-/** Why today's trail is today's trail. */
-export function trailReason(day: string): string {
+/**
+ * Why today's trail is today's trail.
+ * @param riding true in the bike months: nothing is said of snow or grooming then
+ */
+export function trailReason(day: string, riding = false): string {
   // Stepped through three at a time, so that no reason comes round again for ten days, with
   // each month starting somewhere of its own. It can never be the reason given yesterday.
   const [y, m, d] = day.split('-').map(Number) as [number, number, number];
   const count = Math.round(Date.UTC(y, m - 1, d) / 86400000);
-  return REASONS[(count * 3 + (dayNumber(day.slice(0, 7)) % 3)) % REASONS.length] as string;
+  const reason = REASONS[(count * 3 + (dayNumber(day.slice(0, 7)) % 3)) % REASONS.length] as string;
+  return riding ? (DIRT_REASONS[reason] ?? reason) : reason;
 }
 
 const WATCH_NAME: Record<Watch, string> = { dawn: 'first light', day: 'daytime', dusk: 'last light', night: 'after dark' };

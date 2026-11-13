@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { INKS } from '../look/print';
-import type { ModelFile } from './modelFiles';
+import { snowed, type ModelFile } from './modelFiles';
 
 const read = (look: string): Record<string, ModelFile> => JSON.parse(readFileSync(new URL(`../../public/models/${look}.json`, import.meta.url), 'utf8')) as Record<string, ModelFile>;
 
@@ -54,6 +54,22 @@ describe('the things people have made', () => {
   const source = (file: string): string => readFileSync(new URL(file, import.meta.url), 'utf8');
   // Every model the secrets and the roamers' props ask for by name.
   const asked = [...new Set([...source('./secretMesh.ts').matchAll(/'(thing-[a-z-]+)'/g), ...source('./folk.ts').matchAll(/'(thing-[a-z-]+)'/g)].map((m) => m[1] as string))];
+
+  it('can print a ruin under snow: the same shape, with no green left on it and nothing else changed', () => {
+    const cellar = models['thing-cellar'] as ModelFile;
+    const winter = snowed(cellar);
+    const greens = ['#a9c98a', '#6fa35c', '#4f8a3f', '#2f6b4f'];
+    expect(cellar.p.some((ink) => greens.includes(ink))).toBe(true);
+    expect(winter.p.some((ink) => greens.includes(ink))).toBe(false);
+    expect(winter.p).toHaveLength(cellar.p.length);
+    expect(winter.v).toBe(cellar.v);
+    expect(winter.f).toBe(cellar.f);
+    // The stones and the apples are as they were.
+    cellar.p.forEach((ink, i) => {
+      if (!greens.includes(ink)) expect(winter.p[i]).toBe(ink);
+    });
+    expect(cellar.p.some((ink) => greens.includes(ink))).toBe(true);
+  });
 
   it('has a made model for every pet that can come along', () => {
     // The models the companions are (KINDS in companion.ts), and every pet there is to have (GEAR in people.ts).

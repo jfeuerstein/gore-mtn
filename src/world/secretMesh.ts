@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import { CAIRN_TALL, secretById, type Secret, type SecretKind, thereNow } from '../game/secrets';
 import { GENTLE_SPEED } from '../game/wildlife';
 import { madeModel } from './critterModels';
-import { modelGeometry, type ModelFile } from './modelFiles';
+import { modelGeometry, type ModelFile, snowed } from './modelFiles';
 import type { Flue } from './smoke';
 import { runCorridor, type Run } from './unmarked';
 import { lit } from '../look/material';
@@ -190,7 +190,7 @@ function leadPieces(marks: 'tracks' | 'buckets', pts: readonly number[], heightA
  * things built from blocks too blocky beside the animals; the blocks above are what is drawn
  * when the made models are not loaded (`models=blocks`).
  */
-function madeFor(secret: Secret, season: Season): { id: string; tall: number } | null {
+function madeFor(secret: Secret, season: Season): { id: string; tall: number; snowed?: boolean } | null {
   switch (secret.kind) {
     case 'register':
       return { id: 'thing-register', tall: 1.7 };
@@ -210,7 +210,7 @@ function madeFor(secret: Secret, season: Season): { id: string; tall: number } |
     case 'light':
       return { id: 'thing-lantern', tall: 3.5 };
     case 'working':
-      return secret.id === 'working-adit' ? { id: 'thing-adit', tall: 3.6 } : secret.id === 'working-cellar' ? { id: 'thing-cellar', tall: 3.2 } : secret.id === 'working-rope-tow' ? { id: 'thing-rope-tow', tall: 2.2 } : null;
+      return secret.id === 'working-adit' ? { id: 'thing-adit', tall: 3.6 } : secret.id === 'working-cellar' ? { id: 'thing-cellar', tall: 3.2, snowed: season === 'winter' } : secret.id === 'working-rope-tow' ? { id: 'thing-rope-tow', tall: 2.2 } : null;
     default:
       return null;
   }
@@ -252,6 +252,8 @@ function glassOf(file: ModelFile, tall: number): THREE.BufferGeometry | null {
 const SEEN_FROM = 420;
 
 /** How close the player must come to a secret for it to be offered, by kind, in metres. */
+/** The stones a cairn has before the player has put any on it. */
+const CAIRN_BEGUN = 3;
 const REACH: Record<SecretKind, number> = { register: 3, plaque: 3, working: 6.5, room: 3.6, cairn: 3.2, bell: 3, den: 4.5, nest: 3.6, shack: 5.2, ribbon: 3.4, light: 3.6 };
 /** How near a shy thing is when a hurry sends it off, and how far the player must go before it is back. */
 const STARTLE = 38;
@@ -298,17 +300,17 @@ export class SecretThings {
     const ink = new THREE.MeshBasicMaterial({ color: 0x22304a, side: THREE.BackSide });
     // A made model is shared by every secret that looks like it: twenty-eight plaques are one geometry.
     const shapes = new Map<string, { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null }>();
-    const shapeOf = (id: string, tall: number): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } | null => {
+    const shapeOf = (id: string, tall: number, underSnow = false): { geometry: THREE.BufferGeometry; shell: THREE.BufferGeometry | null } | null => {
       const file = madeModel(id);
       if (!file) return null;
-      const key = `${id}:${tall}`;
-      const shape = shapes.get(key) ?? modelGeometry(file, tall);
+      const key = `${id}:${tall}:${underSnow}`;
+      const shape = shapes.get(key) ?? modelGeometry(underSnow ? snowed(file) : file, tall);
       shapes.set(key, shape);
       return shape;
     };
     /** Stand a made model somewhere, its front (its own -z) turned to face along `turn`. */
-    const stand = (id: string, tall: number, x: number, y: number, z: number, turn: number): boolean => {
-      const shape = shapeOf(id, tall);
+    const stand = (id: string, tall: number, x: number, y: number, z: number, turn: number, underSnow = false): boolean => {
+      const shape = shapeOf(id, tall, underSnow);
       if (!shape) return false;
       const mesh = new THREE.Mesh(shape.geometry, material);
       if (shape.shell) mesh.add(new THREE.Mesh(shape.shell, ink));
@@ -333,7 +335,7 @@ export class SecretThings {
       /** A point of the thing's own, front at +z, as a place in the world. */
       const out = (lx: number, lz: number): { x: number; z: number } => ({ x: site.x + lx * cos + lz * sin, z: site.z - lx * sin + lz * cos });
       const cast = madeFor(secret, season);
-      const stood = cast !== null && stand(cast.id, cast.tall, site.x, y - 0.04, site.z, site.turn);
+      const stood = cast !== null && stand(cast.id, cast.tall, site.x, y - 0.04, site.z, site.turn, cast.snowed);
       if (secret.kind === 'shack' && season === 'spring') this.flues.push({ ...out(0, 0), y: y + 4.2, size: 0.9 });
       if (secret.kind === 'light') {
         // In a made lantern it is the glass itself that burns; in the one built from blocks, a flame in the open frame.
@@ -517,7 +519,8 @@ export class SecretThings {
     const c = new THREE.Color();
     let n = 0;
     for (const cairn of this.cairns) {
-      const stones = Math.min(CAIRN_TALL, count(cairn.id));
+      // (Somebody began each one: three stones stand there before the player has added any, so that it is a cairn to look at.)
+      const stones = Math.min(CAIRN_TALL, count(cairn.id) + CAIRN_BEGUN);
       let level = 0;
       let inLevel = 0;
       for (let i = 0; i < stones; i++) {

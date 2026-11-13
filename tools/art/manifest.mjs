@@ -529,6 +529,19 @@ export const PATCH_SETS = {
   },
   minerals: { border: 'slate grey-blue (#4d6168)', subjects: briefs(MINERAL_ART) },
   'minerals:more': { border: 'slate grey-blue (#4d6168)', into: 'minerals', subjects: MORE_MINERAL_ART },
+  // Four of the first sheet came back as other stones altogether (a grey pebble for the gem garnet, a blue stone for
+  // tourmaline, a brown one for wollastonite, green rings for labradorite). Made again, and cut after that sheet.
+  'minerals:again': {
+    border: 'slate grey-blue (#4d6168)',
+    into: 'minerals',
+    by: 'fal',
+    subjects: {
+      'gem-garnet': 'one clear deep red faceted cut gemstone',
+      tourmaline: 'a bundle of long black grooved crystal columns',
+      wollastonite: 'a white silky splintery fibrous mineral',
+      labradorite: 'a dark grey stone with a blue-green flash across it',
+    },
+  },
   // The museum: the old things brought back to it, the patches for its halls, and what its keeper hands over.
   relics: { border: 'brown (#6b4a33)', subjects: RELIC_ART },
   // (Through fal, like what is found on the mountain: the Tripo account had no credit left when these were made.)

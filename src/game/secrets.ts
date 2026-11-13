@@ -496,7 +496,7 @@ export function discover(save: SaveData, id: string, day: string, season?: Seaso
   if (secret.kind === 'register' && registers.every((s) => s.id in save.secrets) && !save.gear.owned.includes('trail-sky')) gear.push('trail-sky');
   if (secret.kind === 'plaque' && foundOf(save, 'plaque') >= PLAQUES_FOR_LINE && !save.gear.owned.includes('trail-garnet')) gear.push('trail-garnet');
   // A register has a line for whoever opens it: theirs, with the day.
-  const pages = secret.kind === 'register' ? [...secret.pages, { text: 'There is a pencil on a string. You sign it.', signed: `-you, ${monthDay(save.secrets[id] as string)}` }] : (turn?.pages ?? secret.pages);
+  const pages = secret.kind === 'register' ? [...secret.pages, { text: "There's a pencil on a string, and room at the bottom of the page." }, { text: 'Made it.', signed: `-you, ${monthDay(save.secrets[id] as string)}` }] : (turn?.pages ?? secret.pages);
   return { secret, first, open: true, pages, gear, key };
 }
 

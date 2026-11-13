@@ -61,7 +61,7 @@ describe('the rule for how people talk', () => {
         add('report/log', wildlifeLog(SPECIES, () => false, season, watch, '2026-12-01'));
       }
     }
-    for (let d = 1; d <= 28; d++) add('report/reason', trailReason(`2026-12-${String(d).padStart(2, '0')}`));
+    for (let d = 1; d <= 28; d++) for (const riding of [false, true]) add('report/reason', trailReason(`2026-12-${String(d).padStart(2, '0')}`, riding));
     for (const cm of [0, 2, 12, 40]) add('report/fresh', sayFresh(cm));
     expect(said.length).toBeGreaterThan(900);
     expect(said.flatMap(([where, text, written]) => slips(text, written).map((slip) => `${where}: "${slip}" in "${text.slice(0, 70)}"`))).toEqual([]);

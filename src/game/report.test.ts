@@ -106,3 +106,19 @@ describe('the observer\'s log', () => {
     expect(wildlifeLog(SPECIES, () => true, 'winter', 'day', '2026-11-11')).toContain('old friends');
   });
 });
+
+describe('the reasons, out of the snow months', () => {
+  it('say nothing of snow or grooming when the way down is a bike', () => {
+    const days = Array.from({ length: 40 }, (_, i) => `2026-07-${String((i % 28) + 1).padStart(2, '0')}`);
+    for (const day of days) {
+      expect(trailReason(day, true), day).not.toMatch(/snow|groom|Bram/i);
+      // On snow it is as it was.
+      expect(trailReason(day).length).toBeGreaterThan(5);
+    }
+    expect(days.some((day) => trailReason(day) !== trailReason(day, true))).toBe(true);
+    const c: Conditions = { season: 'summer', overcast: 0, falling: 0, watch: 'day', day: '2026-07-04', fresh: 0 };
+    for (let d = 1; d <= 28; d++) expect(snowReport({ ...c, day: `2026-07-${String(d).padStart(2, '0')}` }, 14, 100)).not.toMatch(/groomed/);
+    expect(trailOfTheDay([{ name: 'Sunway', difficulty: 'easy', glade: false }], () => false, '2026-07-04', true)).not.toMatch(/snow is good|Bram/);
+  });
+});
+

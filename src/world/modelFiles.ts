@@ -34,6 +34,18 @@ export async function loadModels(look: ModelLook, baseUrl: string): Promise<Reco
   }
 }
 
+/** The inks of things that grow, and what each is under snow: moss and leaves in winter. */
+const UNDER_SNOW: Readonly<Record<string, string>> = { '#a9c98a': '#f2f5fa', '#6fa35c': '#f2f5fa', '#4f8a3f': '#d3dae4', '#2f6b4f': '#d3dae4' };
+
+/**
+ * A made model's winter self, for one that has none of its own: the same shape with whatever
+ * was printed in a green printed in snow. (A den and a shack were modelled twice; a ruin with
+ * moss on it only needs its moss snowed over.)
+ */
+export function snowed(file: ModelFile): ModelFile {
+  return { ...file, p: file.p.map((ink) => UNDER_SNOW[ink.toLowerCase()] ?? ink) };
+}
+
 /**
  * A model as geometry, stood `height` metres tall.
  * @returns the geometry, and for a look that has one, the shell that is drawn behind it as its outline

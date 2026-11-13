@@ -141,7 +141,7 @@ export const PEOPLE: readonly Person[] = [
     ],
     moods: {
       snowing: ["I sweep the snow off every seat, and then it snows on them again.\nI don't mind. It's nice out."],
-      night: ["Lift's stopped for the night. I'm just here because the shack has a heater.\nAnd it's quiet."],
+      night: ["Nobody's riding at this hour. I keep it turning anyway.\nThe shack has a heater. And it's quiet."],
       dawn: ["First chair of the day! It's the best one.\nNobody's on it yet. Could be you."],
       raining: ["The seats are wet, sorry. I've got a towel.\n...The towel's wet too."],
     },
@@ -157,7 +157,7 @@ export const PEOPLE: readonly Person[] = [
     at: { place: 'saddle-lodge' },
     look: { jacket: 0xf4f1ea, trousers: 0x2b3a55, hat: 0xf4f1ea, style: 'toque', features: { beard: 0x5a4636, apron: 0xb53a2a, girth: 1.15 } },
     wearing: {
-      'hat-toque': "Nice hat! If anybody asks you what the special is, it's chili.\nIt's a pretty easy job that way.",
+      'hat-toque': "Nice hat! If anybody asks you what the special is, it's chili.\nIt's an easy job that way.",
     },
     hello: "Oh, hey, come in! Well - we're outside. Come over, anyway.\nI'm Gus. There's chili on. There's always chili on.",
     chat: [
@@ -248,7 +248,7 @@ export const PEOPLE: readonly Person[] = [
       "Whatever season you ride to, it'll wait for you. I'll bring you home whenever you like.",
       'The timetable just says "when ready."\nWe\'ve never been late. It\'s hard to be.',
       'The very first snow train got put off for weeks. Not enough snow!\nThey kept mailing out postcards with a new date. I love that.',
-      "I punch every ticket myself. There aren't any tickets.\nSo I sort of punch the air. It feels right.",
+      "I punch every ticket myself. There aren't any tickets.\nSo I just punch the air. It feels right.",
     ],
     moods: {
       snowing: ["Snow on the tracks! That's not a delay.\nThat's the whole idea."],
@@ -296,7 +296,7 @@ export const PEOPLE: readonly Person[] = [
       "There's an eagle that fishes behind the depot most mornings.\nIt's better at it than I am. I've made my peace with that.",
       "The secret to a good sandwich is the bread, and the bread is June's.\nPlease don't tell her I said so.",
       'Somebody took one of my sandwiches up the gondola once, just to eat it at the top.\nBest review I ever got.',
-      "People come off the mountain SO hungry.\nI had to laminate the menus. I'm only sort of joking.",
+      "People come off the mountain SO hungry.\nI had to laminate the menus. I'm only half joking.",
       "Napkins go on the left. June says the right.\nWe've been at it nine years. I'd miss it if she gave in.",
     ],
     moods: {
@@ -386,7 +386,7 @@ export const PEOPLE: readonly Person[] = [
       'jacket-innkeeper': "Room nine's coat! Oh, it looks so much better on a person.",
       'hat-tophat': "A top hat, in my lobby!\nFinally, somebody's dressed for the wallpaper.",
     },
-    hello: "Hi, hon. Sit anywhere. I'm Marge - this is my inn.\nForty beds and just me. I hear pretty much everything in this town.",
+    hello: "Hi, hon. Sit anywhere. I'm Marge - this is my inn.\nForty beds and just me. I hear just about everything in this town.",
     chat: [
       "About half of what I hear is nonsense.\nI never know which half. That's the fun of it.",
       "Teddy Roosevelt came through the depot in 1901, in the middle of the night.\nHe didn't stay here. I'm still a little annoyed.",
@@ -411,7 +411,7 @@ export const PEOPLE: readonly Person[] = [
     hello: "Shh- oh. We're outside. Sorry. Habit.\nI'm Mr. Fennimore, from the library. Ask me anything about this town. I've read, um, all of it.",
     chat: [
       "The first ski train got here in March of 1934, all the way from Schenectady.\nHundreds of people on it. I wish I'd seen that.",
-      "A man named Henry Barton started mining garnet on Gore in 1878.\nNot for jewelry. For sandpaper. I find that sort of wonderful.",
+      "A man named Henry Barton started mining garnet on Gore in 1878.\nNot for jewelry. For sandpaper. I find that wonderful.",
       'In 1901 Theodore Roosevelt found out he was President at our depot. Before dawn.\nI think about it every time I walk past.',
       'Gore opened as a ski center in 1964. Three years later it had the first gondola in New York State.',
       'Back in 1934 skiers rode up the mine road in the back of a truck, and skied down to town.\nThe Ski Bowl got a rope tow the next year.',
@@ -552,7 +552,7 @@ export const PEOPLE: readonly Person[] = [
     },
     hello: "Hey. I'm Bram. I drive the snowcat - that big thing there.\nI groom the trails at night, while everybody's asleep.",
     chat: [
-      "People think the snow just sort of lies like that.\nIt doesn't. I comb it, every night. It takes hours.",
+      "People think the snow just lies like that.\nIt doesn't. I comb it, every night. It takes hours.",
       "Stones come up when I groom. Garnets, mostly.\nI used to stop for them. Now I leave them for whoever's up first.",
       "You see things up there at three in the morning. Deer. Foxes.\nOnce something... tall. I don't really talk about that one.",
       "My favorite run is whichever one I groomed last. Ask me tomorrow and it'll be a different one.",
@@ -635,7 +635,7 @@ export const PEOPLE: readonly Person[] = [
     },
     hello: "Ski patrol. I'm Ivy.\nNothing's wrong. This is just how I stand.",
     chat: [
-      "Whoever's downhill of you has the right of way. So do the trees.\nThe trees are pretty firm about it.",
+      "Whoever's downhill of you has the right of way. So do the trees.\nThe trees are firm about it.",
       "I carry forty pounds of gear and one thermos.\nThe thermos gets used the most. It's soup.",
       'Nobody really gets hurt up here. You bump something, you slow down.\nMostly I hand out soup.',
       "If you hit a tree, say sorry to it. That's not a rule. I just think it's polite.",
@@ -646,7 +646,7 @@ export const PEOPLE: readonly Person[] = [
     moods: {
       snowing: ["You can't see much today. Go slow, okay?\nIt's really nice in the trees, though."],
       dusk: ["We do the last sweep soon. Ski every trail, make sure nobody's still out.\nIt's the best part of the job. Don't tell anyone."],
-      night: ["The mountain's closed. I'm not here.\nYou didn't see me, and neither of us saw Bram."],
+      night: ["Patrol's done for the day. I'm not here.\nYou didn't see me, and neither of us saw Bram."],
     },
   },
   {
@@ -747,7 +747,7 @@ export const PEOPLE: readonly Person[] = [
     hello: "Well, hey. You saw the smoke, huh?\nI'm Ro. I move camp every morning. I figure a place should only have to put up with me for a day.",
     chat: [
       "I've slept in every corner of this mountain.\nI figure the northeast one's the best. Don't tell the others.",
-      'Coffee? It is mostly grounds.\nI call it chewy coffee.',
+      "Coffee? It's mostly grounds.\nI call it chewy coffee.",
       "An owl sat on my tent last night. The whole night.\nI figure we're friends now. I didn't ask the owl.",
       "I had a house once. It had a lot of corners.\nOut here there's only the one, and I'm in it.",
       "Tomorrow I'll be somewhere else. Look for the smoke.\nIf there isn't any, I overslept.",
@@ -852,7 +852,7 @@ export const ERRANDS: readonly Errand[] = [
     ask: "Could you do me a small favor?\nRide a lift up - any of them - and tell me how it looks up there. I haven't been up yet today.",
     nudge: "Any lift counts! They all load at an orange gate.\nThe little J-Bar's right here, if you want a short one.",
     need: { kind: 'lifts', count: 1 },
-    thanks: "It's nice up there? Oh, good.\nHere - a patrol jacket. We had a spare, and you sort of look the part.",
+    thanks: "It's nice up there? Oh, good.\nHere - a patrol jacket. We had a spare, and you kind of look the part.",
     reward: { gear: 'jacket-patrol' },
   },
   {
@@ -1011,7 +1011,7 @@ export const ERRANDS: readonly Errand[] = [
     from: 'walt',
     to: 'wren',
     title: 'The Fire Tower Special',
-    ask: "Wren calls in the same order every week, and I can never get it up to the summit.\nWould you take it? It travels pretty well. No worries if not.",
+    ask: "Wren calls in the same order every week, and I can never get it up to the summit.\nWould you take it? It travels fine. No worries if not.",
     nudge: "Wren's at the fire tower on the summit.\nTake the Straight Brook Quad, then it's a short walk through the trees.",
     need: { kind: 'item', id: 'sandwich' },
     fetch: { name: 'The Fire Tower Special', from: 'walt', handover: "One Fire Tower Special. Turkey, cheddar and apple.\nThere's a pickle in there I'm really proud of." },
@@ -1093,11 +1093,11 @@ export const ERRANDS: readonly Errand[] = [
     id: 'toms-hat',
     from: 'tom',
     title: 'A hat at large',
-    ask: "HELP. My hat blew away. It went toward the Village Chair.\nI can't go get it because I am a snowman.\nIt is a top hat. Please.",
+    ask: "HELP. My hat blew away. It went toward the Village Chair.\nI can not go get it because I am a snowman.\nIt is a top hat. Please.",
     nudge: "My hat is under the Village Chair somewhere.\nI would point but my arms are sticks.",
     need: { kind: 'item', id: 'tophat' },
     lost: { name: 'A top hat, full of snow', at: { lift: 'Village Chair', along: 0.55 } },
-    thanks: "MY HAT!! Thank you thank you.\nYou can have my other one. I am nodding right now. You can't tell but I am.",
+    thanks: "MY HAT!! Thank you thank you.\nYou can have my other one. I am nodding right now. You can not tell but I am.",
     reward: { gear: 'hat-tophat' },
   },
   // Madame Flurry: a reading of the seasons.
@@ -1108,7 +1108,7 @@ export const ERRANDS: readonly Errand[] = [
     ask: "The spirits are vague about summer. So am I, to be honest.\nCould you go see the mountain in two different seasons and tell me what it's like? Bea can get you there.",
     nudge: "Two seasons. The Snow Train at the depot goes to all four, once you've got a pass.",
     need: { kind: 'seasons', count: 2 },
-    thanks: "It's GREEN in the summer? I knew it.\nWell - I know it now. Take this. It spins when the wind changes.",
+    thanks: "It's NOT winter everywhere? I knew it.\nWell - I know it now. Take this. It spins when the wind changes.",
     reward: { gear: 'hat-propeller' },
   },
   // Ivy: a thermos, and a sweep.
@@ -1116,7 +1116,7 @@ export const ERRANDS: readonly Errand[] = [
     id: 'thermos',
     from: 'ivy',
     title: 'The thermos',
-    ask: "I left my thermos up by the fire tower. It's green.\nIt's sort of the most important thing I own. Could you grab it, if you're up there?",
+    ask: "I left my thermos up by the fire tower. It's green.\nIt's the most important thing I own. Could you grab it, if you're up there?",
     nudge: "A green thermos, by the fire tower, at the very top.",
     need: { kind: 'item', id: 'thermos' },
     lost: { name: 'A green thermos, still warm', at: { place: 'summit', aside: 7 } },
@@ -1130,7 +1130,7 @@ export const ERRANDS: readonly Errand[] = [
     ask: "Want to help me sweep? Twelve trails, top to bottom. Any twelve.\nYell if you find anybody. You won't. Yelling's just fun.",
     nudge: "Twelve trails stamped. You can shout \"sweep!\" on the way down.\nI do.",
     need: { kind: 'trails', count: 12 },
-    thanks: "Twelve trails, and nobody left out there.\nYou'd make a pretty good patroller. I don't usually say that.",
+    thanks: "Twelve trails, and nobody left out there.\nYou'd make a good patroller. I don't usually say that.",
     after: 'thermos',
   },
   // The town: a parcel for the summit, a bet, a library book and some homework.

@@ -427,7 +427,7 @@ async function boot(): Promise<void> {
     ...BAND.map((b) => [b.who, b.haunt, 5] as const),
     ...PIP_HAUNTS.map((h) => ['pip', h, 3] as const),
   ].flatMap(([who, haunt, room]) => {
-    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0);
+    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0, secretPlaces);
     return site ? [{ x: site.x, z: site.z, room }] : [];
   });
   const hauntClear = (x: number, z: number): boolean => hauntSpots.some((h) => Math.abs(h.x - x) < h.room && Math.abs(h.z - z) < h.room && Math.hypot(h.x - x, h.z - z) < h.room);
@@ -1237,6 +1237,8 @@ async function boot(): Promise<void> {
       }
     }
     for (const item of lostNow) if (near(item.x, item.z)) out.push({ x: item.x, z: item.z, r: 0.9 });
+    // A cairn is small and low: the snow is kept off it, or it would be a white lump, or nothing.
+    for (const site of secretPlaces) if (site.id.startsWith('cairn-') && near(site.x, site.z)) out.push({ x: site.x, z: site.z, r: 1.5 });
     for (const cell of wornCells(game.save)) if (near(cell.x, cell.z)) out.push({ x: cell.x, z: cell.z, r: 3 });
     for (const st of [...standings, ...roamers]) {
       if (!near(st.x, st.z)) continue;
@@ -1288,7 +1290,7 @@ async function boot(): Promise<void> {
   };
   /** Where a haunt is in the world: worked out as a secret's place is, and the same every time. */
   const hauntAt = (who: string, haunt: Haunt): { x: number; y: number; z: number; turn: number } | null => {
-    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0);
+    const site = placeAt(secretSetting, `${who}-${haunt.id}`, haunt.where, haunt.off ?? 0, secretPlaces);
     return site ? { x: site.x, y: ground.heightAt(site.x, site.z), z: site.z, turn: site.turn } : null;
   };
   /** Something stood a step or two from a person, on the side they face. */
