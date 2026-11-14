@@ -11,8 +11,15 @@ const SHIFT = 8;
  * it is drawn: it is shaded as if it did not, so the thinning is not seen, and can be short.
  */
 const EDGE = 6;
-/** How far below the ground a part of the field with no snow on it is kept, so that the ground is what is seen, in metres. */
-const TUCK = 0.02;
+/**
+ * How far below the ground a part of the field with no snow on it is kept, so that the ground is what is seen, in
+ * metres; and the depth of snow at which it is level with its own top. Well under, and not a finger's width with the
+ * depth test leaned on: at a shallow angle a sheet two centimetres down showed through the ground in slivers.
+ */
+const BURY = 0.3;
+const SHOWN_FROM = 0.05;
+/** The least snow left on the floor of a trough, in metres: it is packed, not swept to the ground. */
+const FLOOR = 0.035;
 /** How wide the heights are taken apart to tell which way the ground itself faces, in cells: about what the terrain uses. */
 const WIDE = 5;
 /** How far the depth of the snow is smoothed, in cells each way: it comes up gently from a trail's edge and is not a step there. */
@@ -101,8 +108,8 @@ export class SnowField {
     geometry.setAttribute('normal', this.normal);
     geometry.setAttribute('color', this.colour);
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
-    // Lit as the ground is; and where the two lie one on the other, the snow is the one that is seen.
-    this.material = lit({ color: 0xffffff, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }) as THREE.Material & { color: THREE.Color };
+    // Lit as the ground is.
+    this.material = lit({ color: 0xffffff, vertexColors: true }) as THREE.Material & { color: THREE.Color };
     this.mesh = new THREE.Mesh(geometry, this.material);
     this.mesh.name = 'snow';
     this.mesh.frustumCulled = false;
@@ -168,7 +175,13 @@ export class SnowField {
     }
     this.dirty = null;
     for (const attribute of [this.position, this.normal, this.colour]) {
+      // The whole of it is to be sent, and that is said as a part that happens to be all of it. Said as "no part
+      // named", it was lost the same frame: whoever is in the snow treads it before the frame is drawn, which names
+      // the few rows round them, and then only those were sent. The rest of the sheet stayed on the graphics card
+      // where it had been when the run began: no snow under the skier, and the rows that were sent joined to it by
+      // triangles a hillside long.
       attribute.clearUpdateRanges();
+      attribute.addUpdateRange(0, attribute.array.length);
       attribute.needsUpdate = true;
     }
     return true;
@@ -233,8 +246,11 @@ export class SnowField {
   /** How far above the ground the top of the snow is at a point. */
   private top(i: number): number {
     const deep = this.deep[i] as number;
-    // Pushed down no further than the ground, and heaped up only where there is snow to heap.
-    return deep + Math.max(-deep, this.moved[i] as number) * Math.min(1, deep / 0.04);
+    const moved = this.moved[i] as number;
+    // Swept right away, to leave something lying on the ground uncovered: there is none.
+    if (moved <= -deep * 0.99) return 0;
+    // Pushed down no further than its packed floor, and heaped up only where there is snow to heap.
+    return Math.max(Math.min(deep, FLOOR), deep + Math.max(-deep, moved) * Math.min(1, deep / 0.04));
   }
 
   /** Work out where each point of a part of the field is, which way the snow faces there and what colour it is. */
@@ -252,7 +268,11 @@ export class SnowField {
         const i = r * SIDE + c;
         const k = i * 3;
         this.positions[k] = (at.cx + c) * CELL;
-        this.positions[k + 1] = (this.base[i] as number) + this.top(i) * (TAPER[i] as number) - TUCK;
+        // Where little or no snow lies (and at the field's edge, where it thins away) the sheet goes down under the ground.
+        // And where it has been swept to the ground it goes a little under that too, and does not lie in the ground's own plane.
+        const taper = TAPER[i] as number;
+        const up = this.top(i) * taper;
+        this.positions[k + 1] = (this.base[i] as number) + up - (up < 0.02 ? (0.02 - up) * 4 : 0) - BURY * (1 - smooth(((this.deep[i] as number) * taper) / SHOWN_FROM));
         this.positions[k + 2] = (at.cz + r) * CELL;
         // Which way it faces: the lie of the ground, taken wide as the ground's own shading is, and the lie of the snow on it, taken close.
         const cl = Math.max(0, c - 2);

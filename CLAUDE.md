@@ -440,7 +440,8 @@ Everything else is built in code from simple shapes.
   their own trough (`topAt`, the same `footing` that wades). It wears the ground's own
   printed colours, shaded bluer down in a trough, and is lit in the print's steps but
   smoothly, so a trough is a soft shape. One draw call. Where no snow lies loose the sheet
-  is tucked under the ground: on roads, paths and water, on the streets that are ploughed
+  is buried well under the ground (`BURY`; two centimetres under, with the depth test leaned
+  on, showed through in slivers at a shallow angle): on roads, paths and water, on the streets that are ploughed
   and the cabin's porch (`Built.swept`), on a floor of boards and at the foot of a wall;
   and on a groomed trail on a day with no new snow, so the groomer's marks show on dry
   days and are under new snow on others. What lies on the ground is left uncovered
@@ -449,6 +450,13 @@ Everything else is built in code from simple shapes.
   (`SHIFT`), sliding what it holds and asking the world only about the strip that has come
   in: about 1.4 ms a move and 0.05 ms a frame in Node. What was trodden is forgotten some
   thirty metres behind. The physics are not changed.
+- **What is sent to the graphics card** is the rows that changed, named as a part of each
+  buffer (`addUpdateRange`). A move sends the whole, and that too is named as a part (all
+  of it): left as "no part named", it was lost in the same frame to the few rows the skier
+  had just trodden, and from then on the sheet on the card stayed where it had been when
+  the run began, with those rows joined to it by triangles a hillside long. The owner saw
+  missing snow and giant fragments. `snowField.test.ts` keeps a copy as a renderer would
+  and holds it to the sheet through a long run; keep that test when changing how it is sent.
 - `src/world/powder.ts` is what a ski throws up out of it: several hundred small flecks,
   most in a skid, faceted and lit in the print's steps like the chimneys' smoke, and never
   see-through. One draw

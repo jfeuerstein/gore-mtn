@@ -100,6 +100,16 @@ onto your own map.
   Lower Pit.
 - Ask Marge at the inn: her rumour is now of a rare stone the museum hasn't got.
 
+## The snow layer, fixed (14 November)
+
+- The snow that went missing or broke into giant fragments on a run was one fault: after
+  the sheet first moved with you, only the few rows under your skis were being sent to the
+  graphics card, and the rest stayed where it was when the run began. Fixed, with a test
+  that would have caught it. Please ski a long run in the woods (`powder=30` for a deep day)
+  and say if anything is still wrong: this is the first time it has been right at speed.
+- Where no snow lies (a road, a dry groomed trail) the sheet is now well under the ground,
+  so it cannot show through.
+
 ## From the fourth round of judges (13 November)
 
 Five judges looked at the game as it stood before the museum; what they found is fixed
